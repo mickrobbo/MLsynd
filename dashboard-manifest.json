@@ -1,0 +1,14 @@
+{
+  "name": "MLSynd Dashboard",
+  "short_name": "MLSynd DB",
+  "description": "Read-only live view of the MLSynd syndicate — rolling balance, leaderboard, dues, and bet slips.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#08130F",
+  "theme_color": "#0B2B22",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
