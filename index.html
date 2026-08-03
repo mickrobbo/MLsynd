@@ -726,7 +726,7 @@ document.getElementById('imgModal').addEventListener('click', () => {
 async function refreshRacing(){
   const area = document.getElementById('racingArea');
   try{
-    const res = await fetch('/.netlify/functions/racing-meetings', { cache: 'no-store' });
+    const res = await fetch(window.location.origin + '/.netlify/functions/racing-meetings');
     if(!res.ok) throw new Error(`status ${res.status}`);
     const data = await res.json();
     const meetings = data.meetings || [];
