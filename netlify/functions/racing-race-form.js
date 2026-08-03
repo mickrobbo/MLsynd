@@ -1,6 +1,52 @@
 // Fetches runner-level form data for one specific race, called on demand when the
 // user taps into a race (not auto-fetched for every race, to conserve the free quota).
 
+function escapeHtmlLite(str){
+  return String(str == null ? '' : str);
+}
+
+// Matches today's race condition text (e.g. "Good 4", "Heavy 10") to one of
+// FormFav's condition buckets (good/soft/heavy/firm/synthetic).
+function matchConditionStats(conditions, conditionLabel){
+  if (!conditions || !conditionLabel) return null;
+  const label = conditionLabel.toLowerCase();
+  const key = ['good', 'soft', 'heavy', 'firm', 'synthetic'].find(k => label.includes(k));
+  return key ? conditions[key] : null;
+}
+
+// Builds a short, factual sentence from real career stats — no predictions or tips,
+// just a plain-English summary of numbers FormFav already gave us.
+function buildWriteup({ form, overall, track, distance, conditionStats, conditionLabel }){
+  const parts = [];
+
+  if (overall && overall.starts) {
+    parts.push(`${overall.wins || 0} win${overall.wins === 1 ? '' : 's'} from ${overall.starts} start${overall.starts === 1 ? '' : 's'}` +
+      (overall.winPercent != null ? ` (${Math.round(overall.winPercent * 100)}% win rate)` : ''));
+  }
+
+  if (track && track.starts) {
+    parts.push(`${track.wins || 0} from ${track.starts} at this track`);
+  }
+
+  if (distance && distance.starts) {
+    parts.push(`${distance.wins || 0} from ${distance.starts} at this distance`);
+  }
+
+  if (conditionStats && conditionStats.starts && conditionLabel) {
+    parts.push(`${conditionStats.wins || 0} from ${conditionStats.starts} on ${conditionLabel.toLowerCase()} tracks`);
+  }
+
+  if (form) {
+    parts.push(`recent form: ${form}`);
+  }
+
+  if (parts.length === 0) return 'No career stats available for this runner yet.';
+
+  // Join as a readable sentence, capitalizing the first part.
+  const joined = parts.join('; ');
+  return joined.charAt(0).toUpperCase() + joined.slice(1) + '.';
+}
+
 exports.handler = async (event) => {
   const apiKey = process.env.FORMFAV_API_KEY;
   if (!apiKey) {
@@ -24,7 +70,12 @@ exports.handler = async (event) => {
     const data = await res.json();
 
     const runners = (data.runners || []).map(r => {
-      const overall = (r.stats && r.stats.overall) || {};
+      const stats = r.stats || {};
+      const overall = stats.overall || {};
+      const track = stats.track || {};
+      const distance = stats.distance || {};
+      const conditionStats = matchConditionStats(stats.conditions, data.condition);
+
       return {
         number: r.number,
         name: r.name,
@@ -40,7 +91,8 @@ exports.handler = async (event) => {
         wins: overall.wins,
         places: overall.places,
         winPercent: overall.winPercent,
-        placePercent: overall.placePercent
+        placePercent: overall.placePercent,
+        writeup: buildWriteup({ name: r.name, form: r.form, overall, track, distance, conditionStats, conditionLabel: data.condition })
       };
     });
 
