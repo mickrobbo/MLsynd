@@ -752,7 +752,7 @@ async function refreshRacing(){
     });
     area.innerHTML = html;
   }catch(e){
-    area.innerHTML = '<div class="empty">Could not load racing meetings.</div>';
+    area.innerHTML = `<div class="empty">Could not load racing meetings. (${escapeHtml(e.message)})</div>`;
   }
 }
 
