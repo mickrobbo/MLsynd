@@ -11,9 +11,9 @@ exports.handler = async () => {
   // Using a real race from today's confirmed AU meetings list: Darwin, race 1.
   const today = new Date().toISOString().slice(0, 10);
   const attempts = [
-    `https://api.formfav.com/v1/form/race?track=darwin&raceNumber=1&date=${today}&country=au`,
-    `https://api.formfav.com/v1/form?track=darwin&raceNumber=1&date=${today}&country=au`,
-    `https://api.formfav.com/v1/form/runners?track=darwin&raceNumber=1&date=${today}&country=au`
+    `https://api.formfav.com/v1/form?track=darwin&race=1&date=${today}&country=au`,
+    `https://api.formfav.com/v1/form?track=darwin&race=1&date=${today}`,
+    `https://api.formfav.com/v1/form?track=darwin&race=1`
   ];
 
   const results = [];
