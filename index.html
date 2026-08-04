@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MLSynd Dashboard</title>
+<meta name="theme-color" content="#0B2B22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MLSynd">
+<link rel="manifest" href="dashboard-manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #08130F; --felt: #0B2B22; --felt-2: #123626; --felt-3: #17402D;
+    --line: rgba(239,234,216,0.12); --brass: #C7A248; --brass-dim: #7d6a34;
+    --chalk: #EFEAD8; --muted: #93a89c; --win: #6FA98A; --loss: #C1604A;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background: var(--ink); color: var(--chalk);
+    font-family:'IBM Plex Sans', sans-serif;
+    padding-top: 16px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    min-height:100vh;
+  }
+  .wrap{ max-width: 720px; margin:0 auto; padding: 0 12px; }
+
+  /* ---- Polish layer: transitions, feedback, depth ---- */
+  button, .tab-btn, select, input, .toteboard-cell, .highlight-row, .runner-row, .slip-card{
+    transition: transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease, background-color .2s ease, border-color .2s ease, color .2s ease, opacity .2s ease;
+  }
+  button:active, .tab-btn:active, .race-row:active{ transform: scale(0.93); }
+  button:disabled:active{ transform:none; }
+  .panel{
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 10px 24px rgba(0,0,0,0.28);
+    position: relative;
+    background: linear-gradient(165deg, var(--felt-2) 0%, var(--felt-3) 130%);
+  }
+  .panel::before{
+    content:''; position:absolute; top:0; left:14px; right:14px; height:2px; border-radius:2px;
+    background: linear-gradient(90deg, transparent, var(--brass) 50%, transparent);
+    opacity:.7;
+  }
+  .tab-panel.active{ animation: tabFadeIn .38s cubic-bezier(.16,1,.3,1); }
+  @keyframes tabFadeIn{ from{ opacity:0; transform:translateY(16px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
+  .toteboard-cell:active{ transform: scale(0.94); }
+  .value-pulse{ animation: valuePulse 1.1s ease; }
+  @keyframes valuePulse{ 0%{ text-shadow:0 0 14px rgba(199,162,72,.85); } 100%{ text-shadow:none; } }
+  @keyframes riseIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+  .toteboard-cell{ animation: riseIn .4s cubic-bezier(.16,1,.3,1) backwards; }
+  .toteboard-cell:nth-child(1){ animation-delay: .02s; } .toteboard-cell:nth-child(2){ animation-delay: .06s; }
+  .toteboard-cell:nth-child(3){ animation-delay: .10s; } .toteboard-cell:nth-child(4){ animation-delay: .14s; }
+  .toteboard-cell:nth-child(5){ animation-delay: .18s; } .toteboard-cell:nth-child(6){ animation-delay: .22s; }
+
+  #toastHost{ position:fixed; left:0; right:0; bottom:calc(78px + env(safe-area-inset-bottom, 0px)); z-index:10000; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; }
+  .toast{
+    background: linear-gradient(160deg, var(--felt-3), var(--felt-2)); border:1px solid var(--brass-dim); color:var(--chalk);
+    font-family:'IBM Plex Mono', monospace; font-size:12px; padding:11px 20px; border-radius:22px;
+    box-shadow:0 10px 28px rgba(0,0,0,.5), 0 0 0 1px rgba(199,162,72,.15); opacity:0; transform:translateY(16px) scale(.92);
+    animation: toastIn .35s cubic-bezier(.16,1,.3,1) forwards, toastOut .3s ease 2.4s forwards;
+  }
+  @keyframes toastIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
+  @keyframes toastOut{ to{ opacity:0; transform:translateY(-10px) scale(.96); } }
+
+  header{ text-align:center; margin-bottom:16px; position:relative; }
+  header::before{
+    content:''; position:absolute; top:-20px; left:50%; transform:translateX(-50%);
+    width:220px; height:100px; background: radial-gradient(ellipse at center, rgba(199,162,72,.16), transparent 70%);
+    pointer-events:none;
+  }
+  header h1{
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:20px;
+    letter-spacing:3px; text-transform:uppercase; color: var(--brass); margin:0;
+    position:relative; text-shadow: 0 0 18px rgba(199,162,72,.35);
+  }
+  header h1::after{
+    content:''; display:block; width:64px; height:2px; margin:8px auto 0;
+    background: linear-gradient(90deg, transparent, var(--brass), transparent);
+  }
+
+  .toteboard-strip{ display:flex; gap:8px; margin-bottom:16px; }
+  .toteboard-cell{
+    flex:1; background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--line); border-radius:8px;
+    padding:10px 8px; text-align:center; position:relative; overflow:hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,.18), 0 1px 0 rgba(255,255,255,.03) inset;
+  }
+  .toteboard-cell::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--brass-dim), transparent);
+  }
+  .toteboard-cell .lbl{
+    font-family:'Barlow Condensed', sans-serif; font-size:10px; letter-spacing:1.5px;
+    text-transform:uppercase; color: var(--muted); display:block; margin-bottom:2px;
+  }
+  .toteboard-cell .val{
+    font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:18px; color: var(--chalk);
+  }
+  .toteboard-cell.pos .val{ color: var(--win); }
+  .toteboard-cell.neg .val{ color: var(--loss); }
+
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  .tabbar{
+    position:fixed; bottom:0; left:0; right:0; z-index:20;
+    background: linear-gradient(0deg, var(--felt) 0%, var(--felt-2) 100%);
+    border-top:1px solid var(--brass-dim);
+    display:flex; padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .tab-btn{
+    flex:1; background:none; border:none; color: var(--muted); position:relative;
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:11px;
+    letter-spacing:1.5px; text-transform:uppercase; padding:10px 4px 8px;
+    display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer;
+  }
+  .tab-btn .icon{ font-size:18px; line-height:1; position:relative; z-index:1; transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+  .tab-btn.active{ color: var(--brass); }
+  .tab-btn.active .icon{ filter: drop-shadow(0 0 8px rgba(199,162,72,.6)); transform: translateY(-2px) scale(1.12); }
+  .tab-btn.active::before{
+    content:''; position:absolute; top:2px; left:50%; transform:translateX(-50%);
+    width:38px; height:38px; border-radius:50%;
+    background: radial-gradient(circle, rgba(199,162,72,.18), transparent 72%);
+    animation: tabPop .3s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes tabPop{ from{ transform:translateX(-50%) scale(.4); opacity:0; } to{ transform:translateX(-50%) scale(1); opacity:1; } }
+
+  .panel{
+    padding:16px; margin-bottom:14px; overflow-x:auto; border:1px solid var(--line); border-radius:10px;
+  }
+  .panel h2{
+    font-family:'Barlow Condensed', sans-serif; font-size:15px; font-weight:700;
+    text-transform:uppercase; letter-spacing:1.5px; color: var(--brass); margin:0 0 10px;
+  }
+
+  table{ width:100%; border-collapse:collapse; font-size:12px; min-width:520px; }
+  th{
+    text-align:left; font-family:'IBM Plex Mono', monospace; font-size:9px;
+    text-transform:uppercase; letter-spacing:1px; color:var(--muted);
+    border-bottom:1px solid var(--brass-dim); padding:7px 6px; white-space:nowrap;
+  }
+  td{ padding:7px 6px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; white-space:nowrap; }
+  td.name{ font-weight:600; color:var(--chalk); }
+  tr.rank-1 td.name{ color: var(--brass); }
+  .pos{ color: var(--win); } .neg{ color: var(--loss); }
+
+  .fin-row{ display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:13px; }
+  .fin-row:last-child{ border-bottom:none; }
+  .fin-row .lbl{ color: var(--muted); }
+
+  .balance-grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; }
+  .balance-grid .toteboard-cell{ padding:12px 6px; }
+  .balance-grid .val{ font-size:15px; }
+
+  .owed-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:13px; }
+  .owed-row:last-child{ border-bottom:none; }
+  .owed-row .name{ font-weight:600; }
+  .owed-row .amt{ color: var(--muted); }
+  .owed-row .amt.due{ color: var(--loss); font-weight:600; }
+
+  .highlight-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:12px; }
+  .highlight-row:last-child{ border-bottom:none; }
+  .highlight-row .hl-lbl{ color: var(--muted); flex-shrink:0; }
+  .highlight-row .hl-detail{ text-align:right; }
+  .highlight-row .hl-name{ font-weight:700; color: var(--brass); }
+  .highlight-row .hl-week{ color: var(--muted); font-size:10px; display:block; }
+
+  .slip-card{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .slip-card:last-child{ border-bottom:none; }
+  .slip-thumb{
+    width:48px; height:48px; flex-shrink:0; border-radius:6px; overflow:hidden;
+    background:#060A08; display:flex; align-items:center; justify-content:center; border:1px solid var(--line);
+  }
+  .slip-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .slip-icon{ font-size:20px; }
+  .slip-info{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .slip-info a{ color:var(--chalk); font-family:'IBM Plex Mono', monospace; font-size:12px; text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .slip-info a:hover{ color:var(--brass); }
+  .slip-date{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--muted); }
+
+  .afl-game{
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:8px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .afl-game.live{ border-color: var(--brass); }
+  .afl-teams{ display:flex; justify-content:space-between; align-items:center; padding:3px 0; }
+  .afl-teams .team{ font-size:13px; color:var(--chalk); }
+  .odds-price{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass); font-weight:600; background:rgba(199,162,72,.1); padding:1px 5px; border-radius:4px; }
+  .afl-teams .score{ font-size:16px; font-weight:700; color:var(--chalk); }
+  .afl-status{
+    text-align:center; font-size:10px; color:var(--brass); text-transform:uppercase;
+    letter-spacing:1px; padding:3px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    margin:4px 0;
+  }
+  .afl-venue{ font-size:10px; color:var(--muted); text-align:center; margin-top:2px; }
+
+  .meeting-block{ margin-bottom:14px; }
+  .meeting-name{ font-weight:600; font-size:14px; color:var(--brass); margin-bottom:6px; }
+  .meeting-name.abandoned{ color:var(--loss); }
+  .race-row{
+    border:1px solid var(--line); border-radius:8px; padding:9px 12px; margin-bottom:6px;
+    cursor:pointer;
+  }
+  .race-row-head{ display:flex; justify-content:space-between; align-items:center; }
+  .race-row-name{ font-size:12.5px; color:var(--chalk); }
+  .race-row-time{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--muted); }
+  .race-chevron{ display:inline-block; color:var(--brass-dim); font-size:12px; transition: transform .3s cubic-bezier(.34,1.56,.64,1), color .2s ease; }
+  .race-row:has(.race-runners.open) .race-chevron{ transform: rotate(180deg); color:var(--brass); }
+  .race-row.has-run .race-row-name{ color:var(--muted); }
+  .race-ran-tag{ font-family:'Barlow Condensed', sans-serif; font-weight:700; letter-spacing:1px; font-size:10px; color:var(--muted); border:1px solid var(--line); border-radius:4px; padding:2px 6px; }
+  .race-ran-notice{ font-size:11px; color:var(--muted); background:rgba(239,234,216,0.05); border:1px solid var(--line); border-radius:6px; padding:8px 10px; margin-bottom:8px; line-height:1.5; }
+  .race-runners{ display:grid; grid-template-rows: 0fr; transition: grid-template-rows .32s cubic-bezier(.4,0,.2,1); }
+  .race-runners.open{ grid-template-rows: 1fr; margin-top:8px; border-top:1px solid var(--line); }
+  .race-runners .rr-inner{ overflow:hidden; }
+  .race-runners.open .rr-inner{ padding-top:8px; }
+  .racing-day-btn{
+    background: transparent; border:1px solid var(--brass-dim); color: var(--muted);
+    font-family:'IBM Plex Sans', sans-serif; font-size:12px; font-weight:600;
+    padding:6px 14px; border-radius:8px; cursor:pointer; flex:1;
+  }
+  .racing-day-btn.active{ color: var(--brass); border-color: var(--brass); background: rgba(199,162,72,0.1); }
+  .runner-row{
+    display:flex; justify-content:space-between; align-items:center; padding:4px 0;
+    font-size:12px; border-bottom:1px solid rgba(255,255,255,0.05);
+  }
+  .runner-row:last-child{ border-bottom:none; }
+  .runner-name{ color:var(--chalk); }
+  .runner-name.best{ color:var(--brass); font-weight:600; }
+  .runner-meta{ font-size:10px; color:var(--muted); }
+  .runner-stats{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--muted); }
+  .runner-price{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass); font-weight:600; margin-left:6px; padding:1px 4px; border-radius:4px; }
+  .runner-price.price-flash{ animation: priceFlash 1.1s ease; }
+  @keyframes priceFlash{ 0%{ background:rgba(199,162,72,.45); } 100%{ background:transparent; } }
+  .runner-price-bookmaker{ font-weight:400; color:var(--muted); }
+  .runner-writeup{ font-size:11px; color:var(--chalk); opacity:0.85; line-height:1.4; padding-top:2px; }
+
+  .status-bar{
+    text-align:center; font-family:'IBM Plex Mono', monospace; font-size:11px;
+    color: var(--muted); margin-top:4px;
+  }
+  .chart-wrap{ overflow-x:auto; }
+  .chart-tooltip{ min-height:16px; font-size:12px; color:var(--chalk); text-align:center; margin-top:4px; opacity:0; transition:opacity .15s; font-family:'IBM Plex Mono', monospace; }
+  .slip-upload{ margin-bottom:12px; }
+  button.small{
+    background: transparent; border:1px solid var(--brass-dim); color: var(--brass);
+    font-family:'IBM Plex Sans', sans-serif; font-size:13px; font-weight:600;
+    padding:8px 14px; border-radius:8px; cursor:pointer;
+  }
+  button.small:active{ background: rgba(199,162,72,0.12); }
+  .status-msg{ font-size:11px; color: var(--muted); margin-top:6px; }
+  .status-msg.error{ color: var(--loss); }
+  .status-msg.ok{ color: var(--win); }
+  .slip-remove{
+    background:none; border:none; color: var(--loss); font-size:16px; line-height:1;
+    padding:6px 8px; cursor:pointer; flex-shrink:0;
+  }
+  .img-modal{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:1000;
+    align-items:center; justify-content:center; padding:20px; box-sizing:border-box;
+  }
+  .img-modal.open{ display:flex; }
+  .img-modal img{ max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 0 30px rgba(0,0,0,0.5); }
+  .slip-thumb.slip-open, a.slip-open{ cursor:pointer; }
+  .chart-dot{ transition: r .1s; }
+  .chart-hit:active + .chart-dot, .chart-hit:hover ~ .chart-dot{ r:4; }
+  .chart-wrap svg{ display:block; }
+  .empty{ text-align:center; padding:20px 10px; color:var(--muted); font-family:'IBM Plex Mono', monospace; font-size:12px; }
+  .hint{ font-size:11px; color: var(--muted); line-height:1.5; }
+
+  .auth-gate{ position:fixed; inset:0; z-index:9999; background:var(--ink); display:flex; align-items:center; justify-content:center; padding:20px; }
+  .auth-box{ width:100%; max-width:360px; background:var(--felt-2); border:1px solid var(--line); border-radius:10px; padding:22px; }
+  .auth-logo{ font-family:'Barlow Condensed', sans-serif; font-weight:700; letter-spacing:3px; font-size:22px; color:var(--brass); text-align:center; margin-bottom:18px; }
+  .auth-tabs{ display:flex; gap:8px; margin-bottom:16px; }
+  .auth-tab{ flex:1; font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:9px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; }
+  .auth-tab.active{ border-color:var(--brass); color:var(--brass); }
+  .auth-box label.field{ display:flex; flex-direction:column; gap:4px; font-size:10px; color:var(--muted); font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; }
+  .auth-box input[type=text], .auth-box input[type=password], .auth-box input[type=email]{ background:#060A08; color:var(--chalk); border:1px solid var(--line); border-radius:5px; font-family:'IBM Plex Mono', monospace; font-size:13px; padding:9px; width:100%; }
+  .auth-box button{ width:100%; margin-top:4px; }
+  #authSubmitBtn{ font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:11px 16px; border-radius:6px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
+  #authSubmitBtn:disabled{ opacity:.4; cursor:default; }
+  #authSignOutBtn{ font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:11px 16px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; }
+</style>
+</head>
+<body>
+<div id="authGate" class="auth-gate">
+  <div class="auth-box">
+    <div class="auth-logo">MLSYND</div>
+    <div id="authFormWrap">
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="authTabLogin">Log in</button>
+        <button type="button" class="auth-tab" id="authTabSignup">Sign up</button>
+      </div>
+      <div id="authNameField" style="display:none;">
+        <label class="field">Name<input type="text" id="authName" autocomplete="name"></label>
+      </div>
+      <label class="field">Email<input type="text" id="authEmail" autocomplete="email" inputmode="email"></label>
+      <label class="field">Password<input type="password" id="authPassword" autocomplete="current-password"></label>
+      <button type="button" id="authSubmitBtn">Log in</button>
+      <div class="status-msg" id="authStatus"></div>
+    </div>
+    <div id="authPendingWrap" style="display:none;">
+      <div class="hint">Your account is registered and waiting on approval. This checks automatically — no need to keep refreshing.</div>
+      <button type="button" class="secondary" id="authSignOutBtn">Sign out</button>
+    </div>
+  </div>
+</div>
+<div class="wrap">
+  <header>
+    <h1>MLSynd Ledger</h1>
+  </header>
+
+  <div class="tab-panel active" id="tab-balance">
+    <div class="panel">
+      <h2>Rolling balance</h2>
+      <div class="balance-grid">
+        <div class="toteboard-cell" id="balBankCell"><span class="lbl">Bank</span><span class="val" id="balBank">$0</span></div>
+        <div class="toteboard-cell"><span class="lbl">Outlay</span><span class="val" id="balOutlay">$0</span></div>
+        <div class="toteboard-cell"><span class="lbl">Return</span><span class="val" id="balReturn">$0</span></div>
+        <div class="toteboard-cell"><span class="lbl">Bonus pot</span><span class="val" id="balPot">$0</span></div>
+        <div class="toteboard-cell" id="balPlOverallCell"><span class="lbl">P/L overall</span><span class="val" id="balPlOverall">$0</span></div>
+        <div class="toteboard-cell" id="balPlWeeklyCell"><span class="lbl">P/L weekly</span><span class="val" id="balPlWeekly">$0</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>This week's individual bets</h2>
+      <div id="weeklyIndividualBetsArea"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Highlights</h2>
+      <div id="highlightsArea"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Season P/L</h2>
+      <div id="chartArea"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-board">
+    <div class="panel">
+      <h2>Leaderboard</h2>
+      <div id="leaderboardArea"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-owed">
+    <div class="panel">
+      <h2>Money owed</h2>
+      <div id="owedArea"></div>
+    </div>
+    <div class="panel">
+      <h2>Bank share</h2>
+      <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Each member's equal share of the current Bank, minus what they still owe in dues. Updates automatically every week as the Bank changes.</div>
+      <div id="bankShareArea"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-slips">
+    <div class="panel">
+      <h2>Bet slips</h2>
+      <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Uploaded from the ledger app each week.</div>
+      <div id="slipsArea"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-afl">
+    <div class="panel">
+      <h2>Sport Scores</h2>
+      <select id="sportSelect" style="margin-bottom:10px; width:100%; padding:8px; background:#0B2B22; color:var(--chalk); border:1px solid var(--line); border-radius:6px; font-family:'IBM Plex Sans', sans-serif;">
+        <option value="afl">AFL</option>
+        <option value="nrl">NRL</option>
+        <option value="nfl">NFL</option>
+        <option value="nba">NBA</option>
+        <option value="mlb">MLB</option>
+        <option value="nhl">NHL</option>
+        <option value="epl">Soccer — EPL</option>
+      </select>
+      <div id="aflArea">Loading…</div>
+      <div id="sportSourceLabel" style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;"></div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-racing">
+    <div class="panel">
+      <h2>Racing — Meetings</h2>
+      <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:10px;">Tap a race to load its runners, form, and best live win price.</div>
+      <div class="row" style="display:flex; gap:8px; margin-bottom:10px;">
+        <button id="racingDayToday" class="small racing-day-btn active">Today</button>
+        <button id="racingDayTomorrow" class="small racing-day-btn">Tomorrow</button>
+      </div>
+      <div id="racingArea">Loading…</div>
+      <div style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;">Fields via FormFav · Prices via PuntersEdge</div>
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar">Loading…</div>
+</div>
+
+<nav class="tabbar">
+  <button class="tab-btn active" data-tab="balance"><span class="icon">⚖️</span>Balance</button>
+  <button class="tab-btn" data-tab="board"><span class="icon">🏆</span>Board</button>
+  <button class="tab-btn" data-tab="owed"><span class="icon">💰</span>Cash</button>
+  <button class="tab-btn" data-tab="slips"><span class="icon">📎</span>Slips</button>
+  <button class="tab-btn" data-tab="afl"><span class="icon">🏆</span>Sport</button>
+  <button class="tab-btn" data-tab="racing"><span class="icon">🐎</span>Racing</button>
+</nav>
+
+<div id="imgModal" class="img-modal">
+  <img id="imgModalImg" src="" alt="Bet slip">
+</div>
+<script>
+window.addEventListener('error', (e) => {
+  const bar = document.getElementById('statusBar');
+  if(bar) bar.textContent = 'Error: ' + e.message + ' (line ' + e.lineno + ')';
+  console.error(e);
+});
+window.addEventListener('unhandledrejection', (e) => {
+  const bar = document.getElementById('statusBar');
+  if(bar) bar.textContent = 'Error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
+  console.error(e.reason);
+});
+const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
+const DATA_PATH = '/state.json';
+
+// ================= Auth =================
+const FB_API_KEY = 'AIzaSyAOxWjx7kwaEKN3Ab29kObrTZBIEyUhKfI';
+const ADMIN_EMAIL = 'mlsynd00@gmail.com';
+
+function authStorageGet(){
+  try{ return JSON.parse(localStorage.getItem('mlsynd_auth') || 'null'); }catch(e){ return null; }
+}
+function authStorageSet(v){ try{ localStorage.setItem('mlsynd_auth', JSON.stringify(v)); }catch(e){} }
+function authStorageClear(){ try{ localStorage.removeItem('mlsynd_auth'); }catch(e){} }
+
+function friendlyAuthError(msg){
+  const map = {
+    EMAIL_EXISTS: 'An account with that email already exists — try logging in instead.',
+    EMAIL_NOT_FOUND: 'No account found with that email.',
+    INVALID_PASSWORD: 'Wrong password.',
+    INVALID_LOGIN_CREDENTIALS: 'Wrong email or password.',
+    WEAK_PASSWORD: 'Password should be at least 6 characters.',
+    INVALID_EMAIL: 'That email address doesn\'t look right.',
+    TOO_MANY_ATTEMPTS_TRY_LATER: 'Too many attempts — please wait a bit and try again.',
+    MISSING_PASSWORD: 'Enter a password.'
+  };
+  const code = (msg || '').split(' : ')[0];
+  return map[code] || (msg || 'Something went wrong — please try again.');
+}
+
+async function authSignUp(name, email, password){
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB_API_KEY}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, returnSecureToken: true })
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(friendlyAuthError(data.error.message));
+  const auth = { idToken: data.idToken, refreshToken: data.refreshToken, uid: data.localId, email, expiresAt: Date.now() + (parseInt(data.expiresIn, 10) * 1000) };
+  authStorageSet(auth);
+  const body = { name, email, createdAt: new Date().toISOString() };
+  if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) body.status = 'approved';
+  await fetch(`${FIREBASE_URL}/users/${auth.uid}.json?auth=${auth.idToken}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  return auth;
+}
+
+async function authSignIn(email, password){
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FB_API_KEY}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, returnSecureToken: true })
+  });
+  const data = await res.json();
+  if(data.error) throw new Error(friendlyAuthError(data.error.message));
+  const auth = { idToken: data.idToken, refreshToken: data.refreshToken, uid: data.localId, email, expiresAt: Date.now() + (parseInt(data.expiresIn, 10) * 1000) };
+  authStorageSet(auth);
+  return auth;
+}
+
+async function authRefresh(){
+  const cur = authStorageGet();
+  if(!cur || !cur.refreshToken) return null;
+  const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB_API_KEY}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(cur.refreshToken)}`
+  });
+  const data = await res.json();
+  if(data.error){ authStorageClear(); return null; }
+  const auth = { idToken: data.id_token, refreshToken: data.refresh_token, uid: data.user_id, email: cur.email, expiresAt: Date.now() + (parseInt(data.expires_in, 10) * 1000) };
+  authStorageSet(auth);
+  return auth;
+}
+
+async function getValidAuth(){
+  let cur = authStorageGet();
+  if(!cur) return null;
+  if(Date.now() > cur.expiresAt - 60000){ cur = await authRefresh(); }
+  return cur;
+}
+
+function authSignOut(){
+  authStorageClear();
+  location.reload();
+}
+
+async function authedFetch(path, options){
+  const auth = await getValidAuth();
+  if(!auth) throw new Error('Not signed in');
+  const sep = path.includes('?') ? '&' : '?';
+  return fetch(`${FIREBASE_URL}${path}${sep}auth=${auth.idToken}`, options);
+}
+
+// ---- Gate control ----
+let appStarted = false;
+let approvalPollFn = null;
+
+function showAuthGate(mode){
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('authFormWrap').style.display = mode === 'pending' ? 'none' : 'block';
+  document.getElementById('authPendingWrap').style.display = mode === 'pending' ? 'block' : 'none';
+}
+function hideAuthGate(){
+  document.getElementById('authGate').style.display = 'none';
+}
+
+async function checkApprovalAndProceed(){
+  const auth = await getValidAuth();
+  if(!auth){ showAuthGate('form'); return; }
+  try{
+    const res = await authedFetch(`/users/${auth.uid}/status.json`);
+    const status = await res.json();
+    if(status === 'approved'){
+      hideAuthGate();
+      if(!appStarted){ appStarted = true; startApp(); }
+    } else {
+      showAuthGate('pending');
+      if(!approvalPollFn){
+        approvalPollFn = checkApprovalAndProceed;
+        startSmartPolling(approvalPollFn, 30000);
+      }
+    }
+  }catch(e){
+    showAuthGate('form');
+  }
+}
+
+function initAuthGate(){
+  const tabLogin = document.getElementById('authTabLogin');
+  const tabSignup = document.getElementById('authTabSignup');
+  const nameField = document.getElementById('authNameField');
+  const submitBtn = document.getElementById('authSubmitBtn');
+  const statusEl = document.getElementById('authStatus');
+  let mode = 'login';
+
+  function setMode(m){
+    mode = m;
+    tabLogin.classList.toggle('active', m === 'login');
+    tabSignup.classList.toggle('active', m === 'signup');
+    nameField.style.display = m === 'signup' ? 'block' : 'none';
+    submitBtn.textContent = m === 'signup' ? 'Sign up' : 'Log in';
+    statusEl.textContent = '';
+  }
+  tabLogin.addEventListener('click', () => setMode('login'));
+  tabSignup.addEventListener('click', () => setMode('signup'));
+
+  submitBtn.addEventListener('click', async () => {
+    const name = document.getElementById('authName').value.trim();
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    if(mode === 'signup' && !name){ statusEl.className = 'status-msg error'; statusEl.textContent = 'Enter your name.'; return; }
+    if(!email || !password){ statusEl.className = 'status-msg error'; statusEl.textContent = 'Enter your email and password.'; return; }
+    submitBtn.disabled = true;
+    statusEl.className = 'status-msg'; statusEl.textContent = 'Working…';
+    try{
+      if(mode === 'signup'){ await authSignUp(name, email, password); }
+      else { await authSignIn(email, password); }
+      statusEl.textContent = '';
+      await checkApprovalAndProceed();
+    }catch(e){
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = e.message;
+    }finally{
+      submitBtn.disabled = false;
+    }
+  });
+
+  document.getElementById('authSignOutBtn').addEventListener('click', authSignOut);
+
+  checkApprovalAndProceed();
+}
+// ================= /Auth =================
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
+
+function escapeHtml(str){
+  const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
+}
+function fmtMoney(n){
+  const v = Number(n) || 0;
+  const sign = v > 0 ? '+' : (v < 0 ? '-' : '');
+  return sign + '$' + Math.abs(v).toFixed(2);
+}
+function animateValue(id, newVal, formatFn){
+  const el = document.getElementById(id);
+  if(!el) return;
+  const startVal = (el._rawVal != null) ? el._rawVal : newVal;
+  el._rawVal = newVal;
+  if(el._animId) cancelAnimationFrame(el._animId);
+  if(Math.abs(startVal - newVal) < 0.005){ el.textContent = formatFn(newVal); return; }
+  const duration = 700;
+  const t0 = performance.now();
+  function tick(now){
+    const t = Math.min(1, (now - t0) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = formatFn(startVal + (newVal - startVal) * eased);
+    if(t < 1){ el._animId = requestAnimationFrame(tick); }
+    else{
+      el._animId = null;
+      el.classList.remove('value-pulse');
+      void el.offsetWidth;
+      el.classList.add('value-pulse');
+    }
+  }
+  el._animId = requestAnimationFrame(tick);
+}
+function showToast(msg){
+  let host = document.getElementById('toastHost');
+  if(!host){
+    host = document.createElement('div');
+    host.id = 'toastHost';
+    document.body.appendChild(host);
+  }
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  host.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+function computeDerived(m){
+  const winPct = (m.wins + m.losses) > 0 ? m.wins / (m.wins + m.losses) : 0;
+  const avgLeg = m.oddsCount > 0 ? m.oddsSum / m.oddsCount : 0;
+  const indBets = m.indWin + m.indLoss;
+  const indWinPct = indBets > 0 ? m.indWin / indBets : 0;
+  const dataScore = Math.round(((m.pl/25) + (winPct*10) + (indWinPct*5) + (m.legs*0.5) + (avgLeg*1)) * 100) / 100;
+  return { winPct, avgLeg, indWinPct, dataScore };
+}
+function rankedMembers(members){
+  const withDerived = members.map(m => ({ ...m, ...computeDerived(m) }));
+  withDerived.sort((a,b) => b.dataScore - a.dataScore);
+  return withDerived;
+}
+function computeSeasonFinancials(state){
+  const g = state.group;
+  // Individual bets (2, 3, or more bettors in a given week) were never rolled into
+  // the syndicate outlay/return totals below — only the flat lotto and group-multi
+  // numbers were. Derive individual outlay/return from history so every week is
+  // captured correctly, regardless of how many bettors it had.
+  let indOut = 0, indRet = 0;
+  (state.history || []).forEach(h => {
+    Object.values(h.individualEntries || {}).forEach(e => {
+      const stake = (typeof e.outlay === 'number') ? e.outlay : (e.indWin + e.indLoss) * 50;
+      indOut += stake;
+      indRet += e.pl + stake;
+    });
+  });
+  const outlay = g.lottoOut + g.multiOut + indOut;
+  const ret = g.lottoRet + g.multiRet + indRet;
+  const profitLoss = ret - (outlay + g.bonus);
+  const duesCollected = state.members.reduce((s, m) => s + (m.duesCommitment - m.duesOwed), 0);
+  const duesOwedTotal = state.members.reduce((s, m) => s + m.duesOwed, 0);
+  const bank = duesCollected + profitLoss;
+  return { outlay, ret, profitLoss, bonusPot: g.bonus, duesCollected, duesOwedTotal, bank };
+}
+
+function weekGroupPl(h){
+  const g = h.group || {};
+  const outlay = (g.lottoOut||0) + (g.multiOut||0) + (g.bonus||0);
+  const ret = (g.lottoRet||0) + (g.multiRet||0);
+  const indPl = Object.values(h.individualEntries || {}).reduce((s, e) => s + (e.pl || 0), 0);
+  return ret - outlay + indPl;
+}
+
+function computeHighlights(history){
+  let bestGroupWin = null;   // highest-odds group leg that won
+  let worstGroupLoss = null; // lowest-odds group leg that still lost (the bad beat)
+  let bestIndWin = null;     // biggest single individual bet P/L
+
+  (history || []).forEach(h => {
+    const ge = h.groupEntries || {};
+    Object.entries(ge).forEach(([name, e]) => {
+      if(!e || e.odds === null || e.odds === undefined) return;
+      if(e.result === 'Win' && (!bestGroupWin || e.odds > bestGroupWin.odds)){
+        bestGroupWin = { name, odds: e.odds, week: h.label };
+      }
+      if(e.result === 'Loss' && (!worstGroupLoss || e.odds < worstGroupLoss.odds)){
+        worstGroupLoss = { name, odds: e.odds, week: h.label };
+      }
+    });
+    const ie = h.individualEntries || {};
+    Object.entries(ie).forEach(([name, e]) => {
+      if(!e || !(e.pl > 0)) return;
+      if(!bestIndWin || e.pl > bestIndWin.pl){
+        bestIndWin = { name, pl: e.pl, week: h.label };
+      }
+    });
+  });
+
+  return { bestGroupWin, worstGroupLoss, bestIndWin };
+}
+
+function shortWeekLabel(label){
+  const m = (label || '').match(/(\d+)/);
+  return m ? 'W' + m[1] : (label || '').slice(0, 4);
+}
+
+function buildChart(history){
+  if(!history || history.length === 0){
+    return '<div class="empty">No weeks saved yet — this fills in as you save each week.</div>';
+  }
+  // cumulative running P/L over the season, not per-week deltas
+  let running = 0;
+  const points = history.map(h => { running += weekGroupPl(h); return { label: h.label, cum: running }; });
+
+  const chartW = 320, chartH = 130, padX = 12, padY = 10;
+  const values = points.map(p => p.cum);
+  const maxV = Math.max(0, ...values);
+  const minV = Math.min(0, ...values);
+  const range = Math.max(1, maxV - minV);
+  const stepX = points.length > 1 ? (chartW - padX*2) / (points.length - 1) : 0;
+  const yFor = v => chartH - padY - ((v - minV) / range) * (chartH - padY*2);
+  const zeroY = yFor(0);
+
+  const coords = points.map((p, i) => [padX + i*stepX, yFor(p.cum)]);
+  const linePath = coords.map((c, i) => (i===0 ? 'M' : 'L') + c[0].toFixed(1) + ',' + c[1].toFixed(1)).join(' ');
+  const areaPath = `${linePath} L${coords[coords.length-1][0].toFixed(1)},${zeroY.toFixed(1)} L${coords[0][0].toFixed(1)},${zeroY.toFixed(1)} Z`;
+
+  const finalPl = points[points.length-1].cum;
+  const lineColor = finalPl >= 0 ? 'var(--win)' : 'var(--loss)';
+  const dots = coords.map((c, i) => `<circle class="chart-dot" cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="2.5" fill="${lineColor}" data-idx="${i}"/>`).join('');
+  // invisible larger circles just for easier tapping on mobile
+  const hitTargets = coords.map((c, i) => `<circle class="chart-hit" cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="10" fill="transparent" data-idx="${i}" style="cursor:pointer;"/>`).join('');
+
+  // label first, middle, last week only, to avoid clutter
+  const labelIdxs = points.length > 1 ? [0, Math.floor((points.length-1)/2), points.length-1] : [0];
+  const labels = [...new Set(labelIdxs)].map(i => {
+    const c = coords[i];
+    return `<text x="${c[0].toFixed(1)}" y="${chartH + 12}" font-size="8" fill="var(--muted)" text-anchor="middle" font-family="'IBM Plex Mono', monospace">${escapeHtml(shortWeekLabel(points[i].label))}</text>`;
+  }).join('');
+
+  // stash point data on the container so the tap handler can read it without re-parsing the DOM
+  window.__chartPoints = points;
+  window.__chartCoords = coords;
+  window.__chartGeom = { chartW, chartH, zeroY };
+
+  return `<div class="chart-wrap"><svg id="chartSvg" viewBox="0 0 ${chartW} ${chartH + 20}" width="100%" height="${chartH + 20}" preserveAspectRatio="none" style="min-width:280px;">
+    <line x1="${padX}" y1="${zeroY.toFixed(1)}" x2="${chartW-padX}" y2="${zeroY.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
+    <path d="${areaPath}" fill="${lineColor}" opacity="0.12" stroke="none"/>
+    <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2"/>
+    <line id="chartGuide" x1="0" y1="0" x2="0" y2="${chartH}" stroke="var(--brass)" stroke-width="1" stroke-dasharray="2,2" opacity="0"/>
+    ${dots}
+    <circle id="chartSelDot" r="4" fill="var(--brass)" stroke="#000" stroke-width="1" opacity="0"/>
+    ${hitTargets}
+    ${labels}
+  </svg>
+  <div id="chartTooltip" class="chart-tooltip"></div>
+  </div>`;
+}
+
+function selectChartPoint(idx){
+  const points = window.__chartPoints, coords = window.__chartCoords, geom = window.__chartGeom;
+  if(!points || !points[idx]) return;
+  const p = points[idx];
+  const c = coords[idx];
+  const guide = document.getElementById('chartGuide');
+  const selDot = document.getElementById('chartSelDot');
+  const tip = document.getElementById('chartTooltip');
+  if(guide){
+    guide.setAttribute('x1', c[0].toFixed(1));
+    guide.setAttribute('x2', c[0].toFixed(1));
+    guide.setAttribute('y2', geom.chartH.toFixed(1));
+    guide.setAttribute('opacity', '0.6');
+  }
+  if(selDot){
+    selDot.setAttribute('cx', c[0].toFixed(1));
+    selDot.setAttribute('cy', c[1].toFixed(1));
+    selDot.setAttribute('opacity', '1');
+  }
+  if(tip){
+    const sign = p.cum >= 0 ? '+' : '-';
+    tip.innerHTML = `<strong>${escapeHtml(p.label)}</strong> — running P/L: <span style="color:${p.cum>=0?'var(--win)':'var(--loss)'}">${sign}$${Math.abs(p.cum).toFixed(2)}</span>`;
+    tip.style.opacity = '1';
+  }
+}
+
+// event delegation so this keeps working after every re-render (innerHTML is replaced each refresh)
+document.getElementById('chartArea').addEventListener('click', (e) => {
+  const idx = e.target && e.target.getAttribute && e.target.getAttribute('data-idx');
+  if(idx !== null && idx !== undefined) selectChartPoint(parseInt(idx, 10));
+});
+document.getElementById('chartArea').addEventListener('touchstart', (e) => {
+  const t = e.target;
+  const idx = t && t.getAttribute && t.getAttribute('data-idx');
+  if(idx !== null && idx !== undefined){ selectChartPoint(parseInt(idx, 10)); }
+}, { passive: true });
+
+
+
+function render(state){
+  if(!state || !state.members || state.members.length === 0){
+    document.getElementById('leaderboardArea').innerHTML = '';
+    document.getElementById('owedArea').innerHTML = '';
+    document.getElementById('bankShareArea').innerHTML = '';
+    document.getElementById('slipsArea').innerHTML = '';
+    document.getElementById('highlightsArea').innerHTML = '';
+    document.getElementById('weeklyIndividualBetsArea').innerHTML = '';
+    document.getElementById('chartArea').innerHTML = '<div class="empty">No data yet — waiting for the first entry.</div>';
+    return;
+  }
+  const fin = computeSeasonFinancials(state);
+  const totalPl = state.members.reduce((s, m) => s + m.pl, 0);
+  const history = state.history || [];
+  const lastWeek = history.length ? history[history.length - 1] : null;
+  const weeklyPl = lastWeek ? weekGroupPl(lastWeek) : 0;
+
+  animateValue('balBank', fin.bank, v => fmtMoney(v).replace('+',''));
+  document.getElementById('balBankCell').className = 'toteboard-cell ' + (fin.bank >= 0 ? 'pos' : 'neg');
+  animateValue('balOutlay', fin.outlay + fin.bonusPot, v => '$' + v.toFixed(2));
+  animateValue('balReturn', fin.ret, v => '$' + v.toFixed(2));
+  animateValue('balPot', fin.bonusPot, v => '$' + v.toFixed(2));
+  animateValue('balPlOverall', fin.profitLoss, v => fmtMoney(v).replace('+',''));
+  document.getElementById('balPlOverallCell').className = 'toteboard-cell ' + (fin.profitLoss >= 0 ? 'pos' : 'neg');
+  animateValue('balPlWeekly', weeklyPl, v => fmtMoney(v).replace('+',''));
+  document.getElementById('balPlWeeklyCell').className = 'toteboard-cell ' + (weeklyPl >= 0 ? 'pos' : 'neg');
+
+  document.getElementById('chartArea').innerHTML = buildChart(history);
+  if(history.length){ selectChartPoint(history.length - 1); }
+
+  const weeklyBets = state.weeklyIndividualBets || [];
+  if(weeklyBets.length === 0){
+    document.getElementById('weeklyIndividualBetsArea').innerHTML = '<div class="empty">No individual bets set for this week yet.</div>';
+  } else {
+    document.getElementById('weeklyIndividualBetsArea').innerHTML = weeklyBets.map(b => `
+      <div class="highlight-row">
+        <span class="hl-lbl">${escapeHtml(b.name || '')}</span>
+      </div>`).join('');
+  }
+
+  const hl = computeHighlights(history);
+  const hlRow = (label, data, fmt) => {
+    if(!data) return `<div class="highlight-row"><span class="hl-lbl">${label}</span><span class="hl-detail" style="color:var(--muted);">No data yet</span></div>`;
+    return `<div class="highlight-row">
+      <span class="hl-lbl">${label}</span>
+      <span class="hl-detail"><span class="hl-name">${escapeHtml(data.name)}</span> — ${fmt(data)}<span class="hl-week">${escapeHtml(data.week || '')}</span></span>
+    </div>`;
+  };
+  document.getElementById('highlightsArea').innerHTML =
+    hlRow('Best group leg win', hl.bestGroupWin, d => `@ ${d.odds.toFixed(2)}`) +
+    hlRow('Worst group leg loss', hl.worstGroupLoss, d => `@ ${d.odds.toFixed(2)}`) +
+    hlRow('Best individual bet win', hl.bestIndWin, d => fmtMoney(d.pl));
+
+  const ranked = rankedMembers(state.members);
+  let html = '<table><tr><th>#</th><th>Name</th><th>Score</th><th>P/L</th><th>W-L-V</th><th>Win%</th><th>Ind W-L</th></tr>';
+  ranked.forEach((m, i) => {
+    const rank = i + 1;
+    html += `<tr class="${rank===1?'rank-1':''}">
+      <td>${rank}</td>
+      <td class="name">${escapeHtml(m.name)}</td>
+      <td>${m.dataScore.toFixed(2)}</td>
+      <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
+      <td>${m.wins}-${m.losses}-${m.voids}</td>
+      <td>${(m.winPct*100).toFixed(0)}%</td>
+      <td>${m.indWin}-${m.indLoss}</td>
+    </tr>`;
+  });
+  html += '</table>';
+  document.getElementById('leaderboardArea').innerHTML = html;
+
+  const owedSorted = [...state.members].sort((a,b) => b.duesOwed - a.duesOwed);
+  let owedHtml = '';
+  owedSorted.forEach(m => {
+    const owed = Math.round(m.duesOwed);
+    const commitment = Math.round(m.duesCommitment);
+    owedHtml += `<div class="owed-row">
+      <span class="name">${escapeHtml(m.name)}</span>
+      <span class="amt ${owed>0?'due':''}">$${owed} of $${commitment}</span>
+    </div>`;
+  });
+  document.getElementById('owedArea').innerHTML = owedHtml || '<div class="empty">No members yet.</div>';
+
+  const memberCount = state.members.length;
+  const shareOfBank = memberCount ? fin.bank / memberCount : 0;
+  const bankShareSorted = [...state.members]
+    .map(m => ({ name: m.name, net: shareOfBank - m.duesOwed }))
+    .sort((a, b) => b.net - a.net);
+  let bankShareHtml = '';
+  bankShareSorted.forEach(m => {
+    bankShareHtml += `<div class="owed-row">
+      <span class="name">${escapeHtml(m.name)}</span>
+      <span class="amt ${m.net < 0 ? 'due' : ''}">${fmtMoney(m.net).replace('+','')}</span>
+    </div>`;
+  });
+  document.getElementById('bankShareArea').innerHTML = bankShareHtml || '<div class="empty">No members yet.</div>';
+
+  const slips = state.slips || [];
+  if(slips.length === 0){
+    document.getElementById('slipsArea').innerHTML = '<div class="empty">No slips added yet.</div>';
+  } else {
+    let slipHtml = '';
+    [...slips].reverse().forEach(s => {
+      const isImage = IMAGE_EXT.test(s.url) || (s.url||'').startsWith('data:image');
+      const isDataUrl = (s.url||'').startsWith('data:');
+      // data: URLs get blocked by the browser as a top-level navigation (anti-phishing
+      // protection), so open those in an on-page viewer instead of a real link
+      const labelMarkup = isDataUrl
+        ? `<a href="#" class="slip-open" data-added-at="${s.addedAt}">${escapeHtml(s.label || 'Bet slip')}</a>`
+        : `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label || s.url)}</a>`;
+      slipHtml += `<div class="slip-card">
+        <div class="slip-thumb${isDataUrl ? ' slip-open' : ''}" ${isDataUrl ? `data-added-at="${s.addedAt}"` : ''}>${isImage ? `<img src="${escapeHtml(s.url)}" alt="${escapeHtml(s.label)}">` : `<span class="slip-icon">🔗</span>`}</div>
+        <div class="slip-info">
+          ${labelMarkup}
+          <span class="slip-date">${new Date(s.addedAt).toLocaleDateString()}</span>
+        </div>
+        <button class="slip-remove" data-added-at="${s.addedAt}" title="Remove">✕</button>
+      </div>`;
+    });
+    document.getElementById('slipsArea').innerHTML = slipHtml;
+  }
+}
+
+let currentState = null;
+
+async function saveState(newState){
+  await authedFetch(DATA_PATH, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newState)
+  });
+}
+
+async function refresh(){
+  const statusBar = document.getElementById('statusBar');
+  try{
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await authedFetch(`${DATA_PATH}?_=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
+    clearTimeout(timeout);
+    if(res.ok){
+      const remote = await res.json();
+      if(remote){
+        currentState = remote;
+        render(remote);
+        statusBar.textContent = 'Last updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      } else {
+        statusBar.textContent = 'Waiting for the ledger\'s first save…';
+      }
+    } else {
+      statusBar.textContent = `Could not reach the ledger data (HTTP ${res.status}).`;
+    }
+  }catch(e){
+    statusBar.textContent = e.name === 'AbortError'
+      ? 'Timed out waiting for the ledger data (10s) — the shared data may be too large or the connection too slow.'
+      : 'Could not reach the ledger data: ' + e.message;
+  }
+}
+
+// ---------- Tabs ----------
+function setActiveTab(tab){
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  window.scrollTo(0,0);
+  try{ sessionStorage.setItem('mlsynd-active-tab', tab); }catch(e){}
+}
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+});
+// restore whichever tab was open before a refresh (e.g. pull-to-refresh), instead of
+// always landing back on Balance
+try{
+  const savedTab = sessionStorage.getItem('mlsynd-active-tab');
+  if(savedTab && document.getElementById(`tab-${savedTab}`)){
+    setActiveTab(savedTab);
+  }
+}catch(e){}
+
+const SPORT_SOURCE_LABEL = {
+  afl: 'Live via Squiggle · Odds via PuntersEdge',
+  nrl: 'Live via ESPN · Odds via PuntersEdge',
+  nfl: 'Live via ESPN',
+  nba: 'Live via ESPN · Odds via PuntersEdge',
+  mlb: 'Live via ESPN',
+  nhl: 'Live via ESPN',
+  epl: 'Live via ESPN · Odds via PuntersEdge'
+};
+
+async function refreshAfl(){
+  const area = document.getElementById('aflArea');
+  const sport = document.getElementById('sportSelect').value;
+  document.getElementById('sportSourceLabel').textContent = SPORT_SOURCE_LABEL[sport] || '';
+  const endpoint = sport === 'afl'
+    ? '/.netlify/functions/afl-scores'
+    : `/.netlify/functions/espn-scores?sport=${encodeURIComponent(sport)}`;
+  try{
+    const [res, oddsRes] = await Promise.all([
+      fetch(endpoint, { cache: 'no-store' }),
+      fetch(`/.netlify/functions/puntersedge-sports-odds?sport=${encodeURIComponent(sport)}`, { cache: 'no-store' }).catch(() => null)
+    ]);
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const games = data.games || [];
+    let oddsEvents = [];
+    if(oddsRes && oddsRes.ok){
+      const oddsData = await oddsRes.json();
+      if(oddsData.supported) oddsEvents = oddsData.events || [];
+    }
+    if(games.length === 0){
+      area.innerHTML = '<div class="empty">No games right now.</div>';
+      return;
+    }
+    const normTeam = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const findOddsFor = (teamName) => {
+      const target = normTeam(teamName);
+      if(!target) return null;
+      return oddsEvents.find(ev => {
+        const h = normTeam(ev.home_team), a = normTeam(ev.away_team);
+        return h === target || a === target || h.includes(target) || target.includes(h) || a.includes(target) || target.includes(a);
+      }) || null;
+    };
+    let html = '';
+    games.forEach(g => {
+      const live = g.live !== undefined ? g.live : (g.complete > 0 && g.complete < 100);
+      const oddsEv = findOddsFor(g.hteam) || findOddsFor(g.ateam);
+      let homePriceHtml = '', awayPriceHtml = '';
+      if(oddsEv){
+        if(oddsEv.home_best_price != null) homePriceHtml = `<span class="odds-price">$${oddsEv.home_best_price.toFixed(2)}</span>`;
+        if(oddsEv.away_best_price != null) awayPriceHtml = `<span class="odds-price">$${oddsEv.away_best_price.toFixed(2)}</span>`;
+      }
+      html += `<div class="afl-game ${live ? 'live' : ''}">
+        <div class="afl-teams"><span style="display:flex; align-items:center; gap:6px;"><span class="team">${escapeHtml(g.hteam || '')}</span>${homePriceHtml}</span><span class="score">${g.hscore ?? '-'}</span></div>
+        <div class="afl-status">${escapeHtml(g.timestr || (g.complete >= 100 ? 'Full Time' : ''))}</div>
+        <div class="afl-teams"><span style="display:flex; align-items:center; gap:6px;"><span class="team">${escapeHtml(g.ateam || '')}</span>${awayPriceHtml}</span><span class="score">${g.ascore ?? '-'}</span></div>
+        <div class="afl-venue">${escapeHtml(g.venue || '')}</div>
+      </div>`;
+    });
+    area.innerHTML = html;
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load scores for this sport.</div>';
+  }
+}
+
+document.getElementById('sportSelect').addEventListener('change', () => {
+  document.getElementById('aflArea').innerHTML = 'Loading…';
+  refreshAfl();
+});
+
+// ---------- Slip view / remove ----------
+// Uploading is handled from the ledger app only; the dashboard just displays and can remove.
+
+
+document.getElementById('slipsArea').addEventListener('click', async (e) => {
+  const openEl = e.target.closest('.slip-open');
+  if(openEl && currentState){
+    e.preventDefault();
+    const addedAt = Number(openEl.getAttribute('data-added-at'));
+    const slip = (currentState.slips || []).find(s => s.addedAt === addedAt);
+    if(slip){
+      document.getElementById('imgModalImg').src = slip.url;
+      document.getElementById('imgModal').classList.add('open');
+    }
+    return;
+  }
+  const btn = e.target.closest('.slip-remove');
+  if(!btn || !currentState) return;
+  const addedAt = Number(btn.getAttribute('data-added-at'));
+  if(!confirm('Remove this slip?')) return;
+  currentState.slips = (currentState.slips || []).filter(s => s.addedAt !== addedAt);
+  await saveState(currentState);
+  render(currentState);
+});
+
+document.getElementById('imgModal').addEventListener('click', () => {
+  document.getElementById('imgModal').classList.remove('open');
+  document.getElementById('imgModalImg').src = '';
+});
+
+// ---------- Racing ----------
+let racingSelectedDate = null; // null = today (server default); set explicitly for tomorrow
+
+function auDateOffset(days){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year:'numeric', month:'2-digit', day:'2-digit' })
+    .formatToParts(new Date(Date.now() + days*86400000));
+  const get = (t) => parts.find(p => p.type === t).value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+async function refreshRacing(){
+  const area = document.getElementById('racingArea');
+  try{
+    const dateParam = racingSelectedDate ? `?date=${racingSelectedDate}` : '';
+    const res = await fetch(window.location.origin + '/.netlify/functions/racing-meetings' + dateParam);
+    if(!res.ok) throw new Error(`status ${res.status}`);
+    const data = await res.json();
+    const meetings = data.meetings || [];
+    if(meetings.length === 0){
+      area.innerHTML = '<div class="empty">No AU meetings that day.</div>';
+      return;
+    }
+    let html = '';
+    meetings.forEach(m => {
+      html += `<div class="meeting-block">
+        <div class="meeting-name${m.abandoned ? ' abandoned' : ''}">${escapeHtml(m.track)}${m.abandoned ? ' — ABANDONED' : ''}</div>`;
+      (m.races || []).forEach(r => {
+        const timeStr = r.startTime ? new Date(r.startTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+        const hasRun = r.startTime && (Date.now() > new Date(r.startTime).getTime() + 5 * 60 * 1000);
+        html += `<div class="race-row${hasRun ? ' has-run' : ''}" data-track="${escapeHtml(m.slug)}" data-venue="${escapeHtml(m.track)}" data-race="${r.raceNumber}" data-date="${escapeHtml(data.date || '')}" data-has-run="${hasRun ? 'true' : 'false'}">
+          <div class="race-row-head">
+            <span class="race-row-name">R${r.raceNumber} ${escapeHtml(r.raceName || r.raceClass || '')}</span>
+            <span style="display:flex; align-items:center; gap:6px;">
+              <span class="race-row-time">${hasRun ? '<span class="race-ran-tag">RAN</span>' : timeStr}</span>
+              <span class="race-chevron">▾</span>
+            </span>
+          </div>
+          <div class="race-runners"><div class="rr-inner"></div></div>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    area.innerHTML = html;
+  }catch(e){
+    area.innerHTML = `<div class="empty">Could not load racing meetings. (${escapeHtml(e.message)})</div>`;
+  }
+}
+
+let punterspricesData = null;
+function fetchPuntersEdgePrices(){
+  return fetch('/.netlify/functions/puntersedge-prices', { cache: 'no-store' })
+    .then(res => res.ok ? res.json() : { races: [] })
+    .then(data => { punterspricesData = data.races || []; return punterspricesData; })
+    .catch(() => { punterspricesData = []; return punterspricesData; });
+}
+function normName(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function findPuntersEdgeRace(venue, raceNumber){
+  if(!punterspricesData) return null;
+  return punterspricesData.find(r => normName(r.venue) === normName(venue) && String(r.race_number) === String(raceNumber)) || null;
+}
+function findPuntersEdgeRunner(peRace, runnerName){
+  if(!peRace) return null;
+  const target = normName(runnerName);
+  return (peRace.runners || []).find(r => normName(r.name) === target) || null;
+}
+function applyPricesToOpenRow(runnersDiv, venue, race){
+  const peRace = findPuntersEdgeRace(venue, race);
+  let favouriteName = null;
+  let shortestPrice = null;
+  runnersDiv.querySelectorAll('.runner-row').forEach(rowEl => {
+    const name = rowEl.dataset.runnerName;
+    const peRunner = findPuntersEdgeRunner(peRace, name);
+    const priceSpan = rowEl.querySelector('.runner-price');
+    if(priceSpan){
+      const newText = (peRunner && peRunner.best_win_price != null) ? `$${peRunner.best_win_price.toFixed(2)}` : '';
+      if(newText && newText !== priceSpan.textContent){
+        priceSpan.textContent = newText;
+        priceSpan.classList.remove('price-flash');
+        void priceSpan.offsetWidth; // restart animation
+        priceSpan.classList.add('price-flash');
+      } else if(!newText){
+        priceSpan.textContent = '';
+      }
+    }
+    if(peRunner && peRunner.best_win_price != null){
+      if(shortestPrice === null || peRunner.best_win_price < shortestPrice){
+        shortestPrice = peRunner.best_win_price;
+        favouriteName = name;
+      }
+    }
+  });
+  runnersDiv.querySelectorAll('.runner-row').forEach(rowEl => {
+    const nameDiv = rowEl.querySelector('.runner-name');
+    if(!nameDiv) return;
+    const isFav = favouriteName !== null && rowEl.dataset.runnerName === favouriteName;
+    const label = nameDiv.dataset.label || nameDiv.textContent;
+    nameDiv.dataset.label = label;
+    nameDiv.classList.toggle('best', isFav);
+    nameDiv.textContent = label;
+  });
+}
+// ---------- Smart polling: pause all background fetches while the tab/screen isn't visible,
+// and catch up immediately the moment it's visible again — this is what keeps us well under
+// Netlify's function-call cap and Firebase's data-download cap when a phone is left open.
+const smartPollers = [];
+function startSmartPolling(fn, intervalMs){
+  const id = setInterval(() => {
+    if(document.hidden) return; // skip this tick — screen locked / tab backgrounded
+    fn();
+  }, intervalMs);
+  smartPollers.push(fn);
+  return id;
+}
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden){
+    smartPollers.forEach(fn => fn()); // came back into view — refresh right away instead of waiting for the next tick
+  }
+});
+
+let priceRefreshTimer = null;
+let priceRefreshFn = null;
+function stopPriceRefresh(){
+  if(priceRefreshTimer){ clearInterval(priceRefreshTimer); priceRefreshTimer = null; }
+  if(priceRefreshFn){
+    const idx = smartPollers.indexOf(priceRefreshFn);
+    if(idx > -1) smartPollers.splice(idx, 1);
+    priceRefreshFn = null;
+  }
+}
+function startPriceRefresh(runnersDiv, venue, race){
+  stopPriceRefresh();
+  priceRefreshFn = async () => {
+    await fetchPuntersEdgePrices();
+    applyPricesToOpenRow(runnersDiv, venue, race);
+  };
+  priceRefreshTimer = startSmartPolling(priceRefreshFn, 30000); // refresh live prices every 30s while a race is expanded
+}
+
+document.getElementById('racingDayToday').addEventListener('click', () => {
+  racingSelectedDate = null;
+  document.getElementById('racingDayToday').classList.add('active');
+  document.getElementById('racingDayTomorrow').classList.remove('active');
+  document.getElementById('racingArea').innerHTML = 'Loading…';
+  stopPriceRefresh();
+  refreshRacing();
+});
+document.getElementById('racingDayTomorrow').addEventListener('click', () => {
+  racingSelectedDate = auDateOffset(1);
+  document.getElementById('racingDayTomorrow').classList.add('active');
+  document.getElementById('racingDayToday').classList.remove('active');
+  document.getElementById('racingArea').innerHTML = 'Loading…';
+  stopPriceRefresh();
+  refreshRacing();
+});
+
+document.getElementById('racingArea').addEventListener('click', async (e) => {
+  const row = e.target.closest('.race-row');
+  if(!row) return;
+  const wrapDiv = row.querySelector('.race-runners');
+  const runnersDiv = wrapDiv.querySelector('.rr-inner');
+  const isOpen = wrapDiv.classList.contains('open');
+  if(isOpen){
+    wrapDiv.classList.remove('open');
+    stopPriceRefresh();
+    return;
+  }
+  // collapse any other open race row first
+  document.querySelectorAll('.race-runners').forEach(d => d.classList.remove('open'));
+  stopPriceRefresh();
+  wrapDiv.classList.add('open');
+  const venue = row.dataset.venue;
+  const race = row.dataset.race;
+  const hasRun = row.dataset.hasRun === 'true';
+
+  if(runnersDiv.dataset.loaded === 'true'){
+    // runner/form data already fetched — just pull a fresh price snapshot and start polling
+    await fetchPuntersEdgePrices();
+    applyPricesToOpenRow(runnersDiv, venue, race);
+    startPriceRefresh(runnersDiv, venue, race);
+    return;
+  }
+
+  runnersDiv.innerHTML = '<div class="empty">Loading runners…</div>';
+  const track = row.dataset.track;
+  const date = row.dataset.date;
+  try{
+    const [formRes] = await Promise.all([
+      fetch(`/.netlify/functions/racing-race-form?track=${encodeURIComponent(track)}&race=${encodeURIComponent(race)}&date=${encodeURIComponent(date)}`, { cache: 'no-store' }),
+      fetchPuntersEdgePrices()
+    ]);
+    if(!formRes.ok) throw new Error('bad response');
+    const data = await formRes.json();
+    const runners = data.runners || [];
+    if(runners.length === 0){
+      runnersDiv.innerHTML = '<div class="empty">No runner data available for this race yet.</div>';
+      return;
+    }
+    let html = hasRun ? '<div class="race-ran-notice">This race has already started — we don\'t have a results feed yet, so no winner/placings. Prices below (if still available) may be from the closing market.</div>' : '';
+    runners.forEach(r => {
+      const label = `${r.number ? r.number + '. ' : ''}${escapeHtml(r.name || '')}`;
+      html += `<div class="runner-row" data-runner-name="${escapeHtml(r.name || '')}" style="flex-direction:column; align-items:stretch; gap:2px;">
+        <div class="runner-name" data-label="${label}">${label}</div>
+        <div class="runner-meta">${escapeHtml(r.jockey || '')}${r.jockey && r.trainer ? ' / ' : ''}${escapeHtml(r.trainer || '')}${r.barrier ? ' · Barrier ' + r.barrier : ''}</div>
+        <div class="runner-stats">${r.starts != null ? `${r.wins}-${r.places}-${r.starts}` : ''}${r.winPercent != null ? ` (${Math.round(r.winPercent*100)}%)` : ''}<span class="runner-price"></span></div>
+        ${r.writeup ? `<div class="runner-writeup">${escapeHtml(r.writeup)}</div>` : ''}
+      </div>`;
+    });
+    runnersDiv.innerHTML = html;
+    runnersDiv.dataset.loaded = 'true';
+    applyPricesToOpenRow(runnersDiv, venue, race);
+    startPriceRefresh(runnersDiv, venue, race);
+  }catch(e){
+    runnersDiv.innerHTML = '<div class="empty">Could not load runners for this race.</div>';
+  }
+});
+
+function startApp(){
+  refresh();
+  startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded)
+  refreshAfl();
+  startSmartPolling(refreshAfl, 20000); // Sport tab scores (paused while backgrounded)
+  refreshRacing();
+  startSmartPolling(refreshRacing, 300000); // meetings/races don't change often — every 5 min is plenty
+}
+initAuthGate();
+</script>
+
+</body>
+</html>
