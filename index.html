@@ -17,7 +17,7 @@
 <style>
   :root{
     --ink: #08130F; --felt: #0B2B22; --felt-2: #123626; --felt-3: #17402D;
-    --line: rgba(239,234,216,0.12); --brass: #C7A248; --brass-dim: #7d6a34;
+    --line: rgba(239,234,216,0.12); --brass: #CBB166; --brass-dim: #7d6a34; --brass-light: #F5E8A8;
     --chalk: #EFEAD8; --muted: #93a89c; --win: #6FA98A; --loss: #C1604A;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -81,6 +81,10 @@
   header h1::after{
     content:''; display:block; width:64px; height:2px; margin:8px auto 0;
     background: linear-gradient(90deg, transparent, var(--brass), transparent);
+  }
+  .header-banner{
+    max-width:100%; width:340px; height:auto; position:relative;
+    filter: drop-shadow(0 0 22px rgba(199,162,72,.28));
   }
 
   .toteboard-strip{ display:flex; gap:8px; margin-bottom:16px; }
@@ -319,6 +323,7 @@
   .auth-gate{ position:fixed; inset:0; z-index:9999; background:var(--ink); display:flex; align-items:center; justify-content:center; padding:20px; }
   .auth-box{ width:100%; max-width:360px; background:var(--felt-2); border:1px solid var(--line); border-radius:10px; padding:22px; }
   .auth-logo{ font-family:'Barlow Condensed', sans-serif; font-weight:700; letter-spacing:3px; font-size:22px; color:var(--brass); text-align:center; margin-bottom:18px; }
+  .auth-logo-img{ display:block; max-width:100%; width:220px; height:auto; margin:0 auto 18px; filter: drop-shadow(0 0 18px rgba(199,162,72,.3)); }
   .auth-tabs{ display:flex; gap:8px; margin-bottom:16px; }
   .auth-tab{ flex:1; font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:9px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; }
   .auth-tab.active{ border-color:var(--brass); color:var(--brass); }
@@ -333,7 +338,7 @@
 <body>
 <div id="authGate" class="auth-gate">
   <div class="auth-box">
-    <div class="auth-logo">MLSYND</div>
+    <img src="/banner.png" alt="MLSynd" class="auth-logo-img">
     <div id="authFormWrap">
       <div class="auth-tabs">
         <button type="button" class="auth-tab active" id="authTabLogin">Log in</button>
@@ -356,7 +361,7 @@
 </div>
 <div class="wrap">
   <header>
-    <h1>MLSynd Ledger</h1>
+    <img src="/banner.png" alt="MLSynd" class="header-banner">
   </header>
 
   <div class="tab-panel active" id="tab-balance">
