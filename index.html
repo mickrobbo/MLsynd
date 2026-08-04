@@ -1189,7 +1189,7 @@ async function refreshAfl(){
       html += `<div class="panel"><h2>${escapeHtml(group.label)}<span class="sub">${group.entries.length} game${group.entries.length === 1 ? '' : 's'}</span></h2>`;
       group.entries.forEach(({ g, dt, venue, findOddsFor }) => {
         const timeStr = dt ? dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
-        html += renderAflGameCard(g, venue, timeStr, findOddsFor);
+        html += renderAflGameCard(g, venue, timeStr, findOddsFor, sport);
       });
       html += `</div>`;
     });
@@ -1199,7 +1199,7 @@ async function refreshAfl(){
   }
 }
 
-function renderAflGameCard(g, venue, timeStr, findOddsFor){
+function renderAflGameCard(g, venue, timeStr, findOddsFor, league){
   const live = g.live !== undefined ? g.live : (g.complete > 0 && g.complete < 100);
   const oddsEv = findOddsFor(g.hteam) || findOddsFor(g.ateam);
   let homePriceHtml = '', awayPriceHtml = '';
@@ -1209,9 +1209,9 @@ function renderAflGameCard(g, venue, timeStr, findOddsFor){
   }
   const statusLine = live ? (g.timestr || '') : (g.complete >= 100 ? 'Full Time' : (timeStr || g.timestr || ''));
   return `<div class="afl-game ${live ? 'live' : ''}">
-    <div class="afl-teams"><span class="team-group">${teamLogoImg(g.hteam, 22)}<span class="team">${escapeHtml(g.hteam || '')}</span>${homePriceHtml}</span><span class="score">${g.hscore ?? '-'}</span></div>
+    <div class="afl-teams"><span class="team-group">${teamLogoImg(g.hteam, 22, league)}<span class="team">${escapeHtml(g.hteam || '')}</span>${homePriceHtml}</span><span class="score">${g.hscore ?? '-'}</span></div>
     <div class="afl-status">${escapeHtml(statusLine)}</div>
-    <div class="afl-teams"><span class="team-group">${teamLogoImg(g.ateam, 22)}<span class="team">${escapeHtml(g.ateam || '')}</span>${awayPriceHtml}</span><span class="score">${g.ascore ?? '-'}</span></div>
+    <div class="afl-teams"><span class="team-group">${teamLogoImg(g.ateam, 22, league)}<span class="team">${escapeHtml(g.ateam || '')}</span>${awayPriceHtml}</span><span class="score">${g.ascore ?? '-'}</span></div>
     <div class="afl-venue">${escapeHtml(venue || '')}</div>
   </div>`;
 }
@@ -1232,7 +1232,7 @@ async function renderSportLadder(sport){
     let html = '<div class="panel"><h2>Ladder</h2><table class="ladder-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th>%</th></tr></thead><tbody>';
     ladder.forEach((t, i) => {
       const pct = t.percentage != null ? Number(t.percentage).toFixed(1) : '—';
-      html += `<tr><td>${t.rank ?? i + 1}</td><td style="display:flex; align-items:center; gap:6px;">${teamLogoImg(t.name, 18)}${escapeHtml(t.name || '')}</td><td>${t.played ?? '—'}</td><td>${t.wins ?? '—'}</td><td>${t.losses ?? '—'}</td><td>${pct}</td></tr>`;
+      html += `<tr><td>${t.rank ?? i + 1}</td><td style="display:flex; align-items:center; gap:6px;">${teamLogoImg(t.name, 18, sport)}${escapeHtml(t.name || '')}</td><td>${t.played ?? '—'}</td><td>${t.wins ?? '—'}</td><td>${t.losses ?? '—'}</td><td>${pct}</td></tr>`;
     });
     html += '</tbody></table></div>';
     area.innerHTML = html;
@@ -1755,20 +1755,42 @@ const AFL_TEAM_LOGOS = {
   'west-coast': ['westcoast', 'westcoasteagles', 'eagles'],
   'western-bulldogs': ['westernbulldogs', 'wstbulldogs', 'bulldogs', 'footscray'],
 };
-const AFL_TEAM_LOGO_LOOKUP = (() => {
+const NRL_TEAM_LOGOS = {
+  broncos: ['broncos', 'brisbanebroncos'],
+  bulldogs: ['bulldogs', 'canterburybulldogs', 'canterburybankstownbulldogs', 'canterburybankstown'],
+  cowboys: ['cowboys', 'northqueenslandcowboys', 'nqcowboys'],
+  dolphins: ['dolphins', 'redcliffedolphins', 'thedolphins'],
+  dragons: ['dragons', 'stgeorgeillawarradragons', 'stgeorgedragons'],
+  eels: ['eels', 'parramattaeels'],
+  knights: ['knights', 'newcastleknights'],
+  panthers: ['panthers', 'penrithpanthers'],
+  rabbitohs: ['rabbitohs', 'southsydneyrabbitohs', 'souths'],
+  raiders: ['raiders', 'canberraraiders'],
+  roosters: ['roosters', 'sydneyroosters', 'easternsuburbsroosters'],
+  'sea-eagles': ['seaeagles', 'manlyseaeagles', 'manlywarringah', 'manly'],
+  sharks: ['sharks', 'cronullasharks', 'cronullasutherlandsharks'],
+  storm: ['storm', 'melbournestorm'],
+  tigers: ['tigers', 'weststigers', 'westerntigers'],
+  titans: ['titans', 'goldcoasttitans'],
+  warriors: ['warriors', 'newzealandwarriors', 'nzwarriors'],
+};
+function buildLogoLookup(table){
   const map = {};
-  Object.entries(AFL_TEAM_LOGOS).forEach(([slug, aliases]) => {
+  Object.entries(table).forEach(([slug, aliases]) => {
     aliases.forEach(a => { map[a] = slug; });
   });
   return map;
-})();
-function teamLogoUrl(teamName){
+}
+const AFL_TEAM_LOGO_LOOKUP = buildLogoLookup(AFL_TEAM_LOGOS);
+const NRL_TEAM_LOGO_LOOKUP = buildLogoLookup(NRL_TEAM_LOGOS);
+function teamLogoUrl(teamName, league){
   const norm = normTeamName(teamName);
-  const slug = AFL_TEAM_LOGO_LOOKUP[norm];
+  const lookup = league === 'nrl' ? NRL_TEAM_LOGO_LOOKUP : AFL_TEAM_LOGO_LOOKUP;
+  const slug = lookup[norm];
   return slug ? `/team-logos/${slug}.png` : null;
 }
-function teamLogoImg(teamName, size){
-  const url = teamLogoUrl(teamName);
+function teamLogoImg(teamName, size, league){
+  const url = teamLogoUrl(teamName, league);
   const s = size || 24;
   return url ? `<img src="${url}" alt="" style="width:${s}px; height:${s}px; object-fit:contain;" onerror="this.style.display='none'">` : '';
 }
