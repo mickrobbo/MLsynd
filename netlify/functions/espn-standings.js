@@ -25,7 +25,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const resp = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/standings`);
+    const resp = await fetch(`https://site.api.espn.com/apis/v2/sports/${path}/standings`);
 
     if (!resp.ok) {
       return {
