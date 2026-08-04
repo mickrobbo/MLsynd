@@ -228,7 +228,8 @@
   .tip-locked-row .tip-pick-label{ font-family:'IBM Plex Mono', monospace; color:var(--muted); }
   .tip-locked-row.correct .tip-pick-label{ color:var(--win); }
   .tip-locked-row.incorrect .tip-pick-label{ color:var(--loss); }
-  .tip-save-btn{ margin-top:10px; width:100%; }
+  #tipSaveAllBtn{ width:100%; font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
+  #tipSaveAllBtn:disabled{ opacity:.5; cursor:default; }
   .tip-save-status{ font-size:11px; margin-top:6px; }
   table.ladder-table{ width:100%; border-collapse:collapse; font-size:13px; }
   table.ladder-table th{ text-align:left; font-family:'IBM Plex Mono', monospace; font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); border-bottom:1px solid var(--brass-dim); padding:6px 4px; }
@@ -1765,6 +1766,9 @@ async function renderTippingPrizePot(){
   }
 }
 
+let tippingDraft = {}; // { [gameId]: { pick, margin } } — live selections before the one Save-all click
+let tippingRoundGameMeta = {}; // { [gameId]: { label, isMarginGame, round } } — only unlocked games in the current round view
+
 async function renderTippingRound(games, currentRound){
   const gamesArea = document.getElementById('tippingGamesArea');
   const heading = document.getElementById('tippingRoundHeading');
@@ -1772,7 +1776,7 @@ async function renderTippingRound(games, currentRound){
   const round = tippingSelectedRound;
 
   heading.textContent = `Footy Tipping — Round ${round}`;
-  hint.textContent = 'Pick a winner for each game. The round\u2019s first game also asks for a margin — used only as a season-end tiebreaker. Picks stay hidden from everyone else until that game kicks off.';
+  hint.textContent = 'Pick a winner for every game, then tap Save all picks once — the round\u2019s first game also needs a margin, used only as a season-end tiebreaker. Picks stay hidden from everyone else until that game kicks off.';
 
   const roundGames = games.filter(g => g.round === round);
   const auth = await getValidAuth();
@@ -1782,6 +1786,9 @@ async function renderTippingRound(games, currentRound){
     gamesArea.innerHTML = '<div class="panel"><div class="empty">No games this round.</div></div>';
     return;
   }
+
+  tippingDraft = {};
+  tippingRoundGameMeta = {};
 
   // group this round's games by local (Melbourne) calendar day
   const dayGroups = new Map();
@@ -1800,11 +1807,14 @@ async function renderTippingRound(games, currentRound){
   const sortedDays = [...dayGroups.values()].sort((a, b) => a.sortTime - b.sortTime);
   sortedDays.forEach(day => day.games.sort((a, b) => (a.dt ? a.dt.getTime() : Infinity) - (b.dt ? b.dt.getTime() : Infinity)));
 
+  let anyUnlocked = false;
   let html = '';
   sortedDays.forEach(day => {
     html += `<div class="panel"><h2>${escapeHtml(day.label)}<span class="sub">${day.games.length} game${day.games.length === 1 ? '' : 's'}</span></h2>`;
     day.games.forEach(({ g, dt }) => {
-      if(gameHasStarted(g)) syncGameMeta(g);
+      const started = gameHasStarted(g);
+      if(started) syncGameMeta(g);
+      else anyUnlocked = true;
       const timeStr = dt ? dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
       html += `<div class="tip-game" data-game-id="${g.id}">
         <div class="tip-game-meta"><span class="tip-game-time">${escapeHtml(timeStr)}</span><span class="tip-game-venue">${escapeHtml(fixVenueName(g.venue))}</span></div>
@@ -1813,10 +1823,68 @@ async function renderTippingRound(games, currentRound){
     });
     html += `</div>`;
   });
+  if(anyUnlocked){
+    html += `<div class="panel">
+      <button type="button" id="tipSaveAllBtn">Save all picks</button>
+      <div class="status-msg" id="tipSaveAllStatus" style="margin-top:8px;"></div>
+    </div>`;
+  }
   gamesArea.innerHTML = html;
 
   for(const g of roundGames){
     renderTipGame(g, isFirstGameOfRound(games, g), auth, oddsEvents);
+  }
+
+  if(anyUnlocked){
+    document.getElementById('tipSaveAllBtn').addEventListener('click', () => saveAllTippingPicks(auth));
+  }
+}
+
+async function saveAllTippingPicks(auth){
+  const statusEl = document.getElementById('tipSaveAllStatus');
+  const btn = document.getElementById('tipSaveAllBtn');
+  const missing = [];
+  const toWrite = [];
+  Object.entries(tippingRoundGameMeta).forEach(([gameId, meta]) => {
+    const draft = tippingDraft[gameId] || {};
+    if(!draft.pick){
+      missing.push(`pick for ${meta.label}`);
+    } else if(meta.isMarginGame && (draft.margin === null || draft.margin === undefined || draft.margin === '')){
+      missing.push(`margin for ${meta.label}`);
+    } else {
+      toWrite.push({ gameId, pick: draft.pick, margin: meta.isMarginGame ? draft.margin : null, round: meta.round });
+    }
+  });
+  if(missing.length > 0){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Missing — ' + missing.join(', ') + '.';
+    return;
+  }
+  btn.disabled = true;
+  statusEl.className = 'status-msg';
+  statusEl.textContent = 'Saving…';
+  try{
+    const name = await tippingMemberName();
+    await Promise.all(toWrite.map(w =>
+      authedFetch(`/tipping/picks/${w.gameId}/${auth.uid}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pick: w.pick, margin: w.margin, name })
+      })
+    ));
+    const rounds = [...new Set(toWrite.map(w => w.round))];
+    rounds.forEach(r => {
+      authedFetch(`/tipping/submissions/${r}/${auth.uid}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
+      }).catch(() => {});
+    });
+    statusEl.className = 'status-msg ok';
+    statusEl.textContent = `All ${toWrite.length} pick${toWrite.length === 1 ? '' : 's'} saved.`;
+    showToast('Picks saved');
+  }catch(e){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Could not save — try again.';
+  }finally{
+    btn.disabled = false;
   }
 }
 
@@ -1829,6 +1897,8 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
   const awayOddsHtml = oddsEv && oddsEv.away_best_price != null ? `<span class="odds-price">$${oddsEv.away_best_price.toFixed(2)}</span>` : '';
 
   if(!started){
+    tippingRoundGameMeta[g.id] = { label: `${g.hteam} v ${g.ateam}`, isMarginGame, round: g.round };
+
     // show pick UI, pre-filled with own existing pick if any
     let myPick = null, myMargin = '';
     try{
@@ -1836,6 +1906,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
       const mine = await res.json();
       if(mine){ myPick = mine.pick; myMargin = mine.margin != null ? mine.margin : ''; }
     }catch(e){}
+    tippingDraft[g.id] = { pick: myPick, margin: myMargin !== '' ? Number(myMargin) : null };
 
     body.innerHTML = `
       <div class="tip-pick-row">
@@ -1843,37 +1914,23 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
         <button type="button" class="tip-pick-btn${myPick === 'away' ? ' selected' : ''}" data-pick="away">${teamLogoImg(g.ateam, 32)}${escapeHtml(g.ateam)}${awayOddsHtml}</button>
       </div>
       ${isMarginGame ? `<div class="tip-margin-field"><label>Margin (tiebreaker only)</label><input type="number" min="0" class="tip-margin-input" value="${myMargin}"></div>` : ''}
-      <button type="button" class="tip-save-btn small">Save pick</button>
-      <div class="tip-save-status status-msg"></div>
     `;
-    let selected = myPick;
     body.querySelectorAll('.tip-pick-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        selected = btn.dataset.pick;
+        tippingDraft[g.id].pick = btn.dataset.pick;
         body.querySelectorAll('.tip-pick-btn').forEach(b => b.classList.toggle('selected', b === btn));
+        const statusEl = document.getElementById('tipSaveAllStatus');
+        if(statusEl) statusEl.textContent = '';
       });
     });
-    body.querySelector('.tip-save-btn').addEventListener('click', async () => {
-      const statusEl = body.querySelector('.tip-save-status');
-      if(!selected){ statusEl.className = 'tip-save-status status-msg error'; statusEl.textContent = 'Pick a team first.'; return; }
-      const marginInput = body.querySelector('.tip-margin-input');
-      const marginVal = marginInput && marginInput.value !== '' ? Number(marginInput.value) : null;
-      try{
-        await authedFetch(`/tipping/picks/${g.id}/${auth.uid}.json`, {
-          method: 'PUT', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ pick: selected, margin: marginVal, name: await tippingMemberName() })
-        });
-        authedFetch(`/tipping/submissions/${g.round}/${auth.uid}.json`, {
-          method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(true)
-        }).catch(() => {});
-        statusEl.className = 'tip-save-status status-msg ok';
-        statusEl.textContent = 'Saved.';
-        showToast('Pick saved');
-      }catch(e){
-        statusEl.className = 'tip-save-status status-msg error';
-        statusEl.textContent = 'Could not save — try again.';
-      }
-    });
+    const marginInput = body.querySelector('.tip-margin-input');
+    if(marginInput){
+      marginInput.addEventListener('input', () => {
+        tippingDraft[g.id].margin = marginInput.value !== '' ? Number(marginInput.value) : null;
+        const statusEl = document.getElementById('tipSaveAllStatus');
+        if(statusEl) statusEl.textContent = '';
+      });
+    }
   } else {
     // locked — reveal everyone's picks
     try{
