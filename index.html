@@ -168,13 +168,14 @@
   .owed-row .amt.due{ color: var(--loss); font-weight:600; }
 
   .highlight-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:12px; }
-  .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; gap:8px; }
-  .multi-leg-row:last-of-type{ border-bottom:none; }
+  .multi-leg-block{ padding:7px 0; border-bottom:1px solid var(--line); }
+  .multi-leg-block:last-of-type{ border-bottom:none; }
+  .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; font-size:13px; gap:8px; }
   .multi-leg-name{ color:var(--chalk); font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .multi-leg-name.loss{ color:var(--loss); }
   .multi-leg-odds{ font-family:'IBM Plex Mono', monospace; color:var(--muted); flex:0 0 auto; }
   .multi-leg-result{ font-size:16px; flex:0 0 auto; }
-  .multi-leg-roast{ font-size:10.5px; color:var(--loss); font-style:italic; opacity:.85; margin:-3px 0 6px; }
+  .multi-leg-roast{ font-size:10.5px; color:var(--loss); font-style:italic; opacity:.85; margin-top:4px; padding-right:2px; }
   .highlight-row:last-child{ border-bottom:none; }
   .highlight-row .hl-lbl{ color: var(--muted); flex-shrink:0; }
   .highlight-row .hl-detail{ text-align:right; }
@@ -898,9 +899,26 @@ document.getElementById('chartArea').addEventListener('touchstart', (e) => {
 
 
 
-const MULTI_ROAST_LINES = [
-  "single-handedly torched it",
-  "couldn't hit water falling out of a boat",
+const MULTI_ROAST_MILD = [
+  "even the good ones have an off week",
+  "credit where it's due, still owes a shout though",
+  "unlucky one, mate — still buying",
+  "form's still there, luck wasn't",
+  "one off week doesn't erase the good run",
+  "still the least of our problems this week",
+  "a rare miss from a usually safe pair of hands",
+  "the exception, not the rule — still pays up",
+  "can't win 'em all, apparently",
+  "solid season, shocking pick",
+  "the numbers still like him more than we do right now",
+  "even champions have a bad round",
+  "won't lose sleep over this one, we will",
+  "still trending up, just not this week",
+  "a blip, not a pattern — yet",
+  "class is temporary, this loss is too",
+  "reputation intact, wallet less so",
+];
+const MULTI_ROAST_MEDIUM = [
   "cost the boys a shout at the pub",
   "leg of the week for all the wrong reasons",
   "personally responsible for this L",
@@ -908,12 +926,57 @@ const MULTI_ROAST_LINES = [
   "the reason the group chat's gone quiet",
   "donated that one straight to the bookies",
   "found the one way to lose a leg-in",
+  "picked that one with the eyes closed",
+  "another week, another excuse loading",
+  "starting to become a habit, mate",
+  "the wheels are wobbling on this one",
+  "average at best and it shows",
+  "keeps finding new ways to let the side down",
+  "the safe pick that wasn't",
+  "a season of this and counting",
+  "not the first time, won't be the last",
+  "the group's designated speed bump this week",
+];
+const MULTI_ROAST_SAVAGE = [
+  "single-handedly torched it",
+  "couldn't hit water falling out of a boat",
   "certified multi killer",
+  "the human red X",
+  "should have his tipping licence revoked",
+  "statistically a bad omen at this point",
+  "the reason we don't trust the group chat picks",
+  "cooked it before the first bounce",
+  "a walking, talking cash burn",
+  "the bloke you fade every single week",
+  "proof that hope is not a strategy",
+  "the multi's weakest link, permanently",
+  "should just donate the $50 straight to the TAB",
+  "the seasonal disappointment we've come to expect",
+  "an actual liability at this point",
+  "the reason the bank account's crying",
 ];
 function hashStr(s){
   let h = 0;
   for(let i = 0; i < s.length; i++){ h = (h * 31 + s.charCodeAt(i)) | 0; }
   return Math.abs(h);
+}
+function roastTierForName(name){
+  const members = state.members || [];
+  const m = members.find(mm => mm.name === name);
+  if(!m) return MULTI_ROAST_MEDIUM;
+  const winPctOf = (mm) => {
+    const t = (mm.wins || 0) + (mm.losses || 0);
+    return t > 0 ? (mm.wins || 0) / t : 0.5;
+  };
+  const total = (m.wins || 0) + (m.losses || 0);
+  if(total < 3) return MULTI_ROAST_MEDIUM; // not enough season data to judge fairly yet
+  const allPct = members.map(winPctOf).sort((a, b) => a - b);
+  const myPct = winPctOf(m);
+  const rank = allPct.indexOf(myPct);
+  const pctile = allPct.length > 1 ? rank / (allPct.length - 1) : 0.5;
+  if(pctile < 0.34) return MULTI_ROAST_SAVAGE;
+  if(pctile < 0.67) return MULTI_ROAST_MEDIUM;
+  return MULTI_ROAST_MILD;
 }
 function renderGroupMultiChart(lastWeek){
   const area = document.getElementById('groupMultiArea');
@@ -930,15 +993,20 @@ function renderGroupMultiChart(lastWeek){
   let html = '';
   entries.forEach(([name, e]) => {
     const icon = e.result === 'Win' ? '✅' : (e.result === 'Loss' ? '❌' : '➖');
-    html += `<div class="multi-leg-row">
-      <span class="multi-leg-name${e.result === 'Loss' ? ' loss' : ''}">${escapeHtml(name)}</span>
-      <span class="multi-leg-odds">${e.odds != null ? '@ ' + Number(e.odds).toFixed(2) : '—'}</span>
-      <span class="multi-leg-result">${icon}</span>
-    </div>`;
+    let roastHtml = '';
     if(e.result === 'Loss'){
-      const roast = MULTI_ROAST_LINES[hashStr(name + (lastWeek.label || '')) % MULTI_ROAST_LINES.length];
-      html += `<div class="multi-leg-roast">${escapeHtml(name)} ${roast}.</div>`;
+      const pool = roastTierForName(name);
+      const roast = pool[hashStr(name + (lastWeek.label || '')) % pool.length];
+      roastHtml = `<div class="multi-leg-roast">${escapeHtml(name)} ${roast}.</div>`;
     }
+    html += `<div class="multi-leg-block">
+      <div class="multi-leg-row">
+        <span class="multi-leg-name${e.result === 'Loss' ? ' loss' : ''}">${escapeHtml(name)}</span>
+        <span class="multi-leg-odds">${e.odds != null ? '@ ' + Number(e.odds).toFixed(2) : '—'}</span>
+        <span class="multi-leg-result">${icon}</span>
+      </div>
+      ${roastHtml}
+    </div>`;
   });
   const summary = losers.length === 0
     ? '🎉 Clean sweep — nobody let the side down. This week, anyway.'
