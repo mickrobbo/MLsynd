@@ -1072,62 +1072,78 @@ async function refreshAfl(){
   const area = document.getElementById('aflArea');
   const sport = document.getElementById('sportSelect').value;
   document.getElementById('sportSourceLabel').textContent = SPORT_SOURCE_LABEL[sport] || '';
-  const endpoint = sport === 'afl'
-    ? '/.netlify/functions/afl-scores'
-    : `/.netlify/functions/espn-scores?sport=${encodeURIComponent(sport)}`;
   try{
-    const fetches = [
-      fetch(endpoint, { cache: 'no-store' }),
-      fetch(`/.netlify/functions/puntersedge-sports-odds?sport=${encodeURIComponent(sport)}`, { cache: 'no-store' }).catch(() => null)
-    ];
-    if(sport === 'afl') fetches.push(fetchTippingFixtures().catch(() => []));
-    const [res, oddsRes, fixtures] = await Promise.all(fetches);
-    if(!res.ok) throw new Error('bad response');
-    const data = await res.json();
-    const games = data.games || [];
-    let oddsEvents = [];
-    if(oddsRes && oddsRes.ok){
-      const oddsData = await oddsRes.json();
-      if(oddsData.supported) oddsEvents = oddsData.events || [];
-    }
-    if(games.length === 0){
-      area.innerHTML = '<div class="panel"><div class="empty">No games right now.</div></div>';
-      return;
-    }
-    const normTeam = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const findOddsFor = (teamName) => {
-      const target = normTeam(teamName);
-      if(!target) return null;
-      return oddsEvents.find(ev => {
-        const h = normTeam(ev.home_team), a = normTeam(ev.away_team);
-        return h === target || a === target || h.includes(target) || target.includes(h) || a.includes(target) || target.includes(a);
-      }) || null;
-    };
-    const fixVenue = v => (v || '').replace(/docklands/i, 'Marvel Stadium');
-
-    // Resolve { g, dt, venue } for every game, however its date is sourced for this sport.
-    // AFL: matched against Squiggle fixtures (its own date field isn't in local-time ISO form).
-    // Everything else: ESPN gives a proper ISO UTC date directly, so the browser converts it
-    // to the viewer's own local time automatically — no manual offset needed.
+    const oddsPromise = fetch(`/.netlify/functions/puntersedge-sports-odds?sport=${encodeURIComponent(sport)}`, { cache: 'no-store' }).catch(() => null);
+    const normTeam = normTeamName;
     let entries;
+
     if(sport === 'afl'){
-      const findFixtureFor = (g) => {
-        const h = normTeam(g.hteam), a = normTeam(g.ateam);
-        return (fixtures || []).find(f => {
-          const fh = normTeam(f.hteam), fa = normTeam(f.ateam);
-          return (fh === h || fh.includes(h) || h.includes(fh)) && (fa === a || fa.includes(a) || a.includes(fa));
+      // Source AFL directly from the fixtures feed (same one Tipping uses) instead of
+      // matching a separate live-scores endpoint by team name — matching by name alone
+      // breaks whenever two teams play each other more than once in the season, since it
+      // can land on the wrong occurrence and show a wildly wrong date.
+      const [oddsRes, fixtures] = await Promise.all([oddsPromise, fetchTippingFixtures().catch(() => [])]);
+      if(!fixtures || fixtures.length === 0){
+        area.innerHTML = '<div class="panel"><div class="empty">No games right now.</div></div>';
+        return;
+      }
+      const allRounds = [...new Set(fixtures.map(f => f.round))];
+      const openRounds = fixtures.filter(f => f.complete < 100).map(f => f.round);
+      const currentRound = openRounds.length ? Math.min(...openRounds) : Math.max(...allRounds);
+      const roundFixtures = fixtures.filter(f => f.round === currentRound);
+
+      let oddsEvents = [];
+      if(oddsRes && oddsRes.ok){
+        const oddsData = await oddsRes.json();
+        if(oddsData.supported) oddsEvents = oddsData.events || [];
+      }
+      const findOddsFor = (teamName) => {
+        const target = normTeam(teamName);
+        if(!target) return null;
+        return oddsEvents.find(ev => {
+          const h = normTeam(ev.home_team), a = normTeam(ev.away_team);
+          return h === target || a === target || h.includes(target) || target.includes(h) || a.includes(target) || target.includes(a);
         }) || null;
       };
-      entries = games.map(g => {
-        const fx = findFixtureFor(g);
-        const dt = fx && fx.date ? new Date(fx.date.replace(' ', 'T') + '+10:00') : null;
-        return { g, dt, venue: fixVenue(fx ? fx.venue : g.venue) };
-      });
+
+      entries = roundFixtures.map(f => ({
+        g: {
+          hteam: f.hteam, ateam: f.ateam, hscore: f.hscore, ascore: f.ascore,
+          complete: f.complete, live: f.complete > 0 && f.complete < 100,
+          timestr: f.complete >= 100 ? 'Full Time' : '',
+        },
+        dt: f.date ? new Date(f.date.replace(' ', 'T') + '+10:00') : null,
+        venue: fixVenueName(f.venue),
+        findOddsFor,
+      }));
     } else {
+      const endpoint = `/.netlify/functions/espn-scores?sport=${encodeURIComponent(sport)}`;
+      const [res, oddsRes] = await Promise.all([fetch(endpoint, { cache: 'no-store' }), oddsPromise]);
+      if(!res.ok) throw new Error('bad response');
+      const data = await res.json();
+      const games = data.games || [];
+      if(games.length === 0){
+        area.innerHTML = '<div class="panel"><div class="empty">No games right now.</div></div>';
+        return;
+      }
+      let oddsEvents = [];
+      if(oddsRes && oddsRes.ok){
+        const oddsData = await oddsRes.json();
+        if(oddsData.supported) oddsEvents = oddsData.events || [];
+      }
+      const findOddsFor = (teamName) => {
+        const target = normTeam(teamName);
+        if(!target) return null;
+        return oddsEvents.find(ev => {
+          const h = normTeam(ev.home_team), a = normTeam(ev.away_team);
+          return h === target || a === target || h.includes(target) || target.includes(h) || a.includes(target) || target.includes(a);
+        }) || null;
+      };
       entries = games.map(g => ({
         g,
         dt: g.date ? new Date(g.date) : null,
-        venue: fixVenue(g.venue),
+        venue: fixVenueName(g.venue),
+        findOddsFor,
       }));
     }
 
@@ -1152,7 +1168,7 @@ async function refreshAfl(){
     let html = '';
     sortedGroups.forEach(group => {
       html += `<div class="panel"><h2>${escapeHtml(group.label)}<span class="sub">${group.entries.length} game${group.entries.length === 1 ? '' : 's'}</span></h2>`;
-      group.entries.forEach(({ g, dt, venue }) => {
+      group.entries.forEach(({ g, dt, venue, findOddsFor }) => {
         const timeStr = dt ? dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
         html += renderAflGameCard(g, venue, timeStr, findOddsFor);
       });
@@ -1556,7 +1572,7 @@ async function renderTippingRound(games, currentRound){
       if(gameHasStarted(g)) syncGameMeta(g);
       const timeStr = dt ? dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
       html += `<div class="tip-game" data-game-id="${g.id}">
-        <div class="tip-game-meta"><span class="tip-game-time">${escapeHtml(timeStr)}</span><span class="tip-game-venue">${escapeHtml(g.venue || '')}</span></div>
+        <div class="tip-game-meta"><span class="tip-game-time">${escapeHtml(timeStr)}</span><span class="tip-game-venue">${escapeHtml(fixVenueName(g.venue))}</span></div>
         <div id="tipGameBody-${g.id}">Loading…</div>
       </div>`;
     });
@@ -1655,6 +1671,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
 }
 
 function normTeamName(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function fixVenueName(v){ return (v || '').replace(/docklands/i, 'Marvel Stadium'); }
 
 const AFL_TEAM_LOGOS = {
   adelaide: ['adelaide', 'adelaidecrows', 'crows'],
