@@ -168,6 +168,13 @@
   .owed-row .amt.due{ color: var(--loss); font-weight:600; }
 
   .highlight-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:12px; }
+  .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); font-size:13px; gap:8px; }
+  .multi-leg-row:last-of-type{ border-bottom:none; }
+  .multi-leg-name{ color:var(--chalk); font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .multi-leg-name.loss{ color:var(--loss); }
+  .multi-leg-odds{ font-family:'IBM Plex Mono', monospace; color:var(--muted); flex:0 0 auto; }
+  .multi-leg-result{ font-size:16px; flex:0 0 auto; }
+  .multi-leg-roast{ font-size:10.5px; color:var(--loss); font-style:italic; opacity:.85; margin:-3px 0 6px; }
   .highlight-row:last-child{ border-bottom:none; }
   .highlight-row .hl-lbl{ color: var(--muted); flex-shrink:0; }
   .highlight-row .hl-detail{ text-align:right; }
@@ -360,6 +367,11 @@
         <div class="toteboard-cell" id="balPlOverallCell"><span class="lbl">P/L overall</span><span class="val" id="balPlOverall">$0</span></div>
         <div class="toteboard-cell" id="balPlWeeklyCell"><span class="lbl">P/L weekly</span><span class="val" id="balPlWeekly">$0</span></div>
       </div>
+    </div>
+
+    <div class="panel">
+      <h2>This Week's Multi — Who's Cooking It?</h2>
+      <div id="groupMultiArea"></div>
     </div>
 
     <div class="panel">
@@ -886,6 +898,54 @@ document.getElementById('chartArea').addEventListener('touchstart', (e) => {
 
 
 
+const MULTI_ROAST_LINES = [
+  "single-handedly torched it",
+  "couldn't hit water falling out of a boat",
+  "cost the boys a shout at the pub",
+  "leg of the week for all the wrong reasons",
+  "personally responsible for this L",
+  "should be banned from picking on a Friday",
+  "the reason the group chat's gone quiet",
+  "donated that one straight to the bookies",
+  "found the one way to lose a leg-in",
+  "certified multi killer",
+];
+function hashStr(s){
+  let h = 0;
+  for(let i = 0; i < s.length; i++){ h = (h * 31 + s.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function renderGroupMultiChart(lastWeek){
+  const area = document.getElementById('groupMultiArea');
+  if(!lastWeek || !lastWeek.groupEntries){
+    area.innerHTML = '<div class="empty">No group bet recorded yet.</div>';
+    return;
+  }
+  const entries = Object.entries(lastWeek.groupEntries).filter(([, e]) => e && e.result);
+  if(entries.length === 0){
+    area.innerHTML = '<div class="empty">No group legs recorded for this week yet.</div>';
+    return;
+  }
+  const losers = entries.filter(([, e]) => e.result === 'Loss');
+  let html = '';
+  entries.forEach(([name, e]) => {
+    const icon = e.result === 'Win' ? '✅' : (e.result === 'Loss' ? '❌' : '➖');
+    html += `<div class="multi-leg-row">
+      <span class="multi-leg-name${e.result === 'Loss' ? ' loss' : ''}">${escapeHtml(name)}</span>
+      <span class="multi-leg-odds">${e.odds != null ? '@ ' + Number(e.odds).toFixed(2) : '—'}</span>
+      <span class="multi-leg-result">${icon}</span>
+    </div>`;
+    if(e.result === 'Loss'){
+      const roast = MULTI_ROAST_LINES[hashStr(name + (lastWeek.label || '')) % MULTI_ROAST_LINES.length];
+      html += `<div class="multi-leg-roast">${escapeHtml(name)} ${roast}.</div>`;
+    }
+  });
+  const summary = losers.length === 0
+    ? '🎉 Clean sweep — nobody let the side down. This week, anyway.'
+    : `${losers.length} leg${losers.length === 1 ? '' : 's'} down. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.`;
+  area.innerHTML = `<div class="hint" style="margin-bottom:10px;">${summary}</div>` + html;
+}
+
 function render(state){
   if(!state || !state.members || state.members.length === 0){
     document.getElementById('leaderboardArea').innerHTML = '';
@@ -894,6 +954,7 @@ function render(state){
     document.getElementById('slipsArea').innerHTML = '';
     document.getElementById('highlightsArea').innerHTML = '';
     document.getElementById('weeklyIndividualBetsArea').innerHTML = '';
+    document.getElementById('groupMultiArea').innerHTML = '';
     document.getElementById('chartArea').innerHTML = '<div class="empty">No data yet — waiting for the first entry.</div>';
     return;
   }
@@ -915,6 +976,8 @@ function render(state){
 
   document.getElementById('chartArea').innerHTML = buildChart(history);
   if(history.length){ selectChartPoint(history.length - 1); }
+
+  renderGroupMultiChart(lastWeek);
 
   const weeklyBets = state.weeklyIndividualBets || [];
   if(weeklyBets.length === 0){
