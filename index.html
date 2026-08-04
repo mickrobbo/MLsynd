@@ -194,6 +194,7 @@
   .afl-game.live{ border-color: var(--brass); }
   .afl-teams{ display:flex; justify-content:space-between; align-items:center; padding:3px 0; gap:8px; }
   .afl-teams .team-group{ display:flex; align-items:center; gap:6px; min-width:0; flex:1; }
+  .afl-teams .team-group img{ flex:0 0 auto; }
   .afl-teams .team{ font-size:13px; color:var(--chalk); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .odds-price{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass); font-weight:600; background:rgba(199,162,72,.1); padding:1px 5px; border-radius:4px; flex:0 0 auto; }
 
@@ -416,6 +417,10 @@
         <option value="nhl">NHL</option>
         <option value="epl">Soccer — EPL</option>
       </select>
+      <div id="sportViewToggleWrap" class="row" style="display:none; gap:8px; margin-top:10px;">
+        <button type="button" id="sportViewScores" class="small racing-day-btn active">Scores</button>
+        <button type="button" id="sportViewLadder" class="small racing-day-btn">Ladder</button>
+      </div>
     </div>
     <div id="aflArea">Loading…</div>
     <div id="sportSourceLabel" style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:2px; text-align:center;"></div>
@@ -1068,10 +1073,24 @@ const SPORT_SOURCE_LABEL = {
   epl: 'Live via ESPN · Odds via PuntersEdge'
 };
 
+let sportViewMode = 'scores';
+const LADDER_SUPPORTED_SPORTS = ['afl', 'nrl'];
+
 async function refreshAfl(){
   const area = document.getElementById('aflArea');
   const sport = document.getElementById('sportSelect').value;
   document.getElementById('sportSourceLabel').textContent = SPORT_SOURCE_LABEL[sport] || '';
+
+  const toggleWrap = document.getElementById('sportViewToggleWrap');
+  const ladderSupported = LADDER_SUPPORTED_SPORTS.includes(sport);
+  toggleWrap.style.display = ladderSupported ? 'flex' : 'none';
+  if(!ladderSupported) sportViewMode = 'scores';
+
+  if(sportViewMode === 'ladder' && ladderSupported){
+    await renderSportLadder(sport);
+    return;
+  }
+
   try{
     const oddsPromise = fetch(`/.netlify/functions/puntersedge-sports-odds?sport=${encodeURIComponent(sport)}`, { cache: 'no-store' }).catch(() => null);
     const normTeam = normTeamName;
@@ -1190,14 +1209,57 @@ function renderAflGameCard(g, venue, timeStr, findOddsFor){
   }
   const statusLine = live ? (g.timestr || '') : (g.complete >= 100 ? 'Full Time' : (timeStr || g.timestr || ''));
   return `<div class="afl-game ${live ? 'live' : ''}">
-    <div class="afl-teams"><span class="team-group"><span class="team">${escapeHtml(g.hteam || '')}</span>${homePriceHtml}</span><span class="score">${g.hscore ?? '-'}</span></div>
+    <div class="afl-teams"><span class="team-group">${teamLogoImg(g.hteam, 22)}<span class="team">${escapeHtml(g.hteam || '')}</span>${homePriceHtml}</span><span class="score">${g.hscore ?? '-'}</span></div>
     <div class="afl-status">${escapeHtml(statusLine)}</div>
-    <div class="afl-teams"><span class="team-group"><span class="team">${escapeHtml(g.ateam || '')}</span>${awayPriceHtml}</span><span class="score">${g.ascore ?? '-'}</span></div>
+    <div class="afl-teams"><span class="team-group">${teamLogoImg(g.ateam, 22)}<span class="team">${escapeHtml(g.ateam || '')}</span>${awayPriceHtml}</span><span class="score">${g.ascore ?? '-'}</span></div>
     <div class="afl-venue">${escapeHtml(venue || '')}</div>
   </div>`;
 }
 
+async function renderSportLadder(sport){
+  const area = document.getElementById('aflArea');
+  area.innerHTML = '<div class="panel"><div class="empty">Loading ladder…</div></div>';
+  try{
+    const endpoint = sport === 'afl' ? '/.netlify/functions/afl-ladder' : `/.netlify/functions/espn-standings?sport=${encodeURIComponent(sport)}`;
+    const res = await fetch(endpoint, { cache: 'no-store' });
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const ladder = data.ladder || [];
+    if(ladder.length === 0){
+      area.innerHTML = '<div class="panel"><div class="empty">Ladder not available right now.</div></div>';
+      return;
+    }
+    let html = '<div class="panel"><h2>Ladder</h2><table class="ladder-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th>%</th></tr></thead><tbody>';
+    ladder.forEach((t, i) => {
+      const pct = t.percentage != null ? Number(t.percentage).toFixed(1) : '—';
+      html += `<tr><td>${t.rank ?? i + 1}</td><td style="display:flex; align-items:center; gap:6px;">${teamLogoImg(t.name, 18)}${escapeHtml(t.name || '')}</td><td>${t.played ?? '—'}</td><td>${t.wins ?? '—'}</td><td>${t.losses ?? '—'}</td><td>${pct}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    area.innerHTML = html;
+  }catch(e){
+    area.innerHTML = '<div class="panel"><div class="empty">Could not load the ladder.</div></div>';
+  }
+}
+
+document.getElementById('sportViewScores').addEventListener('click', () => {
+  sportViewMode = 'scores';
+  document.getElementById('sportViewScores').classList.add('active');
+  document.getElementById('sportViewLadder').classList.remove('active');
+  document.getElementById('aflArea').innerHTML = 'Loading…';
+  refreshAfl();
+});
+document.getElementById('sportViewLadder').addEventListener('click', () => {
+  sportViewMode = 'ladder';
+  document.getElementById('sportViewLadder').classList.add('active');
+  document.getElementById('sportViewScores').classList.remove('active');
+  document.getElementById('aflArea').innerHTML = 'Loading…';
+  refreshAfl();
+});
+
 document.getElementById('sportSelect').addEventListener('change', () => {
+  sportViewMode = 'scores';
+  document.getElementById('sportViewScores').classList.add('active');
+  document.getElementById('sportViewLadder').classList.remove('active');
   document.getElementById('aflArea').innerHTML = 'Loading…';
   refreshAfl();
 });
