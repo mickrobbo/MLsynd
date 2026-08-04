@@ -8,7 +8,7 @@ const LEAGUE_PATHS = {
   nba: "basketball/nba",
   mlb: "baseball/mlb",
   nhl: "hockey/nhl",
-  nrl: "rugby-league/nrl",
+  nrl: "rugby-league/3",
   epl: "soccer/eng.1",
 };
 
