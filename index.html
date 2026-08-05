@@ -1809,8 +1809,8 @@ async function renderTippingRound(games, currentRound){
     html += `<div class="panel"><h2>${escapeHtml(day.label)}<span class="sub">${day.games.length} game${day.games.length === 1 ? '' : 's'}</span></h2>`;
     day.games.forEach(({ g, dt }) => {
       const started = gameHasStarted(g);
-      if(started) syncGameMeta(g);
-      else anyUnlocked = true;
+      syncGameMeta(g);
+      if(!started) anyUnlocked = true;
       const timeStr = dt ? dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
       html += `<div class="tip-game" data-game-id="${g.id}">
         <div class="tip-game-meta"><span class="tip-game-time">${escapeHtml(timeStr)}</span><span class="tip-game-venue">${escapeHtml(fixVenueName(g.venue))}</span></div>
