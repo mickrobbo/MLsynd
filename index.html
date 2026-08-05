@@ -771,7 +771,7 @@ function computeDerived(m){
   const avgLeg = m.oddsCount > 0 ? m.oddsSum / m.oddsCount : 0;
   const indBets = m.indWin + m.indLoss;
   const indWinPct = indBets > 0 ? m.indWin / indBets : 0;
-  const dataScore = Math.round(((m.pl/25) + (winPct*10) + (indWinPct*5) + (m.legs*0.5) + (avgLeg*1)) * 100) / 100;
+  const dataScore = Math.round(((m.pl/25) + (winPct*10) + (indWinPct*5) + (m.legs*0.5)) * 100) / 100;
   return { winPct, avgLeg, indWinPct, dataScore };
 }
 function rankedMembers(members){
@@ -1107,7 +1107,7 @@ function render(state){
     hlRow('Best individual bet win', hl.bestIndWin, d => fmtMoney(d.pl));
 
   const ranked = rankedMembers(state.members);
-  let html = '<table><tr><th>#</th><th>Name</th><th>Score</th><th>P/L</th><th>W-L-V</th><th>Win%</th><th>Ind W-L</th></tr>';
+  let html = '<table><tr><th>#</th><th>Name</th><th>Score</th><th>P/L</th><th>W-L-V</th><th>Win%</th><th>Ind W-L</th><th>Avg Leg</th></tr>';
   ranked.forEach((m, i) => {
     const rank = i + 1;
     html += `<tr class="${rank===1?'rank-1':''}">
@@ -1118,6 +1118,7 @@ function render(state){
       <td>${m.wins}-${m.losses}-${m.voids}</td>
       <td>${(m.winPct*100).toFixed(0)}%</td>
       <td>${m.indWin}-${m.indLoss}</td>
+      <td>${m.avgLeg > 0 ? '@ ' + m.avgLeg.toFixed(2) : '—'}</td>
     </tr>`;
   });
   html += '</table>';
