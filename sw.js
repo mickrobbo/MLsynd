@@ -45,6 +45,13 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // don't touch cross-origin (Firebase, ESPN, etc.)
 
+  // API calls (racing, tipping, news, odds, scores...) are dynamic data, not
+  // app shell — let them go straight to the network with no caching at all.
+  // Most of these carry changing query params (round numbers, dates,
+  // cache-busting timestamps), so caching them would just accumulate an
+  // ever-growing pile of entries that are never reused or cleaned up.
+  if (url.pathname.startsWith("/.netlify/functions/")) return;
+
   // Static assets: cache-first (fast, rarely change), but still refresh
   // the cache in the background so they don't go stale forever.
   if (STATIC_ASSET_PATTERN.test(url.pathname)) {
