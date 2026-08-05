@@ -98,6 +98,7 @@ exports.handler = async function (event) {
         const t = new Date(a.pubDate).getTime();
         return !isNaN(t) && t >= cutoff;
       })
+      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
       .slice(0, 8);
 
     return {
