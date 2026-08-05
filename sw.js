@@ -1,41 +1,86 @@
-const CACHE_NAME = 'mlsynd-dashboard-v3';
-const SHELL_FILES = [
-  './',
-  './dashboard-manifest.json',
-  './icon-192.png',
-  './icon-512.png'
-];
+// sw.js
+// Two things were causing "have to clear cache to see updates":
+// 1. A new service worker version installs but sits WAITING until every
+//    open tab of the site is fully closed — on a phone that basically
+//    never happens (people switch apps, they don't close tabs).
+// 2. If the app shell (index.html/JS) was being served cache-first, a new
+//    deploy just wouldn't show up at all until the cache was manually
+//    cleared, deploy or no deploy.
+//
+// Fixed by: skipWaiting()+clients.claim() so a new version takes over
+// immediately instead of waiting, and network-first for navigation/JS so
+// the browser always tries to get the latest deploy first, only falling
+// back to a cached copy if there's no connection at all. Static assets
+// (icons, banner, logos) stay cache-first since they rarely change and
+// benefit from being fast/offline-available.
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES)).catch(() => {})
-  );
-  self.skipWaiting();
+const CACHE_VERSION = "mlsynd-v1";
+const STATIC_CACHE = `${CACHE_VERSION}-static`;
+
+const STATIC_ASSET_PATTERN = /\.(png|jpg|jpeg|gif|webp|svg|ico|woff2?)(\?.*)?$/i;
+
+self.addEventListener("install", (event) => {
+  self.skipWaiting(); // don't wait for old tabs to close — activate straight away
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
-    )
+    (async () => {
+      // clean up any caches from older versions of this service worker
+      const names = await caches.keys();
+      await Promise.all(
+        names
+          .filter((name) => name.startsWith("mlsynd-") && !name.startsWith(CACHE_VERSION))
+          .map((name) => caches.delete(name))
+      );
+      await self.clients.claim(); // take control of already-open tabs immediately
+    })()
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
 
-  // Never touch cross-origin calls (the live Firebase data) — always go to the network.
-  if (url.origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // don't touch cross-origin (Firebase, ESPN, etc.)
 
-  // Never touch our own serverless functions either (scores, racing data, etc.) —
-  // these are dynamic API calls, not app-shell assets, and must always hit the
-  // network fresh. Letting the browser handle these directly (not intercepting at
-  // all) rules out any caching weirdness for these endpoints.
-  if (url.pathname.startsWith('/.netlify/functions/')) return;
+  // Static assets: cache-first (fast, rarely change), but still refresh
+  // the cache in the background so they don't go stale forever.
+  if (STATIC_ASSET_PATTERN.test(url.pathname)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(STATIC_CACHE);
+        const cached = await cache.match(req);
+        const networkFetch = fetch(req)
+          .then((res) => {
+            if (res.ok) cache.put(req, res.clone());
+            return res;
+          })
+          .catch(() => null);
+        return cached || (await networkFetch) || new Response("", { status: 504 });
+      })()
+    );
+    return;
+  }
 
-  // Same-origin app shell files only: cache-first, falling back to network.
+  // Everything else (HTML, JS, CSS, the app shell) — always try the
+  // network first so a new deploy shows up immediately. Only fall back
+  // to whatever's cached if there's genuinely no connection.
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    (async () => {
+      try {
+        const res = await fetch(req);
+        if (res.ok) {
+          const cache = await caches.open(STATIC_CACHE);
+          cache.put(req, res.clone());
+        }
+        return res;
+      } catch (e) {
+        const cache = await caches.open(STATIC_CACHE);
+        const cached = await cache.match(req);
+        return cached || new Response("Offline", { status: 503 });
+      }
+    })()
   );
 });

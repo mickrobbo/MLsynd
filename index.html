@@ -215,6 +215,33 @@
   .tip-game-meta{ display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--muted); font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; gap:8px; }
   .tip-game-time{ color:var(--brass); font-weight:600; flex:0 0 auto; }
   .tip-game-venue{ text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+
+  .subnav-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .subnav-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    background: linear-gradient(165deg, var(--felt-3), var(--felt-2));
+    border:1px solid var(--brass-dim); border-radius:10px;
+    padding:12px 6px; cursor:pointer;
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:12px;
+    letter-spacing:1px; text-transform:uppercase; color:var(--muted);
+    box-shadow: 0 3px 10px rgba(0,0,0,.2);
+  }
+  .subnav-icon{ font-size:20px; line-height:1; }
+  .subnav-btn.active{
+    background: linear-gradient(165deg, #dab868, var(--brass) 60%);
+    border-color: var(--brass); color:#151007;
+    box-shadow: 0 4px 16px rgba(199,162,72,.4);
+  }
+  .subnav-btn:active{ transform: scale(0.93); }
+
+  .news-item{ display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line); text-decoration:none; }
+  .news-item:last-child{ border-bottom:none; }
+  .news-item-img{ width:64px; height:64px; flex:0 0 auto; object-fit:cover; border-radius:8px; background:var(--felt-3); }
+  .news-item.no-img .news-item-img{ display:none; }
+  .news-item-body{ flex:1; min-width:0; }
+  .news-item-title{ color:var(--chalk); font-size:13.5px; font-weight:600; line-height:1.4; }
+  .news-item-meta{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--muted); margin-top:5px; text-transform:uppercase; letter-spacing:.5px; }
+  .news-item:active .news-item-title{ color:var(--brass); }
   .tip-pick-row{ display:flex; gap:8px; }
   .tip-pick-btn{
     flex:1; background:transparent; border:1px solid var(--line); color:var(--chalk);
@@ -426,36 +453,58 @@
   </div>
 
   <div class="tab-panel" id="tab-afl">
-    <div class="panel">
-      <h2>Sport Scores</h2>
-      <select id="sportSelect" style="width:100%; padding:8px; background:#0B2B22; color:var(--chalk); border:1px solid var(--line); border-radius:6px; font-family:'IBM Plex Sans', sans-serif;">
-        <option value="afl">AFL</option>
-        <option value="nrl">NRL</option>
-        <option value="nfl">NFL</option>
-        <option value="nba">NBA</option>
-        <option value="mlb">MLB</option>
-        <option value="nhl">NHL</option>
-        <option value="epl">Soccer — EPL</option>
-      </select>
-      <div id="sportViewToggleWrap" class="row" style="display:none; gap:8px; margin-top:10px;">
-        <button type="button" id="sportViewScores" class="small racing-day-btn active">Scores</button>
-        <button type="button" id="sportViewLadder" class="small racing-day-btn">Ladder</button>
+    <div class="subnav-row">
+      <button type="button" class="subnav-btn active" data-subview="scores"><span class="subnav-icon">🏆</span>Scores</button>
+      <button type="button" class="subnav-btn" data-subview="racing"><span class="subnav-icon">🐎</span>Racing</button>
+      <button type="button" class="subnav-btn" data-subview="news"><span class="subnav-icon">📰</span>News</button>
+    </div>
+
+    <div id="sportsSubview-scores" class="sports-subview">
+      <div class="panel">
+        <h2>Sport Scores</h2>
+        <select id="sportSelect" style="width:100%; padding:8px; background:#0B2B22; color:var(--chalk); border:1px solid var(--line); border-radius:6px; font-family:'IBM Plex Sans', sans-serif;">
+          <option value="afl">AFL</option>
+          <option value="nrl">NRL</option>
+          <option value="nfl">NFL</option>
+          <option value="nba">NBA</option>
+          <option value="mlb">MLB</option>
+          <option value="nhl">NHL</option>
+          <option value="epl">Soccer — EPL</option>
+        </select>
+        <div id="sportViewToggleWrap" class="row" style="display:none; gap:8px; margin-top:10px;">
+          <button type="button" id="sportViewScores" class="small racing-day-btn active">Scores</button>
+          <button type="button" id="sportViewLadder" class="small racing-day-btn">Ladder</button>
+        </div>
+      </div>
+      <div id="aflArea">Loading…</div>
+      <div id="sportSourceLabel" style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:2px; text-align:center;"></div>
+    </div>
+
+    <div id="sportsSubview-racing" class="sports-subview" style="display:none;">
+      <div class="panel">
+        <h2>Racing — Meetings</h2>
+        <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:10px;">Tap a race to load its runners, form, and best live win price.</div>
+        <div class="row" style="display:flex; gap:8px; margin-bottom:10px;">
+          <button id="racingDayToday" class="small racing-day-btn active">Today</button>
+          <button id="racingDayTomorrow" class="small racing-day-btn">Tomorrow</button>
+        </div>
+        <div id="racingArea">Loading…</div>
+        <div style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;">Fields via FormFav · Prices via PuntersEdge</div>
       </div>
     </div>
-    <div id="aflArea">Loading…</div>
-    <div id="sportSourceLabel" style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:2px; text-align:center;"></div>
-  </div>
 
-  <div class="tab-panel" id="tab-racing">
-    <div class="panel">
-      <h2>Racing — Meetings</h2>
-      <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:10px;">Tap a race to load its runners, form, and best live win price.</div>
-      <div class="row" style="display:flex; gap:8px; margin-bottom:10px;">
-        <button id="racingDayToday" class="small racing-day-btn active">Today</button>
-        <button id="racingDayTomorrow" class="small racing-day-btn">Tomorrow</button>
+    <div id="sportsSubview-news" class="sports-subview" style="display:none;">
+      <div class="panel">
+        <h2>News</h2>
+        <select id="newsCategorySelect" style="width:100%; padding:8px; background:#0B2B22; color:var(--chalk); border:1px solid var(--line); border-radius:6px; font-family:'IBM Plex Sans', sans-serif;">
+          <option value="afl">AFL</option>
+          <option value="nrl">NRL</option>
+          <option value="nba">NBA</option>
+          <option value="racing">Horse Racing</option>
+        </select>
       </div>
-      <div id="racingArea">Loading…</div>
-      <div style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;">Fields via FormFav · Prices via PuntersEdge</div>
+      <div id="newsArea">Loading…</div>
+      <div style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;">Headlines link out to the original source</div>
     </div>
   </div>
 
@@ -486,7 +535,6 @@
   <button class="tab-btn" data-tab="owed"><span class="icon">💰</span>Cash</button>
   <button class="tab-btn" data-tab="slips"><span class="icon">📎</span>Slips</button>
   <button class="tab-btn" data-tab="afl"><span class="icon">🏆</span>Sport</button>
-  <button class="tab-btn" data-tab="racing"><span class="icon">🐎</span>Racing</button>
   <button class="tab-btn" data-tab="tipping"><span class="icon">🎯</span>Tipping</button>
 </nav>
 
@@ -618,7 +666,7 @@ function hideAuthGate(){
 }
 
 let currentUserRole = null; // 'full' | 'dashboard' | 'tipping' | null (null/legacy = full)
-const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'racing', 'tipping'];
+const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping'];
 
 function applyRoleTabRestrictions(){
   if(currentUserRole !== 'tipping') return;
@@ -718,6 +766,14 @@ function initAuthGate(){
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+  // When a new deploy's service worker takes over, reload automatically so
+  // everyone gets the update without needing to clear their cache manually.
+  let swRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(swRefreshing) return;
+    swRefreshing = true;
+    location.reload();
   });
 }
 const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
@@ -1432,6 +1488,19 @@ document.getElementById('sportSelect').addEventListener('change', () => {
   refreshAfl();
 });
 
+// ---------- Sport tab sub-navigation (Scores / Racing / News) ----------
+document.querySelectorAll('.subnav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const view = btn.dataset.subview;
+    document.querySelectorAll('.subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.sports-subview').forEach(el => {
+      el.style.display = el.id === `sportsSubview-${view}` ? 'block' : 'none';
+    });
+    if(view === 'racing') refreshRacing();
+    if(view === 'news') refreshNews();
+  });
+});
+
 // ---------- Slip view ----------
 // Uploading and removal are handled from the ledger app only; the dashboard just displays.
 
@@ -2085,6 +2154,56 @@ async function renderTippingLadder(games){
 }
 // ================= /Tipping =================
 
+function timeAgo(dateStr){
+  if(!dateStr) return '';
+  const then = new Date(dateStr).getTime();
+  if(isNaN(then)) return '';
+  const diffMin = Math.round((Date.now() - then) / 60000);
+  if(diffMin < 1) return 'just now';
+  if(diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.round(diffMin / 60);
+  if(diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.round(diffHr / 24);
+  return `${diffDay}d ago`;
+}
+
+async function refreshNews(){
+  const area = document.getElementById('newsArea');
+  const category = document.getElementById('newsCategorySelect').value;
+  try{
+    const res = await fetch(`/.netlify/functions/news?category=${encodeURIComponent(category)}`, { cache: 'no-store' });
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const articles = data.articles || [];
+    if(articles.length === 0){
+      area.innerHTML = '<div class="panel"><div class="empty">No headlines right now.</div></div>';
+      return;
+    }
+    let html = '<div class="panel">';
+    articles.forEach(a => {
+      const meta = [a.source, timeAgo(a.pubDate)].filter(Boolean).join(' · ');
+      const imgHtml = a.image
+        ? `<img class="news-item-img" src="${escapeHtml(a.image)}" alt="" loading="lazy" onerror="this.parentElement.classList.add('no-img'); this.remove();">`
+        : '';
+      html += `<a class="news-item${a.image ? '' : ' no-img'}" href="${escapeHtml(a.link)}" target="_blank" rel="noopener">
+        ${imgHtml}
+        <div class="news-item-body">
+          <div class="news-item-title">${escapeHtml(a.title)}</div>
+          ${meta ? `<div class="news-item-meta">${escapeHtml(meta)}</div>` : ''}
+        </div>
+      </a>`;
+    });
+    html += '</div>';
+    area.innerHTML = html;
+  }catch(e){
+    area.innerHTML = '<div class="panel"><div class="empty">Could not load news right now.</div></div>';
+  }
+}
+document.getElementById('newsCategorySelect').addEventListener('change', () => {
+  document.getElementById('newsArea').innerHTML = 'Loading…';
+  refreshNews();
+});
+
 function startApp(){
   refresh();
   startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded)
@@ -2094,6 +2213,8 @@ function startApp(){
   startSmartPolling(refreshRacing, 300000); // meetings/races don't change often — every 5 min is plenty
   refreshTipping();
   startSmartPolling(refreshTipping, 60000); // picks reveal as games kick off — check every minute
+  refreshNews();
+  startSmartPolling(refreshNews, 300000); // headlines don't need to be checked often — every 5 min
 }
 initAuthGate();
 </script>
