@@ -67,13 +67,11 @@
   @keyframes toastIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
   @keyframes toastOut{ to{ opacity:0; transform:translateY(-10px) scale(.96); } }
 
-  header{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; margin-bottom:16px; position:relative; padding:18px 0 6px; }
+  header{ text-align:center; margin-bottom:16px; position:relative; }
   header::before{
-    content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    width:420px; height:220px; max-width:130vw;
-    background: radial-gradient(ellipse at center, var(--felt-2) 0%, var(--felt-2) 25%, rgba(18,54,38,0.45) 45%, rgba(18,54,38,0) 72%);
-    filter: blur(6px);
-    pointer-events:none; z-index:0;
+    content:''; position:absolute; top:-20px; left:50%; transform:translateX(-50%);
+    width:220px; height:100px; background: radial-gradient(ellipse at center, rgba(199,162,72,.16), transparent 70%);
+    pointer-events:none;
   }
   header h1{
     font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:20px;
@@ -85,8 +83,7 @@
     background: linear-gradient(90deg, transparent, var(--brass), transparent);
   }
   .header-banner{
-    max-width:100%; width:340px; height:auto; position:relative; z-index:1;
-    display:block; margin:0 auto;
+    max-width:100%; width:340px; height:auto; position:relative;
     filter: drop-shadow(0 0 22px rgba(199,162,72,.28));
   }
 
@@ -1171,7 +1168,6 @@ function render(state){
           ${labelMarkup}
           <span class="slip-date">${new Date(s.addedAt).toLocaleDateString()}</span>
         </div>
-        <button class="slip-remove" data-added-at="${s.addedAt}" title="Remove">✕</button>
       </div>`;
     });
     document.getElementById('slipsArea').innerHTML = slipHtml;
@@ -1434,9 +1430,8 @@ document.getElementById('sportSelect').addEventListener('change', () => {
   refreshAfl();
 });
 
-// ---------- Slip view / remove ----------
-// Uploading is handled from the ledger app only; the dashboard just displays and can remove.
-
+// ---------- Slip view ----------
+// Uploading and removal are handled from the ledger app only; the dashboard just displays.
 
 document.getElementById('slipsArea').addEventListener('click', async (e) => {
   const openEl = e.target.closest('.slip-open');
@@ -1448,15 +1443,7 @@ document.getElementById('slipsArea').addEventListener('click', async (e) => {
       document.getElementById('imgModalImg').src = slip.url;
       document.getElementById('imgModal').classList.add('open');
     }
-    return;
   }
-  const btn = e.target.closest('.slip-remove');
-  if(!btn || !currentState) return;
-  const addedAt = Number(btn.getAttribute('data-added-at'));
-  if(!confirm('Remove this slip?')) return;
-  currentState.slips = (currentState.slips || []).filter(s => s.addedAt !== addedAt);
-  await saveState(currentState);
-  render(currentState);
 });
 
 document.getElementById('imgModal').addEventListener('click', () => {
