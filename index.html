@@ -234,11 +234,15 @@
   .tip-locked-row.incorrect .tip-pick-label{ color:var(--loss); }
   #tipSaveAllBtn{ width:100%; font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
   #tipSaveAllBtn:disabled{ opacity:.5; cursor:default; }
-  .tip-save-status{ font-size:11px; margin-top:6px; }
-  table.ladder-table{ width:100%; border-collapse:collapse; font-size:13px; }
+  table.ladder-table{ width:100%; border-collapse:collapse; font-size:13px; min-width:0; }
   table.ladder-table th{ text-align:left; font-family:'IBM Plex Mono', monospace; font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); border-bottom:1px solid var(--brass-dim); padding:6px 4px; }
   table.ladder-table td{ padding:7px 4px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; }
-  table.ladder-table tr:first-child td{ color:var(--brass); font-weight:700; }
+  table.ladder-table tr.ladder-leader td{ background:rgba(111,169,138,.2); color:var(--win); font-weight:700; border-bottom-color:transparent; }
+  table.ladder-table tr.ladder-leader td:first-child{ border-top-left-radius:10px; border-bottom-left-radius:10px; padding-left:8px; }
+  table.ladder-table tr.ladder-leader td:last-child{ border-top-right-radius:10px; border-bottom-right-radius:10px; padding-right:8px; }
+  table.ladder-table tr.ladder-loser td{ background:rgba(193,96,74,.2); color:var(--loss); font-weight:700; border-bottom-color:transparent; }
+  table.ladder-table tr.ladder-loser td:first-child{ border-top-left-radius:10px; border-bottom-left-radius:10px; padding-left:8px; }
+  table.ladder-table tr.ladder-loser td:last-child{ border-top-right-radius:10px; border-bottom-right-radius:10px; padding-right:8px; }
   .afl-teams .score{ font-size:16px; font-weight:700; color:var(--chalk); flex:0 0 auto; }
   .afl-status{
     text-align:center; font-size:10px; color:var(--brass); text-transform:uppercase;
@@ -303,10 +307,6 @@
   .status-msg{ font-size:11px; color: var(--muted); margin-top:6px; }
   .status-msg.error{ color: var(--loss); }
   .status-msg.ok{ color: var(--win); }
-  .slip-remove{
-    background:none; border:none; color: var(--loss); font-size:16px; line-height:1;
-    padding:6px 8px; cursor:pointer; flex-shrink:0;
-  }
   .img-modal{
     display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:1000;
     align-items:center; justify-content:center; padding:20px; box-sizing:border-box;
@@ -1399,7 +1399,8 @@ async function renderSportLadder(sport){
     let html = '<div class="panel"><h2>Ladder</h2><table class="ladder-table"><thead><tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th>%</th></tr></thead><tbody>';
     ladder.forEach((t, i) => {
       const pct = t.percentage != null ? Number(t.percentage).toFixed(1) : '—';
-      html += `<tr><td>${t.rank ?? i + 1}</td><td style="display:flex; align-items:center; gap:6px;">${teamLogoImg(t.name, 18, sport)}${escapeHtml(t.name || '')}</td><td>${t.played ?? '—'}</td><td>${t.wins ?? '—'}</td><td>${t.losses ?? '—'}</td><td>${pct}</td></tr>`;
+      const rowCls = i === 0 ? 'ladder-leader' : (i === ladder.length - 1 && ladder.length > 1 ? 'ladder-loser' : '');
+      html += `<tr class="${rowCls}"><td>${t.rank ?? i + 1}</td><td style="display:flex; align-items:center; gap:6px;">${teamLogoImg(t.name, 18, sport)}${escapeHtml(t.name || '')}</td><td>${t.played ?? '—'}</td><td>${t.wins ?? '—'}</td><td>${t.losses ?? '—'}</td><td>${pct}</td></tr>`;
     });
     html += '</tbody></table></div>';
     area.innerHTML = html;
@@ -1670,13 +1671,14 @@ document.getElementById('racingArea').addEventListener('click', async (e) => {
 
 // ================= Tipping =================
 let tippingFixturesCache = null;
-let tippingMembers = null; // populated from state.members via render()
+let tippingFixturesCacheTime = 0;
 
 async function fetchTippingFixtures(){
-  if(tippingFixturesCache) return tippingFixturesCache;
+  if(tippingFixturesCache && (Date.now() - tippingFixturesCacheTime) < 45000) return tippingFixturesCache;
   const res = await fetch('/.netlify/functions/afl-fixtures', { cache: 'no-store' });
   const data = await res.json();
   tippingFixturesCache = data.games || [];
+  tippingFixturesCacheTime = Date.now();
   return tippingFixturesCache;
 }
 
@@ -2046,12 +2048,15 @@ async function renderTippingLadder(games){
     return;
   }
   const tally = {}; // name -> { correct, marginDiff }
-  for(const g of finishedGames){
-    let picks;
+  const gameResults = await Promise.all(finishedGames.map(async g => {
     try{
       const res = await authedFetch(`/tipping/picks/${g.id}.json`);
-      picks = await res.json() || {};
-    }catch(e){ continue; }
+      return { g, picks: (await res.json()) || {} };
+    }catch(e){
+      return { g, picks: {} };
+    }
+  }));
+  gameResults.forEach(({ g, picks }) => {
     const isMarginGame = isFirstGameOfRound(games, g);
     Object.values(picks).forEach(p => {
       if(!p || !p.name) return;
@@ -2063,7 +2068,7 @@ async function renderTippingLadder(games){
         tally[p.name].marginCount++;
       }
     });
-  }
+  });
   const rows = Object.entries(tally).map(([name, t]) => ({ name, ...t }));
   rows.sort((a, b) => b.correct - a.correct || a.marginDiff - b.marginDiff);
   if(rows.length === 0){
@@ -2072,7 +2077,8 @@ async function renderTippingLadder(games){
   }
   let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Correct</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    html += `<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.correct}/${finishedGames.length}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    const rowCls = i === 0 ? 'ladder-leader' : (i === rows.length - 1 && rows.length > 1 ? 'ladder-loser' : '');
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.correct}/${finishedGames.length}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;
