@@ -87,7 +87,8 @@
     filter: drop-shadow(0 0 22px rgba(199,162,72,.28));
   }
   .account-bar{
-    display:flex; align-items:center; justify-content:center; gap:14px; margin-top:8px;
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    margin-top:20px; padding-top:16px; border-top:1px solid var(--line);
     font-size:11px; color:var(--muted);
   }
   .account-bar span{ font-weight:600; color:var(--chalk); }
@@ -455,11 +456,6 @@
 <div class="wrap">
   <header>
     <img src="/banner.png" alt="MLSynd" class="header-banner">
-    <div class="account-bar">
-      <span id="accountName"></span>
-      <button type="button" id="editNameBtn" title="Change your name">✎ Edit name</button>
-      <button type="button" id="mainSignOutBtn" title="Sign out">Sign out</button>
-    </div>
   </header>
 
   <div class="tab-panel active" id="tab-balance">
@@ -580,24 +576,42 @@
   </div>
 
   <div class="tab-panel" id="tab-tipping">
-    <div class="panel">
-      <h2 id="tippingRoundHeading">Footy Tipping</h2>
-      <div id="tippingRoundSelectWrap" style="margin-bottom:10px;"></div>
-      <div class="hint" id="tippingHint" style="font-size:11px; color:var(--muted);"></div>
-    </div>
-    <div id="tippingGamesArea">Loading…</div>
     <div class="panel" id="tippingPrizePotPanel" style="text-align:center;">
       <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">Prize Pot</div>
       <div id="tippingPrizePotVal" style="font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:700; color:var(--brass);">$0</div>
     </div>
-    <div class="panel">
-      <h2>Ladder</h2>
-      <div id="tippingLadderArea">Loading…</div>
+
+    <div class="subnav-row">
+      <button type="button" class="subnav-btn active" data-tipsub="games"><span class="subnav-icon">🎯</span>Games</button>
+      <button type="button" class="subnav-btn" data-tipsub="ladder"><span class="subnav-icon">🏆</span>Ladder</button>
     </div>
+
+    <div id="tippingSubview-games" class="tipping-subview">
+      <div class="panel">
+        <h2 id="tippingRoundHeading">Footy Tipping</h2>
+        <div id="tippingRoundSelectWrap" style="margin-bottom:10px;"></div>
+        <div class="hint" id="tippingHint" style="font-size:11px; color:var(--muted);"></div>
+      </div>
+      <div id="tippingGamesArea">Loading…</div>
+    </div>
+
+    <div id="tippingSubview-ladder" class="tipping-subview" style="display:none;">
+      <div class="panel">
+        <h2>Ladder</h2>
+        <div id="tippingLadderArea">Loading…</div>
+      </div>
+    </div>
+
     <div style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;">Fixtures via Squiggle · Odds via PuntersEdge</div>
   </div>
 
   <div class="status-bar" id="statusBar">Loading…</div>
+
+  <div class="account-bar">
+    <span id="accountName"></span>
+    <button type="button" id="editNameBtn" title="Change your name">✎ Edit name</button>
+    <button type="button" id="mainSignOutBtn" title="Sign out">Sign out</button>
+  </div>
 </div>
 
 <nav class="tabbar">
@@ -835,11 +849,33 @@ function initAuthGate(){
       });
       currentUserName = trimmed;
       renderAccountBar();
-      showToast('Name updated');
+      showToast('Updating past picks…');
+      await renameOnAllMyPicks(trimmed);
+      showToast('Name updated everywhere');
     }catch(e){
       alert('Could not save your name — try again.');
     }
   });
+
+  async function renameOnAllMyPicks(newName){
+    // Picks store a snapshot of your name at the time you tipped, not a live
+    // lookup — so a rename needs to actively rewrite every past pick's stored
+    // name, otherwise old picks/ladder rows keep showing the old one forever.
+    try{
+      const games = await fetchTippingFixtures();
+      await Promise.all(games.map(async g => {
+        try{
+          const res = await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}.json`);
+          const mine = await res.json();
+          if(mine){
+            await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}/name.json`, {
+              method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newName)
+            });
+          }
+        }catch(e){}
+      }));
+    }catch(e){}
+  }
 
   document.getElementById('authForgotLink').addEventListener('click', async (e) => {
     e.preventDefault();
@@ -1601,15 +1637,27 @@ document.getElementById('sportSelect').addEventListener('change', () => {
 });
 
 // ---------- Sport tab sub-navigation (Scores / Racing / News) ----------
-document.querySelectorAll('.subnav-btn').forEach(btn => {
+document.querySelectorAll('#tab-afl .subnav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const view = btn.dataset.subview;
-    document.querySelectorAll('.subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('#tab-afl .subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.sports-subview').forEach(el => {
       el.style.display = el.id === `sportsSubview-${view}` ? 'block' : 'none';
     });
     if(view === 'racing') refreshRacing();
     if(view === 'news') refreshNews();
+  });
+});
+
+// ---------- Tipping tab sub-navigation (Games / Ladder) ----------
+document.querySelectorAll('#tab-tipping .subnav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const view = btn.dataset.tipsub;
+    document.querySelectorAll('#tab-tipping .subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tipping-subview').forEach(el => {
+      el.style.display = el.id === `tippingSubview-${view}` ? 'block' : 'none';
+    });
+    if(view === 'ladder') refreshTippingLadderOnly();
   });
 });
 
@@ -2034,12 +2082,14 @@ async function renderTippingRound(games, currentRound){
     html += `</div>`;
   });
   if(anyUnlocked){
-    html += `<div class="panel">
+    const saveButtonHtml = `<div class="panel">
       <button type="button" id="tipSaveAllBtn">Save all picks</button>
       <div class="status-msg" id="tipSaveAllStatus" style="margin-top:8px;"></div>
     </div>`;
+    gamesArea.innerHTML = saveButtonHtml + html;
+  } else {
+    gamesArea.innerHTML = html;
   }
-  gamesArea.innerHTML = html;
 
   for(const g of roundGames){
     renderTipGame(g, isFirstGameOfRound(games, g), auth, oddsEvents);
