@@ -134,6 +134,7 @@
     display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer;
   }
   .tab-btn .icon{ font-size:18px; line-height:1; position:relative; z-index:1; transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+  .nav-icon-img{ width:22px; height:22px; object-fit:contain; display:block; margin:0 auto; }
   .tab-btn.active{ color: var(--brass); }
   .tab-btn.active .icon{ filter: drop-shadow(0 0 8px rgba(199,162,72,.6)); transform: translateY(-2px) scale(1.12); }
   .tab-btn.active::before{
@@ -243,6 +244,7 @@
     box-shadow: 0 3px 10px rgba(0,0,0,.2);
   }
   .subnav-icon{ font-size:20px; line-height:1; }
+  .subnav-icon-img{ width:24px; height:24px; object-fit:contain; display:block; margin:0 auto 2px; }
   .subnav-btn.active{
     background: linear-gradient(165deg, #dab868, var(--brass) 60%);
     border-color: var(--brass); color:#151007;
@@ -582,7 +584,7 @@
     </div>
 
     <div class="subnav-row">
-      <button type="button" class="subnav-btn active" data-tipsub="games"><span class="subnav-icon">🎯</span>Games</button>
+      <button type="button" class="subnav-btn active" data-tipsub="games"><span class="subnav-icon">🏉</span>Games</button>
       <button type="button" class="subnav-btn" data-tipsub="ladder"><span class="subnav-icon">🏆</span>Ladder</button>
     </div>
 
@@ -620,7 +622,7 @@
   <button class="tab-btn" data-tab="owed"><span class="icon">💰</span>Cash</button>
   <button class="tab-btn" data-tab="slips"><span class="icon">📎</span>Slips</button>
   <button class="tab-btn" data-tab="afl"><span class="icon">🏆</span>Sport</button>
-  <button class="tab-btn" data-tab="tipping"><span class="icon">🎯</span>Tipping</button>
+  <button class="tab-btn" data-tab="tipping"><span class="icon">🏉</span>Tipping</button>
 </nav>
 
 <div id="imgModal" class="img-modal">
