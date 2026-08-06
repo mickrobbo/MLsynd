@@ -182,6 +182,7 @@
   .multi-leg-roast{ font-size:10.5px; color:var(--loss); font-style:italic; opacity:.85; margin-top:4px; padding-right:2px; }
   .highlight-row:last-child{ border-bottom:none; }
   .highlight-row .hl-lbl{ color: var(--muted); flex-shrink:0; }
+  .weekly-bet-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:16px; letter-spacing:.5px; color: var(--brass); text-shadow: 0 0 12px rgba(199,162,72,.25); }
   .highlight-row .hl-detail{ text-align:right; }
   .highlight-row .hl-name{ font-weight:700; color: var(--brass); }
   .highlight-row .hl-week{ color: var(--muted); font-size:10px; display:block; }
@@ -1145,7 +1146,7 @@ function render(state){
   } else {
     document.getElementById('weeklyIndividualBetsArea').innerHTML = weeklyBets.map(b => `
       <div class="highlight-row">
-        <span class="hl-lbl">${escapeHtml(b.name || '')}</span>
+        <span class="weekly-bet-name">${escapeHtml(b.name || '')}</span>
       </div>`).join('');
   }
 
@@ -2176,7 +2177,7 @@ function timeAgo(dateStr){
 async function refreshNews(){
   const area = document.getElementById('newsArea');
   const category = document.getElementById('newsCategorySelect').value;
-  const NEWS_SOURCE_LABEL = { afl: 'AFL.com.au', nrl: 'Google News', nba: 'ESPN', racing: 'Google News' };
+  const NEWS_SOURCE_LABEL = { afl: 'AFL.com.au', nrl: 'Sydney Morning Herald', nba: 'ESPN', racing: 'Google News' };
   try{
     const res = await fetch(`/.netlify/functions/news?category=${encodeURIComponent(category)}`, { cache: 'no-store' });
     if(!res.ok) throw new Error('bad response');
