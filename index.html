@@ -191,6 +191,7 @@
   .multi-leg-block.result-void{ opacity:.65; }
   .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; font-size:13.5px; gap:8px; }
   .multi-leg-name{ color:var(--chalk); font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sgm-badge{ display:inline-block; margin-top:6px; padding:3px 9px; border:1px solid var(--brass-dim); border-radius:20px; font-family:'IBM Plex Mono', monospace; font-size:9.5px; font-weight:700; letter-spacing:.3px; color:var(--brass); }
   .multi-leg-name.loss{ color:#ff9478; }
   .multi-leg-odds{ font-family:'IBM Plex Mono', monospace; color:var(--muted); flex:0 0 auto; }
   .multi-leg-result{ font-size:19px; flex:0 0 auto; }
@@ -1294,6 +1295,7 @@ function render(state){
           <span class="multi-leg-name${b.result === 'Loss' ? ' loss' : ''}">${escapeHtml(b.name || '')}</span>
           <span class="multi-leg-result">${icon}</span>
         </div>
+        ${b.sgm ? '<div class="sgm-badge">SGM Bonus Bet Received</div>' : ''}
         ${roastHtml}
       </div>`;
     }).join('');
