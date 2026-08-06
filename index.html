@@ -86,6 +86,16 @@
     max-width:100%; width:340px; height:auto; position:relative;
     filter: drop-shadow(0 0 22px rgba(199,162,72,.28));
   }
+  .account-bar{
+    display:flex; align-items:center; justify-content:center; gap:14px; margin-top:8px;
+    font-size:11px; color:var(--muted);
+  }
+  .account-bar span{ font-weight:600; color:var(--chalk); }
+  .account-bar button{
+    background:none; border:none; color:var(--muted); font-size:11px; font-family:'IBM Plex Sans', sans-serif;
+    text-decoration:underline; cursor:pointer; padding:2px;
+  }
+  .account-bar button:active{ color:var(--brass); }
 
   .toteboard-strip{ display:flex; gap:8px; margin-bottom:16px; }
   .toteboard-cell{
@@ -445,6 +455,11 @@
 <div class="wrap">
   <header>
     <img src="/banner.png" alt="MLSynd" class="header-banner">
+    <div class="account-bar">
+      <span id="accountName"></span>
+      <button type="button" id="editNameBtn" title="Change your name">✎ Edit name</button>
+      <button type="button" id="mainSignOutBtn" title="Sign out">Sign out</button>
+    </div>
   </header>
 
   <div class="tab-panel active" id="tab-balance">
@@ -722,6 +737,8 @@ function hideAuthGate(){
 }
 
 let currentUserRole = null; // 'full' | 'dashboard' | 'tipping' | null (null/legacy = full)
+let currentUserName = null;
+let currentUserUid = null;
 const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping'];
 
 function applyRoleTabRestrictions(){
@@ -730,6 +747,11 @@ function applyRoleTabRestrictions(){
     if(!TIPPING_ONLY_VISIBLE_TABS.includes(btn.dataset.tab)) btn.style.display = 'none';
   });
   setActiveTab('tipping');
+}
+
+function renderAccountBar(){
+  const el = document.getElementById('accountName');
+  if(el) el.textContent = currentUserName || '';
 }
 
 async function checkApprovalAndProceed(){
@@ -741,6 +763,9 @@ async function checkApprovalAndProceed(){
     if(profile.status === 'approved'){
       hideAuthGate();
       currentUserRole = profile.role || 'full';
+      currentUserName = profile.name || '';
+      currentUserUid = auth.uid;
+      renderAccountBar();
       if(!appStarted){
         appStarted = true;
         applyRoleTabRestrictions();
@@ -799,6 +824,22 @@ function initAuthGate(){
   });
 
   document.getElementById('authSignOutBtn').addEventListener('click', authSignOut);
+  document.getElementById('mainSignOutBtn').addEventListener('click', authSignOut);
+  document.getElementById('editNameBtn').addEventListener('click', async () => {
+    const newName = prompt('Change your name to:', currentUserName || '');
+    if(!newName || !newName.trim() || newName.trim() === currentUserName) return;
+    const trimmed = newName.trim();
+    try{
+      await authedFetch(`/users/${currentUserUid}/name.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
+      });
+      currentUserName = trimmed;
+      renderAccountBar();
+      showToast('Name updated');
+    }catch(e){
+      alert('Could not save your name — try again.');
+    }
+  });
 
   document.getElementById('authForgotLink').addEventListener('click', async (e) => {
     e.preventDefault();
@@ -1866,7 +1907,15 @@ function findTippingOdds(oddsEvents, homeTeam, awayTeam){
   }) || null;
 }
 
+let lastLadderRefresh = 0;
 async function refreshTippingLadderOnly(){
+  // Self-throttled rather than just interval-throttled: this also gets called by the
+  // visibilitychange handler (fires every poller at once the instant the app comes back
+  // from being backgrounded), which was bypassing the 4-min interval entirely and piling
+  // this read-heavy call in right alongside everything else — exactly when someone unlocks
+  // their phone and taps straight into Tipping expecting a quick load.
+  if(Date.now() - lastLadderRefresh < 90000) return;
+  lastLadderRefresh = Date.now();
   try{
     const games = await fetchTippingFixtures();
     renderTippingLadder(games);
@@ -2259,7 +2308,7 @@ async function renderTippingLadder(games){
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
-  const tally = {}; // name -> { correct, marginDiff }
+  const tally = {}; // uid -> { name, correct, marginDiff } — keyed by uid, not name, so people who share a display name (e.g. two "Mick"s) don't get merged into one row
   const gameResults = await Promise.all(finishedGames.map(async g => {
     try{
       const res = await authedFetch(`/tipping/picks/${g.id}.json`);
@@ -2270,32 +2319,35 @@ async function renderTippingLadder(games){
   }));
   gameResults.forEach(({ g, picks }) => {
     const isMarginGame = isFirstGameOfRound(games, g);
-    Object.values(picks).forEach(p => {
+    Object.entries(picks).forEach(([uid, p]) => {
       if(!p || !p.name) return;
-      if(!tally[p.name]) tally[p.name] = { correct: 0, marginDiff: 0, marginCount: 0 };
+      if(!tally[uid]) tally[uid] = { name: p.name, correct: 0, marginDiff: 0, marginCount: 0 };
       const pickedTeam = p.pick === 'home' ? g.hteam : g.ateam;
-      if(normTeamName(pickedTeam) === normTeamName(g.winner)) tally[p.name].correct++;
+      if(normTeamName(pickedTeam) === normTeamName(g.winner)) tally[uid].correct++;
       if(isMarginGame && p.margin != null && g.margin != null){
-        tally[p.name].marginDiff += Math.abs(p.margin - g.margin);
-        tally[p.name].marginCount++;
+        tally[uid].marginDiff += Math.abs(p.margin - g.margin);
+        tally[uid].marginCount++;
       }
     });
   });
-  const rows = Object.entries(tally).map(([name, t]) => ({ name, ...t }));
+  const rows = Object.values(tally);
   rows.sort((a, b) => b.correct - a.correct || a.marginDiff - b.marginDiff);
   if(rows.length === 0){
     currentSeasonLeaders = new Set();
     area.innerHTML = '<div class="empty">No picks recorded yet.</div>';
     return;
   }
-  // ties at the top (or bottom) all get the same highlight, not just whichever row sorted first
+  // ties at the top (or bottom) all get the same highlight, not just whichever row sorted first —
+  // but only once there's actually some spread in the scores, otherwise "everyone's tied at 1/1"
+  // early in the season would mark the entire ladder as Leader, which isn't meaningful
   const topScore = rows[0].correct;
   const bottomScore = rows[rows.length - 1].correct;
-  currentSeasonLeaders = new Set(rows.filter(r => r.correct === topScore).map(r => r.name));
+  const hasSpread = topScore !== bottomScore;
+  currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.correct === topScore).map(r => r.name)) : new Set();
   let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Correct</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    const isLeader = r.correct === topScore;
-    const isLoser = rows.length > 1 && r.correct === bottomScore && !isLeader;
+    const isLeader = hasSpread && r.correct === topScore;
+    const isLoser = hasSpread && rows.length > 1 && r.correct === bottomScore;
     const rowCls = isLeader ? 'ladder-leader' : (isLoser ? 'ladder-loser' : '');
     const badge = isLeader ? '<span class="ladder-leader-badge">Leader</span>' : '';
     html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}${badge}</td><td>${r.correct}/${finishedGames.length}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
