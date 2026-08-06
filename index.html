@@ -1913,6 +1913,7 @@ async function renderTippingPrizePot(){
 let tippingDraft = {}; // { [gameId]: { pick, margin } } — live selections before the one Save-all click
 let tippingRoundGameMeta = {}; // { [gameId]: { label, isMarginGame, round } } — only unlocked games in the current round view
 let tipCountdownIntervals = {}; // { [gameId]: intervalId } — live "until first bounce" clocks, cleared on every re-render
+let currentSeasonLeaders = new Set(); // names tied for #1 on the season ladder — refreshed by renderTippingLadder, read (not fetched) by game reveal cards
 
 function getKickoffMs(g){
   return new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
@@ -2068,13 +2069,39 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
     }catch(e){}
     tippingDraft[g.id] = { pick: myPick, margin: myMargin !== '' ? Number(myMargin) : null };
 
+    if(tipCountdownIntervals[g.id]) clearInterval(tipCountdownIntervals[g.id]);
+    const kickoffMs = getKickoffMs(g);
+    const withinFinalWindow = (kickoffMs - Date.now()) <= 24 * 3600 * 1000;
+
+    if(myPick && withinFinalWindow){
+      // STATE 3: saved, inside the final 24h before first bounce — pure locked screen, live countdown
+      body.innerHTML = `
+        <div class="tip-countdown-wrap">
+          <div class="tip-countdown-lock">🔒</div>
+          <div class="tip-countdown-clock" id="tipCountdown-${g.id}">--:--</div>
+          <div class="tip-countdown-label">until <b>first bounce</b> — everyone's picks stay hidden until then, no peeking, even for admins</div>
+          <div class="tip-your-pick-confirm">✅ Your pick is locked in — <b>${escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}</div>
+        </div>
+      `;
+      const clockEl = document.getElementById(`tipCountdown-${g.id}`);
+      const tick = () => {
+        const diff = kickoffMs - Date.now();
+        if(diff <= 0){
+          clearInterval(tipCountdownIntervals[g.id]);
+          delete tipCountdownIntervals[g.id];
+          renderTipGame(g, isMarginGame, auth, oddsEvents);
+          return;
+        }
+        if(clockEl) clockEl.textContent = formatCountdown(diff);
+      };
+      tick();
+      tipCountdownIntervals[g.id] = setInterval(tick, 1000);
+      return;
+    }
+
+    // STATE 1 (no saved pick yet) or STATE 1b (saved, but more than 24h out — still editable, just a quiet confirm line, no lock/clock)
     body.innerHTML = `
-      <div class="tip-countdown-wrap">
-        <div class="tip-countdown-lock">🔒</div>
-        <div class="tip-countdown-clock" id="tipCountdown-${g.id}">--:--</div>
-        <div class="tip-countdown-label">until <b>first bounce</b> — everyone's picks stay hidden until then, no peeking, even for admins</div>
-        ${myPick ? `<div class="tip-your-pick-confirm">✅ Your pick is locked in — <b>${escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}</div>` : ''}
-      </div>
+      ${myPick ? `<div class="tip-your-pick-confirm" style="margin-bottom:10px; padding-top:0; border-top:none;">✅ Your pick is saved — <b>${escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}. Locks 24h before first bounce.</div>` : ''}
       <div class="tip-pick-row">
         <button type="button" class="tip-pick-btn${myPick === 'home' ? ' selected' : ''}" data-pick="home">${teamLogoImg(g.hteam, 32)}${escapeHtml(g.hteam)}${homeOddsHtml}</button>
         <button type="button" class="tip-pick-btn${myPick === 'away' ? ' selected' : ''}" data-pick="away">${teamLogoImg(g.ateam, 32)}${escapeHtml(g.ateam)}${awayOddsHtml}</button>
@@ -2097,25 +2124,8 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
         if(statusEl) statusEl.textContent = '';
       });
     }
-
-    // live countdown to first bounce — re-renders this game into the revealed view the moment it hits zero
-    if(tipCountdownIntervals[g.id]) clearInterval(tipCountdownIntervals[g.id]);
-    const kickoffMs = getKickoffMs(g);
-    const clockEl = document.getElementById(`tipCountdown-${g.id}`);
-    const tick = () => {
-      const diff = kickoffMs - Date.now();
-      if(diff <= 0){
-        clearInterval(tipCountdownIntervals[g.id]);
-        delete tipCountdownIntervals[g.id];
-        renderTipGame(g, isMarginGame, auth, oddsEvents);
-        return;
-      }
-      if(clockEl) clockEl.textContent = formatCountdown(diff);
-    };
-    tick();
-    tipCountdownIntervals[g.id] = setInterval(tick, 1000);
   } else {
-    // first bounce has passed — reveal everyone's picks, grouped by team
+    // STATE 4: first bounce has passed — reveal everyone's picks, grouped by team
     try{
       const res = await authedFetch(`/tipping/picks/${g.id}.json`);
       const all = await res.json() || {};
@@ -2131,8 +2141,10 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
       const awayCls = complete ? (normTeamName(g.ateam) === normTeamName(g.winner) ? 'leader' : 'trail') : '';
       const homeIcon = complete ? (homeCls === 'leader' ? '✅ Correct tip' : '❌ Wrong tip') : '';
       const awayIcon = complete ? (awayCls === 'leader' ? '✅ Correct tip' : '❌ Wrong tip') : '';
+      // season-ladder leader(s) get the same "Leader" badge here, wherever their name shows up —
+      // reuses the cache renderTippingLadder already maintains, so this costs zero extra reads
       const pickerListHtml = list => list.length
-        ? list.map(p => `<div class="tip-picker-name">${escapeHtml(p.name || '')}${p.margin != null ? ` <span style="color:var(--muted);">(${p.margin})</span>` : ''}</div>`).join('')
+        ? list.map(p => `<div class="tip-picker-name">${escapeHtml(p.name || '')}${currentSeasonLeaders.has(p.name) ? '<span class="ladder-leader-badge">Leader</span>' : ''}${p.margin != null ? ` <span style="color:var(--muted);">(${p.margin})</span>` : ''}</div>`).join('')
         : '<div class="tip-picker-name" style="opacity:.5;">No tips</div>';
       const scoreLineHtml = complete
         ? `<div class="tip-game-meta" style="margin-bottom:8px;"><span style="display:flex; align-items:center; gap:6px;">${teamLogoImg(g.hteam, 16)}${escapeHtml(g.hteam)} ${g.hscore} — ${g.ascore} ${escapeHtml(g.ateam)}${teamLogoImg(g.ateam, 16)}</span></div>`
@@ -2243,6 +2255,7 @@ async function renderTippingLadder(games){
   const area = document.getElementById('tippingLadderArea');
   const finishedGames = games.filter(g => g.complete >= 100 && g.winner);
   if(finishedGames.length === 0){
+    currentSeasonLeaders = new Set();
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
@@ -2271,12 +2284,14 @@ async function renderTippingLadder(games){
   const rows = Object.entries(tally).map(([name, t]) => ({ name, ...t }));
   rows.sort((a, b) => b.correct - a.correct || a.marginDiff - b.marginDiff);
   if(rows.length === 0){
+    currentSeasonLeaders = new Set();
     area.innerHTML = '<div class="empty">No picks recorded yet.</div>';
     return;
   }
   // ties at the top (or bottom) all get the same highlight, not just whichever row sorted first
   const topScore = rows[0].correct;
   const bottomScore = rows[rows.length - 1].correct;
+  currentSeasonLeaders = new Set(rows.filter(r => r.correct === topScore).map(r => r.name));
   let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Correct</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
     const isLeader = r.correct === topScore;
