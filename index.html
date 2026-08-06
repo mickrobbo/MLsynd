@@ -2396,13 +2396,13 @@ async function renderTippingLadder(games){
   const bottomScore = rows[rows.length - 1].correct;
   const hasSpread = topScore !== bottomScore;
   currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.correct === topScore).map(r => r.name)) : new Set();
-  let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Correct</th><th>Margin</th></tr></thead><tbody>';
+  let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
     const isLeader = hasSpread && r.correct === topScore;
     const isLoser = hasSpread && rows.length > 1 && r.correct === bottomScore;
     const rowCls = isLeader ? 'ladder-leader' : (isLoser ? 'ladder-loser' : '');
     const badge = isLeader ? '<span class="ladder-leader-badge">Leader</span>' : '';
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}${badge}</td><td>${r.correct}/${finishedGames.length}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}${badge}</td><td>${r.correct}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;
