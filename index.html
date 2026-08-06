@@ -172,17 +172,21 @@
   .owed-row .amt.due{ color: var(--loss); font-weight:600; }
 
   .highlight-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:12px; }
-  .multi-leg-block{ padding:7px 0; border-bottom:1px solid var(--line); }
-  .multi-leg-block:last-of-type{ border-bottom:none; }
-  .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; font-size:13px; gap:8px; }
-  .multi-leg-name{ color:var(--chalk); font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .multi-leg-name.loss{ color:var(--loss); }
+  .multi-leg-block{ padding:10px 12px; margin-bottom:8px; border-radius:10px; background:rgba(239,234,216,.03); border:1px solid var(--line); }
+  .multi-leg-block:last-of-type{ margin-bottom:0; }
+  .multi-leg-block.result-win{ background:rgba(111,169,138,.13); border-color:rgba(111,169,138,.35); }
+  .multi-leg-block.result-loss{ background:rgba(193,96,74,.16); border-color:rgba(193,96,74,.45); }
+  .multi-leg-block.result-void{ opacity:.65; }
+  .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; font-size:13.5px; gap:8px; }
+  .multi-leg-name{ color:var(--chalk); font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .multi-leg-name.loss{ color:#ff9478; }
   .multi-leg-odds{ font-family:'IBM Plex Mono', monospace; color:var(--muted); flex:0 0 auto; }
-  .multi-leg-result{ font-size:16px; flex:0 0 auto; }
-  .multi-leg-roast{ font-size:10.5px; color:var(--loss); font-style:italic; opacity:.85; margin-top:4px; padding-right:2px; }
+  .multi-leg-result{ font-size:19px; flex:0 0 auto; }
+  .multi-leg-roast{ font-size:11px; color:#ff9478; font-style:italic; font-weight:600; opacity:.95; margin-top:6px; padding-right:2px; }
+  .multi-summary-banner{ background:linear-gradient(165deg, rgba(193,96,74,.18), rgba(193,96,74,.08)); border:1px solid rgba(193,96,74,.35); border-radius:8px; padding:9px 12px; margin-bottom:12px; font-size:12.5px; font-weight:600; color:var(--chalk); }
+  .multi-summary-banner.clean{ background:linear-gradient(165deg, rgba(111,169,138,.18), rgba(111,169,138,.08)); border-color:rgba(111,169,138,.35); }
   .highlight-row:last-child{ border-bottom:none; }
   .highlight-row .hl-lbl{ color: var(--muted); flex-shrink:0; }
-  .weekly-bet-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:16px; letter-spacing:.5px; color: var(--chalk); }
   .highlight-row .hl-detail{ text-align:right; }
   .highlight-row .hl-name{ font-weight:700; color: var(--brass); }
   .highlight-row .hl-week{ color: var(--muted); font-size:10px; display:block; }
@@ -1019,34 +1023,35 @@ const MULTI_ROAST_MEDIUM = [
   "the reason the group chat's gone quiet",
   "donated that one straight to the bookies",
   "found the one way to lose a leg-in",
-  "picked that one with the eyes closed",
+  "picked that one with a dart and a blindfold",
   "another week, another excuse loading",
-  "starting to become a habit, mate",
-  "the wheels are wobbling on this one",
-  "average at best and it shows",
-  "keeps finding new ways to let the side down",
-  "the safe pick that wasn't",
-  "a season of this and counting",
-  "not the first time, won't be the last",
+  "officially a repeat offender at this point",
+  "the wheels have fully fallen off this one",
+  "mediocre and somehow proud of it",
+  "keeps finding new and creative ways to let the side down",
+  "the safe pick that absolutely wasn't",
+  "a full season of this and still going",
+  "not the first time, won't be the last, everyone knows it",
   "the group's designated speed bump this week",
+  "genuinely embarrassing himself in front of the group chat",
 ];
 const MULTI_ROAST_SAVAGE = [
-  "single-handedly torched it",
-  "couldn't hit water falling out of a boat",
-  "certified multi killer",
-  "the human red X",
-  "should have his tipping licence revoked",
-  "statistically a bad omen at this point",
-  "the reason we don't trust the group chat picks",
-  "cooked it before the first bounce",
-  "a walking, talking cash burn",
-  "the bloke you fade every single week",
-  "proof that hope is not a strategy",
-  "the multi's weakest link, permanently",
-  "should just donate the $50 straight to the TAB",
-  "the seasonal disappointment we've come to expect",
-  "an actual liability at this point",
-  "the reason the bank account's crying",
+  "single-handedly torched the entire multi and should be legally required to apologise",
+  "couldn't pick a winner in a one-horse race",
+  "certified multi killer, repeat offender, no signs of rehabilitation",
+  "the human red X — bookmakers use his picks as a reverse indicator",
+  "should have his tipping licence revoked and his phone confiscated on game day",
+  "statistically a worse investment than setting the fifty on fire",
+  "the reason nobody trusts a group chat pick anymore",
+  "cooked it before the coin toss even finished",
+  "a walking, talking, permanently-open cash register for the TAB",
+  "the bloke you fade every single week and somehow still lose fading",
+  "living proof that hope is not, and never will be, a strategy",
+  "the multi's terminal illness, still somehow not fatal to the group's optimism",
+  "should just set up a direct debit to the bookies and cut out the middleman",
+  "the seasonal disappointment the group has come to expect and frankly deserves",
+  "an actual financial liability the syndicate should consider insuring against",
+  "the reason the bank account requires a moment of silence every week",
 ];
 function hashStr(s){
   let h = 0;
@@ -1086,13 +1091,14 @@ function renderGroupMultiChart(lastWeek){
   let html = '';
   entries.forEach(([name, e]) => {
     const icon = e.result === 'Win' ? '✅' : (e.result === 'Loss' ? '❌' : '➖');
+    const resultCls = e.result === 'Win' ? 'result-win' : (e.result === 'Loss' ? 'result-loss' : 'result-void');
     let roastHtml = '';
     if(e.result === 'Loss'){
       const pool = roastTierForName(name);
       const roast = pool[hashStr(name + (lastWeek.label || '')) % pool.length];
-      roastHtml = `<div class="multi-leg-roast">${escapeHtml(name)} ${roast}.</div>`;
+      roastHtml = `<div class="multi-leg-roast">🔥 ${escapeHtml(name)} ${roast}.</div>`;
     }
-    html += `<div class="multi-leg-block">
+    html += `<div class="multi-leg-block ${resultCls}">
       <div class="multi-leg-row">
         <span class="multi-leg-name${e.result === 'Loss' ? ' loss' : ''}">${escapeHtml(name)}</span>
         <span class="multi-leg-odds">${e.odds != null ? '@ ' + Number(e.odds).toFixed(2) : '—'}</span>
@@ -1103,8 +1109,8 @@ function renderGroupMultiChart(lastWeek){
   });
   const summary = losers.length === 0
     ? '🎉 Clean sweep — nobody let the side down. This week, anyway.'
-    : `${losers.length} leg${losers.length === 1 ? '' : 's'} down. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.`;
-  area.innerHTML = `<div class="hint" style="margin-bottom:10px;">${summary}</div>` + html;
+    : `💀 ${losers.length} leg${losers.length === 1 ? '' : 's'} down. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.`;
+  area.innerHTML = `<div class="multi-summary-banner${losers.length === 0 ? ' clean' : ''}">${summary}</div>` + html;
 }
 
 function render(state){
@@ -1145,10 +1151,20 @@ function render(state){
     document.getElementById('weeklyIndividualBetsArea').innerHTML = '<div class="empty">No individual bets set for this week yet.</div>';
   } else {
     document.getElementById('weeklyIndividualBetsArea').innerHTML = weeklyBets.map(b => {
-      const icon = b.result === 'Win' ? '✅' : (b.result === 'Loss' ? '❌' : '');
-      return `<div class="highlight-row">
-        <span class="weekly-bet-name">${escapeHtml(b.name || '')}</span>
-        ${icon ? `<span style="font-size:16px;">${icon}</span>` : ''}
+      const icon = b.result === 'Win' ? '✅' : (b.result === 'Loss' ? '❌' : '➖');
+      const resultCls = b.result === 'Win' ? 'result-win' : (b.result === 'Loss' ? 'result-loss' : 'result-void');
+      let roastHtml = '';
+      if(b.result === 'Loss'){
+        const pool = roastTierForName(b.name);
+        const roast = pool[hashStr(b.name + (lastWeek.label || '') + 'ind') % pool.length];
+        roastHtml = `<div class="multi-leg-roast">🔥 ${escapeHtml(b.name)} ${roast}.</div>`;
+      }
+      return `<div class="multi-leg-block ${resultCls}">
+        <div class="multi-leg-row">
+          <span class="multi-leg-name${b.result === 'Loss' ? ' loss' : ''}">${escapeHtml(b.name || '')}</span>
+          <span class="multi-leg-result">${icon}</span>
+        </div>
+        ${roastHtml}
       </div>`;
     }).join('');
   }
