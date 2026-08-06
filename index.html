@@ -182,7 +182,7 @@
   .multi-leg-roast{ font-size:10.5px; color:var(--loss); font-style:italic; opacity:.85; margin-top:4px; padding-right:2px; }
   .highlight-row:last-child{ border-bottom:none; }
   .highlight-row .hl-lbl{ color: var(--muted); flex-shrink:0; }
-  .weekly-bet-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:16px; letter-spacing:.5px; color: var(--brass); text-shadow: 0 0 12px rgba(199,162,72,.25); }
+  .weekly-bet-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:16px; letter-spacing:.5px; color: var(--chalk); }
   .highlight-row .hl-detail{ text-align:right; }
   .highlight-row .hl-name{ font-weight:700; color: var(--brass); }
   .highlight-row .hl-week{ color: var(--muted); font-size:10px; display:block; }
@@ -1144,10 +1144,13 @@ function render(state){
   if(weeklyBets.length === 0){
     document.getElementById('weeklyIndividualBetsArea').innerHTML = '<div class="empty">No individual bets set for this week yet.</div>';
   } else {
-    document.getElementById('weeklyIndividualBetsArea').innerHTML = weeklyBets.map(b => `
-      <div class="highlight-row">
+    document.getElementById('weeklyIndividualBetsArea').innerHTML = weeklyBets.map(b => {
+      const icon = b.result === 'Win' ? '✅' : (b.result === 'Loss' ? '❌' : '');
+      return `<div class="highlight-row">
         <span class="weekly-bet-name">${escapeHtml(b.name || '')}</span>
-      </div>`).join('');
+        ${icon ? `<span style="font-size:16px;">${icon}</span>` : ''}
+      </div>`;
+    }).join('');
   }
 
   const hl = computeHighlights(history);
