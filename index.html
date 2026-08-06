@@ -2366,7 +2366,7 @@ function startApp(){
   startSmartPolling(refreshRacing, 300000); // meetings/races don't change often — every 5 min is plenty
   refreshTipping();
   startSmartPolling(refreshTipping, 60000); // picks reveal as games kick off — check every minute
-  refreshTippingLadderOnly();
+  setTimeout(refreshTippingLadderOnly, 2500); // staggered — this reads one row per finished game this season and was competing with the round's own game cards for bandwidth on first load
   startSmartPolling(refreshTippingLadderOnly, 240000); // ladder is read-heavy (1 DB read per finished game this season) — every 4 min is plenty, was riding the 60s cycle before
   refreshNews();
   startSmartPolling(refreshNews, 300000); // headlines don't need to be checked often — every 5 min
