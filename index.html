@@ -266,6 +266,51 @@
   .tip-locked-row.incorrect .tip-pick-label{ color:var(--loss); }
   #tipSaveAllBtn{ width:100%; font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
   #tipSaveAllBtn:disabled{ opacity:.5; cursor:default; }
+
+  /* --- Tip countdown (pre-first-bounce) --- */
+  .tip-countdown-wrap{
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+    padding:14px 10px 12px; margin-bottom:10px;
+    background: radial-gradient(120px 70px at 50% 0%, rgba(199,162,72,.08), transparent);
+    border:1px dashed var(--line); border-radius:10px;
+  }
+  .tip-countdown-lock{ font-size:16px; margin-bottom:4px; }
+  .tip-countdown-clock{
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:30px;
+    letter-spacing:.03em; color:var(--brass-light); line-height:1;
+    font-variant-numeric: tabular-nums;
+  }
+  .tip-countdown-label{ font-size:10px; color:var(--muted); margin-top:6px; line-height:1.5; text-transform:none; letter-spacing:0; font-family:'IBM Plex Sans', sans-serif; }
+  .tip-countdown-label b{ color:var(--brass-light); font-weight:600; }
+  .tip-your-pick-confirm{
+    display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted);
+    margin-top:8px; padding-top:8px; border-top:1px solid var(--line);
+  }
+  .tip-your-pick-confirm b{ color:var(--chalk); font-weight:600; }
+
+  /* --- Revealed: two-column team layout --- */
+  .tip-team-cols{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tip-team-col{
+    background:rgba(0,0,0,.18); border:1px solid var(--line); border-radius:10px;
+    padding:10px 6px 9px; text-align:center;
+  }
+  .tip-team-col.leader{
+    background:linear-gradient(180deg, rgba(111,169,138,.18), rgba(111,169,138,.05));
+    border-color: rgba(111,169,138,.4);
+    box-shadow:0 0 0 1px rgba(111,169,138,.3);
+  }
+  .tip-team-col.trail{
+    background:linear-gradient(180deg, rgba(193,96,74,.1), rgba(193,96,74,.03));
+    border-color: rgba(193,96,74,.35);
+  }
+  .tip-team-col img{ display:block; margin:0 auto 6px; }
+  .tip-team-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:13px; color:var(--brass-light); margin-bottom:2px; }
+  .tip-team-result-icon{ font-size:11px; color:var(--muted); margin-bottom:6px; min-height:14px; }
+  .tip-team-col.leader .tip-team-result-icon{ color:var(--win); }
+  .tip-team-col.trail .tip-team-result-icon{ color:var(--loss); }
+  .tip-picker-list{ display:flex; flex-direction:column; gap:3px; }
+  .tip-picker-name{ font-size:11.5px; color:var(--chalk); background:rgba(255,255,255,.03); border-radius:5px; padding:3px 4px; }
+  .tip-picker-count{ font-size:9.5px; color:var(--muted); margin-top:6px; font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.5px; }
   table.ladder-table{ width:100%; border-collapse:collapse; font-size:13px; min-width:0; }
   table.ladder-table th{ text-align:left; font-family:'IBM Plex Mono', monospace; font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); border-bottom:1px solid var(--brass-dim); padding:6px 4px; }
   table.ladder-table td{ padding:7px 4px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; }
@@ -275,6 +320,12 @@
   table.ladder-table tr.ladder-loser td{ background:rgba(193,96,74,.2); color:var(--loss); font-weight:700; border-bottom-color:transparent; }
   table.ladder-table tr.ladder-loser td:first-child{ border-top-left-radius:10px; border-bottom-left-radius:10px; padding-left:8px; }
   table.ladder-table tr.ladder-loser td:last-child{ border-top-right-radius:10px; border-bottom-right-radius:10px; padding-right:8px; }
+  .ladder-leader-badge{
+    display:inline-block; margin-left:6px; font-family:'Barlow Condensed', sans-serif; font-size:8.5px; font-weight:700;
+    letter-spacing:.5px; text-transform:uppercase; color:#151007;
+    background:linear-gradient(135deg, var(--brass-light), var(--brass));
+    padding:1px 6px; border-radius:999px; vertical-align:middle;
+  }
   .afl-teams .score{ font-size:16px; font-weight:700; color:var(--chalk); flex:0 0 auto; }
   .afl-status{
     text-align:center; font-size:10px; color:var(--brass); text-transform:uppercase;
@@ -1861,6 +1912,20 @@ async function renderTippingPrizePot(){
 
 let tippingDraft = {}; // { [gameId]: { pick, margin } } — live selections before the one Save-all click
 let tippingRoundGameMeta = {}; // { [gameId]: { label, isMarginGame, round } } — only unlocked games in the current round view
+let tipCountdownIntervals = {}; // { [gameId]: intervalId } — live "until first bounce" clocks, cleared on every re-render
+
+function getKickoffMs(g){
+  return new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
+}
+function formatCountdown(ms){
+  if(ms <= 0) return '00:00';
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = n => String(n).padStart(2, '0');
+  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
 
 async function renderTippingRound(games, currentRound){
   const gamesArea = document.getElementById('tippingGamesArea');
@@ -1882,6 +1947,8 @@ async function renderTippingRound(games, currentRound){
 
   tippingDraft = {};
   tippingRoundGameMeta = {};
+  Object.values(tipCountdownIntervals).forEach(id => clearInterval(id));
+  tipCountdownIntervals = {};
 
   // group this round's games by local (Melbourne) calendar day
   const dayGroups = new Map();
@@ -2002,6 +2069,12 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
     tippingDraft[g.id] = { pick: myPick, margin: myMargin !== '' ? Number(myMargin) : null };
 
     body.innerHTML = `
+      <div class="tip-countdown-wrap">
+        <div class="tip-countdown-lock">🔒</div>
+        <div class="tip-countdown-clock" id="tipCountdown-${g.id}">--:--</div>
+        <div class="tip-countdown-label">until <b>first bounce</b> — everyone's picks stay hidden until then, no peeking, even for admins</div>
+        ${myPick ? `<div class="tip-your-pick-confirm">✅ Your pick is locked in — <b>${escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}</div>` : ''}
+      </div>
       <div class="tip-pick-row">
         <button type="button" class="tip-pick-btn${myPick === 'home' ? ' selected' : ''}" data-pick="home">${teamLogoImg(g.hteam, 32)}${escapeHtml(g.hteam)}${homeOddsHtml}</button>
         <button type="button" class="tip-pick-btn${myPick === 'away' ? ' selected' : ''}" data-pick="away">${teamLogoImg(g.ateam, 32)}${escapeHtml(g.ateam)}${awayOddsHtml}</button>
@@ -2024,8 +2097,25 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
         if(statusEl) statusEl.textContent = '';
       });
     }
+
+    // live countdown to first bounce — re-renders this game into the revealed view the moment it hits zero
+    if(tipCountdownIntervals[g.id]) clearInterval(tipCountdownIntervals[g.id]);
+    const kickoffMs = getKickoffMs(g);
+    const clockEl = document.getElementById(`tipCountdown-${g.id}`);
+    const tick = () => {
+      const diff = kickoffMs - Date.now();
+      if(diff <= 0){
+        clearInterval(tipCountdownIntervals[g.id]);
+        delete tipCountdownIntervals[g.id];
+        renderTipGame(g, isMarginGame, auth, oddsEvents);
+        return;
+      }
+      if(clockEl) clockEl.textContent = formatCountdown(diff);
+    };
+    tick();
+    tipCountdownIntervals[g.id] = setInterval(tick, 1000);
   } else {
-    // locked — reveal everyone's picks
+    // first bounce has passed — reveal everyone's picks, grouped by team
     try{
       const res = await authedFetch(`/tipping/picks/${g.id}.json`);
       const all = await res.json() || {};
@@ -2034,24 +2124,38 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
         body.innerHTML = '<div class="hint">No picks were made for this game.</div>';
         return;
       }
-      const complete = g.complete >= 100;
-      let html = '';
-      entries.sort((a,b) => (a.name||'').localeCompare(b.name||'')).forEach(p => {
-        const pickedTeam = p.pick === 'home' ? g.hteam : g.ateam;
-        let cls = '';
-        if(complete && g.winner){
-          const isCorrect = normTeamName(pickedTeam) === normTeamName(g.winner);
-          cls = isCorrect ? 'correct' : 'incorrect';
-        }
-        html += `<div class="tip-locked-row ${cls}">
-          <span class="tip-name">${escapeHtml(p.name || '')}</span>
-          <span class="tip-pick-label" style="display:flex; align-items:center; gap:5px;">${teamLogoImg(pickedTeam, 18)}${escapeHtml(pickedTeam)}${p.margin != null ? ` (${p.margin})` : ''}</span>
-        </div>`;
-      });
-      if(complete){
-        html = `<div class="tip-game-meta" style="display:flex; align-items:center; gap:6px;">${teamLogoImg(g.hteam, 18)}${escapeHtml(g.hteam)} ${g.hscore} — ${g.ascore} ${escapeHtml(g.ateam)}${teamLogoImg(g.ateam, 18)}${g.winner ? ` · ${escapeHtml(g.winner)} by ${g.margin}` : ''}</div>` + html;
-      }
-      body.innerHTML = html;
+      const complete = g.complete >= 100 && g.winner;
+      const homePicks = entries.filter(p => p.pick === 'home').sort((a,b) => (a.name||'').localeCompare(b.name||''));
+      const awayPicks = entries.filter(p => p.pick === 'away').sort((a,b) => (a.name||'').localeCompare(b.name||''));
+      const homeCls = complete ? (normTeamName(g.hteam) === normTeamName(g.winner) ? 'leader' : 'trail') : '';
+      const awayCls = complete ? (normTeamName(g.ateam) === normTeamName(g.winner) ? 'leader' : 'trail') : '';
+      const homeIcon = complete ? (homeCls === 'leader' ? '✅ Correct tip' : '❌ Wrong tip') : '';
+      const awayIcon = complete ? (awayCls === 'leader' ? '✅ Correct tip' : '❌ Wrong tip') : '';
+      const pickerListHtml = list => list.length
+        ? list.map(p => `<div class="tip-picker-name">${escapeHtml(p.name || '')}${p.margin != null ? ` <span style="color:var(--muted);">(${p.margin})</span>` : ''}</div>`).join('')
+        : '<div class="tip-picker-name" style="opacity:.5;">No tips</div>';
+      const scoreLineHtml = complete
+        ? `<div class="tip-game-meta" style="margin-bottom:8px;"><span style="display:flex; align-items:center; gap:6px;">${teamLogoImg(g.hteam, 16)}${escapeHtml(g.hteam)} ${g.hscore} — ${g.ascore} ${escapeHtml(g.ateam)}${teamLogoImg(g.ateam, 16)}</span></div>`
+        : '<div class="hint" style="margin-bottom:8px;">Game underway — result not final yet.</div>';
+      body.innerHTML = `
+        ${scoreLineHtml}
+        <div class="tip-team-cols">
+          <div class="tip-team-col ${homeCls}">
+            ${teamLogoImg(g.hteam, 40)}
+            <div class="tip-team-name">${escapeHtml(g.hteam)}</div>
+            <div class="tip-team-result-icon">${homeIcon}</div>
+            <div class="tip-picker-list">${pickerListHtml(homePicks)}</div>
+            <div class="tip-picker-count">${homePicks.length} tip${homePicks.length === 1 ? '' : 's'}</div>
+          </div>
+          <div class="tip-team-col ${awayCls}">
+            ${teamLogoImg(g.ateam, 40)}
+            <div class="tip-team-name">${escapeHtml(g.ateam)}</div>
+            <div class="tip-team-result-icon">${awayIcon}</div>
+            <div class="tip-picker-list">${pickerListHtml(awayPicks)}</div>
+            <div class="tip-picker-count">${awayPicks.length} tip${awayPicks.length === 1 ? '' : 's'}</div>
+          </div>
+        </div>
+      `;
     }catch(e){
       body.innerHTML = '<div class="hint">Picks lock in and reveal here once the game starts.</div>';
     }
@@ -2170,10 +2274,16 @@ async function renderTippingLadder(games){
     area.innerHTML = '<div class="empty">No picks recorded yet.</div>';
     return;
   }
+  // ties at the top (or bottom) all get the same highlight, not just whichever row sorted first
+  const topScore = rows[0].correct;
+  const bottomScore = rows[rows.length - 1].correct;
   let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Correct</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    const rowCls = i === 0 ? 'ladder-leader' : (i === rows.length - 1 && rows.length > 1 ? 'ladder-loser' : '');
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.correct}/${finishedGames.length}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    const isLeader = r.correct === topScore;
+    const isLoser = rows.length > 1 && r.correct === bottomScore && !isLeader;
+    const rowCls = isLeader ? 'ladder-leader' : (isLoser ? 'ladder-loser' : '');
+    const badge = isLeader ? '<span class="ladder-leader-badge">Leader</span>' : '';
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}${badge}</td><td>${r.correct}/${finishedGames.length}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;
