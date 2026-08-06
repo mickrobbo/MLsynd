@@ -1,16 +1,32 @@
 // netlify/functions/news.js
 // Pulls sport headlines from RSS feeds. AFL and NBA use their own official
-// feeds (best quality/freshness); NRL and horse racing don't have a single
-// reliable official feed, so those use Google News' AU-localized search
-// feed instead. Zero dependencies — RSS is simple enough to parse with a
-// careful regex rather than pulling in an XML library.
+// feeds (best quality/freshness, and confirmed to carry images). NRL uses
+// Sydney Morning Herald's sport feed instead of Google News specifically so
+// it can carry real photos too (Google News' RSS strips all image data —
+// confirmed, not a parsing gap) — SMH covers multiple sports though, so
+// results get filtered down to NRL-relevant items by keyword. Horse racing
+// still has no reliable image-bearing source, so that one stays on Google
+// News (text-only). Zero dependencies — RSS is simple enough to parse with
+// a careful regex rather than pulling in an XML library.
 
 const CATEGORY_FEEDS = {
   afl: "https://www.afl.com.au/rss",
-  nrl: "https://news.google.com/rss/search?q=NRL+rugby+league&hl=en-AU&gl=AU&ceid=AU:en",
+  nrl: "https://www.smh.com.au/rss/sport.xml",
   nba: "https://www.espn.com/espn/rss/nba/news",
   racing: "https://news.google.com/rss/search?q=horse+racing+Australia&hl=en-AU&gl=AU&ceid=AU:en",
 };
+
+// SMH's sport feed covers AFL/NRL/cricket/etc together — keep only items
+// that actually look NRL-related.
+const NRL_KEYWORDS = [
+  "nrl", "rugby league", "broncos", "bulldogs", "cowboys", "dolphins", "dragons",
+  "eels", "knights", "panthers", "rabbitohs", "raiders", "roosters", "sea eagles",
+  "manly", "sharks", "storm", "tigers", "titans", "warriors",
+];
+function isNrlRelevant(article) {
+  const text = article.title.toLowerCase();
+  return NRL_KEYWORDS.some((k) => text.includes(k));
+}
 
 function extractTag(block, tag) {
   const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
@@ -90,9 +106,10 @@ exports.handler = async function (event) {
     }
 
     const xml = await resp.text();
-    const parsed = parseRssItems(xml, 30); // pull a few extra since some will get filtered out by age
+    const parsed = parseRssItems(xml, category === "nrl" ? 60 : 30); // NRL needs more headroom - filtered twice (relevance + age)
     const cutoff = Date.now() - 24 * 60 * 60 * 1000;
     const articles = parsed
+      .filter((a) => category !== "nrl" || isNrlRelevant(a))
       .filter((a) => {
         if (!a.pubDate) return false;
         const t = new Date(a.pubDate).getTime();
