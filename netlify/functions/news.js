@@ -16,12 +16,19 @@ const CATEGORY_FEEDS = {
   racing: "https://news.google.com/rss/search?q=horse+racing+Australia&hl=en-AU&gl=AU&ceid=AU:en",
 };
 
-// SMH's sport feed covers AFL/NRL/cricket/etc together — keep only items
-// that actually look NRL-related.
+// SMH's sport feed covers AFL/NRL/cricket/football/etc together — keep only
+// items that actually look NRL-related. Several club nicknames are shared
+// with other codes (AFL has Bulldogs/Tigers, NBA has Warriors, etc.), so
+// those ambiguous ones require the fuller club name rather than matching on
+// the bare nickname alone — otherwise unrelated football/AFL/NBA stories
+// slip through.
 const NRL_KEYWORDS = [
-  "nrl", "rugby league", "broncos", "bulldogs", "cowboys", "dolphins", "dragons",
-  "eels", "knights", "panthers", "rabbitohs", "raiders", "roosters", "sea eagles",
-  "manly", "sharks", "storm", "tigers", "titans", "warriors",
+  "nrl", "rugby league",
+  "broncos", "cowboys", "dolphins", "eels", "knights", "panthers",
+  "rabbitohs", "raiders", "roosters", "sea eagles", "manly warringah",
+  "canterbury bulldogs", "cronulla sharks", "melbourne storm",
+  "wests tigers", "balmain tigers", "gold coast titans",
+  "new zealand warriors", "nz warriors", "st george illawarra",
 ];
 function isNrlRelevant(article) {
   const text = article.title.toLowerCase();
