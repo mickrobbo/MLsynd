@@ -1189,7 +1189,7 @@ function hashStr(s){
   return Math.abs(h);
 }
 function roastTierForName(name){
-  const members = state.members || [];
+  const members = (currentState && currentState.members) || [];
   const m = members.find(mm => mm.name === name);
   if(!m) return MULTI_ROAST_MEDIUM;
   const winPctOf = (mm) => {
