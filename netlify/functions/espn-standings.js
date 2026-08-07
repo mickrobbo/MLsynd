@@ -10,6 +10,7 @@ const LEAGUE_PATHS = {
   nhl: "hockey/nhl",
   nrl: "rugby-league/3",
   epl: "soccer/eng.1",
+  efl: "soccer/eng.2",
 };
 
 exports.handler = async function (event) {

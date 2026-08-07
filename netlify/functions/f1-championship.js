@@ -7,12 +7,13 @@
 
 exports.handler = async function () {
   try {
-    const [standingsRes, resultsRes] = await Promise.all([
+    const [standingsRes, constructorRes, resultsRes] = await Promise.all([
       fetch("https://api.jolpi.ca/ergast/f1/current/driverstandings.json"),
+      fetch("https://api.jolpi.ca/ergast/f1/current/constructorstandings.json"),
       fetch("https://api.jolpi.ca/ergast/f1/current/results.json?limit=500"),
     ]);
 
-    if (!standingsRes.ok || !resultsRes.ok) {
+    if (!standingsRes.ok || !constructorRes.ok || !resultsRes.ok) {
       return {
         statusCode: 502,
         body: JSON.stringify({ error: "Jolpica returned an error" }),
@@ -20,6 +21,7 @@ exports.handler = async function () {
     }
 
     const standingsData = await standingsRes.json();
+    const constructorData = await constructorRes.json();
     const resultsData = await resultsRes.json();
 
     const standingsList = (standingsData.MRData.StandingsTable.StandingsLists || [])[0];
@@ -30,6 +32,17 @@ exports.handler = async function () {
           wins: d.wins,
           name: `${d.Driver.givenName} ${d.Driver.familyName}`,
           constructor: d.Constructors && d.Constructors[0] ? d.Constructors[0].name : null,
+        }))
+      : [];
+
+    const constructorList = (constructorData.MRData.StandingsTable.StandingsLists || [])[0];
+    const teamStandings = constructorList
+      ? constructorList.ConstructorStandings.map((c) => ({
+          position: parseInt(c.position, 10),
+          points: c.points,
+          wins: c.wins,
+          name: c.Constructor ? c.Constructor.name : "Unknown",
+          nationality: c.Constructor ? c.Constructor.nationality : null,
         }))
       : [];
 
@@ -56,6 +69,7 @@ exports.handler = async function () {
       body: JSON.stringify({
         season: standingsData.MRData.StandingsTable.season || null,
         standings,
+        teamStandings,
         podiums,
       }),
     };
