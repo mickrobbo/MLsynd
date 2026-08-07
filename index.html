@@ -438,8 +438,17 @@
     color:var(--brass-light); margin:0; text-shadow:0 0 18px rgba(199,162,72,.3);
   }
   .profile-badges{ display:flex; justify-content:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
-  .profile-badge{ display:flex; flex-direction:column; align-items:center; gap:5px; width:76px; }
+  .profile-badge{ display:flex; flex-direction:column; align-items:center; gap:5px; width:76px; cursor:pointer; }
+  .profile-badge:active{ transform:scale(0.94); }
   .profile-badge-label{ font-size:9px; color:var(--muted); text-align:center; line-height:1.3; }
+  .badge-info-bubble{
+    margin-top:12px; padding:11px 14px; background:rgba(0,0,0,.3); border:1px solid var(--brass-dim);
+    border-radius:10px; font-size:12px; color:var(--chalk); text-align:center; line-height:1.4;
+  }
+  .badge-info-bubble b{
+    display:block; margin-bottom:4px; font-family:'Barlow Condensed', sans-serif; letter-spacing:.5px;
+    text-transform:uppercase; font-size:11px; color:var(--brass-light);
+  }
   .profile-stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
   .profile-stat-cell{ background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
   .profile-stat-cell .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
@@ -677,6 +686,7 @@
     <div class="profile-header">
       <h2 id="profileName">Name</h2>
       <div class="profile-badges" id="profileBadges"></div>
+      <div class="badge-info-bubble" id="badgeInfoBubble" style="display:none;"></div>
     </div>
     <div class="profile-stat-grid" id="profileStats"></div>
   </div>
@@ -1143,9 +1153,27 @@ function openProfile(name){
   const autoBadges = computeAutoBadges(m, currentState);
   const badges = [...new Set([...manualBadges, ...autoBadges])];
   const badgesArea = document.getElementById('profileBadges');
+  const infoBubble = document.getElementById('badgeInfoBubble');
+  infoBubble.style.display = 'none';
+  infoBubble.dataset.currentBadge = '';
   badgesArea.innerHTML = badges.length
-    ? badges.map(id => BADGE_DEFS[id] ? `<div class="profile-badge">${badgeSvg(id, 60)}<span class="profile-badge-label">${escapeHtml(BADGE_DEFS[id].label)}</span></div>` : '').join('')
+    ? badges.map(id => BADGE_DEFS[id] ? `<div class="profile-badge" data-badge-id="${id}">${badgeSvg(id, 60)}<span class="profile-badge-label">${escapeHtml(BADGE_DEFS[id].label)}</span></div>` : '').join('')
     : '<div style="font-size:11px; color:var(--muted);">No badges yet</div>';
+  badgesArea.querySelectorAll('.profile-badge').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.badgeId;
+      const def = BADGE_DEFS[id];
+      if(!def) return;
+      if(infoBubble.dataset.currentBadge === id && infoBubble.style.display !== 'none'){
+        infoBubble.style.display = 'none';
+        infoBubble.dataset.currentBadge = '';
+        return;
+      }
+      infoBubble.innerHTML = `<b>${escapeHtml(def.label)}</b>${escapeHtml(def.desc)}`;
+      infoBubble.style.display = 'block';
+      infoBubble.dataset.currentBadge = id;
+    });
+  });
 
   const indTotal = m.indWin + m.indLoss;
   const indWinPct = indTotal > 0 ? Math.round((m.indWin / indTotal) * 100) : 0;
@@ -1606,8 +1634,9 @@ function renderOnThisDay(data){
   }
   area.innerHTML = `<div class="otd-year">${escapeHtml(String(data.year))}</div><div class="otd-text">${escapeHtml(data.text)}</div>`;
 }
+const OTD_CACHE_VERSION = 'v2'; // bump this whenever on-this-day logic changes, so old cached facts (from before the fix) don't linger until midnight
 async function refreshOnThisDayIfNeeded(){
-  const todayKey = new Date().toDateString();
+  const todayKey = new Date().toDateString() + '|' + OTD_CACHE_VERSION;
   let cached = null;
   try{ cached = JSON.parse(localStorage.getItem('otd_cache') || 'null'); }catch(e){}
   if(cached && cached.cachedFor === todayKey){
