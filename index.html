@@ -197,6 +197,8 @@
   .multi-leg-result{ font-size:19px; flex:0 0 auto; }
   .multi-leg-roast{ font-size:11px; color:#ff9478; font-style:italic; font-weight:600; opacity:.95; margin-top:6px; padding-right:2px; }
   .multi-summary-banner{ background:linear-gradient(165deg, rgba(193,96,74,.18), rgba(193,96,74,.08)); border:1px solid rgba(193,96,74,.35); border-radius:8px; padding:9px 12px; margin-bottom:12px; font-size:12.5px; font-weight:600; color:var(--chalk); }
+  .otd-year{ font-family:'Barlow Condensed', sans-serif; font-size:32px; font-weight:700; color:var(--brass); text-align:center; line-height:1; }
+  .otd-text{ font-size:13px; color:var(--chalk); text-align:center; line-height:1.5; margin-top:8px; }
   .multi-summary-banner.clean{ background:linear-gradient(165deg, rgba(111,169,138,.18), rgba(111,169,138,.08)); border-color:rgba(111,169,138,.35); }
   .highlight-row:last-child{ border-bottom:none; }
   .highlight-row .hl-lbl{ color: var(--muted); flex-shrink:0; }
@@ -411,6 +413,40 @@
   .img-modal.open{ display:flex; }
   .img-modal img{ max-width:100%; max-height:100%; border-radius:8px; box-shadow:0 0 30px rgba(0,0,0,0.5); }
   .slip-thumb.slip-open, a.slip-open{ cursor:pointer; }
+
+  td.profile-link{ cursor:pointer; text-decoration:underline; text-decoration-color:var(--brass-dim); text-underline-offset:3px; }
+  td.profile-link:active{ color:var(--brass); }
+
+  .profile-modal{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:1000;
+    align-items:flex-end; justify-content:center;
+  }
+  .profile-modal.open{ display:flex; }
+  .profile-sheet{
+    width:100%; max-width:720px; max-height:88vh; overflow-y:auto;
+    background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--line);
+    border-radius:18px 18px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom, 0));
+    box-shadow:0 -10px 40px rgba(0,0,0,.5);
+  }
+  .profile-close{
+    display:block; margin:0 0 12px auto; background:none; border:none; color:var(--muted);
+    font-size:22px; line-height:1; cursor:pointer; padding:4px 8px;
+  }
+  .profile-header{ text-align:center; margin-bottom:18px; }
+  .profile-header h2{
+    font-family:'Barlow Condensed', sans-serif; font-size:26px; font-weight:700; letter-spacing:1px;
+    color:var(--brass-light); margin:0; text-shadow:0 0 18px rgba(199,162,72,.3);
+  }
+  .profile-badges{ display:flex; justify-content:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
+  .profile-badge{ display:flex; flex-direction:column; align-items:center; gap:5px; width:76px; }
+  .profile-badge-label{ font-size:9px; color:var(--muted); text-align:center; line-height:1.3; }
+  .profile-stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .profile-stat-cell{ background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
+  .profile-stat-cell .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+  .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:700; color:var(--chalk); }
+  .profile-stat-cell .val.pos{ color:var(--win); }
+  .profile-stat-cell .val.neg{ color:var(--loss); }
+
   .chart-dot{ transition: r .1s; }
   .chart-hit:active + .chart-dot, .chart-hit:hover ~ .chart-dot{ r:4; }
   .chart-wrap svg{ display:block; }
@@ -472,6 +508,11 @@
         <div class="toteboard-cell" id="balPlOverallCell"><span class="lbl">P/L overall</span><span class="val" id="balPlOverall">$0</span></div>
         <div class="toteboard-cell" id="balPlWeeklyCell"><span class="lbl">P/L weekly</span><span class="val" id="balPlWeekly">$0</span></div>
       </div>
+    </div>
+
+    <div class="panel" id="onThisDayPanel">
+      <h2>📅 On This Day In Sport</h2>
+      <div id="onThisDayArea"><div class="empty">Loading…</div></div>
     </div>
 
     <div class="panel">
@@ -628,6 +669,17 @@
 
 <div id="imgModal" class="img-modal">
   <img id="imgModalImg" src="" alt="Bet slip">
+</div>
+
+<div id="profileModal" class="profile-modal">
+  <div class="profile-sheet">
+    <button type="button" class="profile-close" id="profileCloseBtn">✕</button>
+    <div class="profile-header">
+      <h2 id="profileName">Name</h2>
+      <div class="profile-badges" id="profileBadges"></div>
+    </div>
+    <div class="profile-stat-grid" id="profileStats"></div>
+  </div>
 </div>
 <script>
 window.addEventListener('error', (e) => {
@@ -966,6 +1018,156 @@ function computeDerived(m){
   const dataScore = Math.round(((m.pl/25) + (winPct*10) + (indWinPct*5) + (m.legs*0.5)) * 100) / 100;
   return { winPct, avgLeg, indWinPct, dataScore };
 }
+const BADGE_DEFS = {
+  'first-xi': {
+    label: 'First XI',
+    desc: 'Founding member of the syndicate',
+    icon: `<text x="70" y="86" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="46" font-weight="700" fill="#3a2e0f">XI</text>`
+  },
+  'go-live': {
+    label: 'Dashboard Go-Live',
+    desc: 'Here when the dashboard first launched',
+    icon: `<g transform="translate(70,72) rotate(-40)">
+      <path d="M0,-26 C7,-16 7,4 0,14 C-7,4 -7,-16 0,-26 Z" fill="#3a2e0f"/>
+      <circle cx="0" cy="-10" r="3.2" fill="#F5E8A8"/>
+      <path d="M-7,6 L-13,18 L-3,12 Z" fill="#3a2e0f"/>
+      <path d="M7,6 L13,18 L3,12 Z" fill="#3a2e0f"/>
+      <path d="M-3,14 L0,26 L3,14 Z" fill="#c1604a"/>
+    </g>`
+  },
+  'tipping-trial': {
+    label: 'Footy Tipping Trial',
+    desc: 'Part of the first-ever tipping season',
+    icon: `<g transform="translate(70,70) rotate(-18)">
+      <ellipse cx="0" cy="0" rx="24" ry="14" fill="none" stroke="#3a2e0f" stroke-width="2.5"/>
+      <line x1="-20" y1="0" x2="20" y2="0" stroke="#3a2e0f" stroke-width="1.5"/>
+      <line x1="-9" y1="-5" x2="-9" y2="5" stroke="#3a2e0f" stroke-width="1.5"/>
+      <line x1="0" y1="-6.5" x2="0" y2="6.5" stroke="#3a2e0f" stroke-width="1.5"/>
+      <line x1="9" y1="-5" x2="9" y2="5" stroke="#3a2e0f" stroke-width="1.5"/>
+    </g>`
+  },
+  'win-streak': {
+    label: 'On Fire',
+    desc: '3+ consecutive weeks winning the group multi leg',
+    auto: true,
+    icon: `<path d="M70,40 C56,58 56,72 64,82 C61,73 66,64 70,60 C75,69 84,76 79,88 C93,79 90,54 70,40 Z" fill="#3a2e0f"/>`
+  },
+  'ice-cold': {
+    label: 'Ice Cold',
+    desc: '3+ consecutive weeks losing the group multi leg',
+    auto: true,
+    icon: `<g stroke="#3a2e0f" stroke-width="2.5" stroke-linecap="round">
+      <line x1="70" y1="45" x2="70" y2="95"/><line x1="49" y1="56" x2="91" y2="84"/><line x1="91" y1="56" x2="49" y2="84"/>
+      <line x1="70" y1="45" x2="64" y2="53"/><line x1="70" y1="45" x2="76" y2="53"/>
+      <line x1="70" y1="95" x2="64" y2="87"/><line x1="70" y1="95" x2="76" y2="87"/>
+    </g>`
+  },
+  'iron-man': {
+    label: 'Iron Man',
+    desc: 'Played a leg every single week this season',
+    auto: true,
+    icon: `<path d="M70,42 L94,52 L94,76 C94,92 83,102 70,108 C57,102 46,92 46,76 L46,52 Z" fill="none" stroke="#3a2e0f" stroke-width="3"/>
+      <path d="M58,74 L67,84 L84,62" fill="none" stroke="#3a2e0f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`
+  },
+  'high-roller': {
+    label: 'High Roller',
+    desc: 'Highest average leg price in the group',
+    auto: true,
+    icon: `<rect x="49" y="49" width="42" height="42" rx="8" fill="none" stroke="#3a2e0f" stroke-width="2.5"/>
+      <circle cx="61" cy="61" r="3.4" fill="#3a2e0f"/><circle cx="79" cy="61" r="3.4" fill="#3a2e0f"/>
+      <circle cx="70" cy="70" r="3.4" fill="#3a2e0f"/>
+      <circle cx="61" cy="79" r="3.4" fill="#3a2e0f"/><circle cx="79" cy="79" r="3.4" fill="#3a2e0f"/>`
+  },
+  'century-club': {
+    label: 'Century Club',
+    desc: 'Lifetime P/L past +$100',
+    auto: true,
+    icon: `<text x="70" y="84" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="34" font-weight="700" fill="#3a2e0f">100</text>`
+  }
+};
+function badgeSvg(badgeId, size){
+  const def = BADGE_DEFS[badgeId];
+  if(!def) return '';
+  const s = size || 60;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 140 140">
+    <circle cx="70" cy="70" r="66" fill="#0B2B22" stroke="#7d6a34" stroke-width="1.5"/>
+    <circle cx="70" cy="70" r="58" fill="#CBB166" stroke="#3a2e0f" stroke-width="1.5"/>
+    <ellipse cx="52" cy="48" rx="30" ry="20" fill="#F5E8A8" opacity="0.35"/>
+    ${def.icon}
+  </svg>`;
+}
+
+function computeAutoBadges(member, state){
+  const earned = [];
+  const history = state.history || [];
+  const name = member.name;
+
+  let curWin = 0, bestWin = 0, curLoss = 0, bestLoss = 0, weeksPlayed = 0;
+  history.forEach(week => {
+    const entry = week.groupEntries && week.groupEntries[name];
+    if(!entry || !entry.result){ return; }
+    weeksPlayed++;
+    if(entry.result === 'Win'){
+      curWin++; curLoss = 0;
+      bestWin = Math.max(bestWin, curWin);
+    } else if(entry.result === 'Loss'){
+      curLoss++; curWin = 0;
+      bestLoss = Math.max(bestLoss, curLoss);
+    } else {
+      curWin = 0; curLoss = 0; // a void breaks both streaks
+    }
+  });
+
+  if(bestWin >= 3) earned.push('win-streak');
+  if(bestLoss >= 3) earned.push('ice-cold');
+  if(history.length >= 3 && weeksPlayed === history.length) earned.push('iron-man');
+  if(member.pl >= 100) earned.push('century-club');
+
+  const eligible = (state.members || []).filter(m => m.oddsCount >= 5);
+  if(eligible.length > 0){
+    const top = eligible.reduce((a, b) => (b.oddsSum / b.oddsCount) > (a.oddsSum / a.oddsCount) ? b : a);
+    if(top.name === name) earned.push('high-roller');
+  }
+
+  return earned;
+}
+
+function openProfile(name){
+  if(!currentState || !currentState.members) return;
+  const m = currentState.members.find(mm => mm.name === name);
+  if(!m) return;
+  const d = computeDerived(m);
+  document.getElementById('profileName').textContent = m.name;
+
+  const manualBadges = Array.isArray(m.badges) ? m.badges : [];
+  const autoBadges = computeAutoBadges(m, currentState);
+  const badges = [...new Set([...manualBadges, ...autoBadges])];
+  const badgesArea = document.getElementById('profileBadges');
+  badgesArea.innerHTML = badges.length
+    ? badges.map(id => BADGE_DEFS[id] ? `<div class="profile-badge">${badgeSvg(id, 60)}<span class="profile-badge-label">${escapeHtml(BADGE_DEFS[id].label)}</span></div>` : '').join('')
+    : '<div style="font-size:11px; color:var(--muted);">No badges yet</div>';
+
+  const indTotal = m.indWin + m.indLoss;
+  const indWinPct = indTotal > 0 ? Math.round((m.indWin / indTotal) * 100) : 0;
+  document.getElementById('profileStats').innerHTML = `
+    <div class="profile-stat-cell"><span class="lbl">Lifetime P/L</span><span class="val ${m.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(m.pl)}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Multi Record</span><span class="val">${m.wins}-${m.losses}-${m.voids}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Multi Win%</span><span class="val">${(d.winPct*100).toFixed(0)}%</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Avg Leg Price</span><span class="val">${d.avgLeg > 0 ? '@ ' + d.avgLeg.toFixed(2) : '—'}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Individual Bets</span><span class="val">${m.indWin}-${m.indLoss}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Individual Win%</span><span class="val">${indWinPct}%</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Legs Placed</span><span class="val">${m.legs}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></div>
+  `;
+  document.getElementById('profileModal').classList.add('open');
+}
+document.getElementById('profileCloseBtn').addEventListener('click', () => {
+  document.getElementById('profileModal').classList.remove('open');
+});
+document.getElementById('profileModal').addEventListener('click', (e) => {
+  if(e.target.id === 'profileModal') document.getElementById('profileModal').classList.remove('open');
+});
+
 function rankedMembers(members){
   const withDerived = members.map(m => ({ ...m, ...computeDerived(m) }));
   withDerived.sort((a,b) => b.dataScore - a.dataScore);
@@ -1320,7 +1522,7 @@ function render(state){
     const rank = i + 1;
     html += `<tr class="${rank===1?'rank-1':''}">
       <td>${rank}</td>
-      <td class="name">${escapeHtml(m.name)}</td>
+      <td class="name profile-link" data-profile-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}</td>
       <td>${m.dataScore.toFixed(2)}</td>
       <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
       <td>${m.wins}-${m.losses}-${m.voids}</td>
@@ -1331,6 +1533,9 @@ function render(state){
   });
   html += '</table>';
   document.getElementById('leaderboardArea').innerHTML = html;
+  document.getElementById('leaderboardArea').querySelectorAll('.profile-link').forEach(el => {
+    el.addEventListener('click', () => openProfile(el.dataset.profileName));
+  });
 
   const owedSorted = [...state.members].sort((a,b) => b.duesOwed - a.duesOwed);
   let owedHtml = '';
@@ -1393,7 +1598,35 @@ async function saveState(newState){
   });
 }
 
+function renderOnThisDay(data){
+  const area = document.getElementById('onThisDayArea');
+  if(!data || !data.found){
+    area.innerHTML = '<div class="empty">Nothing suitably outrageous found for today — check back tomorrow.</div>';
+    return;
+  }
+  area.innerHTML = `<div class="otd-year">${escapeHtml(String(data.year))}</div><div class="otd-text">${escapeHtml(data.text)}</div>`;
+}
+async function refreshOnThisDayIfNeeded(){
+  const todayKey = new Date().toDateString();
+  let cached = null;
+  try{ cached = JSON.parse(localStorage.getItem('otd_cache') || 'null'); }catch(e){}
+  if(cached && cached.cachedFor === todayKey){
+    renderOnThisDay(cached);
+    return;
+  }
+  try{
+    const res = await fetch('/.netlify/functions/on-this-day', { cache: 'no-store' });
+    const data = await res.json();
+    const toCache = { ...data, cachedFor: todayKey };
+    localStorage.setItem('otd_cache', JSON.stringify(toCache));
+    renderOnThisDay(toCache);
+  }catch(e){
+    document.getElementById('onThisDayArea').innerHTML = '<div class="empty">Could not load today\'s sporting fact.</div>';
+  }
+}
+
 async function refresh(){
+  refreshOnThisDayIfNeeded(); // cheap date check most of the time; only actually fetches once the day rolls over
   const statusBar = document.getElementById('statusBar');
   try{
     const controller = new AbortController();
