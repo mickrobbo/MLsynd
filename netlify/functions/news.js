@@ -14,6 +14,8 @@ const CATEGORY_FEEDS = {
   nrl: "https://www.smh.com.au/rss/sport.xml",
   nba: "https://www.espn.com/espn/rss/nba/news",
   racing: "https://news.google.com/rss/search?q=horse+racing+Australia&hl=en-AU&gl=AU&ceid=AU:en",
+  golf: "https://www.espn.com/espn/rss/golf/news", // single combined feed — ESPN doesn't split PGA vs LIV news the way it splits their scores/rankings
+  f1: "https://www.espn.com/espn/rss/f1/news",
 };
 
 // SMH's sport feed covers AFL/NRL/cricket/football/etc together — keep only
