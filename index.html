@@ -914,16 +914,49 @@ function initAuthGate(){
   document.getElementById('authSignOutBtn').addEventListener('click', authSignOut);
   document.getElementById('mainSignOutBtn').addEventListener('click', authSignOut);
   document.getElementById('editNameBtn').addEventListener('click', async () => {
+    // Once a month, to stop members repeatedly renaming themselves as a joke
+    try{
+      const lastChangeRes = await authedFetch(`/users/${currentUserUid}/lastNameChange.json`);
+      const lastChange = await lastChangeRes.json();
+      if(lastChange){
+        const daysSince = (Date.now() - lastChange) / (1000*60*60*24);
+        if(daysSince < 30){
+          const daysLeft = Math.ceil(30 - daysSince);
+          alert(`You can change your name again in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — once a month, to stop funny buggers.`);
+          return;
+        }
+      }
+    }catch(e){}
+
     const newName = prompt('Change your name to:', currentUserName || '');
     if(!newName || !newName.trim() || newName.trim() === currentUserName) return;
     const trimmed = newName.trim();
+    const oldName = currentUserName;
     try{
       await authedFetch(`/users/${currentUserUid}/name.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
       });
+      await authedFetch(`/users/${currentUserUid}/lastNameChange.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
+      });
       currentUserName = trimmed;
       renderAccountBar();
-      showToast('Updating past picks…');
+      showToast('Updating everywhere…');
+
+      // Also update the matching Board/Ledger roster entry (Board, Profile, badges
+      // all read from here — this used to be a completely separate name from the
+      // Tipping-only one above, which is why renaming looked like it "didn't work"
+      if(currentState && currentState.members){
+        const idx = currentState.members.findIndex(m => m.name === oldName);
+        if(idx !== -1){
+          await authedFetch(`/state/members/${idx}/name.json`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
+          });
+          currentState.members[idx].name = trimmed;
+          render(currentState);
+        }
+      }
+
       await renameOnAllMyPicks(trimmed);
       showToast('Name updated everywhere');
     }catch(e){
