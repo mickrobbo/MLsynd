@@ -191,7 +191,10 @@
   .multi-leg-block.result-void{ opacity:.65; }
   .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; font-size:13.5px; gap:8px; }
   .multi-leg-name{ color:var(--chalk); font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .sgm-badge{ display:inline-block; margin-top:6px; padding:3px 9px; border:1px solid var(--brass-dim); border-radius:20px; font-family:'IBM Plex Mono', monospace; font-size:9.5px; font-weight:700; letter-spacing:.3px; color:var(--brass); }
+  .sgm-badge{ display:inline-block; margin-top:6px; padding:3px 9px; border-radius:20px; font-family:'IBM Plex Mono', monospace; font-size:9.5px; font-weight:700; letter-spacing:.3px; }
+  .sgm-badge.win{ border:1px solid var(--win); color:var(--win); background:rgba(111,169,138,.12); }
+  .sgm-badge.loss{ border:1px solid var(--loss); color:var(--loss); background:rgba(193,96,74,.12); }
+  .sgm-badge.pending{ border:1px solid var(--brass-dim); color:var(--brass); }
   .multi-leg-name.loss{ color:#ff9478; }
   .multi-leg-odds{ font-family:'IBM Plex Mono', monospace; color:var(--muted); flex:0 0 auto; }
   .multi-leg-result{ font-size:19px; flex:0 0 auto; }
@@ -700,6 +703,17 @@
     <div class="profile-stat-grid" id="profileStats"></div>
   </div>
 </div>
+
+<div id="linkMemberModal" class="profile-modal">
+  <div class="profile-sheet">
+    <button type="button" class="profile-close" id="linkMemberCloseBtn">✕</button>
+    <div class="profile-header">
+      <h2>Which name on the Board is you?</h2>
+      <div style="font-size:11px; color:var(--muted); margin-top:6px;">Only asked once — remembered from here on.</div>
+    </div>
+    <div id="linkMemberList" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;"></div>
+  </div>
+</div>
 <script>
 window.addEventListener('error', (e) => {
   const bar = document.getElementById('statusBar');
@@ -913,6 +927,62 @@ function initAuthGate(){
 
   document.getElementById('authSignOutBtn').addEventListener('click', authSignOut);
   document.getElementById('mainSignOutBtn').addEventListener('click', authSignOut);
+  function pickMyMemberIndex(){
+    return new Promise(resolve => {
+      const modal = document.getElementById('linkMemberModal');
+      const list = document.getElementById('linkMemberList');
+      list.innerHTML = (currentState.members || []).map((m, i) =>
+        `<button type="button" class="link-member-option" data-idx="${i}" style="padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:9px; color:var(--chalk); text-align:left; font-size:14px; font-weight:600;">${escapeHtml(m.name)}</button>`
+      ).join('');
+      modal.classList.add('open');
+      let resolved = false;
+      const finish = (val) => {
+        if(resolved) return;
+        resolved = true;
+        modal.classList.remove('open');
+        resolve(val);
+      };
+      list.querySelectorAll('.link-member-option').forEach(btn => {
+        btn.addEventListener('click', () => finish(parseInt(btn.dataset.idx, 10)));
+      });
+      document.getElementById('linkMemberCloseBtn').onclick = () => finish(null);
+    });
+  }
+
+  // Finds which state.members[] entry belongs to the currently signed-in
+  // person. Name-matching alone is fragile — it silently fails the moment
+  // someone's Tipping profile name and Board name have already drifted
+  // apart (exactly what happened here) — so this prefers a persisted link
+  // first, and only falls back to matching/asking when that's not there yet.
+  async function resolveMyMemberIndex(oldName){
+    if(!currentState || !currentState.members) return null;
+
+    let idx = currentState.members.findIndex(m => m.linkedUid === currentUserUid);
+    if(idx !== -1) return idx;
+
+    idx = currentState.members.findIndex(m => m.name === oldName);
+    if(idx !== -1){
+      try{
+        await authedFetch(`/state/members/${idx}/linkedUid.json`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentUserUid)
+        });
+        currentState.members[idx].linkedUid = currentUserUid;
+      }catch(e){}
+      return idx;
+    }
+
+    idx = await pickMyMemberIndex();
+    if(idx !== null){
+      try{
+        await authedFetch(`/state/members/${idx}/linkedUid.json`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentUserUid)
+        });
+        currentState.members[idx].linkedUid = currentUserUid;
+      }catch(e){}
+    }
+    return idx;
+  }
+
   document.getElementById('editNameBtn').addEventListener('click', async () => {
     // Once a month, to stop members repeatedly renaming themselves as a joke
     try{
@@ -944,17 +1014,17 @@ function initAuthGate(){
       showToast('Updating everywhere…');
 
       // Also update the matching Board/Ledger roster entry (Board, Profile, badges
-      // all read from here — this used to be a completely separate name from the
-      // Tipping-only one above, which is why renaming looked like it "didn't work"
-      if(currentState && currentState.members){
-        const idx = currentState.members.findIndex(m => m.name === oldName);
-        if(idx !== -1){
-          await authedFetch(`/state/members/${idx}/name.json`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
-          });
-          currentState.members[idx].name = trimmed;
-          render(currentState);
-        }
+      // all read from here). Uses a persisted link rather than fragile name
+      // matching, which was the actual bug — your Tipping and Board names had
+      // already drifted apart from an earlier rename, so a simple name==name
+      // check found nothing and silently skipped the Board side.
+      const memberIdx = await resolveMyMemberIndex(oldName);
+      if(memberIdx !== null && memberIdx !== -1){
+        await authedFetch(`/state/members/${memberIdx}/name.json`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
+        });
+        currentState.members[memberIdx].name = trimmed;
+        render(currentState);
       }
 
       await renameOnAllMyPicks(trimmed);
@@ -1629,7 +1699,9 @@ function render(state){
           <span class="multi-leg-name${b.result === 'Loss' ? ' loss' : ''}">${escapeHtml(b.name || '')}</span>
           <span class="multi-leg-result">${icon}</span>
         </div>
-        ${b.sgm ? '<div class="sgm-badge">SGM Bonus Bet Received</div>' : ''}
+        ${b.sgm ? `<div class="sgm-badge ${b.sgmResult === 'Win' ? 'win' : (b.sgmResult === 'Loss' ? 'loss' : 'pending')}">
+          <span>${b.sgmResult === 'Win' ? '✅' : (b.sgmResult === 'Loss' ? '❌' : '➖')}</span> SGM Bonus Bet Received
+        </div>` : ''}
         ${roastHtml}
       </div>`;
     }).join('');
