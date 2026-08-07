@@ -628,6 +628,8 @@
           <option value="racing">Horse Racing</option>
           <option value="golf">Golf</option>
           <option value="f1">F1</option>
+          <option value="efl">EFL Championship</option>
+          <option value="motogp">MotoGP</option>
         </select>
       </div>
       <div id="newsArea">Loading…</div>
@@ -2945,7 +2947,7 @@ function timeAgo(dateStr){
 async function refreshNews(){
   const area = document.getElementById('newsArea');
   const category = document.getElementById('newsCategorySelect').value;
-  const NEWS_SOURCE_LABEL = { afl: 'AFL.com.au', nrl: 'Sydney Morning Herald', nba: 'ESPN', racing: 'Google News', golf: 'ESPN', f1: 'ESPN' };
+  const NEWS_SOURCE_LABEL = { afl: 'AFL.com.au', nrl: 'Sydney Morning Herald', nba: 'ESPN', racing: 'Google News', golf: 'ESPN', f1: 'ESPN', efl: 'Google News', motogp: 'Google News' };
   try{
     const res = await fetch(`/.netlify/functions/news?category=${encodeURIComponent(category)}`, { cache: 'no-store' });
     if(!res.ok) throw new Error('bad response');
