@@ -47,7 +47,17 @@ exports.handler = async function (event) {
       };
     }
 
-    const ev = events[0];
+    // Don't just trust events[0] — ESPN's ordering isn't reliably "current
+    // event first", and that matters more here than it would for a sport
+    // with a dense weekly schedule. Prefer whatever's actually in progress;
+    // otherwise fall back to the most recently completed one.
+    const inProgress = events.find(
+      (e) => e.competitions && e.competitions[0] && e.competitions[0].status && e.competitions[0].status.type && e.competitions[0].status.type.state === "in"
+    );
+    const mostRecentCompleted = [...events].reverse().find(
+      (e) => e.competitions && e.competitions[0] && e.competitions[0].status && e.competitions[0].status.type && e.competitions[0].status.type.completed
+    );
+    const ev = inProgress || mostRecentCompleted || events[0];
     const competitions = ev.competitions || [];
     const comp = competitions[0];
     const competitors = (comp && comp.competitors) || [];
