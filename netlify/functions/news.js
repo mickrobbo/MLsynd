@@ -16,6 +16,8 @@ const CATEGORY_FEEDS = {
   racing: "https://news.google.com/rss/search?q=horse+racing+Australia&hl=en-AU&gl=AU&ceid=AU:en",
   golf: "https://www.espn.com/espn/rss/golf/news", // single combined feed — ESPN doesn't split PGA vs LIV news the way it splits their scores/rankings
   f1: "https://www.espn.com/espn/rss/f1/news",
+  efl: "https://news.google.com/rss/search?q=EFL+Championship&hl=en-AU&gl=AU&ceid=AU:en", // no dedicated ESPN feed for this league specifically, and no confirmed official EFL RSS — Google News search is already proven reliable elsewhere in this file (racing)
+  motogp: "https://news.google.com/rss/search?q=MotoGP&hl=en-AU&gl=AU&ceid=AU:en", // ESPN doesn't cover MotoGP at all (confirmed earlier) and motogp.com's own RSS URL couldn't be confirmed working — same reasoning as efl above
 };
 
 // SMH's sport feed covers AFL/NRL/cricket/football/etc together — keep only
