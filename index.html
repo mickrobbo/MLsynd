@@ -1815,18 +1815,30 @@ async function refreshOnThisDayIfNeeded(){
   const todayKey = new Date().toDateString() + '|' + OTD_CACHE_VERSION;
   let cached = null;
   try{ cached = JSON.parse(localStorage.getItem('otd_cache') || 'null'); }catch(e){}
-  if(cached && cached.cachedFor === todayKey){
+  // Belt and suspenders: trust the date-string match normally, but also
+  // never trust anything older than 20 hours regardless of what the date
+  // comparison says — a genuine backstop so a stuck cache can't linger for
+  // weeks the way it did before, no matter what the root cause turns out to be.
+  const isFresh = cached && cached.cachedFor === todayKey && cached.fetchedAt && (Date.now() - cached.fetchedAt) < 20*60*60*1000;
+  if(isFresh){
     renderOnThisDay(cached);
     return;
   }
   try{
     const res = await fetch('/.netlify/functions/on-this-day', { cache: 'no-store' });
     const data = await res.json();
-    const toCache = { ...data, cachedFor: todayKey };
+    const toCache = { ...data, cachedFor: todayKey, fetchedAt: Date.now() };
     localStorage.setItem('otd_cache', JSON.stringify(toCache));
     renderOnThisDay(toCache);
   }catch(e){
-    document.getElementById('onThisDayArea').innerHTML = '<div class="empty">Could not load today\'s sporting fact.</div>';
+    // A network hiccup shouldn't discard a same-day cached fact that was
+    // still fresh, just too old to trust blindly — fall back to it rather
+    // than show an error if we have something reasonably recent.
+    if(cached && cached.cachedFor === todayKey){
+      renderOnThisDay(cached);
+    } else {
+      document.getElementById('onThisDayArea').innerHTML = '<div class="empty">Could not load today\'s sporting fact.</div>';
+    }
   }
 }
 
