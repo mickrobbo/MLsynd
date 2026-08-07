@@ -9,7 +9,7 @@ const SPORT_KEYWORDS = [
   "nrl", "rugby", "cricket", "tennis", "golf", "boxing", "wrestl",
   "athlete", "stadium", "medal", "marathon", "hockey", "baseball",
   "basketball", "nba", "nfl", "swimming", "grand prix", "formula",
-  "cyclist", "cycling", "sport", "tournament", " league", "coach",
+  "cyclist", "cycling", "sport", "tournament", "league", "coach",
   "referee", "umpire", "gymnast", "sprinter", "goalkeeper", "jockey",
 ];
 
@@ -21,13 +21,22 @@ const DRAMA_KEYWORDS = [
   "sent off", "invaded the pitch", "brutal", "chaos", "outrage",
 ];
 
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function hasWordStart(text, phrase) {
+  // left word-boundary only (not a full \b...\b match) so "sport" still
+  // correctly matches "sports"/"sporting", but stops matching mid-word
+  // occurrences like "tranSPORT" or "paSSPORT" — the actual bug found live.
+  return new RegExp(`\\b${escapeRegex(phrase)}`, "i").test(text);
+}
+
 function scoreEvent(text) {
-  const lower = text.toLowerCase();
-  const isSport = SPORT_KEYWORDS.some((k) => lower.includes(k));
+  const isSport = SPORT_KEYWORDS.some((k) => hasWordStart(text, k));
   if (!isSport) return -1;
   let score = 1;
   DRAMA_KEYWORDS.forEach((k) => {
-    if (lower.includes(k)) score += 2;
+    if (hasWordStart(text, k)) score += 2;
   });
   return score;
 }
