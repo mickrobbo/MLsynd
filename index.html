@@ -573,7 +573,7 @@
   </div>
 
   <div class="tab-panel" id="tab-afl">
-    <div class="subnav-row">
+    <div class="subnav-row" id="sportsMainSubnav">
       <button type="button" class="subnav-btn active" data-subview="scores"><span class="subnav-icon">🏆</span>Scores</button>
       <button type="button" class="subnav-btn" data-subview="racing"><span class="subnav-icon">🐎</span>Racing</button>
       <button type="button" class="subnav-btn" data-subview="news"><span class="subnav-icon">📰</span>News</button>
@@ -590,7 +590,9 @@
           <option value="mlb">MLB</option>
           <option value="nhl">NHL</option>
           <option value="epl">Soccer — EPL</option>
+          <option value="efl">Soccer — EFL Championship</option>
           <option value="f1">F1</option>
+          <option value="motogp">MotoGP</option>
           <option value="pga">PGA Tour</option>
           <option value="liv">LIV Golf</option>
         </select>
@@ -1061,6 +1063,22 @@ const BADGE_DEFS = {
       <line x1="9" y1="-5" x2="9" y2="5" stroke="#3a2e0f" stroke-width="1.5"/>
     </g>`
   },
+  'cale-hooker': {
+    label: 'Cale Hooker',
+    desc: 'The lowest score of all time',
+    icon: `<g transform="translate(70,70) scale(1,-1) translate(-70,-70)">
+      <path d="M55,45 L85,45 L85,55 C85,68 77,76 70,76 C63,76 55,68 55,55 Z" fill="none" stroke="#3a2e0f" stroke-width="3"/>
+      <path d="M55,48 C45,48 45,60 55,60" fill="none" stroke="#3a2e0f" stroke-width="2.5"/>
+      <path d="M85,48 C95,48 95,60 85,60" fill="none" stroke="#3a2e0f" stroke-width="2.5"/>
+      <line x1="70" y1="76" x2="70" y2="88" stroke="#3a2e0f" stroke-width="3"/>
+      <line x1="58" y1="88" x2="82" y2="88" stroke="#3a2e0f" stroke-width="3"/>
+    </g>`
+  },
+  'iykyk': {
+    label: 'IYKYK',
+    desc: "Finished last for the year — didn't do the homework",
+    icon: `<text x="70" y="80" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="24" font-weight="700" fill="#3a2e0f">IYKYK</text>`
+  },
   'win-streak': {
     label: 'On Fire',
     desc: '3+ consecutive weeks winning the group multi leg',
@@ -1112,11 +1130,54 @@ function badgeSvg(badgeId, size){
   </svg>`;
 }
 
+// Combines every archived past season (state.seasonArchive, written by the
+// Ledger's year-end reset before it zeroes anything) with the live current
+// season's in-progress numbers — so profile stats keep running year-on-year
+// across resets instead of vanishing along with the fresh season.
+function getLifetimeStats(name, state){
+  const totals = { pl:0, wins:0, losses:0, voids:0, indWin:0, indLoss:0, legs:0, oddsSum:0, oddsCount:0, seasonsPlayed:0 };
+  const archive = state.seasonArchive || [];
+  archive.forEach(season => {
+    const m = (season.members || []).find(mm => mm.name === name);
+    if(!m) return;
+    totals.pl += m.pl || 0;
+    totals.wins += m.wins || 0;
+    totals.losses += m.losses || 0;
+    totals.voids += m.voids || 0;
+    totals.indWin += m.indWin || 0;
+    totals.indLoss += m.indLoss || 0;
+    totals.legs += m.legs || 0;
+    totals.oddsSum += m.oddsSum || 0;
+    totals.oddsCount += m.oddsCount || 0;
+    totals.seasonsPlayed++;
+  });
+  const live = (state.members || []).find(mm => mm.name === name);
+  if(live){
+    totals.pl += live.pl || 0;
+    totals.wins += live.wins || 0;
+    totals.losses += live.losses || 0;
+    totals.voids += live.voids || 0;
+    totals.indWin += live.indWin || 0;
+    totals.indLoss += live.indLoss || 0;
+    totals.legs += live.legs || 0;
+    totals.oddsSum += live.oddsSum || 0;
+    totals.oddsCount += live.oddsCount || 0;
+  }
+  totals.winPct = (totals.wins + totals.losses) > 0 ? totals.wins / (totals.wins + totals.losses) : 0;
+  totals.avgLeg = totals.oddsCount > 0 ? totals.oddsSum / totals.oddsCount : 0;
+  totals.indWinPct = (totals.indWin + totals.indLoss) > 0 ? totals.indWin / (totals.indWin + totals.indLoss) : 0;
+  return totals;
+}
+
 function computeAutoBadges(member, state){
   const earned = [];
   const history = state.history || [];
   const name = member.name;
 
+  // Streak/attendance badges deliberately stay season-scoped — they read
+  // state.history, which is exactly what the year-end reset clears, so
+  // they correctly restart fresh each season rather than trying to detect
+  // a streak spanning across a reset boundary.
   let curWin = 0, bestWin = 0, curLoss = 0, bestLoss = 0, weeksPlayed = 0;
   history.forEach(week => {
     const entry = week.groupEntries && week.groupEntries[name];
@@ -1136,7 +1197,11 @@ function computeAutoBadges(member, state){
   if(bestWin >= 3) earned.push('win-streak');
   if(bestLoss >= 3) earned.push('ice-cold');
   if(history.length >= 3 && weeksPlayed === history.length) earned.push('iron-man');
-  if(member.pl >= 100) earned.push('century-club');
+
+  // Century Club is explicitly a lifetime milestone (see its desc), so it
+  // checks the merged lifetime total rather than the resettable season pl.
+  const lifetime = getLifetimeStats(name, state);
+  if(lifetime.pl >= 100) earned.push('century-club');
 
   const eligible = (state.members || []).filter(m => m.oddsCount >= 5);
   if(eligible.length > 0){
@@ -1180,16 +1245,15 @@ function openProfile(name){
     });
   });
 
-  const indTotal = m.indWin + m.indLoss;
-  const indWinPct = indTotal > 0 ? Math.round((m.indWin / indTotal) * 100) : 0;
+  const lifetime = getLifetimeStats(name, currentState);
   document.getElementById('profileStats').innerHTML = `
-    <div class="profile-stat-cell"><span class="lbl">Lifetime P/L</span><span class="val ${m.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(m.pl)}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Multi Record</span><span class="val">${m.wins}-${m.losses}-${m.voids}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Multi Win%</span><span class="val">${(d.winPct*100).toFixed(0)}%</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Avg Leg Price</span><span class="val">${d.avgLeg > 0 ? '@ ' + d.avgLeg.toFixed(2) : '—'}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Individual Bets</span><span class="val">${m.indWin}-${m.indLoss}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Individual Win%</span><span class="val">${indWinPct}%</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Legs Placed</span><span class="val">${m.legs}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Lifetime P/L</span><span class="val ${lifetime.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(lifetime.pl)}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Multi Record</span><span class="val">${lifetime.wins}-${lifetime.losses}-${lifetime.voids}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Multi Win%</span><span class="val">${(lifetime.winPct*100).toFixed(0)}%</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Avg Leg Price</span><span class="val">${lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—'}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Individual Bets</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Individual Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
+    <div class="profile-stat-cell"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></div>
     <div class="profile-stat-cell"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></div>
   `;
   document.getElementById('profileModal').classList.add('open');
@@ -1221,18 +1285,18 @@ function computeSeasonFinancials(state){
     });
   });
   const outlay = g.lottoOut + g.multiOut + indOut;
-  const ret = g.lottoRet + g.multiRet + indRet;
+  const ret = g.lottoRet + g.multiRet + indRet + (g.sgmWin || 0);
   const profitLoss = ret - (outlay + g.bonus);
   const duesCollected = state.members.reduce((s, m) => s + (m.duesCommitment - m.duesOwed), 0);
   const duesOwedTotal = state.members.reduce((s, m) => s + m.duesOwed, 0);
   const bank = duesCollected + profitLoss;
-  return { outlay, ret, profitLoss, bonusPot: g.bonus, duesCollected, duesOwedTotal, bank };
+  return { outlay, ret, profitLoss, bonusPot: g.bonus, sgmWin: g.sgmWin || 0, duesCollected, duesOwedTotal, bank };
 }
 
 function weekGroupPl(h){
   const g = h.group || {};
   const outlay = (g.lottoOut||0) + (g.multiOut||0) + (g.bonus||0);
-  const ret = (g.lottoRet||0) + (g.multiRet||0);
+  const ret = (g.lottoRet||0) + (g.multiRet||0) + (g.sgmWin||0);
   const indPl = Object.values(h.individualEntries || {}).reduce((s, e) => s + (e.pl || 0), 0);
   return ret - outlay + indPl;
 }
@@ -1713,13 +1777,15 @@ const SPORT_SOURCE_LABEL = {
   mlb: 'Live via ESPN',
   nhl: 'Live via ESPN',
   epl: 'Live via ESPN · Odds via PuntersEdge',
+  efl: 'Live via ESPN',
   f1: 'Season standings + podiums via Jolpica-F1',
+  motogp: 'Standings + podium via MotoGP.com',
   pga: 'Live via ESPN',
   liv: 'Live via ESPN'
 };
 
 let sportViewMode = 'scores';
-const LADDER_SUPPORTED_SPORTS = ['afl', 'nrl'];
+const LADDER_SUPPORTED_SPORTS = ['afl', 'nrl', 'efl'];
 
 const INDIVIDUAL_SPORTS = ['pga', 'liv']; // f1 gets its own dedicated championship view instead
 
@@ -1734,6 +1800,13 @@ async function refreshAfl(){
     toggleWrap.style.display = 'none';
     sportViewMode = 'scores';
     await renderF1Championship();
+    return;
+  }
+
+  if(sport === 'motogp'){
+    toggleWrap.style.display = 'none';
+    sportViewMode = 'scores';
+    await renderMotoGP();
     return;
   }
 
@@ -1878,17 +1951,39 @@ function renderAflGameCard(g, venue, timeStr, findOddsFor, league){
   </div>`;
 }
 
+let f1SubView = 'individual';
+let f1DataCache = null;
+
 async function renderF1Championship(){
   const area = document.getElementById('aflArea');
   area.innerHTML = '<div class="panel"><div class="empty">Loading…</div></div>';
   try{
-    const res = await fetch('/.netlify/functions/f1-championship', { cache: 'no-store' });
-    if(!res.ok) throw new Error('bad response');
-    const data = await res.json();
-    const standings = data.standings || [];
-    const podiums = data.podiums || [];
+    if(!f1DataCache){
+      const res = await fetch('/.netlify/functions/f1-championship', { cache: 'no-store' });
+      if(!res.ok) throw new Error('bad response');
+      f1DataCache = await res.json();
+    }
+    renderF1SubView();
+  }catch(e){
+    area.innerHTML = '<div class="panel"><div class="empty">Could not load the championship data.</div></div>';
+  }
+}
 
-    let html = `<div class="panel"><h2>Drivers' Championship${data.season ? ' — ' + escapeHtml(data.season) : ''}</h2>`;
+function renderF1SubView(){
+  const area = document.getElementById('aflArea');
+  const data = f1DataCache || {};
+  const standings = data.standings || [];
+  const teamStandings = data.teamStandings || [];
+  const podiums = data.podiums || [];
+
+  let html = `<div class="subnav-row" style="margin-bottom:12px;">
+    <button type="button" class="subnav-btn f1-sub-btn ${f1SubView === 'individual' ? 'active' : ''}" data-f1sub="individual">Individual</button>
+    <button type="button" class="subnav-btn f1-sub-btn ${f1SubView === 'team' ? 'active' : ''}" data-f1sub="team">Team</button>
+    <button type="button" class="subnav-btn f1-sub-btn ${f1SubView === 'podiums' ? 'active' : ''}" data-f1sub="podiums">Podiums</button>
+  </div>`;
+
+  if(f1SubView === 'individual'){
+    html += `<div class="panel"><h2>Drivers' Championship${data.season ? ' — ' + escapeHtml(data.season) : ''}</h2>`;
     if(standings.length === 0){
       html += '<div class="empty">No standings available right now.</div>';
     } else {
@@ -1899,7 +1994,19 @@ async function renderF1Championship(){
       html += '</tbody></table>';
     }
     html += '</div>';
-
+  } else if(f1SubView === 'team'){
+    html += `<div class="panel"><h2>Constructors' Championship${data.season ? ' — ' + escapeHtml(data.season) : ''}</h2>`;
+    if(teamStandings.length === 0){
+      html += '<div class="empty">No team standings available right now.</div>';
+    } else {
+      html += '<table class="ladder-table"><thead><tr><th>#</th><th>Team</th><th>Pts</th></tr></thead><tbody>';
+      teamStandings.forEach((t, i) => {
+        html += `<tr class="${i === 0 ? 'ladder-leader' : ''}"><td>${t.position}</td><td>${escapeHtml(t.name)}</td><td>${escapeHtml(t.points)}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+  } else {
     html += '<div class="panel"><h2>Podiums by Race</h2>';
     if(podiums.length === 0){
       html += '<div class="empty">No race results yet this season.</div>';
@@ -1918,10 +2025,60 @@ async function renderF1Championship(){
       });
     }
     html += '</div>';
+  }
+
+  area.innerHTML = html;
+  area.querySelectorAll('.f1-sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      f1SubView = btn.dataset.f1sub;
+      renderF1SubView();
+    });
+  });
+}
+
+let motoGpDataCache = null;
+async function renderMotoGP(){
+  const area = document.getElementById('aflArea');
+  area.innerHTML = '<div class="panel"><div class="empty">Loading…</div></div>';
+  try{
+    if(!motoGpDataCache){
+      const res = await fetch('/.netlify/functions/motogp', { cache: 'no-store' });
+      if(!res.ok) throw new Error('bad response');
+      motoGpDataCache = await res.json();
+    }
+    const data = motoGpDataCache;
+    const standings = data.standings || [];
+    const podium = data.podium || [];
+
+    let html = `<div class="panel"><h2>MotoGP Standings${data.season ? ' — ' + escapeHtml(String(data.season)) : ''}</h2>`;
+    if(standings.length === 0){
+      html += '<div class="empty">No standings available right now.</div>';
+    } else {
+      html += '<table class="ladder-table"><thead><tr><th>#</th><th>Rider</th><th>Team</th><th>Pts</th></tr></thead><tbody>';
+      standings.forEach((r, i) => {
+        html += `<tr class="${i === 0 ? 'ladder-leader' : ''}"><td>${r.position}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.team || '—')}</td><td>${escapeHtml(String(r.points))}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+
+    html += `<div class="panel"><h2>Podium${data.eventName ? ' — ' + escapeHtml(data.eventName) : ''}</h2>`;
+    if(!podium || podium.length === 0){
+      html += '<div class="empty">No race results yet this season.</div>';
+    } else {
+      const medals = ['🥇', '🥈', '🥉'];
+      podium.forEach(p => {
+        html += `<div style="display:flex; justify-content:space-between; font-size:13px; padding:5px 0; border-bottom:1px solid var(--line);">
+          <span>${medals[p.position - 1] || p.position}&nbsp; ${escapeHtml(p.name)}</span>
+          <span style="color:var(--muted);">${escapeHtml(p.team || '')}</span>
+        </div>`;
+      });
+    }
+    html += '</div>';
 
     area.innerHTML = html;
   }catch(e){
-    area.innerHTML = '<div class="panel"><div class="empty">Could not load the championship data.</div></div>';
+    area.innerHTML = '<div class="panel"><div class="empty">Could not load MotoGP data.</div></div>';
   }
 }
 
@@ -2002,10 +2159,10 @@ document.getElementById('sportSelect').addEventListener('change', () => {
 });
 
 // ---------- Sport tab sub-navigation (Scores / Racing / News) ----------
-document.querySelectorAll('#tab-afl .subnav-btn').forEach(btn => {
+document.querySelectorAll('#sportsMainSubnav .subnav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const view = btn.dataset.subview;
-    document.querySelectorAll('#tab-afl .subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('#sportsMainSubnav .subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.sports-subview').forEach(el => {
       el.style.display = el.id === `sportsSubview-${view}` ? 'block' : 'none';
     });
