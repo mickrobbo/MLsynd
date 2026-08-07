@@ -41,10 +41,29 @@ function scoreEvent(text) {
   return score;
 }
 
+function getAESTDateParts() {
+  // The server's default "today" is UTC, not AEST — up to 11 hours off from
+  // what the person actually means by "midnight". Using the IANA timezone
+  // (not a hardcoded UTC+10) so this stays correct through AEST/AEDT
+  // daylight saving transitions automatically.
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Sydney",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const month = parts.find((p) => p.type === "month").value;
+  const day = parts.find((p) => p.type === "day").value;
+  return { month, day };
+}
+
+const NO_CACHE_HEADERS = {
+  "Content-Type": "application/json",
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+};
+
 exports.handler = async function () {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+  const { month, day } = getAESTDateParts();
 
   try {
     const resp = await fetch(
@@ -53,7 +72,7 @@ exports.handler = async function () {
     );
 
     if (!resp.ok) {
-      return { statusCode: resp.status, body: JSON.stringify({ error: `Wikipedia returned ${resp.status}` }) };
+      return { statusCode: resp.status, headers: NO_CACHE_HEADERS, body: JSON.stringify({ error: `Wikipedia returned ${resp.status}` }) };
     }
 
     const data = await resp.json();
@@ -72,14 +91,14 @@ exports.handler = async function () {
     if (!best) {
       return {
         statusCode: 200,
-        headers: { "Content-Type": "application/json" },
+        headers: NO_CACHE_HEADERS,
         body: JSON.stringify({ found: false, date: `${month}/${day}` }),
       };
     }
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: NO_CACHE_HEADERS,
       body: JSON.stringify({
         found: true,
         date: `${month}/${day}`,
@@ -88,6 +107,6 @@ exports.handler = async function () {
       }),
     };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return { statusCode: 500, headers: NO_CACHE_HEADERS, body: JSON.stringify({ error: err.message }) };
   }
 };
