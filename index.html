@@ -590,6 +590,9 @@
           <option value="mlb">MLB</option>
           <option value="nhl">NHL</option>
           <option value="epl">Soccer — EPL</option>
+          <option value="f1">F1</option>
+          <option value="pga">PGA Tour</option>
+          <option value="liv">LIV Golf</option>
         </select>
         <div id="sportViewToggleWrap" class="row" style="display:none; gap:8px; margin-top:10px;">
           <button type="button" id="sportViewScores" class="small racing-day-btn active">Scores</button>
@@ -621,6 +624,8 @@
           <option value="nrl">NRL</option>
           <option value="nba">NBA</option>
           <option value="racing">Horse Racing</option>
+          <option value="golf">Golf</option>
+          <option value="f1">F1</option>
         </select>
       </div>
       <div id="newsArea">Loading…</div>
@@ -1707,11 +1712,16 @@ const SPORT_SOURCE_LABEL = {
   nba: 'Live via ESPN · Odds via PuntersEdge',
   mlb: 'Live via ESPN',
   nhl: 'Live via ESPN',
-  epl: 'Live via ESPN · Odds via PuntersEdge'
+  epl: 'Live via ESPN · Odds via PuntersEdge',
+  f1: 'Season standings + podiums via Jolpica-F1',
+  pga: 'Live via ESPN',
+  liv: 'Live via ESPN'
 };
 
 let sportViewMode = 'scores';
 const LADDER_SUPPORTED_SPORTS = ['afl', 'nrl'];
+
+const INDIVIDUAL_SPORTS = ['pga', 'liv']; // f1 gets its own dedicated championship view instead
 
 async function refreshAfl(){
   const area = document.getElementById('aflArea');
@@ -1719,6 +1729,21 @@ async function refreshAfl(){
   document.getElementById('sportSourceLabel').textContent = SPORT_SOURCE_LABEL[sport] || '';
 
   const toggleWrap = document.getElementById('sportViewToggleWrap');
+
+  if(sport === 'f1'){
+    toggleWrap.style.display = 'none';
+    sportViewMode = 'scores';
+    await renderF1Championship();
+    return;
+  }
+
+  if(INDIVIDUAL_SPORTS.includes(sport)){
+    toggleWrap.style.display = 'none';
+    sportViewMode = 'scores';
+    await renderIndividualSportLeaderboard(sport);
+    return;
+  }
+
   const ladderSupported = LADDER_SUPPORTED_SPORTS.includes(sport);
   toggleWrap.style.display = ladderSupported ? 'flex' : 'none';
   if(!ladderSupported) sportViewMode = 'scores';
@@ -1851,6 +1876,80 @@ function renderAflGameCard(g, venue, timeStr, findOddsFor, league){
     <div class="afl-teams"><span class="team-group">${teamLogoImg(g.ateam, 22, league)}<span class="team">${escapeHtml(g.ateam || '')}</span>${awayPriceHtml}</span><span class="score">${g.ascore ?? '-'}</span></div>
     <div class="afl-venue">${escapeHtml(venue || '')}</div>
   </div>`;
+}
+
+async function renderF1Championship(){
+  const area = document.getElementById('aflArea');
+  area.innerHTML = '<div class="panel"><div class="empty">Loading…</div></div>';
+  try{
+    const res = await fetch('/.netlify/functions/f1-championship', { cache: 'no-store' });
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const standings = data.standings || [];
+    const podiums = data.podiums || [];
+
+    let html = `<div class="panel"><h2>Drivers' Championship${data.season ? ' — ' + escapeHtml(data.season) : ''}</h2>`;
+    if(standings.length === 0){
+      html += '<div class="empty">No standings available right now.</div>';
+    } else {
+      html += '<table class="ladder-table"><thead><tr><th>#</th><th>Driver</th><th>Team</th><th>Pts</th></tr></thead><tbody>';
+      standings.forEach((d, i) => {
+        html += `<tr class="${i === 0 ? 'ladder-leader' : ''}"><td>${d.position}</td><td>${escapeHtml(d.name)}</td><td>${escapeHtml(d.constructor || '—')}</td><td>${escapeHtml(d.points)}</td></tr>`;
+      });
+      html += '</tbody></table>';
+    }
+    html += '</div>';
+
+    html += '<div class="panel"><h2>Podiums by Race</h2>';
+    if(podiums.length === 0){
+      html += '<div class="empty">No race results yet this season.</div>';
+    } else {
+      podiums.forEach(race => {
+        html += `<div class="multi-leg-block">
+          <div style="font-weight:700; color:var(--chalk); margin-bottom:6px;">${escapeHtml(race.raceName)}</div>`;
+        const medals = ['🥇', '🥈', '🥉'];
+        race.podium.forEach(p => {
+          html += `<div style="display:flex; justify-content:space-between; font-size:12.5px; padding:3px 0; color:var(--muted);">
+            <span>${medals[p.position - 1] || p.position}&nbsp; ${escapeHtml(p.name)}</span>
+            <span>${escapeHtml(p.constructor || '')}</span>
+          </div>`;
+        });
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
+    area.innerHTML = html;
+  }catch(e){
+    area.innerHTML = '<div class="panel"><div class="empty">Could not load the championship data.</div></div>';
+  }
+}
+
+async function renderIndividualSportLeaderboard(sport){
+  const area = document.getElementById('aflArea');
+  area.innerHTML = '<div class="panel"><div class="empty">Loading…</div></div>';
+  try{
+    const res = await fetch(`/.netlify/functions/espn-individual?sport=${encodeURIComponent(sport)}`, { cache: 'no-store' });
+    if(!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    const results = data.results || [];
+    if(results.length === 0){
+      area.innerHTML = '<div class="panel"><div class="empty">No leaderboard available right now.</div></div>';
+      return;
+    }
+    const heading = data.eventName
+      ? escapeHtml(data.eventName) + (data.sessionLabel ? ` — ${escapeHtml(data.sessionLabel)}` : '') + (!data.completed ? ' (in progress)' : '')
+      : 'Leaderboard';
+    let html = `<div class="panel"><h2>${heading}</h2><table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Score</th></tr></thead><tbody>`;
+    results.forEach((r, i) => {
+      const rowCls = i === 0 ? 'ladder-leader' : '';
+      html += `<tr class="${rowCls}"><td>${r.rank}</td><td>${escapeHtml(r.name)}</td><td>${r.score != null ? escapeHtml(String(r.score)) : '—'}</td></tr>`;
+    });
+    html += '</tbody></table></div>';
+    area.innerHTML = html;
+  }catch(e){
+    area.innerHTML = '<div class="panel"><div class="empty">Could not load the leaderboard.</div></div>';
+  }
 }
 
 async function renderSportLadder(sport){
@@ -2689,7 +2788,7 @@ function timeAgo(dateStr){
 async function refreshNews(){
   const area = document.getElementById('newsArea');
   const category = document.getElementById('newsCategorySelect').value;
-  const NEWS_SOURCE_LABEL = { afl: 'AFL.com.au', nrl: 'Sydney Morning Herald', nba: 'ESPN', racing: 'Google News' };
+  const NEWS_SOURCE_LABEL = { afl: 'AFL.com.au', nrl: 'Sydney Morning Herald', nba: 'ESPN', racing: 'Google News', golf: 'ESPN', f1: 'ESPN' };
   try{
     const res = await fetch(`/.netlify/functions/news?category=${encodeURIComponent(category)}`, { cache: 'no-store' });
     if(!res.ok) throw new Error('bad response');
