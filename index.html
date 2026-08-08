@@ -3197,21 +3197,36 @@ async function tippingMemberName(){
 }
 
 let commenceTimesSyncedThisSession = false;
-async function ensureCommenceTimesSynced(games){
+async function processInBatches(items, batchSize, worker){
+  const results = [];
+  for(let i = 0; i < items.length; i += batchSize){
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(worker));
+    results.push(...batchResults);
+  }
+  return results;
+}
+async function ensureCommenceTimesSynced(finishedGames){
   // The picks-read Firebase rule requires commence_time_ms to already exist
   // for a game before it'll allow reading that game's picks at all — but it
   // was only ever getting synced when someone happened to browse that round
   // while it was still upcoming. Any round nobody browsed in time never got
   // its games' commence times written, meaning the ladder's bulk read for
   // those games was silently denied and fell back to empty picks for
-  // EVERYONE — which is exactly what produces identical scores across the
-  // board, since everyone ends up scored on the same synthetic auto-tip
-  // data instead of their real picks. Once per session is enough — a past
-  // game's kickoff time is a fixed fact, it never needs re-syncing.
+  // EVERYONE. First attempt at this fix fired one giant Promise.all across
+  // every game at once (150-200+ simultaneous writes for a season this far
+  // in) — mobile browsers queue that rather than actually running it in
+  // parallel, which both made the tab slow AND meant some writes likely
+  // silently failed under the load, so the underlying bug wasn't actually
+  // fully fixed. Batched in groups of 15 instead — verified in isolation
+  // that this genuinely caps concurrency before shipping it again. Once per
+  // session is enough — a past game's kickoff time is a fixed fact, it
+  // never needs re-syncing. Scoped to just finishedGames (not the whole
+  // season fixture list) since that's all the ladder actually reads.
   if(commenceTimesSyncedThisSession) return;
   commenceTimesSyncedThisSession = true;
   try{
-    await Promise.all(games.map(g => syncGameMeta(g)));
+    await processInBatches(finishedGames, 15, g => syncGameMeta(g));
   }catch(e){}
 }
 
@@ -3224,7 +3239,7 @@ async function renderTippingLadder(games){
     return;
   }
 
-  await ensureCommenceTimesSynced(games);
+  await ensureCommenceTimesSynced(finishedGames);
 
   // Only fully-finished rounds get scored — a round still in progress
   // shouldn't half-count toward the Perfect Round bonus or auto-tip logic.
@@ -3331,7 +3346,18 @@ async function renderTippingLadder(games){
   const bottomScore = rows[rows.length - 1].points;
   const hasSpread = topScore !== bottomScore;
   currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.points === topScore).map(r => r.name)) : new Set();
-  let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
+
+  // Safety net: with several completed rounds and several tippers, everyone
+  // landing on the exact same non-zero score is a strong anomaly signal
+  // (real human tipping essentially never produces that), not a normal
+  // early-season tie. Surface it plainly rather than silently presenting
+  // what's likely still-wrong data as if it's fine.
+  let warningHtml = '';
+  if(rows.length >= 5 && !hasSpread && topScore > 0 && completeRounds.length >= 2){
+    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">⚠️ Every tipper has the exact same score across ${completeRounds.length} completed rounds — this usually means some picks aren't being read correctly rather than a genuine tie. Worth flagging if this doesn't resolve on the next refresh.</div>`;
+  }
+
+  let html = warningHtml + '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
     const isLeader = hasSpread && r.points === topScore;
     const isLoser = hasSpread && rows.length > 1 && r.points === bottomScore;
