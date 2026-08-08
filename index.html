@@ -3139,7 +3139,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
 }
 
 function normTeamName(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
-function fixVenueName(v){ return (v || '').replace(/docklands/i, 'Marvel Stadium').replace(/kardinia\s*park/i, 'GMHBA Stadium'); }
+function fixVenueName(v){ return (v || '').replace(/docklands/i, 'Marvel Stadium').replace(/kardinia\s*park/i, 'GMHBA Stadium').replace(/perth\s*stadium/i, 'Optus Stadium'); }
 
 const AFL_TEAM_LOGOS = {
   adelaide: ['adelaide', 'adelaidecrows', 'crows'],
