@@ -3279,14 +3279,29 @@ async function renderTippingLadder(games){
     Promise.all(finishedGames.map(async g => {
       try{
         const res = await authedFetch(`/tipping/picks/${g.id}.json`);
-        return { g, picks: (await res.json()) || {} };
+        if(!res.ok) return { g, picks: {}, readFailed: true, status: res.status };
+        return { g, picks: (await res.json()) || {}, readFailed: false };
       }catch(e){
-        return { g, picks: {} };
+        return { g, picks: {}, readFailed: true, status: 'exception: ' + e.message };
       }
     })),
     authedFetch('/tipping/joker.json').then(r => r.json()).catch(() => null)
   ]);
   const jokers = jokersRaw || {};
+
+  // DIAGNOSTIC: three theory-driven fixes haven't resolved this, so rather
+  // than guess a fourth time, surface exactly what's happening for real —
+  // how many of the reads actually failed outright (permission denied /
+  // network error, visible now instead of silently swallowed), and for the
+  // signed-in user specifically, how many of their own picks were found as
+  // real data vs fell back to auto-tip. This turns "I think X is happening"
+  // into an actual visible data point everyone can look at.
+  const failedReads = pickResults.filter(r => r.readFailed);
+  let myRealPicks = 0, myAutoTips = 0;
+  pickResults.forEach(({ g, picks }) => {
+    if(picks[currentUserUid]) myRealPicks++;
+    else myAutoTips++;
+  });
 
   // Known tippers = anyone who's picked at least one game this season —
   // there's no way to bulk-list every approved tipper client-side (that's
@@ -3373,7 +3388,13 @@ async function renderTippingLadder(games){
   // what's likely still-wrong data as if it's fine.
   let warningHtml = '';
   if(rows.length >= 5 && !hasSpread && topScore > 0 && completeRounds.length >= 2){
-    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">⚠️ Every tipper has the exact same score across ${completeRounds.length} completed rounds — this usually means some picks aren't being read correctly rather than a genuine tie. Retrying the sync automatically — should resolve on the next refresh.</div>`;
+    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">
+      ⚠️ Every tipper has the exact same score across ${completeRounds.length} completed rounds — this usually means some picks aren't being read correctly rather than a genuine tie.<br><br>
+      <b>Diagnostic — your account specifically:</b><br>
+      Failed reads: ${failedReads.length} / ${pickResults.length} games (${failedReads.length > 0 ? 'status: ' + escapeHtml(String(failedReads[0].status)) : 'none — reads are succeeding'})<br>
+      Your picks found as real data: ${myRealPicks} / ${pickResults.length}<br>
+      Your picks falling back to auto-tip: ${myAutoTips} / ${pickResults.length}
+    </div>`;
     // Self-healing: don't let a failed sync attempt stay "done" forever for
     // this session — force the next refresh to actually retry it, rather
     // than requiring a full page reload to recover.
