@@ -2003,19 +2003,26 @@ function render(state){
   // Personal "you owe" callout — silent-only matching (linkedUid, then
   // exact name), never prompts. If neither matches confidently, the panel
   // just stays hidden and the shared list below still works fine for
-  // everyone regardless.
-  const myDuesPanel = document.getElementById('myDuesPanel');
-  if(myDuesPanel){
-    const myMember = state.members.find(m => m.linkedUid === currentUserUid) ||
-                      state.members.find(m => m.name === currentUserName);
-    if(myMember){
-      myDuesPanel.style.display = '';
-      const myOwed = Math.round(myMember.duesOwed);
-      document.getElementById('myDuesVal').textContent = '$' + myOwed;
-      document.getElementById('myDuesVal').style.color = myOwed > 0 ? 'var(--loss)' : 'var(--win)';
-    } else {
-      myDuesPanel.style.display = 'none';
+  // everyone regardless. Wrapped defensively - this is new code sitting in
+  // the middle of the main render cascade, so an unexpected error here
+  // must never be able to take down everything rendered after it.
+  try{
+    const myDuesPanel = document.getElementById('myDuesPanel');
+    if(myDuesPanel){
+      const myMember = state.members.find(m => m.linkedUid === currentUserUid) ||
+                        state.members.find(m => m.name === currentUserName);
+      if(myMember){
+        myDuesPanel.style.display = '';
+        const myOwed = Math.round(myMember.duesOwed || 0);
+        document.getElementById('myDuesVal').textContent = '$' + myOwed;
+        document.getElementById('myDuesVal').style.color = myOwed > 0 ? 'var(--loss)' : 'var(--win)';
+      } else {
+        myDuesPanel.style.display = 'none';
+      }
     }
+  }catch(e){
+    const panel = document.getElementById('myDuesPanel');
+    if(panel) panel.style.display = 'none';
   }
 
   const memberCount = state.members.length;
