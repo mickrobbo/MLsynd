@@ -291,17 +291,19 @@
   .tip-locked-row .tip-pick-label{ font-family:'IBM Plex Mono', monospace; color:var(--muted); }
   .tip-locked-row.correct .tip-pick-label{ color:var(--win); }
   .tip-locked-row.incorrect .tip-pick-label{ color:var(--loss); }
-  #tipSaveAllBtn{ width:100%; font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
+  .tip-action-row{ display:flex; gap:10px; }
+  .tip-action-row #tipSaveAllBtn, .tip-action-row .tip-joker-btn{ flex:1; width:auto; }
+  #tipSaveAllBtn{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
   #tipSaveAllBtn:disabled{ opacity:.5; cursor:default; }
   .tip-joker-btn{
-    width:100%; font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700;
-    text-transform:uppercase; padding:11px 16px; border-radius:8px; border:1px solid var(--brass);
-    background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.2);
-    color:#151007; cursor:pointer; margin-top:10px;
+    font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1px; font-weight:700;
+    text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass);
+    background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25);
+    color:#151007; cursor:pointer;
   }
   .tip-joker-btn.active-joker{
-    border-color:#9B6FD1; background:linear-gradient(165deg, #C79EF0, #9B6FD1 60%);
-    box-shadow:0 4px 14px rgba(155,111,209,.35); color:#1a0f28;
+    border-color:#B8722E; background:linear-gradient(165deg, #E8A15C, #B8722E 60%);
+    box-shadow:0 4px 14px rgba(184,114,46,.35); color:#2b1706;
   }
   .tip-joker-btn:disabled{ opacity:.5; cursor:default; }
 
@@ -2694,51 +2696,41 @@ async function setMyJoker(auth, round){
 }
 
 function renderJokerPanel(games, currentRound, auth){
-  const slot = document.getElementById('tippingJokerSlot');
-  if(!slot) return;
+  const btnSlot = document.getElementById('tippingJokerBtnSlot');
+  const statusSlot = document.getElementById('tippingJokerStatusSlot');
+  if(!btnSlot || !statusSlot) return;
   if(myJokerRound === undefined){
-    slot.innerHTML = '<div class="hint" style="margin-top:10px;">Loading Joker status…</div>';
+    statusSlot.innerHTML = '<div class="hint" style="margin-top:10px;">Loading Joker status…</div>';
     return;
   }
   const jokerLocked = myJokerRound != null && roundHasStarted(games, myJokerRound);
   const viewingRoundStarted = roundHasStarted(games, currentRound);
   const isThisRoundMyJoker = myJokerRound === currentRound;
+  const canToggleHere = !jokerLocked && !viewingRoundStarted;
 
   let statusHtml;
   if(myJokerRound == null){
     statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0;">🃏 No Joker round chosen yet.</div>`;
   } else if(jokerLocked){
-    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#C79EF0;">🃏 Joker Round: <b>Round ${myJokerRound}</b> — locked in.</div>`;
+    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#E8A15C;">🃏 Joker Round: <b>Round ${myJokerRound}</b> — locked in.</div>`;
   } else {
-    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#C79EF0;">🃏 Joker Round: <b>Round ${myJokerRound}</b> — can still change.</div>`;
+    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#E8A15C;">🃏 Joker Round: <b>Round ${myJokerRound}</b> — can still change.</div>`;
   }
+  statusSlot.innerHTML = statusHtml;
 
-  let btnHtml = '';
-  if(jokerLocked){
-    // fully locked in, nothing more to do
-  } else if(viewingRoundStarted){
-    btnHtml = `<div class="hint" style="margin-top:8px; opacity:.7;">This round has already started, so it can't be picked as your Joker now.</div>`;
-  } else if(isThisRoundMyJoker){
-    btnHtml = `<button type="button" class="tip-joker-btn active-joker" id="jokerClearBtn">🃏 Round ${currentRound} is your Joker — tap to remove</button>`;
-  } else {
-    btnHtml = `<button type="button" class="tip-joker-btn" id="jokerSetBtn">🃏 Make Round ${currentRound} my Joker Round</button>`;
-  }
+  btnSlot.innerHTML = `<button type="button" class="tip-joker-btn${isThisRoundMyJoker ? ' active-joker' : ''}" id="jokerToggleBtn"${canToggleHere ? '' : ' disabled'}>🃏 Joker</button>`;
 
-  slot.innerHTML = statusHtml + btnHtml;
-
-  const setBtn = document.getElementById('jokerSetBtn');
-  if(setBtn) setBtn.addEventListener('click', async () => {
-    setBtn.disabled = true;
-    await setMyJoker(auth, currentRound);
+  const toggleBtn = document.getElementById('jokerToggleBtn');
+  if(toggleBtn) toggleBtn.addEventListener('click', async () => {
+    toggleBtn.disabled = true;
+    if(isThisRoundMyJoker){
+      await setMyJoker(auth, null);
+      showToast('Joker round cleared');
+    } else {
+      await setMyJoker(auth, currentRound);
+      showToast(`Round ${currentRound} set as your Joker`);
+    }
     renderJokerPanel(games, currentRound, auth);
-    showToast(`Round ${currentRound} set as your Joker`);
-  });
-  const clearBtn = document.getElementById('jokerClearBtn');
-  if(clearBtn) clearBtn.addEventListener('click', async () => {
-    clearBtn.disabled = true;
-    await setMyJoker(auth, null);
-    renderJokerPanel(games, currentRound, auth);
-    showToast('Joker round cleared');
   });
 }
 
@@ -2916,8 +2908,11 @@ async function renderTippingRound(games, currentRound){
   });
   if(anyUnlocked){
     const saveButtonHtml = `<div class="panel">
-      <button type="button" id="tipSaveAllBtn">Save all picks</button>
-      <div id="tippingJokerSlot"></div>
+      <div class="tip-action-row">
+        <button type="button" id="tipSaveAllBtn">Save all picks</button>
+        <div id="tippingJokerBtnSlot"></div>
+      </div>
+      <div id="tippingJokerStatusSlot"></div>
       <div class="status-msg" id="tipSaveAllStatus" style="margin-top:8px;"></div>
     </div>`;
     gamesArea.innerHTML = saveButtonHtml + html;
