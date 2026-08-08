@@ -726,6 +726,22 @@
     <div style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;">Fixtures via Squiggle · Odds via PuntersEdge</div>
   </div>
 
+  <div class="tab-panel" id="tab-diag">
+    <div class="panel">
+      <h2>🔧 Diagnostics</h2>
+      <div class="hint">Admin only. Not shown to anyone else — this tab doesn't even exist for other accounts.</div>
+    </div>
+    <div class="panel">
+      <button type="button" id="runHealthCheckBtn">🩺 Run Full System Check</button>
+      <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data, tipping reads, config, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
+      <div id="healthCheckResults" style="margin-top:10px;"></div>
+      <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
+    </div>
+    <div class="panel">
+      <div id="diagTabArea">Loading…</div>
+    </div>
+  </div>
+
   <div class="status-bar" id="statusBar">Loading…</div>
 
   <div class="account-bar">
@@ -743,6 +759,7 @@
   <button class="tab-btn" data-tab="slips"><span class="icon">📎</span>Slips</button>
   <button class="tab-btn" data-tab="afl"><span class="icon">🏆</span>Sport</button>
   <button class="tab-btn" data-tab="tipping"><span class="icon">🏉</span>Tipping</button>
+  <button class="tab-btn" data-tab="diag" id="diagTabBtn" style="display:none;"><span class="icon">🔧</span>Diag</button>
 </nav>
 
 <div id="imgModal" class="img-modal">
@@ -757,12 +774,7 @@
       <div class="profile-badges" id="profileBadges"></div>
       <div class="badge-info-bubble" id="badgeInfoBubble" style="display:none;"></div>
     </div>
-    <div id="profileTabRow" class="subnav-row" style="display:none; margin-top:12px;">
-      <button type="button" class="subnav-btn active" id="profileTabStats">Stats</button>
-      <button type="button" class="subnav-btn" id="profileTabDiag">🔧 Diagnostics</button>
-    </div>
     <div class="profile-stat-grid" id="profileStats"></div>
-    <div id="profileDiagArea" style="display:none;"></div>
   </div>
 </div>
 
@@ -985,6 +997,10 @@ async function checkApprovalAndProceed(){
       currentUserUid = auth.uid;
       currentUserEmail = auth.email || '';
       renderAccountBar();
+      if(currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
+        const diagBtn = document.getElementById('diagTabBtn');
+        if(diagBtn) diagBtn.style.display = '';
+      }
       if(!appStarted){
         appStarted = true;
         applyRoleTabRestrictions();
@@ -1496,40 +1512,6 @@ function openProfile(name){
     <div class="profile-stat-cell"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></div>
   `;
   document.getElementById('profileModal').classList.add('open');
-
-  // Diagnostics tab — admin only. Not gated to "your own profile" anymore:
-  // the diagnostic data is always about the signed-in admin's own account
-  // regardless of whose profile happens to be open, so requiring an exact
-  // name/linkedUid match to YOUR OWN board entry just added a silent
-  // failure point — if that match ever came up short (names drifting
-  // between Board and Tipping is a known, recurring thing in this app),
-  // the tab would vanish even on your own profile with no indication why.
-  const isAdminViewer = !!(currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-  const tabRow = document.getElementById('profileTabRow');
-  const statsEl = document.getElementById('profileStats');
-  const diagEl = document.getElementById('profileDiagArea');
-  const tabStats = document.getElementById('profileTabStats');
-  const tabDiag = document.getElementById('profileTabDiag');
-  if(isAdminViewer){
-    tabRow.style.display = 'flex';
-    tabStats.classList.add('active');
-    tabDiag.classList.remove('active');
-    statsEl.style.display = '';
-    diagEl.style.display = 'none';
-    tabStats.onclick = () => {
-      tabStats.classList.add('active'); tabDiag.classList.remove('active');
-      statsEl.style.display = ''; diagEl.style.display = 'none';
-    };
-    tabDiag.onclick = () => {
-      tabDiag.classList.add('active'); tabStats.classList.remove('active');
-      statsEl.style.display = 'none'; diagEl.style.display = '';
-      renderProfileDiagnostics();
-    };
-  } else {
-    tabRow.style.display = 'none';
-    statsEl.style.display = '';
-    diagEl.style.display = 'none';
-  }
 }
 document.getElementById('profileCloseBtn').addEventListener('click', () => {
   document.getElementById('profileModal').classList.remove('open');
@@ -2155,12 +2137,40 @@ function setActiveTab(tab){
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
 });
+document.getElementById('diagTabBtn').addEventListener('click', renderDiagTab);
+document.getElementById('runHealthCheckBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('runHealthCheckBtn');
+  const copyBtn = document.getElementById('copyHealthReportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  document.getElementById('healthCheckResults').innerHTML = '<div class="empty">Running checks…</div>';
+  try{
+    const results = await runFullHealthCheck();
+    renderHealthCheckResults(results);
+    copyBtn.style.display = '';
+  }catch(e){
+    document.getElementById('healthCheckResults').innerHTML = `<div class="empty">Check itself failed: ${escapeHtml(e.message)}</div>`;
+  }
+  btn.disabled = false;
+  btn.textContent = '🩺 Run Full System Check';
+});
+document.getElementById('copyHealthReportBtn').addEventListener('click', async () => {
+  const copyBtn = document.getElementById('copyHealthReportBtn');
+  try{
+    await navigator.clipboard.writeText(window.__lastHealthReport || '');
+    copyBtn.textContent = '✅ Copied';
+    setTimeout(() => { copyBtn.textContent = '📋 Copy Report'; }, 2000);
+  }catch(e){
+    copyBtn.textContent = 'Could not copy — select text manually';
+  }
+});
 // restore whichever tab was open before a refresh (e.g. pull-to-refresh), instead of
 // always landing back on Balance
 try{
   const savedTab = sessionStorage.getItem('mlsynd-active-tab');
   if(savedTab && document.getElementById(`tab-${savedTab}`)){
     setActiveTab(savedTab);
+    if(savedTab === 'diag') renderDiagTab();
   }
 }catch(e){}
 
@@ -3555,8 +3565,139 @@ async function computeDashboardHealthChecks(){
   };
 }
 
-function renderProfileDiagnostics(){
-  const area = document.getElementById('profileDiagArea');
+// Full system check — a genuine set of pass/warn/fail tests, not just a
+// re-display of what's already on screen. Designed to be copy-pasted
+// straight back for a real bug report rather than needing to describe
+// what's wrong in your own words.
+async function runFullHealthCheck(){
+  const results = [];
+  const check = (label, status, detail) => results.push({ label, status, detail });
+
+  // 1. Firebase connectivity + latency
+  try{
+    const t0 = performance.now();
+    const res = await authedFetch('/state/members.json');
+    const ms = Math.round(performance.now() - t0);
+    if(res.ok){
+      check('Firebase read', ms < 2000 ? 'pass' : 'warn', `Responded in ${ms}ms${ms >= 2000 ? ' — slower than expected' : ''}`);
+    } else {
+      check('Firebase read', 'fail', `HTTP ${res.status}`);
+    }
+  }catch(e){
+    check('Firebase read', 'fail', e.message);
+  }
+
+  // 2. Auth session health
+  try{
+    const auth = await getValidAuth();
+    if(!auth){
+      check('Auth session', 'fail', 'getValidAuth() returned nothing — not actually signed in');
+    } else {
+      const minsLeft = Math.round((auth.expiresAt - Date.now()) / 60000);
+      check('Auth session', minsLeft > 2 ? 'pass' : 'warn', `Token valid for ~${minsLeft} more minute(s)`);
+    }
+  }catch(e){
+    check('Auth session', 'fail', e.message);
+  }
+
+  // 3. Roster data integrity
+  if(!currentState || !currentState.members){
+    check('Roster data', 'fail', 'currentState.members is missing entirely');
+  } else {
+    const members = currentState.members;
+    const noLink = members.filter(m => !m.linkedUid).map(m => m.name);
+    const badDues = members.filter(m => isNaN(m.duesOwed) || isNaN(m.duesCommitment)).map(m => m.name);
+    const nameCounts = {};
+    members.forEach(m => { nameCounts[m.name] = (nameCounts[m.name] || 0) + 1; });
+    const duplicateNames = Object.keys(nameCounts).filter(n => nameCounts[n] > 1);
+    const badBadges = members.filter(m => m.badges !== undefined && !Array.isArray(m.badges)).map(m => m.name);
+
+    check('Members linked to Tipping', noLink.length === 0 ? 'pass' : 'warn', noLink.length === 0 ? `All ${members.length} linked` : `Not linked: ${noLink.join(', ')}`);
+    check('Dues fields valid', badDues.length === 0 ? 'pass' : 'fail', badDues.length === 0 ? 'No NaN/missing values' : `Broken dues on: ${badDues.join(', ')}`);
+    check('Duplicate roster names', duplicateNames.length === 0 ? 'pass' : 'fail', duplicateNames.length === 0 ? 'None found' : `Duplicates: ${duplicateNames.join(', ')} — this will merge their stats/badges together`);
+    check('Badge data shape', badBadges.length === 0 ? 'pass' : 'fail', badBadges.length === 0 ? 'All valid arrays' : `Broken badges field on: ${badBadges.join(', ')}`);
+  }
+
+  // 4. Season history integrity
+  if(currentState && Array.isArray(currentState.history)){
+    const broken = currentState.history.filter(h => !h.group || !h.groupEntries).length;
+    check('Season history entries', broken === 0 ? 'pass' : 'warn', `${currentState.history.length} week(s) saved, ${broken} missing expected fields`);
+  }
+
+  // 5. Config sanity
+  try{
+    const res = await authedFetch('/tipping/config/firstRound.json');
+    const val = await res.json();
+    check('Season-start-round config', val != null ? 'pass' : 'warn', val != null ? `Set to Round ${val}` : 'Not set — defaults to Round 1, confirm this is intended');
+  }catch(e){
+    check('Season-start-round config', 'fail', e.message);
+  }
+
+  // 6. Tipping read health (reuses the existing diagnostic)
+  const tip = await computeTippingDiagnostics();
+  if(!tip.ok){
+    check('Tipping picks reads', 'fail', tip.error);
+  } else {
+    check('Tipping picks reads', tip.failedReadCount === 0 ? 'pass' : 'fail', `${tip.failedReadCount} / ${tip.totalGames} failed reads`);
+    check('Your own picks recorded', 'pass', `${tip.myRealPicks} / ${tip.totalGames} games (from Round ${tip.seasonStartRound} onward)`);
+  }
+
+  // 7. Joker data sanity — any nominated round that doesn't actually exist
+  // in this season's fixture list (would silently never score)
+  try{
+    const games = await fetchTippingFixtures();
+    const validRounds = new Set(games.map(g => g.round));
+    const jokerRes = await authedFetch('/tipping/joker.json');
+    const jokers = await jokerRes.json() || {};
+    const invalid = Object.entries(jokers).filter(([uid, j]) => j && j.round != null && !validRounds.has(j.round));
+    check('Joker round validity', invalid.length === 0 ? 'pass' : 'warn', invalid.length === 0 ? `${Object.keys(jokers).length} joker pick(s), all valid rounds` : `${invalid.length} pointing at a round that doesn't exist this season`);
+  }catch(e){
+    check('Joker round validity', 'fail', e.message);
+  }
+
+  // 8. Browser storage health
+  try{
+    localStorage.setItem('__healthcheck', '1');
+    localStorage.removeItem('__healthcheck');
+    sessionStorage.setItem('__healthcheck', '1');
+    sessionStorage.removeItem('__healthcheck');
+    check('Browser storage', 'pass', 'localStorage/sessionStorage read+write OK');
+  }catch(e){
+    check('Browser storage', 'fail', 'Blocked — likely private browsing mode: ' + e.message);
+  }
+
+  return results;
+}
+
+function renderHealthCheckResults(results){
+  const area = document.getElementById('healthCheckResults');
+  if(!area) return;
+  const icon = { pass: '✅', warn: '⚠️', fail: '❌' };
+  const color = { pass: 'var(--win)', warn: '#E8A15C', fail: 'var(--loss)' };
+  const failCount = results.filter(r => r.status === 'fail').length;
+  const warnCount = results.filter(r => r.status === 'warn').length;
+  const summary = failCount > 0
+    ? `${icon.fail} ${failCount} failure(s), ${warnCount} warning(s) — worth relaying back`
+    : warnCount > 0
+      ? `${icon.warn} All clear except ${warnCount} warning(s)`
+      : `${icon.pass} Everything checks out`;
+  let html = `<div style="font-weight:700; margin-bottom:10px; color:${failCount > 0 ? 'var(--loss)' : (warnCount > 0 ? '#E8A15C' : 'var(--win)')};">${summary}</div>`;
+  results.forEach(r => {
+    html += `<div style="padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
+      <span style="color:${color[r.status]};">${icon[r.status]}</span> <b>${escapeHtml(r.label)}</b><br>
+      <span style="color:var(--muted); margin-left:20px;">${escapeHtml(r.detail)}</span>
+    </div>`;
+  });
+  area.innerHTML = html;
+
+  const timestamp = new Date().toLocaleString();
+  const reportText = `MLSynd Health Check — ${timestamp}\n${summary}\n\n` +
+    results.map(r => `[${r.status.toUpperCase()}] ${r.label}: ${r.detail}`).join('\n');
+  window.__lastHealthReport = reportText;
+}
+
+function renderDiagTab(){
+  const area = document.getElementById('diagTabArea');
   if(!area) return;
   area.innerHTML = '<div class="empty">Loading…</div>';
   Promise.all([computeTippingDiagnostics(), computeDashboardHealthChecks()]).then(([tip, health]) => {
