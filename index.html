@@ -3298,9 +3298,16 @@ async function renderTippingLadder(games){
   // into an actual visible data point everyone can look at.
   const failedReads = pickResults.filter(r => r.readFailed);
   let myRealPicks = 0, myAutoTips = 0;
+  const myRealRounds = [];
+  const myAutoTipSample = [];
   pickResults.forEach(({ g, picks }) => {
-    if(picks[currentUserUid]) myRealPicks++;
-    else myAutoTips++;
+    if(picks[currentUserUid]){
+      myRealPicks++;
+      myRealRounds.push(g.round);
+    } else {
+      myAutoTips++;
+      if(myAutoTipSample.length < 3) myAutoTipSample.push({ round: g.round, id: g.id, allUids: Object.keys(picks) });
+    }
   });
 
   // Known tippers = anyone who's picked at least one game this season —
@@ -3388,12 +3395,17 @@ async function renderTippingLadder(games){
   // what's likely still-wrong data as if it's fine.
   let warningHtml = '';
   if(rows.length >= 5 && !hasSpread && topScore > 0 && completeRounds.length >= 2){
+    const roundsFoundStr = myRealRounds.length > 0 ? myRealRounds.join(', ') : 'none';
+    const sampleStr = myAutoTipSample.map(s => `Round ${s.round} (game ${s.id}): picks object contains ${s.allUids.length === 0 ? 'NO uids at all (empty)' : s.allUids.length + ' uid(s): ' + s.allUids.map(u => escapeHtml(u.slice(0,8)+'…')).join(', ')}`).join('<br>');
     warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">
       ⚠️ Every tipper has the exact same score across ${completeRounds.length} completed rounds — this usually means some picks aren't being read correctly rather than a genuine tie.<br><br>
       <b>Diagnostic — your account specifically:</b><br>
       Failed reads: ${failedReads.length} / ${pickResults.length} games (${failedReads.length > 0 ? 'status: ' + escapeHtml(String(failedReads[0].status)) : 'none — reads are succeeding'})<br>
-      Your picks found as real data: ${myRealPicks} / ${pickResults.length}<br>
-      Your picks falling back to auto-tip: ${myAutoTips} / ${pickResults.length}
+      Your picks found as real data: ${myRealPicks} / ${pickResults.length} — from round(s): ${escapeHtml(roundsFoundStr)}<br>
+      Your picks falling back to auto-tip: ${myAutoTips} / ${pickResults.length}<br>
+      Your uid this session: ${escapeHtml((currentUserUid || '').slice(0,8))}…<br><br>
+      <b>Sample of 3 auto-tipped games — what's actually stored there:</b><br>
+      ${sampleStr}
     </div>`;
     // Self-healing: don't let a failed sync attempt stay "done" forever for
     // this session — force the next refresh to actually retry it, rather
