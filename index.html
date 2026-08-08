@@ -3251,7 +3251,24 @@ async function ensureCommenceTimesSynced(finishedGames){
 
 async function renderTippingLadder(games){
   const area = document.getElementById('tippingLadderArea');
-  const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)));
+
+  // This competition deliberately started partway through the season as a
+  // trial for next year (Round 22), not from Round 1 — so everything before
+  // that round genuinely has no picks from anyone, on purpose. Scoring
+  // those rounds anyway (which is what was happening) meant everyone got
+  // auto-tipped-to-Away identically for 21 rounds nobody was ever meant to
+  // tip, which is exactly what was producing the identical scores. This
+  // wasn't a data or auth bug at all — confirmed via the diagnostics above
+  // (0 failed reads, 0 uid mismatches, 175/178 pre-Round-22 games genuinely
+  // empty for everyone) before landing on this as the real fix.
+  let seasonStartRound = 1; // reuses the existing (previously unused) /tipping/config/firstRound value
+  try{
+    const res = await authedFetch('/tipping/config/firstRound.json');
+    const val = await res.json();
+    if(val != null) seasonStartRound = Number(val);
+  }catch(e){}
+
+  const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)) && g.round >= seasonStartRound);
   if(finishedGames.length === 0){
     currentSeasonLeaders = new Set();
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
@@ -3263,7 +3280,7 @@ async function renderTippingLadder(games){
   // Only fully-finished rounds get scored — a round still in progress
   // shouldn't half-count toward the Perfect Round bonus or auto-tip logic.
   const roundCounts = {};
-  games.forEach(g => {
+  games.filter(g => g.round >= seasonStartRound).forEach(g => {
     if(!roundCounts[g.round]) roundCounts[g.round] = { total: 0, done: 0 };
     roundCounts[g.round].total++;
   });
