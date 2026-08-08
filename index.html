@@ -1497,16 +1497,20 @@ function openProfile(name){
   `;
   document.getElementById('profileModal').classList.add('open');
 
-  // Diagnostics tab — only for the admin's own profile, not visible when
-  // viewing anyone else's, and not visible to non-admins at all.
+  // Diagnostics tab — admin only. Not gated to "your own profile" anymore:
+  // the diagnostic data is always about the signed-in admin's own account
+  // regardless of whose profile happens to be open, so requiring an exact
+  // name/linkedUid match to YOUR OWN board entry just added a silent
+  // failure point — if that match ever came up short (names drifting
+  // between Board and Tipping is a known, recurring thing in this app),
+  // the tab would vanish even on your own profile with no indication why.
   const isAdminViewer = !!(currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-  const isOwnProfile = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
   const tabRow = document.getElementById('profileTabRow');
   const statsEl = document.getElementById('profileStats');
   const diagEl = document.getElementById('profileDiagArea');
   const tabStats = document.getElementById('profileTabStats');
   const tabDiag = document.getElementById('profileTabDiag');
-  if(isAdminViewer && isOwnProfile){
+  if(isAdminViewer){
     tabRow.style.display = 'flex';
     tabStats.classList.add('active');
     tabDiag.classList.remove('active');
