@@ -3300,14 +3300,26 @@ async function renderTippingLadder(games){
   let myRealPicks = 0, myAutoTips = 0;
   const myRealRounds = [];
   const myAutoTipSample = [];
+  // Round 0 is pre-season trial matches, not real competition rounds —
+  // nobody tips those, so they being empty is expected and not a bug.
+  // Excluding them from both the count and the sample so we're actually
+  // looking at real season data, not accidentally re-proving something
+  // that was never in question.
+  const realSeasonResults = pickResults.filter(({ g }) => g.round >= 1);
+  let realSeasonTotallyEmpty = 0, realSeasonHasSomeoneElsesPicks = 0;
   pickResults.forEach(({ g, picks }) => {
     if(picks[currentUserUid]){
       myRealPicks++;
       myRealRounds.push(g.round);
     } else {
       myAutoTips++;
-      if(myAutoTipSample.length < 3) myAutoTipSample.push({ round: g.round, id: g.id, allUids: Object.keys(picks) });
+      if(g.round >= 1 && myAutoTipSample.length < 5) myAutoTipSample.push({ round: g.round, id: g.id, allUids: Object.keys(picks) });
     }
+  });
+  realSeasonResults.forEach(({ picks }) => {
+    const uidCount = Object.keys(picks).length;
+    if(uidCount === 0) realSeasonTotallyEmpty++;
+    else if(!picks[currentUserUid]) realSeasonHasSomeoneElsesPicks++;
   });
 
   // Known tippers = anyone who's picked at least one game this season —
@@ -3402,10 +3414,12 @@ async function renderTippingLadder(games){
       <b>Diagnostic — your account specifically:</b><br>
       Failed reads: ${failedReads.length} / ${pickResults.length} games (${failedReads.length > 0 ? 'status: ' + escapeHtml(String(failedReads[0].status)) : 'none — reads are succeeding'})<br>
       Your picks found as real data: ${myRealPicks} / ${pickResults.length} — from round(s): ${escapeHtml(roundsFoundStr)}<br>
-      Your picks falling back to auto-tip: ${myAutoTips} / ${pickResults.length}<br>
       Your uid this session: ${escapeHtml((currentUserUid || '').slice(0,8))}…<br><br>
-      <b>Sample of 3 auto-tipped games — what's actually stored there:</b><br>
-      ${sampleStr}
+      <b>Real season rounds only (Round 1+, excluding pre-season Round 0) — ${realSeasonResults.length} games:</b><br>
+      Completely empty (nobody's picks at all): ${realSeasonTotallyEmpty}<br>
+      Has SOMEONE's picks, just not yours: ${realSeasonHasSomeoneElsesPicks}<br><br>
+      <b>Sample of up to 5 auto-tipped Round 1+ games — what's actually stored there:</b><br>
+      ${sampleStr || '(none found in Round 1+ — every sampled game was pre-season)'}
     </div>`;
     // Self-healing: don't let a failed sync attempt stay "done" forever for
     // this session — force the next refresh to actually retry it, rather
