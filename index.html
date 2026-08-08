@@ -2157,6 +2157,8 @@ function renderF1SubView(){
 }
 
 let motoGpDataCache = null;
+let motoGpSubView = 'standings';
+
 async function renderMotoGP(){
   const area = document.getElementById('aflArea');
   area.innerHTML = '<div class="panel"><div class="empty">Loading…</div></div>';
@@ -2166,11 +2168,25 @@ async function renderMotoGP(){
       if(!res.ok) throw new Error('bad response');
       motoGpDataCache = await res.json();
     }
-    const data = motoGpDataCache;
-    const standings = data.standings || [];
-    const podium = data.podium || [];
+    renderMotoGpSubView();
+  }catch(e){
+    area.innerHTML = '<div class="panel"><div class="empty">Could not load MotoGP data.</div></div>';
+  }
+}
 
-    let html = `<div class="panel"><h2>MotoGP Standings${data.season ? ' — ' + escapeHtml(String(data.season)) : ''}</h2>`;
+function renderMotoGpSubView(){
+  const area = document.getElementById('aflArea');
+  const data = motoGpDataCache || {};
+  const standings = data.standings || [];
+  const podium = data.podium || [];
+
+  let html = `<div class="subnav-row" style="margin-bottom:12px;">
+    <button type="button" class="subnav-btn motogp-sub-btn ${motoGpSubView === 'standings' ? 'active' : ''}" data-motogpsub="standings">Standings</button>
+    <button type="button" class="subnav-btn motogp-sub-btn ${motoGpSubView === 'podium' ? 'active' : ''}" data-motogpsub="podium">Podium</button>
+  </div>`;
+
+  if(motoGpSubView === 'standings'){
+    html += `<div class="panel"><h2>MotoGP Standings${data.season ? ' — ' + escapeHtml(String(data.season)) : ''}</h2>`;
     if(standings.length === 0){
       html += '<div class="empty">No standings available right now.</div>';
     } else {
@@ -2181,7 +2197,7 @@ async function renderMotoGP(){
       html += '</tbody></table>';
     }
     html += '</div>';
-
+  } else {
     html += `<div class="panel"><h2>Podium${data.eventName ? ' — ' + escapeHtml(data.eventName) : ''}</h2>`;
     if(!podium || podium.length === 0){
       html += '<div class="empty">No race results yet this season.</div>';
@@ -2195,11 +2211,15 @@ async function renderMotoGP(){
       });
     }
     html += '</div>';
-
-    area.innerHTML = html;
-  }catch(e){
-    area.innerHTML = '<div class="panel"><div class="empty">Could not load MotoGP data.</div></div>';
   }
+
+  area.innerHTML = html;
+  area.querySelectorAll('.motogp-sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      motoGpSubView = btn.dataset.motogpsub;
+      renderMotoGpSubView();
+    });
+  });
 }
 
 async function renderIndividualSportLeaderboard(sport){
