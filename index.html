@@ -3277,18 +3277,23 @@ async function renderTippingLadder(games){
 
   await ensureCommenceTimesSynced(finishedGames);
 
-  // Only fully-finished rounds get scored — a round still in progress
-  // shouldn't half-count toward the Perfect Round bonus or auto-tip logic.
+  // Rounds now score live, game by game, as each result comes in — no need
+  // to wait for the whole round to finish. The one thing that genuinely
+  // can't be known until a round is fully done is the Perfect Round bonus
+  // (can't confirm "every game correct" until every game has been played),
+  // so that's withheld for in-progress rounds and applied once the round
+  // actually completes. Everything else (base points, Joker doubling) is
+  // safe to show live off whatever's finished so far.
   const roundCounts = {};
   games.filter(g => g.round >= seasonStartRound).forEach(g => {
     if(!roundCounts[g.round]) roundCounts[g.round] = { total: 0, done: 0 };
     roundCounts[g.round].total++;
   });
   finishedGames.forEach(g => { roundCounts[g.round].done++; });
-  const completeRounds = Object.keys(roundCounts).filter(r => roundCounts[r].done === roundCounts[r].total).map(Number);
-  if(completeRounds.length === 0){
+  const involvedRounds = Object.keys(roundCounts).filter(r => roundCounts[r].done > 0).map(Number);
+  if(involvedRounds.length === 0){
     currentSeasonLeaders = new Set();
-    area.innerHTML = '<div class="empty">Ladder will build up once a full round is completed.</div>';
+    area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
 
@@ -3358,9 +3363,13 @@ async function renderTippingLadder(games){
     tally[uid] = { name: knownTippers[uid], points: 0, marginDiff: 0, marginCount: 0 };
   });
 
-  completeRounds.forEach(round => {
+  involvedRounds.forEach(round => {
+    const isRoundComplete = roundCounts[round].done === roundCounts[round].total;
+    // Live/partial rounds only ever look at games that have actually
+    // finished — an unstarted or in-progress game isn't scored at all yet,
+    // not auto-tipped, since the round genuinely isn't over.
     const roundGames = finishedGames.filter(g => g.round === round);
-    const bonusEligible = roundGames.length >= 8; // "minimum 8-9 games" per the comp rules
+    const bonusEligible = isRoundComplete && roundCounts[round].total >= 8; // "minimum 8-9 games" per the comp rules — only ever awardable once the round is actually done
     const roundPicks = picksByRound[round] || {};
     const marginGame = roundGames.find(g => isFirstGameOfRound(roundGames, g));
 
@@ -3382,10 +3391,10 @@ async function renderTippingLadder(games){
       });
 
       let roundPoints = correct;
-      // Perfect Round bonus: every game correct, round big enough to qualify,
-      // and no auto-tips (a missed tip disqualifies that round's bonus even
-      // if every real pick they made was right).
-      if(bonusEligible && !anyAutoTip && correct === roundGames.length) roundPoints += 2;
+      // Perfect Round bonus: every game correct, round big enough to
+      // qualify, no auto-tips, AND the round has to actually be finished —
+      // can't confirm "perfect" off a partial result.
+      if(bonusEligible && !anyAutoTip && correct === roundCounts[round].total) roundPoints += 2;
 
       const isJokerRound = jokers[uid] && jokers[uid].round === round;
       if(isJokerRound) roundPoints *= 2;
@@ -3423,11 +3432,11 @@ async function renderTippingLadder(games){
   // early-season tie. Surface it plainly rather than silently presenting
   // what's likely still-wrong data as if it's fine.
   let warningHtml = '';
-  if(rows.length >= 5 && !hasSpread && topScore > 0 && completeRounds.length >= 2){
+  if(rows.length >= 5 && !hasSpread && topScore > 0 && involvedRounds.length >= 2){
     const roundsFoundStr = myRealRounds.length > 0 ? myRealRounds.join(', ') : 'none';
     const sampleStr = myAutoTipSample.map(s => `Round ${s.round} (game ${s.id}): picks object contains ${s.allUids.length === 0 ? 'NO uids at all (empty)' : s.allUids.length + ' uid(s): ' + s.allUids.map(u => escapeHtml(u.slice(0,8)+'…')).join(', ')}`).join('<br>');
     warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">
-      ⚠️ Every tipper has the exact same score across ${completeRounds.length} completed rounds — this usually means some picks aren't being read correctly rather than a genuine tie.<br><br>
+      ⚠️ Every tipper has the exact same score across ${involvedRounds.length} round(s) — this usually means some picks aren't being read correctly rather than a genuine tie.<br><br>
       <b>Diagnostic — your account specifically:</b><br>
       Failed reads: ${failedReads.length} / ${pickResults.length} games (${failedReads.length > 0 ? 'status: ' + escapeHtml(String(failedReads[0].status)) : 'none — reads are succeeding'})<br>
       Your picks found as real data: ${myRealPicks} / ${pickResults.length} — from round(s): ${escapeHtml(roundsFoundStr)}<br>
@@ -3444,7 +3453,13 @@ async function renderTippingLadder(games){
     commenceTimesSyncedThisSession = false;
   }
 
-  let html = warningHtml + '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
+  const maxRound = Math.max(...involvedRounds);
+  const currentRoundLive = !(roundCounts[maxRound].done === roundCounts[maxRound].total);
+  const liveNoteHtml = currentRoundLive
+    ? `<div class="hint" style="margin-bottom:10px;">Round ${maxRound} is still in progress (${roundCounts[maxRound].done}/${roundCounts[maxRound].total} games done) — points update live as each result comes in. The Perfect Round bonus can't be awarded until the round's fully finished.</div>`
+    : '';
+
+  let html = warningHtml + liveNoteHtml + '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
     const isLeader = hasSpread && r.points === topScore;
     const isLoser = hasSpread && rows.length > 1 && r.points === bottomScore;
