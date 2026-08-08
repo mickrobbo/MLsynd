@@ -277,6 +277,11 @@
     display:flex; flex-direction:column; align-items:center; gap:4px;
   }
   .tip-pick-btn.selected{ border-color:var(--brass); background:rgba(199,162,72,.15); color:var(--brass); }
+  .tip-draw-btn{
+    display:block; width:100%; margin-top:6px; background:transparent; border:1px dashed var(--line); color:var(--muted);
+    font-family:'IBM Plex Sans', sans-serif; font-size:11px; font-weight:600; padding:6px; border-radius:6px; cursor:pointer; text-align:center;
+  }
+  .tip-draw-btn.selected{ border-style:solid; border-color:var(--brass); background:rgba(199,162,72,.15); color:var(--brass); }
   .tip-margin-field{ margin-top:8px; }
   .tip-margin-field label{ font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-family:'IBM Plex Mono', monospace; display:block; margin-bottom:4px; }
   .tip-margin-field input{ width:100%; background:#060A08; color:var(--chalk); border:1px solid var(--line); border-radius:5px; font-family:'IBM Plex Mono', monospace; font-size:13px; padding:8px; }
@@ -456,6 +461,10 @@
     text-transform:uppercase; font-size:11px; color:var(--brass-light);
   }
   .profile-stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .rules-body{ font-size:13px; line-height:1.55; color:var(--chalk); }
+  .rules-body h3{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); margin:18px 0 6px; }
+  .rules-body h3:first-child{ margin-top:0; }
+  .rules-body p{ margin:0 0 8px; color:var(--chalk); opacity:.92; }
   .profile-stat-cell{ background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
   .profile-stat-cell .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
   .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:700; color:var(--chalk); }
@@ -644,15 +653,18 @@
   </div>
 
   <div class="tab-panel" id="tab-tipping">
+    <div style="text-align:center; font-family:'Barlow Condensed', sans-serif; font-size:13px; font-weight:700; letter-spacing:1px; color:var(--brass-light); text-transform:uppercase; margin-bottom:10px;">MLSynd Footy Tipping Comp</div>
     <div class="panel" id="tippingPrizePotPanel" style="text-align:center;">
       <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">Prize Pot</div>
       <div id="tippingPrizePotVal" style="font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:700; color:var(--brass);">$0</div>
+      <div style="font-size:9.5px; color:var(--muted); margin-top:6px;">1st 70% · 2nd 20% · 3rd 10% — paid out manually, not tracked here</div>
     </div>
 
     <div class="subnav-row">
       <button type="button" class="subnav-btn active" data-tipsub="games"><span class="subnav-icon">🏉</span>Games</button>
       <button type="button" class="subnav-btn" data-tipsub="ladder"><span class="subnav-icon">🏆</span>Ladder</button>
     </div>
+    <button type="button" id="tippingRulesBtn" class="btn-secondary" style="width:100%; margin-bottom:12px;">📜 Competition Rules</button>
 
     <div id="tippingSubview-games" class="tipping-subview">
       <div class="panel">
@@ -660,6 +672,7 @@
         <div id="tippingRoundSelectWrap" style="margin-bottom:10px;"></div>
         <div class="hint" id="tippingHint" style="font-size:11px; color:var(--muted);"></div>
       </div>
+      <div class="panel" id="tippingJokerPanel"></div>
       <div id="tippingGamesArea">Loading…</div>
     </div>
 
@@ -716,6 +729,39 @@
       <div style="font-size:11px; color:var(--muted); margin-top:6px;">Only asked once — remembered from here on.</div>
     </div>
     <div id="linkMemberList" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;"></div>
+  </div>
+</div>
+
+<div id="tippingRulesModal" class="profile-modal">
+  <div class="profile-sheet" style="text-align:left;">
+    <button type="button" class="profile-close" id="tippingRulesCloseBtn">✕</button>
+    <div class="profile-header" style="text-align:center;">
+      <h2 style="font-size:20px;">MLSynd Footy Tipping Competition Rules</h2>
+    </div>
+    <div class="rules-body">
+      <h3>1. Season</h3>
+      <p>The competition covers the full AFL home-and-away season plus the entire finals series (including the Grand Final).</p>
+
+      <h3>2. Scoring</h3>
+      <p>1 point is awarded for each correct tip.</p>
+      <p>Draws only score a point if the tipper specifically selected "Draw". Otherwise the tip scores zero.</p>
+      <p>A Perfect Round bonus of +2 points is awarded when a tipper correctly tips every game in a round (minimum 8–9 games). This applies in both the home-and-away season and finals.</p>
+      <p>If tips are not submitted, the Away team is automatically allocated. No Perfect Round bonus can be earned on auto-tips.</p>
+
+      <h3>3. Joker Round</h3>
+      <p>Each tipper may select one round only during the entire season (home-and-away or finals) as their Joker Round.</p>
+      <p>In the chosen Joker Round, all points scored that round (including any Perfect Round bonus) are doubled.</p>
+      <p>The Joker Round can be nominated at any time, provided it is before the first bounce of the first game of that round.</p>
+      <p>Once the round has started, the Joker cannot be changed.</p>
+      <p>If a tipper does not nominate a Joker Round, they simply forfeit the double-points opportunity.</p>
+
+      <h3>4. Deadlines</h3>
+      <p>Tips must be locked before the first bounce of the first game of each round. No changes are allowed after a match has started.</p>
+
+      <h3>5. Prize Distribution</h3>
+      <p>The total prize pool is split as follows:</p>
+      <p>1st place – 70%<br>2nd place – 20%<br>3rd place – 10%</p>
+    </div>
   </div>
 </div>
 <script>
@@ -952,6 +998,16 @@ function initAuthGate(){
       document.getElementById('linkMemberCloseBtn').onclick = () => finish(null);
     });
   }
+
+  document.getElementById('tippingRulesBtn').addEventListener('click', () => {
+    document.getElementById('tippingRulesModal').classList.add('open');
+  });
+  document.getElementById('tippingRulesCloseBtn').addEventListener('click', () => {
+    document.getElementById('tippingRulesModal').classList.remove('open');
+  });
+  document.getElementById('tippingRulesModal').addEventListener('click', (e) => {
+    if(e.target.id === 'tippingRulesModal') document.getElementById('tippingRulesModal').classList.remove('open');
+  });
 
   // Finds which state.members[] entry belongs to the currently signed-in
   // person. Name-matching alone is fragile — it silently fails the moment
@@ -2588,6 +2644,79 @@ function isFirstGameOfRound(games, g){
   return !!earliest && earliest.id === g.id;
 }
 
+let myJokerRound = undefined; // undefined = not loaded yet, null = loaded but none chosen
+
+function roundHasStarted(games, round){
+  const roundGames = games.filter(x => x.round === round);
+  const earliest = roundGames.reduce((min, x) => (!min || new Date(x.date) < new Date(min.date)) ? x : min, null);
+  return earliest ? gameHasStarted(earliest) : false;
+}
+
+async function loadMyJoker(auth){
+  try{
+    const res = await authedFetch(`/tipping/joker/${auth.uid}.json`);
+    const data = await res.json();
+    myJokerRound = (data && data.round != null) ? data.round : null;
+  }catch(e){
+    myJokerRound = null;
+  }
+}
+
+async function setMyJoker(auth, round){
+  await authedFetch(`/tipping/joker/${auth.uid}.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ round })
+  });
+  myJokerRound = round;
+}
+
+function renderJokerPanel(games, currentRound, auth){
+  const panel = document.getElementById('tippingJokerPanel');
+  if(!panel) return;
+  if(myJokerRound === undefined){
+    panel.innerHTML = '<div class="empty">Loading Joker status…</div>';
+    return;
+  }
+  const jokerLocked = myJokerRound != null && roundHasStarted(games, myJokerRound);
+  const viewingRoundStarted = roundHasStarted(games, currentRound);
+
+  let statusHtml;
+  if(myJokerRound == null){
+    statusHtml = `<div class="hint" style="margin-bottom:8px;">🃏 No Joker round chosen yet — one round this season doubles all your points, including any Perfect Round bonus.</div>`;
+  } else if(jokerLocked){
+    statusHtml = `<div class="hint" style="margin-bottom:8px; color:var(--brass);">🃏 Your Joker Round is <b>Round ${myJokerRound}</b> — locked in, that round has started.</div>`;
+  } else {
+    statusHtml = `<div class="hint" style="margin-bottom:8px; color:var(--brass);">🃏 Your Joker Round is currently <b>Round ${myJokerRound}</b> — you can still move it to a different round until Round ${myJokerRound} starts.</div>`;
+  }
+
+  let actionHtml = '';
+  if(jokerLocked){
+    actionHtml = ''; // fully locked in, nothing more to do
+  } else if(viewingRoundStarted){
+    actionHtml = `<div class="hint" style="opacity:.7;">This round has already started, so it can't be picked as your Joker now.</div>`;
+  } else if(myJokerRound === currentRound){
+    actionHtml = `<button type="button" class="btn-secondary" id="jokerClearBtn">Remove Round ${currentRound} as my Joker</button>`;
+  } else {
+    actionHtml = `<button type="button" class="btn-secondary" id="jokerSetBtn">🃏 Make Round ${currentRound} my Joker Round</button>`;
+  }
+
+  panel.innerHTML = statusHtml + actionHtml;
+
+  const setBtn = document.getElementById('jokerSetBtn');
+  if(setBtn) setBtn.addEventListener('click', async () => {
+    setBtn.disabled = true;
+    await setMyJoker(auth, currentRound);
+    renderJokerPanel(games, currentRound, auth);
+    showToast(`Round ${currentRound} set as your Joker`);
+  });
+  const clearBtn = document.getElementById('jokerClearBtn');
+  if(clearBtn) clearBtn.addEventListener('click', async () => {
+    clearBtn.disabled = true;
+    await setMyJoker(auth, null);
+    renderJokerPanel(games, currentRound, auth);
+    showToast('Joker round cleared');
+  });
+}
+
 function gameHasStarted(g){
   // g.date is local AEST/AEDT "YYYY-MM-DD HH:MM:SS" from Squiggle
   if(!g.date) return false;
@@ -2708,6 +2837,9 @@ async function renderTippingRound(games, currentRound){
   const roundGames = games.filter(g => g.round === round);
   const auth = await getValidAuth();
   const oddsEvents = await fetchTippingOdds();
+
+  if(myJokerRound === undefined) await loadMyJoker(auth);
+  renderJokerPanel(games, round, auth);
 
   if(roundGames.length === 0){
     gamesArea.innerHTML = '<div class="panel"><div class="empty">No games this round.</div></div>';
@@ -2850,7 +2982,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
           <div class="tip-countdown-lock">🔒</div>
           <div class="tip-countdown-clock" id="tipCountdown-${g.id}">--:--</div>
           <div class="tip-countdown-label">until <b>first bounce</b> — everyone's picks stay hidden until then, no peeking, even for admins</div>
-          <div class="tip-your-pick-confirm">✅ Your pick is locked in — <b>${escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}</div>
+          <div class="tip-your-pick-confirm">✅ Your pick is locked in — <b>${myPick === 'draw' ? 'Draw' : escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}</div>
         </div>
       `;
       const clockEl = document.getElementById(`tipCountdown-${g.id}`);
@@ -2871,17 +3003,18 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
 
     // STATE 1 (no saved pick yet) or STATE 1b (saved, but more than 24h out — still editable, just a quiet confirm line, no lock/clock)
     body.innerHTML = `
-      ${myPick ? `<div class="tip-your-pick-confirm" style="margin-bottom:10px; padding-top:0; border-top:none;">✅ Your pick is saved — <b>${escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}. Locks 24h before first bounce.</div>` : ''}
+      ${myPick ? `<div class="tip-your-pick-confirm" style="margin-bottom:10px; padding-top:0; border-top:none;">✅ Your pick is saved — <b>${myPick === 'draw' ? 'Draw' : escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}. Locks 24h before first bounce.</div>` : ''}
       <div class="tip-pick-row">
         <button type="button" class="tip-pick-btn${myPick === 'home' ? ' selected' : ''}" data-pick="home">${teamLogoImg(g.hteam, 32)}${escapeHtml(g.hteam)}${homeOddsHtml}</button>
         <button type="button" class="tip-pick-btn${myPick === 'away' ? ' selected' : ''}" data-pick="away">${teamLogoImg(g.ateam, 32)}${escapeHtml(g.ateam)}${awayOddsHtml}</button>
       </div>
+      <button type="button" class="tip-draw-btn${myPick === 'draw' ? ' selected' : ''}" data-pick="draw">Tip a Draw</button>
       ${isMarginGame ? `<div class="tip-margin-field"><label>Margin (tiebreaker only)</label><input type="number" min="0" class="tip-margin-input" value="${myMargin}"></div>` : ''}
     `;
-    body.querySelectorAll('.tip-pick-btn').forEach(btn => {
+    body.querySelectorAll('.tip-pick-btn, .tip-draw-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         tippingDraft[g.id].pick = btn.dataset.pick;
-        body.querySelectorAll('.tip-pick-btn').forEach(b => b.classList.toggle('selected', b === btn));
+        body.querySelectorAll('.tip-pick-btn, .tip-draw-btn').forEach(b => b.classList.toggle('selected', b === btn));
         const statusEl = document.getElementById('tipSaveAllStatus');
         if(statusEl) statusEl.textContent = '';
       });
@@ -2905,12 +3038,16 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
         return;
       }
       const complete = g.complete >= 100 && g.winner;
+      const isDrawResult = g.complete >= 100 && g.hscore != null && g.ascore != null && Number(g.hscore) === Number(g.ascore);
       const homePicks = entries.filter(p => p.pick === 'home').sort((a,b) => (a.name||'').localeCompare(b.name||''));
       const awayPicks = entries.filter(p => p.pick === 'away').sort((a,b) => (a.name||'').localeCompare(b.name||''));
-      const homeCls = complete ? (normTeamName(g.hteam) === normTeamName(g.winner) ? 'leader' : 'trail') : '';
-      const awayCls = complete ? (normTeamName(g.ateam) === normTeamName(g.winner) ? 'leader' : 'trail') : '';
+      const drawPicks = entries.filter(p => p.pick === 'draw').sort((a,b) => (a.name||'').localeCompare(b.name||''));
+      const homeCls = complete ? (isDrawResult ? 'trail' : (normTeamName(g.hteam) === normTeamName(g.winner) ? 'leader' : 'trail')) : '';
+      const awayCls = complete ? (isDrawResult ? 'trail' : (normTeamName(g.ateam) === normTeamName(g.winner) ? 'leader' : 'trail')) : '';
+      const drawCls = complete ? (isDrawResult ? 'leader' : 'trail') : '';
       const homeIcon = complete ? (homeCls === 'leader' ? '✅ Correct tip' : '❌ Wrong tip') : '';
       const awayIcon = complete ? (awayCls === 'leader' ? '✅ Correct tip' : '❌ Wrong tip') : '';
+      const drawIcon = complete ? (isDrawResult ? '✅ Correct tip' : '❌ Wrong tip') : '';
       // season-ladder leader(s) get the same "Leader" badge here, wherever their name shows up —
       // reuses the cache renderTippingLadder already maintains, so this costs zero extra reads
       const pickerListHtml = list => list.length
@@ -2937,6 +3074,12 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
             <div class="tip-picker-count">${awayPicks.length} tip${awayPicks.length === 1 ? '' : 's'}</div>
           </div>
         </div>
+        ${drawPicks.length > 0 ? `<div class="tip-team-col ${drawCls}" style="margin-top:8px;">
+          <div class="tip-team-name">Draw</div>
+          <div class="tip-team-result-icon">${drawIcon}</div>
+          <div class="tip-picker-list">${pickerListHtml(drawPicks)}</div>
+          <div class="tip-picker-count">${drawPicks.length} tip${drawPicks.length === 1 ? '' : 's'}</div>
+        </div>` : ''}
       `;
     }catch(e){
       body.innerHTML = '<div class="hint">Picks lock in and reveal here once the game starts.</div>';
@@ -3023,36 +3166,106 @@ async function tippingMemberName(){
 
 async function renderTippingLadder(games){
   const area = document.getElementById('tippingLadderArea');
-  const finishedGames = games.filter(g => g.complete >= 100 && g.winner);
+  const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)));
   if(finishedGames.length === 0){
     currentSeasonLeaders = new Set();
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
-  const tally = {}; // uid -> { name, correct, marginDiff } — keyed by uid, not name, so people who share a display name (e.g. two "Mick"s) don't get merged into one row
-  const gameResults = await Promise.all(finishedGames.map(async g => {
-    try{
-      const res = await authedFetch(`/tipping/picks/${g.id}.json`);
-      return { g, picks: (await res.json()) || {} };
-    }catch(e){
-      return { g, picks: {} };
-    }
-  }));
-  gameResults.forEach(({ g, picks }) => {
-    const isMarginGame = isFirstGameOfRound(games, g);
+
+  // Only fully-finished rounds get scored — a round still in progress
+  // shouldn't half-count toward the Perfect Round bonus or auto-tip logic.
+  const roundCounts = {};
+  games.forEach(g => {
+    if(!roundCounts[g.round]) roundCounts[g.round] = { total: 0, done: 0 };
+    roundCounts[g.round].total++;
+  });
+  finishedGames.forEach(g => { roundCounts[g.round].done++; });
+  const completeRounds = Object.keys(roundCounts).filter(r => roundCounts[r].done === roundCounts[r].total).map(Number);
+  if(completeRounds.length === 0){
+    currentSeasonLeaders = new Set();
+    area.innerHTML = '<div class="empty">Ladder will build up once a full round is completed.</div>';
+    return;
+  }
+
+  const [pickResults, jokersRaw] = await Promise.all([
+    Promise.all(finishedGames.map(async g => {
+      try{
+        const res = await authedFetch(`/tipping/picks/${g.id}.json`);
+        return { g, picks: (await res.json()) || {} };
+      }catch(e){
+        return { g, picks: {} };
+      }
+    })),
+    authedFetch('/tipping/joker.json').then(r => r.json()).catch(() => null)
+  ]);
+  const jokers = jokersRaw || {};
+
+  // Known tippers = anyone who's picked at least one game this season —
+  // there's no way to bulk-list every approved tipper client-side (that's
+  // admin-only), so auto-tip logic applies to real, known participants
+  // rather than trying to guess at a full roster.
+  const knownTippers = {}; // uid -> name
+  const picksByRound = {}; // round -> gameId -> {uid: pick}
+  pickResults.forEach(({ g, picks }) => {
+    if(!picksByRound[g.round]) picksByRound[g.round] = {};
+    picksByRound[g.round][g.id] = picks;
     Object.entries(picks).forEach(([uid, p]) => {
-      if(!p || !p.name) return;
-      if(!tally[uid]) tally[uid] = { name: p.name, correct: 0, marginDiff: 0, marginCount: 0 };
-      const pickedTeam = p.pick === 'home' ? g.hteam : g.ateam;
-      if(normTeamName(pickedTeam) === normTeamName(g.winner)) tally[uid].correct++;
-      if(isMarginGame && p.margin != null && g.margin != null){
-        tally[uid].marginDiff += Math.abs(p.margin - g.margin);
-        tally[uid].marginCount++;
+      if(p && p.name) knownTippers[uid] = p.name;
+    });
+  });
+
+  const tally = {}; // uid -> { name, points, marginDiff, marginCount }
+  Object.keys(knownTippers).forEach(uid => {
+    tally[uid] = { name: knownTippers[uid], points: 0, marginDiff: 0, marginCount: 0 };
+  });
+
+  completeRounds.forEach(round => {
+    const roundGames = finishedGames.filter(g => g.round === round);
+    const bonusEligible = roundGames.length >= 8; // "minimum 8-9 games" per the comp rules
+    const roundPicks = picksByRound[round] || {};
+    const marginGame = roundGames.find(g => isFirstGameOfRound(roundGames, g));
+
+    Object.keys(knownTippers).forEach(uid => {
+      let correct = 0;
+      let anyAutoTip = false;
+      roundGames.forEach(g => {
+        const gamePicks = roundPicks[g.id] || {};
+        const isDrawResult = g.hscore != null && g.ascore != null && Number(g.hscore) === Number(g.ascore);
+        let pick = gamePicks[uid] ? gamePicks[uid].pick : null;
+        if(!pick){
+          pick = 'away'; // missed tips auto-allocate the Away team
+          anyAutoTip = true;
+        }
+        const isCorrect = isDrawResult
+          ? pick === 'draw'
+          : normTeamName(pick === 'home' ? g.hteam : (pick === 'away' ? g.ateam : '')) === normTeamName(g.winner);
+        if(isCorrect) correct++;
+      });
+
+      let roundPoints = correct;
+      // Perfect Round bonus: every game correct, round big enough to qualify,
+      // and no auto-tips (a missed tip disqualifies that round's bonus even
+      // if every real pick they made was right).
+      if(bonusEligible && !anyAutoTip && correct === roundGames.length) roundPoints += 2;
+
+      const isJokerRound = jokers[uid] && jokers[uid].round === round;
+      if(isJokerRound) roundPoints *= 2;
+
+      tally[uid].points += roundPoints;
+
+      if(marginGame){
+        const mine = roundPicks[marginGame.id] && roundPicks[marginGame.id][uid];
+        if(mine && mine.margin != null && marginGame.margin != null){
+          tally[uid].marginDiff += Math.abs(mine.margin - marginGame.margin);
+          tally[uid].marginCount++;
+        }
       }
     });
   });
+
   const rows = Object.values(tally);
-  rows.sort((a, b) => b.correct - a.correct || a.marginDiff - b.marginDiff);
+  rows.sort((a, b) => b.points - a.points || a.marginDiff - b.marginDiff);
   if(rows.length === 0){
     currentSeasonLeaders = new Set();
     area.innerHTML = '<div class="empty">No picks recorded yet.</div>';
@@ -3061,17 +3274,18 @@ async function renderTippingLadder(games){
   // ties at the top (or bottom) all get the same highlight, not just whichever row sorted first —
   // but only once there's actually some spread in the scores, otherwise "everyone's tied at 1/1"
   // early in the season would mark the entire ladder as Leader, which isn't meaningful
-  const topScore = rows[0].correct;
-  const bottomScore = rows[rows.length - 1].correct;
+  const topScore = rows[0].points;
+  const bottomScore = rows[rows.length - 1].points;
   const hasSpread = topScore !== bottomScore;
-  currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.correct === topScore).map(r => r.name)) : new Set();
-  let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
+  currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.points === topScore).map(r => r.name)) : new Set();
+  let html = `<div class="hint" style="margin-bottom:10px;">1pt/correct tip · +2 Perfect Round bonus (8+ game rounds, no missed tips) · Joker Round doubles everything that round · missed tips auto-allocate the Away team</div>`;
+  html += '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
-    const isLeader = hasSpread && r.correct === topScore;
-    const isLoser = hasSpread && rows.length > 1 && r.correct === bottomScore;
+    const isLeader = hasSpread && r.points === topScore;
+    const isLoser = hasSpread && rows.length > 1 && r.points === bottomScore;
     const rowCls = isLeader ? 'ladder-leader' : (isLoser ? 'ladder-loser' : '');
     const badge = isLeader ? '<span class="ladder-leader-badge">Leader</span>' : '';
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}${badge}</td><td>${r.correct}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}${badge}</td><td>${r.points}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;
