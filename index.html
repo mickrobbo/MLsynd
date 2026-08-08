@@ -597,6 +597,10 @@
   </div>
 
   <div class="tab-panel" id="tab-owed">
+    <div class="panel" id="myDuesPanel" style="display:none; text-align:center;">
+      <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">You Owe</div>
+      <div id="myDuesVal" style="font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:700;">$0</div>
+    </div>
     <div class="panel">
       <h2>Money owed</h2>
       <div id="owedArea"></div>
@@ -753,7 +757,12 @@
       <div class="profile-badges" id="profileBadges"></div>
       <div class="badge-info-bubble" id="badgeInfoBubble" style="display:none;"></div>
     </div>
+    <div id="profileTabRow" class="subnav-row" style="display:none; margin-top:12px;">
+      <button type="button" class="subnav-btn active" id="profileTabStats">Stats</button>
+      <button type="button" class="subnav-btn" id="profileTabDiag">🔧 Diagnostics</button>
+    </div>
     <div class="profile-stat-grid" id="profileStats"></div>
+    <div id="profileDiagArea" style="display:none;"></div>
   </div>
 </div>
 
@@ -947,6 +956,7 @@ function hideAuthGate(){
 let currentUserRole = null; // 'full' | 'dashboard' | 'tipping' | null (null/legacy = full)
 let currentUserName = null;
 let currentUserUid = null;
+let currentUserEmail = null;
 const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping'];
 
 function applyRoleTabRestrictions(){
@@ -973,6 +983,7 @@ async function checkApprovalAndProceed(){
       currentUserRole = profile.role || 'full';
       currentUserName = profile.name || '';
       currentUserUid = auth.uid;
+      currentUserEmail = auth.email || '';
       renderAccountBar();
       if(!appStarted){
         appStarted = true;
@@ -1485,6 +1496,36 @@ function openProfile(name){
     <div class="profile-stat-cell"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></div>
   `;
   document.getElementById('profileModal').classList.add('open');
+
+  // Diagnostics tab — only for the admin's own profile, not visible when
+  // viewing anyone else's, and not visible to non-admins at all.
+  const isAdminViewer = !!(currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+  const isOwnProfile = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
+  const tabRow = document.getElementById('profileTabRow');
+  const statsEl = document.getElementById('profileStats');
+  const diagEl = document.getElementById('profileDiagArea');
+  const tabStats = document.getElementById('profileTabStats');
+  const tabDiag = document.getElementById('profileTabDiag');
+  if(isAdminViewer && isOwnProfile){
+    tabRow.style.display = 'flex';
+    tabStats.classList.add('active');
+    tabDiag.classList.remove('active');
+    statsEl.style.display = '';
+    diagEl.style.display = 'none';
+    tabStats.onclick = () => {
+      tabStats.classList.add('active'); tabDiag.classList.remove('active');
+      statsEl.style.display = ''; diagEl.style.display = 'none';
+    };
+    tabDiag.onclick = () => {
+      tabDiag.classList.add('active'); tabStats.classList.remove('active');
+      statsEl.style.display = 'none'; diagEl.style.display = '';
+      renderProfileDiagnostics();
+    };
+  } else {
+    tabRow.style.display = 'none';
+    statsEl.style.display = '';
+    diagEl.style.display = 'none';
+  }
 }
 document.getElementById('profileCloseBtn').addEventListener('click', () => {
   document.getElementById('profileModal').classList.remove('open');
@@ -1958,6 +1999,24 @@ function render(state){
     </div>`;
   });
   document.getElementById('owedArea').innerHTML = owedHtml || '<div class="empty">No members yet.</div>';
+
+  // Personal "you owe" callout — silent-only matching (linkedUid, then
+  // exact name), never prompts. If neither matches confidently, the panel
+  // just stays hidden and the shared list below still works fine for
+  // everyone regardless.
+  const myDuesPanel = document.getElementById('myDuesPanel');
+  if(myDuesPanel){
+    const myMember = state.members.find(m => m.linkedUid === currentUserUid) ||
+                      state.members.find(m => m.name === currentUserName);
+    if(myMember){
+      myDuesPanel.style.display = '';
+      const myOwed = Math.round(myMember.duesOwed);
+      document.getElementById('myDuesVal').textContent = '$' + myOwed;
+      document.getElementById('myDuesVal').style.color = myOwed > 0 ? 'var(--loss)' : 'var(--win)';
+    } else {
+      myDuesPanel.style.display = 'none';
+    }
+  }
 
   const memberCount = state.members.length;
   const shareOfBank = memberCount ? fin.bank / memberCount : 0;
@@ -2806,7 +2865,32 @@ async function loadMyJoker(auth){
   }
 }
 
-async function setMyJoker(auth, round){
+async function syncRoundLockTime(games, round){
+  // The Firebase rule enforcing "can't change your Joker after the round
+  // starts" needs an actual stored timestamp to check against — it can't
+  // compute "earliest game in this round" itself. Syncs the round's
+  // earliest kickoff time, same idea as syncGameMeta but per-round.
+  const roundGames = games.filter(g => g.round === round);
+  if(roundGames.length === 0) return;
+  const times = roundGames.map(g => new Date(g.date.replace(' ', 'T') + '+10:00').getTime()).filter(t => !isNaN(t));
+  if(times.length === 0) return;
+  const lockTime = Math.min(...times);
+  try{
+    await authedFetch(`/tipping/roundLockTime/${round}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lockTime)
+    });
+  }catch(e){}
+}
+
+async function setMyJoker(auth, games, round){
+  // Sync lock times for both the round being set AND whatever round is
+  // being changed away from, if any — the rule needs both to correctly
+  // enforce the lock, and neither is guaranteed to already be synced.
+  const roundsToSync = new Set();
+  if(round != null) roundsToSync.add(round);
+  if(myJokerRound != null) roundsToSync.add(myJokerRound);
+  await Promise.all([...roundsToSync].map(r => syncRoundLockTime(games, r)));
+
   await authedFetch(`/tipping/joker/${auth.uid}.json`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ round })
   });
@@ -2855,10 +2939,10 @@ function renderJokerPanel(games, currentRound, auth){
   if(toggleBtn) toggleBtn.addEventListener('click', async () => {
     toggleBtn.disabled = true;
     if(isThisRoundMyJoker){
-      await setMyJoker(auth, null);
+      await setMyJoker(auth, games, null);
       showToast('Joker round cleared');
     } else {
-      await setMyJoker(auth, currentRound);
+      await setMyJoker(auth, games, currentRound);
       showToast(`Round ${currentRound} set as your Joker`);
     }
     renderJokerPanel(games, currentRound, auth);
@@ -3004,6 +3088,33 @@ async function renderTippingRound(games, currentRound){
   Object.values(tipCountdownIntervals).forEach(id => clearInterval(id));
   tipCountdownIntervals = {};
 
+  // Lockout reminder — no push infrastructure here, this is an in-app
+  // banner only (only helps if someone actually opens the app), but it's a
+  // real, useful nudge for games locking soon that still have no pick in.
+  let reminderHtml = '';
+  const soonThresholdMs = 3 * 3600 * 1000;
+  const nowMs = Date.now();
+  const upcomingLockGames = roundGames.filter(g => {
+    if(!g.date) return false;
+    const kickoffMs = new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
+    const lockMs = kickoffMs - (12 * 3600 * 1000);
+    const untilLock = lockMs - nowMs;
+    return untilLock > 0 && untilLock <= soonThresholdMs;
+  });
+  if(upcomingLockGames.length > 0 && auth){
+    const missingChecks = await Promise.all(upcomingLockGames.map(async g => {
+      try{
+        const res = await authedFetch(`/tipping/picks/${g.id}/${auth.uid}.json`);
+        const data = await res.json();
+        return !data || !data.pick;
+      }catch(e){ return false; }
+    }));
+    const missingCount = missingChecks.filter(Boolean).length;
+    if(missingCount > 0){
+      reminderHtml = `<div class="panel" style="border-color:var(--brass);"><div class="hint" style="color:var(--brass-light); margin:0;">⏰ ${missingCount} pick${missingCount === 1 ? '' : 's'} lock${missingCount === 1 ? 's' : ''} within the next 3 hours and ${missingCount === 1 ? "isn't" : "aren't"} in yet — don't forget to tip.</div></div>`;
+    }
+  }
+
   // group this round's games by local (Melbourne) calendar day
   const dayGroups = new Map();
   roundGames.forEach(g => {
@@ -3046,10 +3157,10 @@ async function renderTippingRound(games, currentRound){
       <div id="tippingJokerStatusSlot"></div>
       <div class="status-msg" id="tipSaveAllStatus" style="margin-top:8px;"></div>
     </div>`;
-    gamesArea.innerHTML = saveButtonHtml + html;
+    gamesArea.innerHTML = reminderHtml + saveButtonHtml + html;
     renderJokerPanel(games, round, auth);
   } else {
-    gamesArea.innerHTML = html;
+    gamesArea.innerHTML = reminderHtml + html;
   }
 
   for(const g of roundGames){
@@ -3357,6 +3468,116 @@ async function processInBatches(items, batchSize, worker){
   }
   return results;
 }
+// Standalone diagnostic computation — kept deliberately separate from
+// renderTippingLadder's own scoring logic (rather than refactoring that
+// already-debugged function to share it) so this can't accidentally
+// introduce a regression in the actual points calculation. A little
+// redundant fetching is a fine trade for not touching working code.
+async function computeTippingDiagnostics(){
+  try{
+    const games = await fetchTippingFixtures();
+    let seasonStartRound = 1;
+    try{
+      const res = await authedFetch('/tipping/config/firstRound.json');
+      const val = await res.json();
+      if(val != null) seasonStartRound = Number(val);
+    }catch(e){}
+
+    const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)) && g.round >= seasonStartRound);
+    const pickResults = await Promise.all(finishedGames.map(async g => {
+      try{
+        const res = await authedFetch(`/tipping/picks/${g.id}.json`);
+        if(!res.ok) return { g, picks: {}, readFailed: true, status: res.status };
+        return { g, picks: (await res.json()) || {}, readFailed: false };
+      }catch(e){
+        return { g, picks: {}, readFailed: true, status: 'exception: ' + e.message };
+      }
+    }));
+
+    const failedReads = pickResults.filter(r => r.readFailed);
+    let myRealPicks = 0, myAutoTips = 0;
+    const myRealRounds = [];
+    const myAutoTipSample = [];
+    const realSeasonResults = pickResults.filter(({ g }) => g.round >= 1);
+    let realSeasonTotallyEmpty = 0, realSeasonHasSomeoneElsesPicks = 0;
+    pickResults.forEach(({ g, picks }) => {
+      if(picks[currentUserUid]){
+        myRealPicks++;
+        myRealRounds.push(g.round);
+      } else {
+        myAutoTips++;
+        if(g.round >= 1 && myAutoTipSample.length < 5) myAutoTipSample.push({ round: g.round, id: g.id, allUids: Object.keys(picks) });
+      }
+    });
+    realSeasonResults.forEach(({ picks }) => {
+      const uidCount = Object.keys(picks).length;
+      if(uidCount === 0) realSeasonTotallyEmpty++;
+      else if(!picks[currentUserUid]) realSeasonHasSomeoneElsesPicks++;
+    });
+
+    return {
+      ok: true, seasonStartRound, totalGames: pickResults.length,
+      failedReadCount: failedReads.length, failedReadStatus: failedReads.length > 0 ? failedReads[0].status : null,
+      myRealPicks, myRealRounds, myAutoTips,
+      realSeasonTotalGames: realSeasonResults.length, realSeasonTotallyEmpty, realSeasonHasSomeoneElsesPicks,
+      myAutoTipSample
+    };
+  }catch(e){
+    return { ok: false, error: e.message };
+  }
+}
+
+// Broader dashboard health checks, not tipping-specific — quick visibility
+// into things that would otherwise need a trip to the Ledger to check.
+async function computeDashboardHealthChecks(){
+  const linked = (currentState && currentState.members) ? currentState.members.filter(m => m.linkedUid).length : 0;
+  const total = (currentState && currentState.members) ? currentState.members.length : 0;
+  let prizePot = null;
+  try{
+    const res = await authedFetch('/tipping/config/prizePot.json');
+    prizePot = await res.json();
+  }catch(e){}
+  return {
+    linkedMembers: linked, totalMembers: total,
+    prizePot,
+    commenceTimesSynced: commenceTimesSyncedThisSession,
+  };
+}
+
+function renderProfileDiagnostics(){
+  const area = document.getElementById('profileDiagArea');
+  if(!area) return;
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  Promise.all([computeTippingDiagnostics(), computeDashboardHealthChecks()]).then(([tip, health]) => {
+    let html = '<div class="panel" style="margin:0; padding:0; border:none; background:none;">';
+    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">Dashboard Health</h3>';
+    html += `<div style="font-size:11px; color:var(--muted); line-height:1.7;">
+      Members linked to a Tipping account: ${health.linkedMembers} / ${health.totalMembers}<br>
+      Prize pot (config): ${health.prizePot != null ? '$' + health.prizePot : 'not set'}<br>
+      Commence-time sync run this session: ${health.commenceTimesSynced ? 'yes' : 'not yet'}
+    </div>`;
+    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">Tipping — Ladder Reads</h3>';
+    if(!tip.ok){
+      html += `<div style="font-size:11px; color:var(--loss);">Could not run: ${escapeHtml(tip.error)}</div>`;
+    } else {
+      const roundsFoundStr = tip.myRealRounds.length > 0 ? tip.myRealRounds.join(', ') : 'none';
+      const sampleStr = tip.myAutoTipSample.map(s => `Round ${s.round} (game ${s.id}): ${s.allUids.length === 0 ? 'NO uids at all (empty)' : s.allUids.length + ' uid(s): ' + s.allUids.map(u => escapeHtml(u.slice(0,8)+'…')).join(', ')}`).join('<br>');
+      html += `<div style="font-size:11px; color:var(--muted); line-height:1.7;">
+        Season start round: ${tip.seasonStartRound}<br>
+        Failed reads: ${tip.failedReadCount} / ${tip.totalGames} games ${tip.failedReadCount > 0 ? '(status: ' + escapeHtml(String(tip.failedReadStatus)) + ')' : '(none — reads succeeding)'}<br>
+        Your picks found as real data: ${tip.myRealPicks} / ${tip.totalGames} — from round(s): ${escapeHtml(roundsFoundStr)}<br><br>
+        <b>Round 1+ only — ${tip.realSeasonTotalGames} games:</b><br>
+        Completely empty (nobody's picks): ${tip.realSeasonTotallyEmpty}<br>
+        Has someone's picks, just not yours: ${tip.realSeasonHasSomeoneElsesPicks}<br><br>
+        <b>Sample of up to 5 auto-tipped games:</b><br>
+        ${sampleStr || '(none found in Round 1+)'}
+      </div>`;
+    }
+    html += '</div>';
+    area.innerHTML = html;
+  });
+}
+
 async function ensureCommenceTimesSynced(finishedGames){
   // The picks-read Firebase rule requires commence_time_ms to already exist
   // for a game before it'll allow reading that game's picks at all — but it
@@ -3383,6 +3604,8 @@ async function ensureCommenceTimesSynced(finishedGames){
 
 async function renderTippingLadder(games){
   const area = document.getElementById('tippingLadderArea');
+  const ladderAuth = await getValidAuth();
+  const isAdminViewer = !!(ladderAuth && ladderAuth.email && ladderAuth.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 
   // This competition deliberately started partway through the season as a
   // trial for next year (Round 22), not from Round 1 — so everything before
@@ -3595,22 +3818,10 @@ async function renderTippingLadder(games){
   // (real human tipping essentially never produces that), not a normal
   // early-season tie. Surface it plainly rather than silently presenting
   // what's likely still-wrong data as if it's fine.
+  const anomalyDetected = rows.length >= 5 && !hasSpread && topScore > 0 && involvedRounds.length >= 2;
   let warningHtml = '';
-  if(rows.length >= 5 && !hasSpread && topScore > 0 && involvedRounds.length >= 2){
-    const roundsFoundStr = myRealRounds.length > 0 ? myRealRounds.join(', ') : 'none';
-    const sampleStr = myAutoTipSample.map(s => `Round ${s.round} (game ${s.id}): picks object contains ${s.allUids.length === 0 ? 'NO uids at all (empty)' : s.allUids.length + ' uid(s): ' + s.allUids.map(u => escapeHtml(u.slice(0,8)+'…')).join(', ')}`).join('<br>');
-    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">
-      ⚠️ Every tipper has the exact same score across ${involvedRounds.length} round(s) — this usually means some picks aren't being read correctly rather than a genuine tie.<br><br>
-      <b>Diagnostic — your account specifically:</b><br>
-      Failed reads: ${failedReads.length} / ${pickResults.length} games (${failedReads.length > 0 ? 'status: ' + escapeHtml(String(failedReads[0].status)) : 'none — reads are succeeding'})<br>
-      Your picks found as real data: ${myRealPicks} / ${pickResults.length} — from round(s): ${escapeHtml(roundsFoundStr)}<br>
-      Your uid this session: ${escapeHtml((currentUserUid || '').slice(0,8))}…<br><br>
-      <b>Real season rounds only (Round 1+, excluding pre-season Round 0) — ${realSeasonResults.length} games:</b><br>
-      Completely empty (nobody's picks at all): ${realSeasonTotallyEmpty}<br>
-      Has SOMEONE's picks, just not yours: ${realSeasonHasSomeoneElsesPicks}<br><br>
-      <b>Sample of up to 5 auto-tipped Round 1+ games — what's actually stored there:</b><br>
-      ${sampleStr || '(none found in Round 1+ — every sampled game was pre-season)'}
-    </div>`;
+  if(anomalyDetected){
+    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">⚠️ Every tipper has the exact same score across ${involvedRounds.length} round(s) — this usually means some picks aren't being read correctly rather than a genuine tie.${isAdminViewer ? ' Check Diagnostics on your profile for details.' : ' Flag this to the admin if it doesn\'t sort itself out.'}</div>`;
     // Self-healing: don't let a failed sync attempt stay "done" forever for
     // this session — force the next refresh to actually retry it, rather
     // than requiring a full page reload to recover.
