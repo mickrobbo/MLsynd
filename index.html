@@ -293,6 +293,17 @@
   .tip-locked-row.incorrect .tip-pick-label{ color:var(--loss); }
   #tipSaveAllBtn{ width:100%; font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
   #tipSaveAllBtn:disabled{ opacity:.5; cursor:default; }
+  .tip-joker-btn{
+    width:100%; font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700;
+    text-transform:uppercase; padding:11px 16px; border-radius:8px; border:1px solid var(--brass);
+    background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.2);
+    color:#151007; cursor:pointer; margin-top:10px;
+  }
+  .tip-joker-btn.active-joker{
+    border-color:#9B6FD1; background:linear-gradient(165deg, #C79EF0, #9B6FD1 60%);
+    box-shadow:0 4px 14px rgba(155,111,209,.35); color:#1a0f28;
+  }
+  .tip-joker-btn:disabled{ opacity:.5; cursor:default; }
 
   /* --- Tip countdown (pre-first-bounce) --- */
   .tip-countdown-wrap{
@@ -353,6 +364,7 @@
     background:linear-gradient(135deg, var(--brass-light), var(--brass));
     padding:1px 6px; border-radius:999px; vertical-align:middle;
   }
+  .tip-joker-icon{ display:inline-block; margin-left:5px; font-size:12px; vertical-align:middle; filter:drop-shadow(0 0 3px rgba(155,111,209,.7)); }
   .afl-teams .score{ font-size:16px; font-weight:700; color:var(--chalk); flex:0 0 auto; }
   .afl-status{
     text-align:center; font-size:10px; color:var(--brass); text-transform:uppercase;
@@ -470,6 +482,10 @@
   .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:700; color:var(--chalk); }
   .profile-stat-cell .val.pos{ color:var(--win); }
   .profile-stat-cell .val.neg{ color:var(--loss); }
+  .prize-split-row{ display:flex; gap:8px; margin-top:12px; }
+  .prize-split-cell{ flex:1; background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:9px; padding:9px 4px; text-align:center; }
+  .prize-split-cell .lbl{ display:block; font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; }
+  .prize-split-cell .val{ display:block; font-family:'IBM Plex Mono', monospace; font-size:14px; font-weight:700; color:var(--brass-light); }
 
   .chart-dot{ transition: r .1s; }
   .chart-hit:active + .chart-dot, .chart-hit:hover ~ .chart-dot{ r:4; }
@@ -657,14 +673,18 @@
     <div class="panel" id="tippingPrizePotPanel" style="text-align:center;">
       <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">Prize Pot</div>
       <div id="tippingPrizePotVal" style="font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:700; color:var(--brass);">$0</div>
-      <div style="font-size:9.5px; color:var(--muted); margin-top:6px;">1st 70% · 2nd 20% · 3rd 10% — paid out manually, not tracked here</div>
+      <div class="prize-split-row">
+        <div class="prize-split-cell"><span class="lbl">1st · 70%</span><span class="val" id="prizeSplit1">$0</span></div>
+        <div class="prize-split-cell"><span class="lbl">2nd · 20%</span><span class="val" id="prizeSplit2">$0</span></div>
+        <div class="prize-split-cell"><span class="lbl">3rd · 10%</span><span class="val" id="prizeSplit3">$0</span></div>
+      </div>
     </div>
 
     <div class="subnav-row">
       <button type="button" class="subnav-btn active" data-tipsub="games"><span class="subnav-icon">🏉</span>Games</button>
       <button type="button" class="subnav-btn" data-tipsub="ladder"><span class="subnav-icon">🏆</span>Ladder</button>
+      <button type="button" class="subnav-btn" id="tippingRulesBtn"><span class="subnav-icon">📜</span>Rules</button>
     </div>
-    <button type="button" id="tippingRulesBtn" class="btn-secondary" style="width:100%; margin-bottom:12px;">📜 Competition Rules</button>
 
     <div id="tippingSubview-games" class="tipping-subview">
       <div class="panel">
@@ -672,7 +692,6 @@
         <div id="tippingRoundSelectWrap" style="margin-bottom:10px;"></div>
         <div class="hint" id="tippingHint" style="font-size:11px; color:var(--muted);"></div>
       </div>
-      <div class="panel" id="tippingJokerPanel"></div>
       <div id="tippingGamesArea">Loading…</div>
     </div>
 
@@ -2377,10 +2396,10 @@ document.querySelectorAll('#sportsMainSubnav .subnav-btn').forEach(btn => {
 });
 
 // ---------- Tipping tab sub-navigation (Games / Ladder) ----------
-document.querySelectorAll('#tab-tipping .subnav-btn').forEach(btn => {
+document.querySelectorAll('#tab-tipping .subnav-btn[data-tipsub]').forEach(btn => {
   btn.addEventListener('click', () => {
     const view = btn.dataset.tipsub;
-    document.querySelectorAll('#tab-tipping .subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('#tab-tipping .subnav-btn[data-tipsub]').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.tipping-subview').forEach(el => {
       el.style.display = el.id === `tippingSubview-${view}` ? 'block' : 'none';
     });
@@ -2652,12 +2671,16 @@ function roundHasStarted(games, round){
   return earliest ? gameHasStarted(earliest) : false;
 }
 
+let allJokers = null; // uid -> {round} for everyone, used to show a 🃏 icon next to names in the picker list
+
 async function loadMyJoker(auth){
   try{
-    const res = await authedFetch(`/tipping/joker/${auth.uid}.json`);
+    const res = await authedFetch('/tipping/joker.json');
     const data = await res.json();
-    myJokerRound = (data && data.round != null) ? data.round : null;
+    allJokers = data || {};
+    myJokerRound = (allJokers[auth.uid] && allJokers[auth.uid].round != null) ? allJokers[auth.uid].round : null;
   }catch(e){
+    allJokers = {};
     myJokerRound = null;
   }
 }
@@ -2667,39 +2690,41 @@ async function setMyJoker(auth, round){
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ round })
   });
   myJokerRound = round;
+  if(allJokers) allJokers[auth.uid] = { round };
 }
 
 function renderJokerPanel(games, currentRound, auth){
-  const panel = document.getElementById('tippingJokerPanel');
-  if(!panel) return;
+  const slot = document.getElementById('tippingJokerSlot');
+  if(!slot) return;
   if(myJokerRound === undefined){
-    panel.innerHTML = '<div class="empty">Loading Joker status…</div>';
+    slot.innerHTML = '<div class="hint" style="margin-top:10px;">Loading Joker status…</div>';
     return;
   }
   const jokerLocked = myJokerRound != null && roundHasStarted(games, myJokerRound);
   const viewingRoundStarted = roundHasStarted(games, currentRound);
+  const isThisRoundMyJoker = myJokerRound === currentRound;
 
   let statusHtml;
   if(myJokerRound == null){
-    statusHtml = `<div class="hint" style="margin-bottom:8px;">🃏 No Joker round chosen yet — one round this season doubles all your points, including any Perfect Round bonus.</div>`;
+    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0;">🃏 No Joker round chosen yet.</div>`;
   } else if(jokerLocked){
-    statusHtml = `<div class="hint" style="margin-bottom:8px; color:var(--brass);">🃏 Your Joker Round is <b>Round ${myJokerRound}</b> — locked in, that round has started.</div>`;
+    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#C79EF0;">🃏 Joker Round: <b>Round ${myJokerRound}</b> — locked in.</div>`;
   } else {
-    statusHtml = `<div class="hint" style="margin-bottom:8px; color:var(--brass);">🃏 Your Joker Round is currently <b>Round ${myJokerRound}</b> — you can still move it to a different round until Round ${myJokerRound} starts.</div>`;
+    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#C79EF0;">🃏 Joker Round: <b>Round ${myJokerRound}</b> — can still change.</div>`;
   }
 
-  let actionHtml = '';
+  let btnHtml = '';
   if(jokerLocked){
-    actionHtml = ''; // fully locked in, nothing more to do
+    // fully locked in, nothing more to do
   } else if(viewingRoundStarted){
-    actionHtml = `<div class="hint" style="opacity:.7;">This round has already started, so it can't be picked as your Joker now.</div>`;
-  } else if(myJokerRound === currentRound){
-    actionHtml = `<button type="button" class="btn-secondary" id="jokerClearBtn">Remove Round ${currentRound} as my Joker</button>`;
+    btnHtml = `<div class="hint" style="margin-top:8px; opacity:.7;">This round has already started, so it can't be picked as your Joker now.</div>`;
+  } else if(isThisRoundMyJoker){
+    btnHtml = `<button type="button" class="tip-joker-btn active-joker" id="jokerClearBtn">🃏 Round ${currentRound} is your Joker — tap to remove</button>`;
   } else {
-    actionHtml = `<button type="button" class="btn-secondary" id="jokerSetBtn">🃏 Make Round ${currentRound} my Joker Round</button>`;
+    btnHtml = `<button type="button" class="tip-joker-btn" id="jokerSetBtn">🃏 Make Round ${currentRound} my Joker Round</button>`;
   }
 
-  panel.innerHTML = statusHtml + actionHtml;
+  slot.innerHTML = statusHtml + btnHtml;
 
   const setBtn = document.getElementById('jokerSetBtn');
   if(setBtn) setBtn.addEventListener('click', async () => {
@@ -2800,10 +2825,16 @@ async function renderTippingPrizePot(){
   const el = document.getElementById('tippingPrizePotVal');
   try{
     const res = await authedFetch('/tipping/config/prizePot.json');
-    const val = await res.json();
-    animateValue('tippingPrizePotVal', Number(val) || 0, v => '$' + v.toFixed(0));
+    const val = Number(await res.json()) || 0;
+    animateValue('tippingPrizePotVal', val, v => '$' + v.toFixed(0));
+    document.getElementById('prizeSplit1').textContent = '$' + (val * 0.70).toFixed(0);
+    document.getElementById('prizeSplit2').textContent = '$' + (val * 0.20).toFixed(0);
+    document.getElementById('prizeSplit3').textContent = '$' + (val * 0.10).toFixed(0);
   }catch(e){
     el.textContent = '$0';
+    document.getElementById('prizeSplit1').textContent = '$0';
+    document.getElementById('prizeSplit2').textContent = '$0';
+    document.getElementById('prizeSplit3').textContent = '$0';
   }
 }
 
@@ -2839,7 +2870,6 @@ async function renderTippingRound(games, currentRound){
   const oddsEvents = await fetchTippingOdds();
 
   if(myJokerRound === undefined) await loadMyJoker(auth);
-  renderJokerPanel(games, round, auth);
 
   if(roundGames.length === 0){
     gamesArea.innerHTML = '<div class="panel"><div class="empty">No games this round.</div></div>';
@@ -2887,9 +2917,11 @@ async function renderTippingRound(games, currentRound){
   if(anyUnlocked){
     const saveButtonHtml = `<div class="panel">
       <button type="button" id="tipSaveAllBtn">Save all picks</button>
+      <div id="tippingJokerSlot"></div>
       <div class="status-msg" id="tipSaveAllStatus" style="margin-top:8px;"></div>
     </div>`;
     gamesArea.innerHTML = saveButtonHtml + html;
+    renderJokerPanel(games, round, auth);
   } else {
     gamesArea.innerHTML = html;
   }
@@ -3032,7 +3064,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
     try{
       const res = await authedFetch(`/tipping/picks/${g.id}.json`);
       const all = await res.json() || {};
-      const entries = Object.values(all);
+      const entries = Object.entries(all).map(([uid, p]) => ({ ...p, uid }));
       if(entries.length === 0){
         body.innerHTML = '<div class="hint">No picks were made for this game.</div>';
         return;
@@ -3049,9 +3081,13 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
       const awayIcon = complete ? (awayCls === 'leader' ? '✅ Correct tip' : '❌ Wrong tip') : '';
       const drawIcon = complete ? (isDrawResult ? '✅ Correct tip' : '❌ Wrong tip') : '';
       // season-ladder leader(s) get the same "Leader" badge here, wherever their name shows up —
-      // reuses the cache renderTippingLadder already maintains, so this costs zero extra reads
+      // reuses the cache renderTippingLadder already maintains, so this costs zero extra reads.
+      // Same idea for the Joker icon — reuses the cache loaded once per session, no extra fetch.
       const pickerListHtml = list => list.length
-        ? list.map(p => `<div class="tip-picker-name">${escapeHtml(p.name || '')}${currentSeasonLeaders.has(p.name) ? '<span class="ladder-leader-badge">Leader</span>' : ''}${p.margin != null ? ` <span style="color:var(--muted);">(${p.margin})</span>` : ''}</div>`).join('')
+        ? list.map(p => {
+            const isJokerHere = allJokers && allJokers[p.uid] && allJokers[p.uid].round === g.round;
+            return `<div class="tip-picker-name">${escapeHtml(p.name || '')}${isJokerHere ? '<span class="tip-joker-icon" title="Joker Round">🃏</span>' : ''}${currentSeasonLeaders.has(p.name) ? '<span class="ladder-leader-badge">Leader</span>' : ''}${p.margin != null ? ` <span style="color:var(--muted);">(${p.margin})</span>` : ''}</div>`;
+          }).join('')
         : '<div class="tip-picker-name" style="opacity:.5;">No tips</div>';
       const scoreLineHtml = complete
         ? `<div class="tip-game-meta" style="margin-bottom:8px;"><span style="display:flex; align-items:center; gap:6px;">${teamLogoImg(g.hteam, 16)}${escapeHtml(g.hteam)} ${g.hscore} — ${g.ascore} ${escapeHtml(g.ateam)}${teamLogoImg(g.ateam, 16)}</span></div>`
@@ -3278,8 +3314,7 @@ async function renderTippingLadder(games){
   const bottomScore = rows[rows.length - 1].points;
   const hasSpread = topScore !== bottomScore;
   currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.points === topScore).map(r => r.name)) : new Set();
-  let html = `<div class="hint" style="margin-bottom:10px;">1pt/correct tip · +2 Perfect Round bonus (8+ game rounds, no missed tips) · Joker Round doubles everything that round · missed tips auto-allocate the Away team</div>`;
-  html += '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
+  let html = '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
   rows.forEach((r, i) => {
     const isLeader = hasSpread && r.points === topScore;
     const isLoser = hasSpread && rows.length > 1 && r.points === bottomScore;
