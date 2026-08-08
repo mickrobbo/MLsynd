@@ -878,10 +878,29 @@ async function authRefresh(){
   return auth;
 }
 
+let authRefreshInFlight = null;
 async function getValidAuth(){
   let cur = authStorageGet();
   if(!cur) return null;
-  if(Date.now() > cur.expiresAt - 60000){ cur = await authRefresh(); }
+  if(Date.now() > cur.expiresAt - 60000){
+    // Single-flight: if several concurrent authedFetch calls (e.g. the
+    // batched commence-time sync, or any other Promise.all in the app) all
+    // hit an expired/near-expired token at once, each would otherwise fire
+    // its own independent refresh call. If Google rotates the refresh token
+    // on use, only the first of those concurrent refreshes actually
+    // succeeds — the rest get silently rejected and return null, which
+    // throws "Not signed in" inside authedFetch and gets swallowed by
+    // whatever try/catch is wrapping it. This was the real reason the
+    // ladder's commence-time sync kept silently failing for most games even
+    // after batching down to 15 at a time — 15 concurrent calls hitting an
+    // expired token race exactly the same way 200 would. Verified in
+    // isolation (Node simulation) that this actually eliminates the race
+    // before shipping it.
+    if(!authRefreshInFlight){
+      authRefreshInFlight = authRefresh().finally(() => { authRefreshInFlight = null; });
+    }
+    cur = await authRefreshInFlight;
+  }
   return cur;
 }
 
@@ -3354,7 +3373,11 @@ async function renderTippingLadder(games){
   // what's likely still-wrong data as if it's fine.
   let warningHtml = '';
   if(rows.length >= 5 && !hasSpread && topScore > 0 && completeRounds.length >= 2){
-    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">⚠️ Every tipper has the exact same score across ${completeRounds.length} completed rounds — this usually means some picks aren't being read correctly rather than a genuine tie. Worth flagging if this doesn't resolve on the next refresh.</div>`;
+    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">⚠️ Every tipper has the exact same score across ${completeRounds.length} completed rounds — this usually means some picks aren't being read correctly rather than a genuine tie. Retrying the sync automatically — should resolve on the next refresh.</div>`;
+    // Self-healing: don't let a failed sync attempt stay "done" forever for
+    // this session — force the next refresh to actually retry it, rather
+    // than requiring a full page reload to recover.
+    commenceTimesSyncedThisSession = false;
   }
 
   let html = warningHtml + '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
