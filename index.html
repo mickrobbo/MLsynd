@@ -188,7 +188,8 @@
   .multi-leg-block:last-of-type{ margin-bottom:0; }
   .multi-leg-block.result-win{ background:rgba(111,169,138,.13); border-color:rgba(111,169,138,.35); }
   .multi-leg-block.result-loss{ background:rgba(193,96,74,.16); border-color:rgba(193,96,74,.45); }
-  .multi-leg-block.result-void{ opacity:.65; }
+  .multi-leg-block.result-void{ background:rgba(91,141,190,.14); border-color:rgba(91,141,190,.4); }
+  .multi-leg-block.result-mia{ background:rgba(224,185,59,.16); border-color:rgba(224,185,59,.45); }
   .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; font-size:13.5px; gap:8px; }
   .multi-leg-name{ color:var(--chalk); font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sgm-badge{ display:inline-block; margin-top:6px; padding:3px 9px; border-radius:20px; font-family:'IBM Plex Mono', monospace; font-size:9.5px; font-weight:700; letter-spacing:.3px; }
@@ -199,6 +200,7 @@
   .multi-leg-odds{ font-family:'IBM Plex Mono', monospace; color:var(--muted); flex:0 0 auto; }
   .multi-leg-result{ font-size:19px; flex:0 0 auto; }
   .multi-leg-roast{ font-size:11px; color:#ff9478; font-style:italic; font-weight:600; opacity:.95; margin-top:6px; padding-right:2px; }
+  .multi-leg-mia-note{ font-size:11px; color:#E0B93B; font-style:italic; font-weight:600; opacity:.9; margin-top:6px; padding-right:2px; }
   .multi-summary-banner{ background:linear-gradient(165deg, rgba(193,96,74,.18), rgba(193,96,74,.08)); border:1px solid rgba(193,96,74,.35); border-radius:8px; padding:9px 12px; margin-bottom:12px; font-size:12.5px; font-weight:600; color:var(--chalk); }
   .otd-year{ font-family:'Barlow Condensed', sans-serif; font-size:32px; font-weight:700; color:var(--brass); text-align:center; line-height:1; }
   .otd-text{ font-size:13px; color:var(--chalk); text-align:center; line-height:1.5; margin-top:8px; }
@@ -1286,7 +1288,7 @@ function computeAutoBadges(member, state){
   let curWin = 0, bestWin = 0, curLoss = 0, bestLoss = 0, weeksPlayed = 0;
   history.forEach(week => {
     const entry = week.groupEntries && week.groupEntries[name];
-    if(!entry || !entry.result){ return; }
+    if(!entry || !entry.result || entry.result === 'MIA'){ return; } // MIA doesn't count as played, and doesn't break a streak the way an actual loss would
     weeksPlayed++;
     if(entry.result === 'Win'){
       curWin++; curLoss = 0;
@@ -1611,13 +1613,10 @@ function roastTierForName(name){
   if(pctile < 0.67) return MULTI_ROAST_MEDIUM;
   return MULTI_ROAST_MILD;
 }
-function renderGroupMultiChart(lastWeek){
+function renderGroupMultiChart(state){
   const area = document.getElementById('groupMultiArea');
-  if(!lastWeek || !lastWeek.groupEntries){
-    area.innerHTML = '<div class="empty">No group bet recorded yet.</div>';
-    return;
-  }
-  const entries = Object.entries(lastWeek.groupEntries).filter(([, e]) => e && e.result);
+  const draft = state.groupEntryDraft || {};
+  const entries = Object.entries(draft).filter(([, e]) => e && e.result);
   if(entries.length === 0){
     area.innerHTML = '<div class="empty">No group legs recorded for this week yet.</div>';
     return;
@@ -1625,13 +1624,15 @@ function renderGroupMultiChart(lastWeek){
   const losers = entries.filter(([, e]) => e.result === 'Loss');
   let html = '';
   entries.forEach(([name, e]) => {
-    const icon = e.result === 'Win' ? '✅' : (e.result === 'Loss' ? '❌' : '➖');
-    const resultCls = e.result === 'Win' ? 'result-win' : (e.result === 'Loss' ? 'result-loss' : 'result-void');
+    const icon = e.result === 'Win' ? '✅' : (e.result === 'Loss' ? '❌' : (e.result === 'MIA' ? '❓' : '➖'));
+    const resultCls = e.result === 'Win' ? 'result-win' : (e.result === 'Loss' ? 'result-loss' : (e.result === 'MIA' ? 'result-mia' : 'result-void'));
     let roastHtml = '';
     if(e.result === 'Loss'){
       const pool = roastTierForName(name);
-      const roast = pool[hashStr(name + (lastWeek.label || '')) % pool.length];
+      const roast = pool[hashStr(name + 'live-draft') % pool.length];
       roastHtml = `<div class="multi-leg-roast">🔥 ${escapeHtml(name)} ${roast}.</div>`;
+    } else if(e.result === 'MIA'){
+      roastHtml = `<div class="multi-leg-mia-note">🛰️ ${escapeHtml(name)} was MIA this week — no leg placed.</div>`;
     }
     html += `<div class="multi-leg-block ${resultCls}">
       <div class="multi-leg-row">
@@ -1643,8 +1644,8 @@ function renderGroupMultiChart(lastWeek){
     </div>`;
   });
   const summary = losers.length === 0
-    ? '🎉 Clean sweep — nobody let the side down. This week, anyway.'
-    : `💀 ${losers.length} leg${losers.length === 1 ? '' : 's'} down. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.`;
+    ? '🎉 Clean sweep so far — nobody let the side down yet.'
+    : `💀 ${losers.length} leg${losers.length === 1 ? '' : 's'} down so far. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.`;
   area.innerHTML = `<div class="multi-summary-banner${losers.length === 0 ? ' clean' : ''}">${summary}</div>` + html;
 }
 
@@ -1679,7 +1680,7 @@ function render(state){
   document.getElementById('chartArea').innerHTML = buildChart(history);
   if(history.length){ selectChartPoint(history.length - 1); }
 
-  renderGroupMultiChart(lastWeek);
+  renderGroupMultiChart(state);
 
   const weeklyBets = state.weeklyIndividualBets || [];
   if(weeklyBets.length === 0){
