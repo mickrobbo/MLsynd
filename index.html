@@ -374,12 +374,10 @@
   .ladder-move-up{ color:var(--win); font-size:10px; font-weight:700; margin-left:4px; }
   .ladder-move-down{ color:var(--loss); font-size:10px; font-weight:700; margin-left:4px; }
   .ladder-move-same{ color:var(--muted); font-size:10px; margin-left:4px; }
-  .tip-crowd-split{
-    text-align:center; font-family:'IBM Plex Mono', monospace; font-size:11px; font-weight:600;
-    color:var(--brass-light); background:rgba(0,0,0,.18); border:1px solid var(--line);
-    border-radius:10px; padding:12px; margin-bottom:8px;
+  .tip-crowd-split-line{
+    text-align:center; font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:600;
+    color:var(--brass-light); margin-top:6px; padding-top:6px; border-top:1px solid var(--line);
   }
-  .tip-crowd-split:last-child{ margin-bottom:0; }
   .afl-teams .score{ font-size:16px; font-weight:700; color:var(--chalk); flex:0 0 auto; }
   .afl-status{
     text-align:center; font-size:10px; color:var(--brass); text-transform:uppercase;
@@ -3141,7 +3139,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
       // changed anymore), so seeing the crowd split here can't let anyone
       // game their own pick — only WHO picked what still stays hidden
       // until kickoff, that's the part worth keeping as a reveal.
-      let crowdSplitHtml = '';
+      let crowdSplitLine = '';
       try{
         const picksRes = await authedFetch(`/tipping/picks/${g.id}.json`);
         const allPicks = Object.values((await picksRes.json()) || {});
@@ -3150,7 +3148,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
         const drawCount = allPicks.filter(p => p.pick === 'draw').length;
         const total = homeCount + awayCount + drawCount;
         if(total > 0){
-          crowdSplitHtml = `<div class="tip-crowd-split">${Math.round(homeCount/total*100)}% backed ${escapeHtml(g.hteam)} · ${Math.round(awayCount/total*100)}% backed ${escapeHtml(g.ateam)}${drawCount > 0 ? ` · ${Math.round(drawCount/total*100)}% tipped a Draw` : ''}</div>`;
+          crowdSplitLine = `<div class="tip-crowd-split-line">${Math.round(homeCount/total*100)}% backed ${escapeHtml(g.hteam)} · ${Math.round(awayCount/total*100)}% backed ${escapeHtml(g.ateam)}${drawCount > 0 ? ` · ${Math.round(drawCount/total*100)}% Draw` : ''}</div>`;
         }
       }catch(e){}
       body.innerHTML = `
@@ -3158,12 +3156,12 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
           <div class="tip-countdown-clock-bubble">
             <div class="tip-countdown-lock">🔒</div>
             <div class="tip-countdown-clock" id="tipCountdown-${g.id}">--:--</div>
-            <div class="tip-countdown-label">until <b>the opening bounce</b> — who picked what stays hidden until then, no peeking, even for admins</div>
+            <div class="tip-countdown-label">until <b>the opening bounce</b></div>
           </div>
           <div class="tip-lock-bubble">
-            <div class="tip-your-pick-confirm">✅ Your pick is locked in — <b>${myPick === 'draw' ? 'Draw' : escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}</div>
+            <div class="tip-your-pick-confirm">✅ Locked in — <b>${myPick === 'draw' ? 'Draw' : escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}</div>
+            ${crowdSplitLine}
           </div>
-          ${crowdSplitHtml}
         </div>
       `;
       const clockEl = document.getElementById(`tipCountdown-${g.id}`);
@@ -3241,13 +3239,8 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
       const scoreLineHtml = complete
         ? `<div class="tip-game-meta" style="margin-bottom:8px;"><span style="display:flex; align-items:center; gap:6px;">${teamLogoImg(g.hteam, 16)}${escapeHtml(g.hteam)} ${g.hscore} — ${g.ascore} ${escapeHtml(g.ateam)}${teamLogoImg(g.ateam, 16)}</span></div>`
         : '<div class="hint" style="margin-bottom:8px;">Game underway — result not final yet.</div>';
-      const totalTips = homePicks.length + awayPicks.length + drawPicks.length;
-      const crowdSplitHtml = totalTips > 0
-        ? `<div class="tip-crowd-split">${Math.round(homePicks.length/totalTips*100)}% backed ${escapeHtml(g.hteam)} · ${Math.round(awayPicks.length/totalTips*100)}% backed ${escapeHtml(g.ateam)}${drawPicks.length > 0 ? ` · ${Math.round(drawPicks.length/totalTips*100)}% tipped a Draw` : ''}</div>`
-        : '';
       body.innerHTML = `
         ${scoreLineHtml}
-        ${crowdSplitHtml}
         <div class="tip-team-cols">
           <div class="tip-team-col ${homeCls}">
             ${teamLogoImg(g.hteam, 40)}
