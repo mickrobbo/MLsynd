@@ -677,6 +677,7 @@
   <div class="account-bar">
     <span id="accountName"></span>
     <button type="button" id="editNameBtn" title="Change your name">✎ Edit name</button>
+    <button type="button" id="resyncNameBtn" title="Re-sync your name onto past Tipping picks">🔄 Fix Tipping name</button>
     <button type="button" id="mainSignOutBtn" title="Sign out">Sign out</button>
   </div>
 </div>
@@ -1034,6 +1035,13 @@ function initAuthGate(){
     }catch(e){
       alert('Could not save your name — try again.');
     }
+  });
+
+  document.getElementById('resyncNameBtn').addEventListener('click', async () => {
+    if(!currentUserName){ alert('Sign-in still loading — try again in a moment.'); return; }
+    showToast('Re-syncing your name onto past picks…');
+    await renameOnAllMyPicks(currentUserName);
+    showToast('Done — check the Tipping ladder');
   });
 
   async function renameOnAllMyPicks(newName){
