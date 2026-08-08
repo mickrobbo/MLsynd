@@ -193,6 +193,7 @@
   .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; font-size:13.5px; gap:8px; }
   .multi-leg-name{ color:var(--chalk); font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sgm-badge{ display:inline-block; margin-top:6px; padding:3px 9px; border-radius:20px; font-family:'IBM Plex Mono', monospace; font-size:9.5px; font-weight:700; letter-spacing:.3px; }
+  .sgm-amount{ font-weight:700; }
   .sgm-badge.win{ border:1px solid var(--win); color:var(--win); background:rgba(111,169,138,.12); }
   .sgm-badge.loss{ border:1px solid var(--loss); color:var(--loss); background:rgba(193,96,74,.12); }
   .sgm-badge.pending{ border:1px solid var(--brass-dim); color:var(--brass); }
@@ -677,7 +678,7 @@
   <div class="account-bar">
     <span id="accountName"></span>
     <button type="button" id="editNameBtn" title="Change your name">✎ Edit name</button>
-    <button type="button" id="resyncNameBtn" title="Re-sync your name onto past Tipping picks">🔄 Fix Tipping name</button>
+    <button type="button" id="resyncNameBtn" title="Re-sync your name onto past Tipping picks">🔄</button>
     <button type="button" id="mainSignOutBtn" title="Sign out">Sign out</button>
   </div>
 </div>
@@ -1709,7 +1710,7 @@ function render(state){
           <span class="multi-leg-result">${icon}</span>
         </div>
         ${b.sgm ? `<div class="sgm-badge ${b.sgmResult === 'Win' ? 'win' : (b.sgmResult === 'Loss' ? 'loss' : 'pending')}">
-          <span>${b.sgmResult === 'Win' ? '✅' : (b.sgmResult === 'Loss' ? '❌' : '➖')}</span> SGM Bonus Bet Received
+          <span>${b.sgmResult === 'Win' ? '✅' : (b.sgmResult === 'Loss' ? '❌' : '➖')}</span> SGM Bonus Bet Received${(b.sgmResult === 'Win' && b.sgmAmount != null) ? ` <span class="sgm-amount">+${fmtMoney(b.sgmAmount).replace('+','')}</span>` : ''}
         </div>` : ''}
         ${roastHtml}
       </div>`;
