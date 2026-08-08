@@ -3120,7 +3120,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
 }
 
 function normTeamName(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
-function fixVenueName(v){ return (v || '').replace(/docklands/i, 'Marvel Stadium'); }
+function fixVenueName(v){ return (v || '').replace(/docklands/i, 'Marvel Stadium').replace(/kardinia\s*park/i, 'GMHBA Stadium'); }
 
 const AFL_TEAM_LOGOS = {
   adelaide: ['adelaide', 'adelaidecrows', 'crows'],
@@ -3196,6 +3196,25 @@ async function tippingMemberName(){
   return cachedTippingName;
 }
 
+let commenceTimesSyncedThisSession = false;
+async function ensureCommenceTimesSynced(games){
+  // The picks-read Firebase rule requires commence_time_ms to already exist
+  // for a game before it'll allow reading that game's picks at all — but it
+  // was only ever getting synced when someone happened to browse that round
+  // while it was still upcoming. Any round nobody browsed in time never got
+  // its games' commence times written, meaning the ladder's bulk read for
+  // those games was silently denied and fell back to empty picks for
+  // EVERYONE — which is exactly what produces identical scores across the
+  // board, since everyone ends up scored on the same synthetic auto-tip
+  // data instead of their real picks. Once per session is enough — a past
+  // game's kickoff time is a fixed fact, it never needs re-syncing.
+  if(commenceTimesSyncedThisSession) return;
+  commenceTimesSyncedThisSession = true;
+  try{
+    await Promise.all(games.map(g => syncGameMeta(g)));
+  }catch(e){}
+}
+
 async function renderTippingLadder(games){
   const area = document.getElementById('tippingLadderArea');
   const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)));
@@ -3204,6 +3223,8 @@ async function renderTippingLadder(games){
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
+
+  await ensureCommenceTimesSynced(games);
 
   // Only fully-finished rounds get scored — a round still in progress
   // shouldn't half-count toward the Perfect Round bonus or auto-tip logic.
