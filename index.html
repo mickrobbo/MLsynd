@@ -3618,10 +3618,22 @@ async function runFullHealthCheck(){
     check('Badge data shape', badBadges.length === 0 ? 'pass' : 'fail', badBadges.length === 0 ? 'All valid arrays' : `Broken badges field on: ${badBadges.join(', ')}`);
   }
 
-  // 4. Season history integrity
+  // 4. Season history integrity — show WHICH weeks and WHAT's missing,
+  // not just a count, since this is exactly the kind of thing worth
+  // relaying back precisely rather than re-describing from memory.
   if(currentState && Array.isArray(currentState.history)){
-    const broken = currentState.history.filter(h => !h.group || !h.groupEntries).length;
-    check('Season history entries', broken === 0 ? 'pass' : 'warn', `${currentState.history.length} week(s) saved, ${broken} missing expected fields`);
+    const brokenWeeks = currentState.history
+      .map((h, i) => ({
+        label: h.label || `(unlabeled, index ${i})`,
+        missingGroup: !h.group,
+        missingEntries: !h.groupEntries
+      }))
+      .filter(w => w.missingGroup || w.missingEntries);
+    const detail = brokenWeeks.length === 0
+      ? `${currentState.history.length} week(s) saved, all have expected fields`
+      : `${currentState.history.length} week(s) saved. Missing fields: ` +
+        brokenWeeks.map(w => `"${w.label}" (missing ${[w.missingGroup && 'group', w.missingEntries && 'groupEntries'].filter(Boolean).join(' + ')})`).join('; ');
+    check('Season history entries', brokenWeeks.length === 0 ? 'pass' : 'warn', detail);
   }
 
   // 5. Config sanity
