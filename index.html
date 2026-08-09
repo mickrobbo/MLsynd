@@ -97,6 +97,7 @@
     text-decoration:underline; cursor:pointer; padding:2px;
   }
   .account-bar button:active{ color:var(--brass); }
+  .account-bar button.active-toggle{ color:var(--win); text-decoration:none; }
 
   .toteboard-strip{ display:flex; gap:8px; margin-bottom:16px; }
   .toteboard-cell{
@@ -748,6 +749,7 @@
     <span id="accountName"></span>
     <button type="button" id="editNameBtn" title="Change your name">✎ Edit name</button>
     <button type="button" id="resyncNameBtn" title="Re-sync your name onto past Tipping picks">🔄</button>
+    <button type="button" id="pushToggleBtn" title="Get notified when a tip's about to lock">🔔 Notify me</button>
     <button type="button" id="mainSignOutBtn" title="Sign out">Sign out</button>
   </div>
 </div>
@@ -982,6 +984,7 @@ function applyRoleTabRestrictions(){
 function renderAccountBar(){
   const el = document.getElementById('accountName');
   if(el) el.textContent = currentUserName || '';
+  if(typeof updatePushToggleUI === 'function') updatePushToggleUI();
 }
 
 async function checkApprovalAndProceed(){
@@ -1182,6 +1185,86 @@ function initAuthGate(){
     showToast('Re-syncing your name onto past picks…');
     await renameOnAllMyPicks(currentUserName);
     showToast('Done — check the Tipping ladder');
+  });
+
+  // ---------- Push notifications ----------
+  // The VAPID public key is meant to be public — only the matching private
+  // key (used server-side, in the send-push and check-lockouts functions)
+  // needs to stay secret.
+  const VAPID_PUBLIC_KEY = 'BDqM9ewJUTJgdel-MJZ0eYiRxqpHhsEm6frDR9TWoIQ45EQ3dl0mUwL5RnEtJOQ3iE0ZFJTVTa8TNmRPZTeHLI0';
+
+  function urlBase64ToUint8Array(base64String){
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for(let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+  }
+
+  async function getCurrentPushSubscription(){
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      return await reg.pushManager.getSubscription();
+    }catch(e){ return null; }
+  }
+
+  async function updatePushToggleUI(){
+    const btn = document.getElementById('pushToggleBtn');
+    if(!btn) return;
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+      btn.style.display = 'none'; // browser doesn't support push at all — hide rather than show a button that'll just fail
+      return;
+    }
+    const sub = await getCurrentPushSubscription();
+    if(sub){
+      btn.textContent = '🔔 Notifications on';
+      btn.classList.add('active-toggle');
+    } else {
+      btn.textContent = '🔔 Notify me';
+      btn.classList.remove('active-toggle');
+    }
+  }
+
+  document.getElementById('pushToggleBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('pushToggleBtn');
+    btn.disabled = true;
+    try{
+      const existing = await getCurrentPushSubscription();
+      if(existing){
+        // turning off
+        await existing.unsubscribe();
+        if(currentUserUid){
+          await authedFetch(`/pushSubscriptions/${currentUserUid}.json`, { method: 'DELETE' });
+        }
+        showToast('Notifications turned off');
+      } else {
+        // turning on
+        const permission = await Notification.requestPermission();
+        if(permission !== 'granted'){
+          showToast(permission === 'denied' ? 'Notifications blocked — check your browser settings' : 'Notifications not enabled');
+          btn.disabled = false;
+          await updatePushToggleUI();
+          return;
+        }
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+        if(currentUserUid){
+          await authedFetch(`/pushSubscriptions/${currentUserUid}.json`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub.toJSON())
+          });
+        }
+        showToast('Notifications on — you\'ll get a reminder before tips lock');
+      }
+    }catch(e){
+      showToast('Could not update notification settings — try again');
+    }
+    btn.disabled = false;
+    await updatePushToggleUI();
   });
 
   async function renameOnAllMyPicks(newName){
@@ -1847,8 +1930,26 @@ function roastTierForName(name){
 }
 function renderGroupMultiChart(state){
   const area = document.getElementById('groupMultiArea');
+
+  if(state.groupMultiCleared){
+    area.innerHTML = '<div class="empty">No group legs recorded for this week yet.</div>';
+    return;
+  }
+
+  // Show the live in-progress draft while it has entries; once a week is
+  // saved the draft empties out, so fall back to showing the just-saved
+  // week's results instead of going blank — this is what actually stays
+  // "who cooked it" visible after saving, until Mick taps Clear on the
+  // Ledger.
   const draft = state.groupEntryDraft || {};
-  const entries = Object.entries(draft).filter(([, e]) => e && e.result);
+  let source = draft;
+  const draftHasEntries = Object.values(draft).some(e => e && e.result);
+  if(!draftHasEntries){
+    const lastWeek = (state.history && state.history.length > 0) ? state.history[state.history.length - 1] : null;
+    source = (lastWeek && lastWeek.groupEntries) ? lastWeek.groupEntries : {};
+  }
+
+  const entries = Object.entries(source).filter(([, e]) => e && e.result);
   if(entries.length === 0){
     area.innerHTML = '<div class="empty">No group legs recorded for this week yet.</div>';
     return;

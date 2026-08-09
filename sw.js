@@ -38,6 +38,49 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// ---- Push notifications ----
+// The push payload is a plain JSON object: { title, body, url }. "url" is
+// where tapping the notification should take you (defaults to the app root
+// if not given). Actual sending happens server-side (a Netlify function
+// using the web-push library, VAPID-signed) — this is just the receiving
+// end that turns a push event into a visible notification.
+self.addEventListener("push", (event) => {
+  let data = { title: "MLSynd", body: "You've got a notification.", url: "/" };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (e) {
+    // not JSON — fall back to plain text as the body
+    if (event.data) data.body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      // Focus an already-open tab if there is one, rather than opening a
+      // second copy of the app.
+      for (const client of allClients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.focus();
+          return;
+        }
+      }
+      await self.clients.openWindow(targetUrl);
+    })()
+  );
+});
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
