@@ -158,6 +158,8 @@
     font-family:'IBM Plex Mono', monospace; font-weight:400; text-transform:none;
     letter-spacing:0; font-size:11px; color: var(--muted);
   }
+  .panel-quiet{ padding:12px 16px; opacity:.72; border-color:rgba(239,234,216,.06); }
+  .panel-quiet h2{ font-size:12px; color:var(--muted); letter-spacing:1px; }
 
   table{ width:100%; border-collapse:collapse; font-size:12px; min-width:520px; }
   th{
@@ -176,6 +178,20 @@
     padding:1px 5px; border-radius:999px; vertical-align:middle;
   }
   .pos{ color: var(--win); } .neg{ color: var(--loss); }
+
+  .lb-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .lb-table{ width:100%; }
+  .lb-sticky{ position:sticky; background:var(--felt-2); z-index:1; }
+  .lb-rank-col{ left:0; width:26px; }
+  .lb-name-col{ left:26px; box-shadow:2px 0 4px rgba(0,0,0,.25); padding-right:12px; }
+  .lb-sticky.my-row{ background:#1a3a2c; }
+  th.lb-sticky{ z-index:2; }
+  td.name.profile-link{
+    cursor:pointer; padding-top:9px; padding-bottom:9px; position:relative;
+  }
+  td.name.profile-link::after{
+    content:"›"; color:var(--brass-dim); margin-left:4px; font-weight:700;
+  }
 
   .fin-row{ display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:13px; }
   .fin-row:last-child{ border-bottom:none; }
@@ -531,6 +547,14 @@
   .chart-hit:active + .chart-dot, .chart-hit:hover ~ .chart-dot{ r:4; }
   .chart-wrap svg{ display:block; }
   .empty{ text-align:center; padding:20px 10px; color:var(--muted); font-family:'IBM Plex Mono', monospace; font-size:12px; }
+  .empty-state{ text-align:center; padding:30px 16px; }
+  .empty-state-icon{ font-size:34px; margin-bottom:10px; opacity:.85; filter:drop-shadow(0 0 12px rgba(203,177,102,.2)); }
+  .empty-state-msg{ font-family:'IBM Plex Sans', sans-serif; font-size:13px; color:var(--muted); line-height:1.5; max-width:280px; margin:0 auto; }
+  .empty-state-cta{
+    display:inline-block; margin-top:14px; font-family:'Barlow Condensed', sans-serif; font-size:11px;
+    letter-spacing:1px; text-transform:uppercase; font-weight:700; color:var(--brass-light);
+    border:1px solid var(--brass-dim); border-radius:999px; padding:7px 16px;
+  }
   .hint{ font-size:11px; color: var(--muted); line-height:1.5; }
 
   .auth-gate{
@@ -686,7 +710,7 @@
       <div id="highlightsArea"></div>
     </div>
 
-    <div class="panel" id="onThisDayPanel">
+    <div class="panel panel-quiet" id="onThisDayPanel">
       <h2>📅 On This Day In Sport</h2>
       <div id="onThisDayArea"><div class="empty">Loading…</div></div>
     </div>
@@ -1476,6 +1500,13 @@ const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i;
 function escapeHtml(str){
   const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
 }
+function polishedEmptyState(icon, message, cta){
+  return `<div class="empty-state">
+    <div class="empty-state-icon">${icon}</div>
+    <div class="empty-state-msg">${message}</div>
+    ${cta ? `<div class="empty-state-cta">${escapeHtml(cta)}</div>` : ''}
+  </div>`;
+}
 function fmtMoney(n){
   const v = Number(n) || 0;
   const sign = v > 0 ? '+' : (v < 0 ? '-' : '');
@@ -2084,7 +2115,7 @@ function renderGroupMultiChart(state){
   const area = document.getElementById('groupMultiArea');
 
   if(state.groupMultiCleared){
-    area.innerHTML = '<div class="empty">No group legs recorded for this week yet.</div>';
+    area.innerHTML = polishedEmptyState('🍳', 'Nobody\'s cooked anything yet this week — the kitchen\'s still cold.');
     return;
   }
 
@@ -2103,7 +2134,7 @@ function renderGroupMultiChart(state){
 
   const entries = Object.entries(source).filter(([, e]) => e && e.result);
   if(entries.length === 0){
-    area.innerHTML = '<div class="empty">No group legs recorded for this week yet.</div>';
+    area.innerHTML = polishedEmptyState('🍳', 'Nobody\'s cooked anything yet this week — the kitchen\'s still cold.');
     return;
   }
   const losers = entries.filter(([, e]) => e.result === 'Loss');
@@ -2173,7 +2204,7 @@ function render(state){
 
   const weeklyBets = state.weeklyIndividualBets || [];
   if(weeklyBets.length === 0){
-    document.getElementById('weeklyIndividualBetsArea').innerHTML = '<div class="empty">No individual bets set for this week yet.</div>';
+    document.getElementById('weeklyIndividualBetsArea').innerHTML = polishedEmptyState('🎲', 'No individual bets locked in for this week yet.', 'Check back after entry');
   } else {
     document.getElementById('weeklyIndividualBetsArea').innerHTML = weeklyBets.map(b => {
       const icon = b.result === 'Win' ? '✅' : (b.result === 'Loss' ? '❌' : '➖');
@@ -2211,22 +2242,23 @@ function render(state){
     hlRow('Best individual bet win', hl.bestIndWin, d => fmtMoney(d.pl));
 
   const ranked = rankedMembers(state.members);
-  let html = '<table><tr><th>#</th><th>Name</th><th>Score</th><th>P/L</th><th>W-L-V</th><th>Win%</th><th>Ind W-L</th><th>Avg Leg</th></tr>';
+  let html = '<div class="lb-scroll"><table class="lb-table"><tr><th class="lb-sticky lb-rank-col">#</th><th class="lb-sticky lb-name-col">Name</th><th>P/L</th><th>Win%</th><th>Score</th><th>W-L-V</th><th>Ind W-L</th><th>Avg Leg</th></tr>';
   ranked.forEach((m, i) => {
     const rank = i + 1;
     const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
-    html += `<tr class="${rank===1?'rank-1':''}${isMe ? ' my-row' : ''}">
-      <td>${rank}</td>
-      <td class="name profile-link" data-profile-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
-      <td>${m.dataScore.toFixed(2)}</td>
+    const rowCls = `${rank===1?'rank-1':''}${isMe ? ' my-row' : ''}`;
+    html += `<tr class="${rowCls}">
+      <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
+      <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
       <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
-      <td>${m.wins}-${m.losses}-${m.voids}</td>
       <td>${(m.winPct*100).toFixed(0)}%</td>
+      <td>${m.dataScore.toFixed(2)}</td>
+      <td>${m.wins}-${m.losses}-${m.voids}</td>
       <td>${m.indWin}-${m.indLoss}</td>
       <td>${m.avgLeg > 0 ? '@ ' + m.avgLeg.toFixed(2) : '—'}</td>
     </tr>`;
   });
-  html += '</table>';
+  html += '</table></div>';
   document.getElementById('leaderboardArea').innerHTML = html;
   document.getElementById('leaderboardArea').querySelectorAll('.profile-link').forEach(el => {
     el.addEventListener('click', () => openProfile(el.dataset.profileName));
@@ -2290,7 +2322,7 @@ function render(state){
 
   const slips = state.slips || [];
   if(slips.length === 0){
-    document.getElementById('slipsArea').innerHTML = '<div class="empty">No slips added yet.</div>';
+    document.getElementById('slipsArea').innerHTML = polishedEmptyState('📎', 'No slip uploaded for this week yet — it\'ll appear here once it lands.', 'Check back after results');
   } else {
     let slipHtml = '';
     [...slips].reverse().forEach(s => {
@@ -3292,10 +3324,18 @@ function gameHasStarted(g){
 async function syncGameMeta(g){
   const t = new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
   try{
-    await authedFetch(`/tipping/meta/${g.id}/commence_time_ms.json`, {
+    const res = await authedFetch(`/tipping/meta/${g.id}/commence_time_ms.json`, {
       method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(t)
     });
-  }catch(e){}
+    if(!res.ok){
+      let bodyText = '';
+      try{ bodyText = await res.text(); }catch(e){}
+      return { ok: false, gameId: g.id, status: res.status, bodyText };
+    }
+    return { ok: true, gameId: g.id };
+  }catch(e){
+    return { ok: false, gameId: g.id, status: 'network error', bodyText: e.message };
+  }
 }
 
 let tippingSelectedRound = null;
@@ -3534,12 +3574,23 @@ async function saveAllTippingPicks(auth){
     // it, and it's normally synced (fire-and-forget) whenever a round is
     // first viewed. For a round nobody's ever opened before, there's a real
     // race between that sync landing and Save actually firing — awaiting
-    // it here first eliminates that race outright, rather than just
-    // detecting the failure after the fact.
-    await Promise.all(toWrite.map(w => {
+    // it here first eliminates that race outright. Also now actually
+    // checks whether each sync succeeded, rather than assuming it did —
+    // an unnoticed sync failure here would otherwise show up downstream as
+    // a confusing "Permission denied" on the pick writes with no hint that
+    // the real problem happened a step earlier.
+    const syncResults = await Promise.all(toWrite.map(w => {
       const meta = tippingRoundGameMeta[w.gameId];
-      return meta && meta.date ? syncGameMeta({ id: w.gameId, date: meta.date }) : Promise.resolve();
+      return meta && meta.date ? syncGameMeta({ id: w.gameId, date: meta.date }) : { ok: false, gameId: w.gameId, status: 'no date available to sync' };
     }));
+    const syncFailed = syncResults.filter(r => !r.ok);
+    if(syncFailed.length > 0){
+      const uniqueReasons = [...new Set(syncFailed.map(f => `${f.status}${f.bodyText ? ': ' + f.bodyText.slice(0,120) : ''}`))];
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = `Couldn't prepare ${syncFailed.length} of ${toWrite.length} game(s) for saving — ${uniqueReasons.join(' | ')}`;
+      btn.disabled = false;
+      return;
+    }
 
     const name = await tippingMemberName();
     const results = await Promise.all(toWrite.map(w =>
