@@ -874,6 +874,12 @@
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
     </div>
     <div class="panel">
+      <h2>🧪 Isolated Write Test</h2>
+      <div class="hint">Tries several minimal writes one at a time to a real, temporary, harmless test path — reports exactly which ones Firebase actually accepts. Built specifically to isolate the Round 23 picks/Joker save failure since every rules-based theory has been directly disproven.</div>
+      <button type="button" id="runWriteTestBtn">Run isolated write test</button>
+      <div id="writeTestResults" style="margin-top:10px;"></div>
+    </div>
+    <div class="panel">
       <h2>🔔 Test Push Notification</h2>
       <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
       <button type="button" id="testPushBtn">Send test notification</button>
@@ -2477,6 +2483,54 @@ document.getElementById('testPushBtn').addEventListener('click', async () => {
     status.className = 'status-msg error';
     status.textContent = 'Could not send: ' + e.message;
   }
+  btn.disabled = false;
+});
+
+document.getElementById('runWriteTestBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('runWriteTestBtn');
+  const resultsEl = document.getElementById('writeTestResults');
+  btn.disabled = true;
+  resultsEl.innerHTML = '<div class="empty">Running…</div>';
+
+  const auth = await getValidAuth();
+  if(!auth){
+    resultsEl.innerHTML = '<div class="empty" style="color:var(--loss);">Not signed in.</div>';
+    btn.disabled = false;
+    return;
+  }
+
+  // Three minimal, isolated writes to a real (harmless, temporary) test
+  // path — designed to isolate exactly one variable at a time, since every
+  // rules-content theory (timing, status, uid matching, prior data) has
+  // now been directly disproven by evidence. The one pattern never
+  // actually tested in isolation: every write that's ever succeeded in
+  // this whole build writes a single primitive value; every write that's
+  // failed writes a JSON object spanning multiple fields.
+  const tests = [
+    { label: 'Primitive value (matches the pattern that has always worked)', path: `/tipping/writeTest/${auth.uid}/primitiveOnly.json`, body: JSON.stringify(12345) },
+    { label: 'Object value, no uid check in the rule', path: `/tipping/writeTest/${auth.uid}/objectNoUid.json`, body: JSON.stringify({ a: 1, b: 2 }) },
+    { label: 'Object value, WITH auth.uid===$uid in the rule', path: `/tipping/writeTest/${auth.uid}/objectWithUid.json`, body: JSON.stringify({ a: 1, b: 2 }) },
+  ];
+
+  let html = '';
+  for(const t of tests){
+    try{
+      const res = await authedFetch(t.path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: t.body });
+      let bodyText = '';
+      try{ bodyText = await res.text(); }catch(e){}
+      const icon = res.ok ? '✅' : '❌';
+      html += `<div style="padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
+        <span style="color:${res.ok ? 'var(--win)' : 'var(--loss)'};">${icon}</span> <b>${escapeHtml(t.label)}</b><br>
+        <span style="color:var(--muted); margin-left:20px;">${res.ok ? 'Accepted' : `Rejected (${res.status}${bodyText ? ': ' + bodyText.slice(0,100) : ''})`}</span>
+      </div>`;
+    }catch(e){
+      html += `<div style="padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
+        <span style="color:var(--loss);">❌</span> <b>${escapeHtml(t.label)}</b><br>
+        <span style="color:var(--muted); margin-left:20px;">Network error: ${escapeHtml(e.message)}</span>
+      </div>`;
+    }
+  }
+  resultsEl.innerHTML = html;
   btn.disabled = false;
 });
 
