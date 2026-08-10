@@ -2511,10 +2511,22 @@ document.getElementById('runWriteTestBtn').addEventListener('click', async () =>
     { label: 'Object value, no uid check in the rule', path: `/tipping/writeTest/${auth.uid}/objectNoUid.json`, body: JSON.stringify({ a: 1, b: 2 }) },
     { label: 'Object value, WITH auth.uid===$uid in the rule', path: `/tipping/writeTest/${auth.uid}/objectWithUid.json`, body: JSON.stringify({ a: 1, b: 2 }) },
     { label: 'Dynamic .child() lookup using a NUMBER from newData (matches Joker\'s exact pattern)', path: `/tipping/writeTest/${auth.uid}/dynamicChildFromNumber.json`, body: JSON.stringify({ testRound: 23 }) },
+    { label: 'SAME dynamic lookup, but coerced to a string first (the proposed fix)', path: `/tipping/writeTest/${auth.uid}/dynamicChildFromNumberFixed.json`, body: JSON.stringify({ testRound: 23 }) },
+    { label: 'Exact Picks pattern (real game ID + real commence_time_ms timing check)', path: (() => {
+        const realGameId = Object.keys(tippingRoundGameMeta || {})[0];
+        return realGameId ? `/tipping/picksTest/${realGameId}/${auth.uid}/pick.json` : null;
+      })(), body: JSON.stringify('home') },
   ];
 
   let html = '';
   for(const t of tests){
+    if(!t.path){
+      html += `<div style="padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
+        <span style="color:var(--muted);">⏭️</span> <b>${escapeHtml(t.label)}</b><br>
+        <span style="color:var(--muted); margin-left:20px;">Skipped — open the Tipping tab's Games view first so a real game ID is available, then run this again.</span>
+      </div>`;
+      continue;
+    }
     try{
       const res = await authedFetch(t.path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: t.body });
       let bodyText = '';
