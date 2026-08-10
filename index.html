@@ -2510,6 +2510,7 @@ document.getElementById('runWriteTestBtn').addEventListener('click', async () =>
     { label: 'Primitive value (matches the pattern that has always worked)', path: `/tipping/writeTest/${auth.uid}/primitiveOnly.json`, body: JSON.stringify(12345) },
     { label: 'Object value, no uid check in the rule', path: `/tipping/writeTest/${auth.uid}/objectNoUid.json`, body: JSON.stringify({ a: 1, b: 2 }) },
     { label: 'Object value, WITH auth.uid===$uid in the rule', path: `/tipping/writeTest/${auth.uid}/objectWithUid.json`, body: JSON.stringify({ a: 1, b: 2 }) },
+    { label: 'Dynamic .child() lookup using a NUMBER from newData (matches Joker\'s exact pattern)', path: `/tipping/writeTest/${auth.uid}/dynamicChildFromNumber.json`, body: JSON.stringify({ testRound: 23 }) },
   ];
 
   let html = '';
