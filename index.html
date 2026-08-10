@@ -585,6 +585,7 @@
   .auth-field-wrap input{ padding-right:38px; }
   .auth-pw-toggle{
     position:absolute; right:9px; top:50%; transform:translateY(-50%);
+    width:auto; height:auto; margin:0;
     background:none; border:none; padding:4px; cursor:pointer; opacity:.6; line-height:0;
   }
   .auth-pw-toggle:hover{ opacity:1; }
@@ -1116,7 +1117,44 @@ function applyRoleTabRestrictions(){
 function renderAccountBar(){
   const el = document.getElementById('accountName');
   if(el) el.textContent = currentUserName || '';
-  if(typeof updatePushToggleUI === 'function') updatePushToggleUI();
+  updatePushToggleUI();
+}
+
+// ---------- Push notifications (top-level - called from renderAccountBar,
+// the notify-me toggle inside initAuthGate, and the Diag tab's test button,
+// so this can't live nested inside any single one of those) ----------
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for(let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function getCurrentPushSubscription(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    return await reg.pushManager.getSubscription();
+  }catch(e){ return null; }
+}
+
+async function updatePushToggleUI(){
+  const btn = document.getElementById('pushToggleBtn');
+  if(!btn) return;
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    btn.style.display = 'none'; // browser doesn't support push at all — hide rather than show a button that'll just fail
+    return;
+  }
+  const sub = await getCurrentPushSubscription();
+  if(sub){
+    btn.textContent = '🔔 Notifications on';
+    btn.classList.add('active-toggle');
+  } else {
+    btn.textContent = '🔔 Notify me';
+    btn.classList.remove('active-toggle');
+  }
 }
 
 async function checkApprovalAndProceed(){
@@ -1336,42 +1374,10 @@ function initAuthGate(){
   // ---------- Push notifications ----------
   // The VAPID public key is meant to be public — only the matching private
   // key (used server-side, in the send-push and check-lockouts functions)
-  // needs to stay secret.
+  // needs to stay secret. urlBase64ToUint8Array/getCurrentPushSubscription/
+  // updatePushToggleUI now live at top level (see above renderAccountBar) —
+  // they need to be callable from outside this function too.
   const VAPID_PUBLIC_KEY = 'BDqM9ewJUTJgdel-MJZ0eYiRxqpHhsEm6frDR9TWoIQ45EQ3dl0mUwL5RnEtJOQ3iE0ZFJTVTa8TNmRPZTeHLI0';
-
-  function urlBase64ToUint8Array(base64String){
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for(let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
-    return outputArray;
-  }
-
-  async function getCurrentPushSubscription(){
-    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
-    try{
-      const reg = await navigator.serviceWorker.ready;
-      return await reg.pushManager.getSubscription();
-    }catch(e){ return null; }
-  }
-
-  async function updatePushToggleUI(){
-    const btn = document.getElementById('pushToggleBtn');
-    if(!btn) return;
-    if(!('serviceWorker' in navigator) || !('PushManager' in window)){
-      btn.style.display = 'none'; // browser doesn't support push at all — hide rather than show a button that'll just fail
-      return;
-    }
-    const sub = await getCurrentPushSubscription();
-    if(sub){
-      btn.textContent = '🔔 Notifications on';
-      btn.classList.add('active-toggle');
-    } else {
-      btn.textContent = '🔔 Notify me';
-      btn.classList.remove('active-toggle');
-    }
-  }
 
   document.getElementById('pushToggleBtn').addEventListener('click', async () => {
     const btn = document.getElementById('pushToggleBtn');
@@ -3540,14 +3546,21 @@ async function saveAllTippingPicks(auth){
       authedFetch(`/tipping/picks/${w.gameId}/${auth.uid}.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pick: w.pick, margin: w.margin, name })
-      }).then(res => ({ w, ok: res.ok, status: res.status }))
-       .catch(err => ({ w, ok: false, status: 'network error: ' + err.message }))
+      }).then(async res => {
+        let bodyText = '';
+        try{ bodyText = await res.text(); }catch(e){}
+        return { w, ok: res.ok, status: res.status, bodyText };
+      }).catch(err => ({ w, ok: false, status: 'network error', bodyText: err.message }))
     ));
 
     const failed = results.filter(r => !r.ok);
     if(failed.length > 0){
+      // Show the actual reason Firebase gave, not just a bare status code —
+      // "401" nine times in a row tells you almost nothing on its own, the
+      // response body says what actually happened.
+      const uniqueReasons = [...new Set(failed.map(f => `${f.status}${f.bodyText ? ': ' + f.bodyText.slice(0,120) : ''}`))];
       statusEl.className = 'status-msg error';
-      statusEl.textContent = `${failed.length} of ${toWrite.length} pick(s) didn't actually save (${failed.map(f => f.status).join(', ')}) — try again, or refresh first if this round's brand new.`;
+      statusEl.textContent = `${failed.length} of ${toWrite.length} pick(s) didn't actually save — ${uniqueReasons.join(' | ')}`;
       btn.disabled = false;
       return;
     }
