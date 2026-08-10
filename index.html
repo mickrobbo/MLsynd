@@ -3252,8 +3252,17 @@ async function setMyJoker(auth, games, round){
     // Don't optimistically update local state on a write that didn't
     // actually land — that's exactly what made the Joker silently vanish
     // on refresh before: the UI showed it as set while nothing had really
-    // saved.
-    throw new Error(`Firebase rejected the write (status ${res.status})`);
+    // saved. Read back the actual stored roundLockTime so a real failure
+    // shows real numbers instead of another guess.
+    let bodyText = '';
+    try{ bodyText = await res.text(); }catch(e){}
+    let diagLine = '';
+    try{
+      const lockRes = await authedFetch(`/tipping/roundLockTime/${round != null ? round : myJokerRound}.json`);
+      const lockMs = await lockRes.json();
+      diagLine = ` [diag: uid=${auth.uid.slice(0,8)}…, now=${Date.now()}, roundLockTime=${lockMs}]`;
+    }catch(e){}
+    throw new Error(`Firebase rejected the write (status ${res.status}${bodyText ? ': ' + bodyText.slice(0,120) : ''})${diagLine}`);
   }
   myJokerRound = round;
   if(allJokers) allJokers[auth.uid] = { round };
@@ -3308,7 +3317,11 @@ function renderJokerPanel(games, currentRound, auth){
         showToast(`Round ${currentRound} set as your Joker`);
       }
     }catch(e){
-      showToast('Could not save your Joker — try again');
+      showToast('Could not save your Joker');
+      const statusSlot = document.getElementById('tippingJokerStatusSlot');
+      if(statusSlot) statusSlot.innerHTML = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:var(--loss);">🃏 ${escapeHtml(e.message)}</div>`;
+      toggleBtn.disabled = false;
+      return;
     }
     renderJokerPanel(games, currentRound, auth);
   });
@@ -3610,8 +3623,28 @@ async function saveAllTippingPicks(auth){
       // "401" nine times in a row tells you almost nothing on its own, the
       // response body says what actually happened.
       const uniqueReasons = [...new Set(failed.map(f => `${f.status}${f.bodyText ? ': ' + f.bodyText.slice(0,120) : ''}`))];
+
+      // Sync succeeded (we got past the earlier check) but the write is
+      // still denied — read back the actual stored value for one failed
+      // game so we can see the real numbers instead of theorizing about
+      // timing blind. Also confirms which uid this session is actually
+      // writing as, since a uid mismatch would explain a permission
+      // denial that has nothing to do with timing at all.
+      let diagLine = '';
+      try{
+        const firstFailedGameId = failed[0].w.gameId;
+        const metaRes = await authedFetch(`/tipping/meta/${firstFailedGameId}/commence_time_ms.json`);
+        const commenceMs = await metaRes.json();
+        const nowMs = Date.now();
+        const statusRes = await authedFetch(`/users/${auth.uid}/status.json`);
+        const myStatus = await statusRes.json();
+        diagLine = ` [diag: uid=${auth.uid.slice(0,8)}…, status=${myStatus}, now=${nowMs}, commence_time_ms=${commenceMs}, now<commence=${nowMs < commenceMs}]`;
+      }catch(e){
+        diagLine = ` [diag failed to read back: ${e.message}]`;
+      }
+
       statusEl.className = 'status-msg error';
-      statusEl.textContent = `${failed.length} of ${toWrite.length} pick(s) didn't actually save — ${uniqueReasons.join(' | ')}`;
+      statusEl.textContent = `${failed.length} of ${toWrite.length} pick(s) didn't actually save — ${uniqueReasons.join(' | ')}${diagLine}`;
       btn.disabled = false;
       return;
     }
