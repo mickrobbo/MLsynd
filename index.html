@@ -168,6 +168,13 @@
   td{ padding:7px 6px; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; white-space:nowrap; }
   td.name{ font-weight:600; color:var(--chalk); }
   tr.rank-1 td.name{ color: var(--brass); }
+  tr.my-row{ background: rgba(203,177,102,.08); }
+  tr.my-row td{ border-bottom-color: rgba(203,177,102,.25); }
+  .my-row-badge{
+    display:inline-block; margin-left:5px; font-family:'Barlow Condensed', sans-serif; font-size:8px; font-weight:700;
+    letter-spacing:.5px; text-transform:uppercase; color:#151007; background:var(--brass-light);
+    padding:1px 5px; border-radius:999px; vertical-align:middle;
+  }
   .pos{ color: var(--win); } .neg{ color: var(--loss); }
 
   .fin-row{ display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:13px; }
@@ -183,6 +190,21 @@
   .owed-row .name{ font-weight:600; }
   .owed-row .amt{ color: var(--muted); }
   .owed-row .amt.due{ color: var(--loss); font-weight:600; }
+  .owed-row-full{ padding:9px 0; border-bottom:1px solid var(--line); }
+  .owed-row-full:last-child{ border-bottom:none; }
+  .owed-row-full .owed-row{ padding:0 0 6px; border:none; }
+  .dues-bar-track{ height:5px; border-radius:3px; background:rgba(239,234,216,.08); overflow:hidden; }
+  .dues-bar-fill{ height:100%; border-radius:3px; transition:width .3s; }
+  .dues-bar-fill.paid-full{ background:var(--win); }
+  .dues-bar-fill.paid-partial{ background:var(--brass); }
+  .dues-bar-fill.paid-none{ background:var(--loss); opacity:.5; }
+  .fully-paid-row{ background:rgba(111,169,138,.08); border-radius:8px; padding-left:8px; padding-right:8px; margin:0 -8px; }
+  .fully-paid-amt{ color:var(--win) !important; font-weight:700; }
+  .paid-badge{
+    display:inline-block; margin-left:5px; font-family:'Barlow Condensed', sans-serif; font-size:8px; font-weight:700;
+    letter-spacing:.5px; text-transform:uppercase; color:#0d2318; background:var(--win);
+    padding:1px 5px; border-radius:999px; vertical-align:middle;
+  }
 
   .highlight-row{ display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line); font-family:'IBM Plex Mono', monospace; font-size:12px; }
   .multi-leg-block{ padding:10px 12px; margin-bottom:8px; border-radius:10px; background:rgba(239,234,216,.03); border:1px solid var(--line); }
@@ -432,6 +454,10 @@
     color: var(--muted); margin-top:4px;
   }
   .chart-wrap{ overflow-x:auto; }
+  .pl-hero{ text-align:center; margin-bottom:10px; }
+  .pl-hero-lbl{ font-family:'Barlow Condensed', sans-serif; font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); }
+  .pl-hero-val{ font-family:'IBM Plex Mono', monospace; font-size:38px; font-weight:700; line-height:1.1; }
+  .pl-hero-val.pos{ color:var(--win); } .pl-hero-val.neg{ color:var(--loss); }
   .chart-tooltip{ min-height:16px; font-size:12px; color:var(--chalk); text-align:center; margin-top:4px; opacity:0; transition:opacity .15s; font-family:'IBM Plex Mono', monospace; }
   .slip-upload{ margin-bottom:12px; }
   button.small{
@@ -507,17 +533,70 @@
   .empty{ text-align:center; padding:20px 10px; color:var(--muted); font-family:'IBM Plex Mono', monospace; font-size:12px; }
   .hint{ font-size:11px; color: var(--muted); line-height:1.5; }
 
-  .auth-gate{ position:fixed; inset:0; z-index:9999; background:var(--ink); display:flex; align-items:center; justify-content:center; padding:20px; }
-  .auth-box{ width:100%; max-width:360px; background:var(--felt-2); border:1px solid var(--line); border-radius:10px; padding:22px; }
+  .auth-gate{
+    position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;
+    background-color: var(--ink);
+    background-image: radial-gradient(ellipse at center, rgba(203,177,102,.10) 0%, transparent 70%);
+    overflow:hidden;
+  }
+  .auth-gate::before{
+    content:""; position:absolute; inset:0;
+    background: url('/banner.png') center center / 55% no-repeat;
+    opacity:.06; filter:blur(1.5px); pointer-events:none;
+  }
+  .auth-box{
+    position:relative; z-index:1; width:100%; max-width:360px; border-radius:16px; padding:30px 24px;
+    background: linear-gradient(165deg, #123626 0%, #0B2B22 65%, #0A241C 100%);
+    border:1px solid var(--brass);
+    box-shadow: 0 0 34px rgba(203,177,102,.16), 0 20px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+  }
   .auth-logo{ font-family:'Barlow Condensed', sans-serif; font-weight:700; letter-spacing:3px; font-size:22px; color:var(--brass); text-align:center; margin-bottom:18px; }
-  .auth-logo-img{ display:block; max-width:100%; width:220px; height:auto; margin:0 auto 18px; filter: drop-shadow(0 0 18px rgba(199,162,72,.3)); }
-  .auth-tabs{ display:flex; gap:8px; margin-bottom:16px; }
-  .auth-tab{ flex:1; font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:9px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; }
-  .auth-tab.active{ border-color:var(--brass); color:var(--brass); }
-  .auth-box label.field{ display:flex; flex-direction:column; gap:4px; font-size:10px; color:var(--muted); font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; }
-  .auth-box input[type=text], .auth-box input[type=password], .auth-box input[type=email]{ background:#060A08; color:var(--chalk); border:1px solid var(--line); border-radius:5px; font-family:'IBM Plex Mono', monospace; font-size:13px; padding:9px; width:100%; }
+  .auth-logo-icon{ display:block; max-width:170px; width:64%; height:auto; margin:0 auto 6px; filter: drop-shadow(0 0 20px rgba(199,162,72,.35)); }
+  .auth-title{
+    text-align:center; font-family:'Barlow Condensed', sans-serif; font-weight:700; letter-spacing:5px;
+    font-size:33px; margin:2px 0 3px;
+    background: linear-gradient(155deg, #F5E8A8 10%, #CBB166 55%, #9c8248 100%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--brass);
+  }
+  .auth-tagline{
+    text-align:center; font-family:'Barlow Condensed', sans-serif; font-size:10px; letter-spacing:4px;
+    text-transform:uppercase; color:var(--muted); margin-bottom:24px;
+  }
+  .auth-tabs{ display:flex; gap:0; margin-bottom:22px; border-bottom:1px solid var(--line); }
+  .auth-tab{
+    flex:1; font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1.5px; font-weight:700;
+    text-transform:uppercase; padding:0 0 11px; border:none; border-bottom:2px solid transparent;
+    background:transparent; color:var(--muted); cursor:pointer; margin-bottom:-1px; transition:color .15s;
+  }
+  .auth-tab.active{ border-bottom-color:var(--brass); color:var(--brass-light); }
+  .auth-box label.field{ display:flex; flex-direction:column; gap:5px; font-size:11.5px; font-weight:600; color:#c3cfc8; font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; }
+  .auth-box input[type=text], .auth-box input[type=password], .auth-box input[type=email]{
+    background:#0E1F17; color:var(--chalk); border:1px solid rgba(239,234,216,.28); border-radius:8px;
+    font-family:'IBM Plex Mono', monospace; font-size:13px; padding:11px 12px 11px 38px; width:100%;
+  }
+  .auth-box input[type=text]:focus, .auth-box input[type=password]:focus, .auth-box input[type=email]:focus{
+    outline:none; border-color:var(--brass); box-shadow:0 0 0 2px rgba(203,177,102,.25);
+  }
+  .auth-field-wrap{ position:relative; }
+  .auth-field-icon{
+    position:absolute; left:11px; top:50%; transform:translateY(-50%);
+    width:16px; height:16px; opacity:.6; pointer-events:none;
+  }
+  .auth-field-wrap input{ padding-right:38px; }
+  .auth-pw-toggle{
+    position:absolute; right:9px; top:50%; transform:translateY(-50%);
+    background:none; border:none; padding:4px; cursor:pointer; opacity:.6; line-height:0;
+  }
+  .auth-pw-toggle:hover{ opacity:1; }
+  .auth-remember-row{
+    display:flex; align-items:center; gap:8px; margin:2px 0 16px; cursor:pointer;
+    font-family:'IBM Plex Sans', sans-serif; font-size:12.5px; color:var(--muted);
+  }
+  .auth-remember-row input[type=checkbox]{
+    width:16px; height:16px; accent-color:var(--brass); cursor:pointer; margin:0;
+  }
   .auth-box button{ width:100%; margin-top:4px; }
-  #authSubmitBtn{ font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:11px 16px; border-radius:6px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
+  #authSubmitBtn{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1.5px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
   #authSubmitBtn:disabled{ opacity:.4; cursor:default; }
   #authSignOutBtn{ font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:11px 16px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; }
 </style>
@@ -525,7 +604,9 @@
 <body>
 <div id="authGate" class="auth-gate">
   <div class="auth-box">
-    <img src="/banner.png" alt="MLSynd" class="auth-logo-img">
+    <img src="/logo-icon.png" alt="" class="auth-logo-icon">
+    <div class="auth-title">MLSYND</div>
+    <div class="auth-tagline">Sports Betting Syndicate</div>
     <div id="authFormWrap">
       <div class="auth-tabs">
         <button type="button" class="auth-tab active" id="authTabLogin">Log in</button>
@@ -534,8 +615,25 @@
       <div id="authNameField" style="display:none;">
         <label class="field">Name<input type="text" id="authName" autocomplete="name"></label>
       </div>
-      <label class="field">Email<input type="text" id="authEmail" autocomplete="email" inputmode="email"></label>
-      <label class="field">Password<input type="password" id="authPassword" autocomplete="current-password"></label>
+      <label class="field">Email
+        <div class="auth-field-wrap">
+          <svg class="auth-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--brass-light);"><path d="M4 4h16v16H4z" stroke="none"/><path d="M22 6l-10 7L2 6"/><path d="M2 6h20v12H2z"/></svg>
+          <input type="text" id="authEmail" autocomplete="email" inputmode="email" placeholder="Enter your email">
+        </div>
+      </label>
+      <label class="field">Password
+        <div class="auth-field-wrap">
+          <svg class="auth-field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--brass-light);"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <input type="password" id="authPassword" autocomplete="current-password" placeholder="Enter your password">
+          <button type="button" class="auth-pw-toggle" id="authPwToggle" title="Show password">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--chalk)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </label>
+      <label class="auth-remember-row" id="authRememberRow">
+        <input type="checkbox" id="authRememberMe" checked>
+        <span>Remember me</span>
+      </label>
       <button type="button" id="authSubmitBtn">Log in</button>
       <div style="text-align:center; margin-top:8px;"><a href="#" id="authForgotLink" style="font-size:11px; color:var(--muted); text-decoration:underline;">Forgot password?</a></div>
       <div class="status-msg" id="authStatus"></div>
@@ -564,9 +662,12 @@
       </div>
     </div>
 
-    <div class="panel" id="onThisDayPanel">
-      <h2>📅 On This Day In Sport</h2>
-      <div id="onThisDayArea"><div class="empty">Loading…</div></div>
+    <div class="panel">
+      <div class="pl-hero">
+        <div class="pl-hero-lbl">Season P/L</div>
+        <div class="pl-hero-val" id="plHeroVal">$0</div>
+      </div>
+      <div id="chartArea"></div>
     </div>
 
     <div class="panel">
@@ -584,9 +685,9 @@
       <div id="highlightsArea"></div>
     </div>
 
-    <div class="panel">
-      <h2>Season P/L</h2>
-      <div id="chartArea"></div>
+    <div class="panel" id="onThisDayPanel">
+      <h2>📅 On This Day In Sport</h2>
+      <div id="onThisDayArea"><div class="empty">Loading…</div></div>
     </div>
   </div>
 
@@ -739,6 +840,12 @@
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
     </div>
     <div class="panel">
+      <h2>🔔 Test Push Notification</h2>
+      <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
+      <button type="button" id="testPushBtn">Send test notification</button>
+      <div class="status-msg" id="testPushStatus"></div>
+    </div>
+    <div class="panel">
       <div id="diagTabArea">Loading…</div>
     </div>
   </div>
@@ -843,10 +950,30 @@ const FB_API_KEY = 'AIzaSyAOxWjx7kwaEKN3Ab29kObrTZBIEyUhKfI';
 const ADMIN_EMAIL = 'mlsynd00@gmail.com';
 
 function authStorageGet(){
-  try{ return JSON.parse(localStorage.getItem('mlsynd_auth') || 'null'); }catch(e){ return null; }
+  try{
+    const local = localStorage.getItem('mlsynd_auth');
+    if(local) return JSON.parse(local);
+    const session = sessionStorage.getItem('mlsynd_auth');
+    if(session) return JSON.parse(session);
+    return null;
+  }catch(e){ return null; }
 }
-function authStorageSet(v){ try{ localStorage.setItem('mlsynd_auth', JSON.stringify(v)); }catch(e){} }
-function authStorageClear(){ try{ localStorage.removeItem('mlsynd_auth'); }catch(e){} }
+function authStorageSet(v, remember){
+  // remember defaults to true (matches the original always-persist
+  // behavior) — only an explicit false switches to sessionStorage, so an
+  // unchecked "Remember me" actually requires signing in again once the
+  // browser or tab closes, rather than just being a decorative checkbox.
+  try{
+    if(remember === false){
+      sessionStorage.setItem('mlsynd_auth', JSON.stringify(v));
+      localStorage.removeItem('mlsynd_auth');
+    } else {
+      localStorage.setItem('mlsynd_auth', JSON.stringify(v));
+      sessionStorage.removeItem('mlsynd_auth');
+    }
+  }catch(e){}
+}
+function authStorageClear(){ try{ localStorage.removeItem('mlsynd_auth'); sessionStorage.removeItem('mlsynd_auth'); }catch(e){} }
 
 function friendlyAuthError(msg){
   const map = {
@@ -863,7 +990,7 @@ function friendlyAuthError(msg){
   return map[code] || (msg || 'Something went wrong — please try again.');
 }
 
-async function authSignUp(name, email, password){
+async function authSignUp(name, email, password, remember){
   const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FB_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, returnSecureToken: true })
@@ -871,7 +998,7 @@ async function authSignUp(name, email, password){
   const data = await res.json();
   if(data.error) throw new Error(friendlyAuthError(data.error.message));
   const auth = { idToken: data.idToken, refreshToken: data.refreshToken, uid: data.localId, email, expiresAt: Date.now() + (parseInt(data.expiresIn, 10) * 1000) };
-  authStorageSet(auth);
+  authStorageSet(auth, remember);
   const body = { name, email, createdAt: new Date().toISOString() };
   if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) body.status = 'approved';
   await fetch(`${FIREBASE_URL}/users/${auth.uid}.json?auth=${auth.idToken}`, {
@@ -880,7 +1007,7 @@ async function authSignUp(name, email, password){
   return auth;
 }
 
-async function authSignIn(email, password){
+async function authSignIn(email, password, remember){
   const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FB_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password, returnSecureToken: true })
@@ -888,7 +1015,7 @@ async function authSignIn(email, password){
   const data = await res.json();
   if(data.error) throw new Error(friendlyAuthError(data.error.message));
   const auth = { idToken: data.idToken, refreshToken: data.refreshToken, uid: data.localId, email, expiresAt: Date.now() + (parseInt(data.expiresIn, 10) * 1000) };
-  authStorageSet(auth);
+  authStorageSet(auth, remember);
   return auth;
 }
 
@@ -905,6 +1032,11 @@ async function authSendPasswordReset(email){
 async function authRefresh(){
   const cur = authStorageGet();
   if(!cur || !cur.refreshToken) return null;
+  // Keep using whichever storage this session is actually in, so a "don't
+  // remember me" session doesn't silently get upgraded to persistent
+  // storage just because it happened to refresh mid-session.
+  let usingSessionStorageOnly = false;
+  try{ usingSessionStorageOnly = !localStorage.getItem('mlsynd_auth') && !!sessionStorage.getItem('mlsynd_auth'); }catch(e){}
   const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB_API_KEY}`, {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(cur.refreshToken)}`
@@ -912,7 +1044,7 @@ async function authRefresh(){
   const data = await res.json();
   if(data.error){ authStorageClear(); return null; }
   const auth = { idToken: data.id_token, refreshToken: data.refresh_token, uid: data.user_id, email: cur.email, expiresAt: Date.now() + (parseInt(data.expires_in, 10) * 1000) };
-  authStorageSet(auth);
+  authStorageSet(auth, !usingSessionStorageOnly);
   return auth;
 }
 
@@ -1027,6 +1159,15 @@ function initAuthGate(){
   const nameField = document.getElementById('authNameField');
   const submitBtn = document.getElementById('authSubmitBtn');
   const statusEl = document.getElementById('authStatus');
+
+  const pwToggle = document.getElementById('authPwToggle');
+  const pwInput = document.getElementById('authPassword');
+  if(pwToggle && pwInput) pwToggle.addEventListener('click', () => {
+    const showing = pwInput.type === 'text';
+    pwInput.type = showing ? 'password' : 'text';
+    pwToggle.title = showing ? 'Show password' : 'Hide password';
+    pwToggle.style.opacity = showing ? '.6' : '1';
+  });
   let mode = 'login';
 
   function setMode(m){
@@ -1034,6 +1175,8 @@ function initAuthGate(){
     tabLogin.classList.toggle('active', m === 'login');
     tabSignup.classList.toggle('active', m === 'signup');
     nameField.style.display = m === 'signup' ? 'block' : 'none';
+    const rememberRow = document.getElementById('authRememberRow');
+    if(rememberRow) rememberRow.style.display = m === 'signup' ? 'none' : 'flex';
     submitBtn.textContent = m === 'signup' ? 'Sign up' : 'Log in';
     statusEl.textContent = '';
   }
@@ -1049,8 +1192,11 @@ function initAuthGate(){
     submitBtn.disabled = true;
     statusEl.className = 'status-msg'; statusEl.textContent = 'Working…';
     try{
-      if(mode === 'signup'){ await authSignUp(name, email, password); }
-      else { await authSignIn(email, password); }
+      if(mode === 'signup'){ await authSignUp(name, email, password, true); }
+      else {
+        const remember = document.getElementById('authRememberMe').checked;
+        await authSignIn(email, password, remember);
+      }
       statusEl.textContent = '';
       await checkApprovalAndProceed();
     }catch(e){
@@ -2010,6 +2156,10 @@ function render(state){
   animateValue('balPlWeekly', weeklyPl, v => fmtMoney(v).replace('+',''));
   document.getElementById('balPlWeeklyCell').className = 'toteboard-cell ' + (weeklyPl >= 0 ? 'pos' : 'neg');
 
+  animateValue('plHeroVal', fin.profitLoss, v => fmtMoney(v).replace('+',''));
+  const plHeroEl = document.getElementById('plHeroVal');
+  if(plHeroEl) plHeroEl.className = 'pl-hero-val ' + (fin.profitLoss >= 0 ? 'pos' : 'neg');
+
   document.getElementById('chartArea').innerHTML = buildChart(history);
   if(history.length){ selectChartPoint(history.length - 1); }
 
@@ -2058,9 +2208,10 @@ function render(state){
   let html = '<table><tr><th>#</th><th>Name</th><th>Score</th><th>P/L</th><th>W-L-V</th><th>Win%</th><th>Ind W-L</th><th>Avg Leg</th></tr>';
   ranked.forEach((m, i) => {
     const rank = i + 1;
-    html += `<tr class="${rank===1?'rank-1':''}">
+    const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
+    html += `<tr class="${rank===1?'rank-1':''}${isMe ? ' my-row' : ''}">
       <td>${rank}</td>
-      <td class="name profile-link" data-profile-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}</td>
+      <td class="name profile-link" data-profile-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
       <td>${m.dataScore.toFixed(2)}</td>
       <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
       <td>${m.wins}-${m.losses}-${m.voids}</td>
@@ -2080,9 +2231,14 @@ function render(state){
   owedSorted.forEach(m => {
     const owed = Math.round(m.duesOwed);
     const commitment = Math.round(m.duesCommitment);
-    owedHtml += `<div class="owed-row">
-      <span class="name">${escapeHtml(m.name)}</span>
-      <span class="amt ${owed>0?'due':''}">$${owed} of $${commitment}</span>
+    const paidPct = commitment > 0 ? Math.max(0, Math.min(100, ((commitment - owed) / commitment) * 100)) : 0;
+    const barCls = owed <= 0 ? 'paid-full' : (paidPct > 0 ? 'paid-partial' : 'paid-none');
+    owedHtml += `<div class="owed-row-full">
+      <div class="owed-row">
+        <span class="name">${escapeHtml(m.name)}</span>
+        <span class="amt ${owed>0?'due':''}">${owed <= 0 ? '✅ Paid' : '$' + owed + ' of $' + commitment}</span>
+      </div>
+      <div class="dues-bar-track"><div class="dues-bar-fill ${barCls}" style="width:${paidPct}%;"></div></div>
     </div>`;
   });
   document.getElementById('owedArea').innerHTML = owedHtml || '<div class="empty">No members yet.</div>';
@@ -2115,13 +2271,13 @@ function render(state){
   const memberCount = state.members.length;
   const shareOfBank = memberCount ? fin.bank / memberCount : 0;
   const bankShareSorted = [...state.members]
-    .map(m => ({ name: m.name, net: shareOfBank - m.duesOwed }))
+    .map(m => ({ name: m.name, net: shareOfBank - m.duesOwed, fullyPaid: m.duesOwed <= 0 }))
     .sort((a, b) => b.net - a.net);
   let bankShareHtml = '';
   bankShareSorted.forEach(m => {
-    bankShareHtml += `<div class="owed-row">
-      <span class="name">${escapeHtml(m.name)}</span>
-      <span class="amt ${m.net < 0 ? 'due' : ''}">${fmtMoney(m.net).replace('+','')}</span>
+    bankShareHtml += `<div class="owed-row${m.fullyPaid ? ' fully-paid-row' : ''}">
+      <span class="name">${escapeHtml(m.name)}${m.fullyPaid ? ' <span class="paid-badge">Fully Paid</span>' : ''}</span>
+      <span class="amt ${m.net < 0 ? 'due' : ''}${m.fullyPaid ? ' fully-paid-amt' : ''}">${fmtMoney(m.net).replace('+','')}</span>
     </div>`;
   });
   document.getElementById('bankShareArea').innerHTML = bankShareHtml || '<div class="empty">No members yet.</div>';
@@ -2239,6 +2395,44 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
 });
 document.getElementById('diagTabBtn').addEventListener('click', renderDiagTab);
+document.getElementById('testPushBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('testPushBtn');
+  const status = document.getElementById('testPushStatus');
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Sending…';
+  try{
+    const sub = await getCurrentPushSubscription();
+    if(!sub){
+      status.className = 'status-msg error';
+      status.textContent = 'Not subscribed yet — tap "🔔 Notify me" in the account bar first, then try this again.';
+      btn.disabled = false;
+      return;
+    }
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-push', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subscription: sub.toJSON(),
+        title: 'MLSynd test',
+        body: 'If you can see this, push notifications are working end to end.',
+        url: '/'
+      })
+    });
+    if(res.ok){
+      status.className = 'status-msg ok';
+      status.textContent = 'Sent — check your phone for the notification (may take a few seconds).';
+    } else {
+      const data = await res.json().catch(() => ({}));
+      status.className = 'status-msg error';
+      status.textContent = `Failed (HTTP ${res.status})${data.error ? ': ' + data.error : ''} — check the VAPID env vars are actually set on Netlify.`;
+    }
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Could not send: ' + e.message;
+  }
+  btn.disabled = false;
+});
+
 document.getElementById('runHealthCheckBtn').addEventListener('click', async () => {
   const btn = document.getElementById('runHealthCheckBtn');
   const copyBtn = document.getElementById('copyHealthReportBtn');
@@ -3013,9 +3207,16 @@ async function setMyJoker(auth, games, round){
   if(myJokerRound != null) roundsToSync.add(myJokerRound);
   await Promise.all([...roundsToSync].map(r => syncRoundLockTime(games, r)));
 
-  await authedFetch(`/tipping/joker/${auth.uid}.json`, {
+  const res = await authedFetch(`/tipping/joker/${auth.uid}.json`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ round })
   });
+  if(!res.ok){
+    // Don't optimistically update local state on a write that didn't
+    // actually land — that's exactly what made the Joker silently vanish
+    // on refresh before: the UI showed it as set while nothing had really
+    // saved.
+    throw new Error(`Firebase rejected the write (status ${res.status})`);
+  }
   myJokerRound = round;
   if(allJokers) allJokers[auth.uid] = { round };
 }
@@ -3060,12 +3261,16 @@ function renderJokerPanel(games, currentRound, auth){
   const toggleBtn = document.getElementById('jokerToggleBtn');
   if(toggleBtn) toggleBtn.addEventListener('click', async () => {
     toggleBtn.disabled = true;
-    if(isThisRoundMyJoker){
-      await setMyJoker(auth, games, null);
-      showToast('Joker round cleared');
-    } else {
-      await setMyJoker(auth, games, currentRound);
-      showToast(`Round ${currentRound} set as your Joker`);
+    try{
+      if(isThisRoundMyJoker){
+        await setMyJoker(auth, games, null);
+        showToast('Joker round cleared');
+      } else {
+        await setMyJoker(auth, games, currentRound);
+        showToast(`Round ${currentRound} set as your Joker`);
+      }
+    }catch(e){
+      showToast('Could not save your Joker — try again');
     }
     renderJokerPanel(games, currentRound, auth);
   });
@@ -3318,13 +3523,35 @@ async function saveAllTippingPicks(auth){
   statusEl.className = 'status-msg';
   statusEl.textContent = 'Saving…';
   try{
+    // Ensure commence_time_ms actually exists for every game being written
+    // to before attempting the writes — the pick/margin write rule requires
+    // it, and it's normally synced (fire-and-forget) whenever a round is
+    // first viewed. For a round nobody's ever opened before, there's a real
+    // race between that sync landing and Save actually firing — awaiting
+    // it here first eliminates that race outright, rather than just
+    // detecting the failure after the fact.
+    await Promise.all(toWrite.map(w => {
+      const meta = tippingRoundGameMeta[w.gameId];
+      return meta && meta.date ? syncGameMeta({ id: w.gameId, date: meta.date }) : Promise.resolve();
+    }));
+
     const name = await tippingMemberName();
-    await Promise.all(toWrite.map(w =>
+    const results = await Promise.all(toWrite.map(w =>
       authedFetch(`/tipping/picks/${w.gameId}/${auth.uid}.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pick: w.pick, margin: w.margin, name })
-      })
+      }).then(res => ({ w, ok: res.ok, status: res.status }))
+       .catch(err => ({ w, ok: false, status: 'network error: ' + err.message }))
     ));
+
+    const failed = results.filter(r => !r.ok);
+    if(failed.length > 0){
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = `${failed.length} of ${toWrite.length} pick(s) didn't actually save (${failed.map(f => f.status).join(', ')}) — try again, or refresh first if this round's brand new.`;
+      btn.disabled = false;
+      return;
+    }
+
     const rounds = [...new Set(toWrite.map(w => w.round))];
     rounds.forEach(r => {
       authedFetch(`/tipping/submissions/${r}/${auth.uid}.json`, {
@@ -3351,7 +3578,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
   const awayOddsHtml = oddsEv && oddsEv.away_best_price != null ? `<span class="odds-price">$${oddsEv.away_best_price.toFixed(2)}</span>` : '';
 
   if(!started){
-    tippingRoundGameMeta[g.id] = { label: `${g.hteam} v ${g.ateam}`, isMarginGame, round: g.round };
+    tippingRoundGameMeta[g.id] = { label: `${g.hteam} v ${g.ateam}`, isMarginGame, round: g.round, date: g.date };
 
     // show pick UI, pre-filled with own existing pick if any
     let myPick = null, myMargin = '';
