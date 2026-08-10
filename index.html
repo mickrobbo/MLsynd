@@ -180,10 +180,19 @@
   .pos{ color: var(--win); } .neg{ color: var(--loss); }
 
   .lb-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  .lb-table{ width:100%; }
+  .lb-table{
+    width:100%;
+    /* position:sticky on table cells is unreliable to genuinely broken in
+       many browsers when the table uses border-collapse:collapse (the
+       base table{} rule above) — this is a well-documented limitation,
+       not a guess. separate+border-spacing:0 keeps the same visual look
+       (no double borders) while actually letting sticky cells work. */
+    border-collapse:separate; border-spacing:0;
+  }
+  .lb-table td, .lb-table th{ border-bottom:1px solid var(--line); }
   .lb-sticky{ position:sticky; background:var(--felt-2); z-index:1; }
-  .lb-rank-col{ left:0; width:26px; }
-  .lb-name-col{ left:26px; box-shadow:2px 0 4px rgba(0,0,0,.25); padding-right:12px; }
+  .lb-rank-col{ left:0; width:26px; min-width:26px; }
+  .lb-name-col{ left:26px; box-shadow:2px 0 4px rgba(0,0,0,.25); padding-right:12px; min-width:110px; }
   .lb-sticky.my-row{ background:#1a3a2c; }
   th.lb-sticky{ z-index:2; }
   td.name.profile-link{
@@ -3260,8 +3269,28 @@ async function setMyJoker(auth, games, round){
     try{
       const lockRes = await authedFetch(`/tipping/roundLockTime/${round != null ? round : myJokerRound}.json`);
       const lockMs = await lockRes.json();
-      diagLine = ` [diag: uid=${auth.uid.slice(0,8)}…, now=${Date.now()}, roundLockTime=${lockMs}]`;
-    }catch(e){}
+      // Also read back whatever is CURRENTLY stored at this uid's joker
+      // path — the rule's first clause checks whether the EXISTING stored
+      // round (if any) has already locked, before allowing any change at
+      // all. If there's old data here from testing an earlier round
+      // (Round 22 was used extensively throughout this whole build),
+      // that round's lock time is now permanently in the past, which
+      // would silently block changing the Joker forever, regardless of
+      // what new round is being requested.
+      const existingRes = await authedFetch(`/tipping/joker/${auth.uid}.json`);
+      const existingVal = await existingRes.json();
+      let existingLockLine = '';
+      if(existingVal && existingVal.round != null){
+        const existingLockRes = await authedFetch(`/tipping/roundLockTime/${existingVal.round}.json`);
+        const existingLockMs = await existingLockRes.json();
+        existingLockLine = `, existingStoredRound=${existingVal.round}, existingRoundLockTime=${existingLockMs}, existingAlreadyLocked=${existingLockMs != null && Date.now() >= existingLockMs}`;
+      } else {
+        existingLockLine = `, existingStoredValue=${JSON.stringify(existingVal)}`;
+      }
+      diagLine = ` [diag: uid=${auth.uid.slice(0,8)}…, now=${Date.now()}, roundLockTime=${lockMs}${existingLockLine}]`;
+    }catch(e){
+      diagLine = ` [diag failed: ${e.message}]`;
+    }
     throw new Error(`Firebase rejected the write (status ${res.status}${bodyText ? ': ' + bodyText.slice(0,120) : ''})${diagLine}`);
   }
   myJokerRound = round;
