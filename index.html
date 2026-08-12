@@ -2516,6 +2516,10 @@ document.getElementById('runWriteTestBtn').addEventListener('click', async () =>
         const realGameId = Object.keys(tippingRoundGameMeta || {})[0];
         return realGameId ? `/tipping/picksTest/${realGameId}/${auth.uid}/pick.json` : null;
       })(), body: JSON.stringify('home') },
+    { label: 'Exact Picks pattern, COMBINED write (pick+margin+name together, matching what Save All Picks actually sends)', path: (() => {
+        const realGameId = Object.keys(tippingRoundGameMeta || {})[0];
+        return realGameId ? `/tipping/picksTest/${realGameId}/${auth.uid}.json` : null;
+      })(), body: JSON.stringify({ pick: 'home', margin: 10, name: currentUserName || 'Test' }) },
   ];
 
   let html = '';
