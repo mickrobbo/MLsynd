@@ -3706,16 +3706,38 @@ async function saveAllTippingPicks(auth){
     }
 
     const name = await tippingMemberName();
-    const results = await Promise.all(toWrite.map(w =>
-      authedFetch(`/tipping/picks/${w.gameId}/${auth.uid}.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pick: w.pick, margin: w.margin, name })
-      }).then(async res => {
-        let bodyText = '';
-        try{ bodyText = await res.text(); }catch(e){}
-        return { w, ok: res.ok, status: res.status, bodyText };
-      }).catch(err => ({ w, ok: false, status: 'network error', bodyText: err.message }))
-    ));
+    // Split into three separate writes per game (pick, margin, name each
+    // as their own PUT) instead of one combined object write. Confirmed
+    // via direct isolated testing: a single write spanning multiple
+    // sibling fields with different rules gets denied by Firebase even
+    // when each field's own rule independently passes — writing the exact
+    // same fields separately is the proven-working pattern. More requests,
+    // but each one matches what's actually been shown to succeed.
+    const results = [];
+    for(const w of toWrite){
+      const writes = [
+        { field: 'pick', path: `/tipping/picks/${w.gameId}/${auth.uid}/pick.json`, body: JSON.stringify(w.pick) },
+        { field: 'name', path: `/tipping/picks/${w.gameId}/${auth.uid}/name.json`, body: JSON.stringify(name) },
+      ];
+      if(w.margin !== null){
+        writes.push({ field: 'margin', path: `/tipping/picks/${w.gameId}/${auth.uid}/margin.json`, body: JSON.stringify(w.margin) });
+      }
+      const fieldResults = await Promise.all(writes.map(fw =>
+        authedFetch(fw.path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: fw.body })
+          .then(async res => {
+            let bodyText = '';
+            try{ bodyText = await res.text(); }catch(e){}
+            return { field: fw.field, ok: res.ok, status: res.status, bodyText };
+          }).catch(err => ({ field: fw.field, ok: false, status: 'network error', bodyText: err.message }))
+      ));
+      const anyFailed = fieldResults.filter(r => !r.ok);
+      results.push({
+        w,
+        ok: anyFailed.length === 0,
+        status: anyFailed.length ? anyFailed[0].status : 200,
+        bodyText: anyFailed.length ? `${anyFailed.map(f => f.field).join('+')}: ${anyFailed[0].bodyText}` : ''
+      });
+    }
 
     const failed = results.filter(r => !r.ok);
     if(failed.length > 0){
