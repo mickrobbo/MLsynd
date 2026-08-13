@@ -192,7 +192,7 @@
   .lb-table td, .lb-table th{ border-bottom:1px solid var(--line); }
   .lb-sticky{ position:sticky; background:var(--felt-2); z-index:1; }
   .lb-rank-col{ left:0; width:26px; min-width:26px; }
-  .lb-name-col{ left:26px; box-shadow:2px 0 4px rgba(0,0,0,.25); padding-right:12px; min-width:110px; }
+  .lb-name-col{ left:26px; box-shadow:2px 0 4px rgba(0,0,0,.25); padding-right:8px; min-width:82px; }
   .lb-sticky.my-row{ background:#1a3a2c; }
   th.lb-sticky{ z-index:2; }
   td.name.profile-link{
@@ -2264,7 +2264,7 @@ function render(state){
     const hasActiveJoker = m.linkedUid && boardJokerActiveByUid[m.linkedUid];
     html += `<tr class="${rowCls}">
       <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
-      <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}${hasActiveJoker ? ' <span class="lb-joker-icon" title="Joker round selected">🃏</span>' : ''}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
+      <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}">${hasActiveJoker ? '<span class="lb-joker-icon" title="Joker round selected">🃏</span> ' : ''}${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
       <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
       <td>${(m.winPct*100).toFixed(0)}%</td>
       <td>${m.dataScore.toFixed(2)}</td>
@@ -3918,7 +3918,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents){
 }
 
 function normTeamName(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
-function fixVenueName(v){ return (v || '').replace(/docklands/i, 'Marvel Stadium').replace(/kardinia\s*park/i, 'GMHBA Stadium').replace(/perth\s*stadium/i, 'Optus Stadium'); }
+function fixVenueName(v){ return (v || '').replace(/docklands/i, 'Marvel Stadium').replace(/kardinia\s*park/i, 'GMHBA Stadium').replace(/perth\s*stadium/i, 'Optus Stadium').replace(/sydney\s*showgrounds?/i, 'ENGIE Stadium'); }
 
 const AFL_TEAM_LOGOS = {
   adelaide: ['adelaide', 'adelaidecrows', 'crows'],
@@ -3959,6 +3959,104 @@ const NRL_TEAM_LOGOS = {
   titans: ['titans', 'goldcoasttitans'],
   warriors: ['warriors', 'newzealandwarriors', 'nzwarriors'],
 };
+const NBA_TEAM_LOGOS = {
+  hawks: ['hawks', 'atlantahawks'],
+  celtics: ['celtics', 'bostonceltics'],
+  nets: ['nets', 'brooklynnets'],
+  hornets: ['hornets', 'charlottehornets'],
+  bulls: ['bulls', 'chicagobulls'],
+  cavaliers: ['cavaliers', 'clevelandcavaliers', 'cavs'],
+  mavericks: ['mavericks', 'dallasmavericks', 'mavs'],
+  nuggets: ['nuggets', 'denvernuggets'],
+  pistons: ['pistons', 'detroitpistons'],
+  warriors: ['warriors', 'goldenstatewarriors', 'gswarriors'],
+  rockets: ['rockets', 'houstonrockets'],
+  pacers: ['pacers', 'indianapacers'],
+  clippers: ['clippers', 'laclippers', 'losangelesclippers'],
+  lakers: ['lakers', 'lalakers', 'losangeleslakers'],
+  grizzlies: ['grizzlies', 'memphisgrizzlies'],
+  heat: ['heat', 'miamiheat'],
+  bucks: ['bucks', 'milwaukeebucks'],
+  timberwolves: ['timberwolves', 'minnesotatimberwolves', 'wolves'],
+  pelicans: ['pelicans', 'neworleanspelicans'],
+  knicks: ['knicks', 'newyorkknicks'],
+  thunder: ['thunder', 'oklahomacitythunder', 'okcthunder'],
+  magic: ['magic', 'orlandomagic'],
+  '76ers': ['76ers', 'philadelphia76ers', 'sixers'],
+  suns: ['suns', 'phoenixsuns'],
+  'trail-blazers': ['trailblazers', 'portlandtrailblazers', 'blazers'],
+  kings: ['kings', 'sacramentokings'],
+  spurs: ['spurs', 'sanantoniospurs'],
+  raptors: ['raptors', 'torontoraptors'],
+  jazz: ['jazz', 'utahjazz'],
+  wizards: ['wizards', 'washingtonwizards'],
+};
+const MLB_TEAM_LOGOS = {
+  diamondbacks: ['diamondbacks', 'arizonadiamondbacks', 'dbacks'],
+  braves: ['braves', 'atlantabraves'],
+  orioles: ['orioles', 'baltimoreorioles'],
+  redsox: ['redsox', 'bostonredsox'],
+  cubs: ['cubs', 'chicagocubs'],
+  whitesox: ['whitesox', 'chicagowhitesox'],
+  reds: ['reds', 'cincinnatireds'],
+  guardians: ['guardians', 'clevelandguardians'],
+  rockies: ['rockies', 'coloradorockies'],
+  tigers: ['tigers', 'detroittigers'],
+  astros: ['astros', 'houstonastros'],
+  royals: ['royals', 'kansascityroyals'],
+  angels: ['angels', 'losangelesangels', 'laangels'],
+  dodgers: ['dodgers', 'losangelesdodgers', 'ladodgers'],
+  marlins: ['marlins', 'miamimarlins'],
+  brewers: ['brewers', 'milwaukeebrewers'],
+  twins: ['twins', 'minnesotatwins'],
+  mets: ['mets', 'newyorkmets'],
+  yankees: ['yankees', 'newyorkyankees'],
+  athletics: ['athletics', 'oaklandathletics', 'as'],
+  phillies: ['phillies', 'philadelphiaphillies'],
+  pirates: ['pirates', 'pittsburghpirates'],
+  padres: ['padres', 'sandiegopadres'],
+  giants: ['giants', 'sanfranciscogiants'],
+  mariners: ['mariners', 'seattlemariners'],
+  cardinals: ['cardinals', 'stlouiscardinals'],
+  rays: ['rays', 'tampabayrays'],
+  rangers: ['rangers', 'texasrangers'],
+  bluejays: ['bluejays', 'torontobluejays'],
+  nationals: ['nationals', 'washingtonnationals'],
+};
+const NFL_TEAM_LOGOS = {
+  cardinals: ['cardinals', 'arizonacardinals'],
+  falcons: ['falcons', 'atlantafalcons'],
+  ravens: ['ravens', 'baltimoreravens'],
+  bills: ['bills', 'buffalobills'],
+  panthers: ['panthers', 'carolinapanthers'],
+  bears: ['bears', 'chicagobears'],
+  bengals: ['bengals', 'cincinnatibengals'],
+  browns: ['browns', 'clevelandbrowns'],
+  cowboys: ['cowboys', 'dallascowboys'],
+  broncos: ['broncos', 'denverbroncos'],
+  lions: ['lions', 'detroitlions'],
+  packers: ['packers', 'greenbaypackers'],
+  texans: ['texans', 'houstontexans'],
+  colts: ['colts', 'indianapoliscolts'],
+  jaguars: ['jaguars', 'jacksonvillejaguars', 'jags'],
+  chiefs: ['chiefs', 'kansascitychiefs'],
+  raiders: ['raiders', 'lasvegasraiders'],
+  chargers: ['chargers', 'losangeleschargers', 'lachargers'],
+  rams: ['rams', 'losangelesrams', 'larams'],
+  dolphins: ['dolphins', 'miamidolphins'],
+  vikings: ['vikings', 'minnesotavikings'],
+  patriots: ['patriots', 'newenglandpatriots'],
+  saints: ['saints', 'neworleanssaints'],
+  giants: ['giants', 'newyorkgiants', 'nygiants'],
+  jets: ['jets', 'newyorkjets', 'nyjets'],
+  eagles: ['eagles', 'philadelphiaeagles'],
+  steelers: ['steelers', 'pittsburghsteelers'],
+  '49ers': ['49ers', 'sanfrancisco49ers', 'niners'],
+  seahawks: ['seahawks', 'seattleseahawks'],
+  buccaneers: ['buccaneers', 'tampabaybuccaneers', 'bucs'],
+  titans: ['titans', 'tennesseetitans'],
+  commanders: ['commanders', 'washingtoncommanders'],
+};
 function buildLogoLookup(table){
   const map = {};
   Object.entries(table).forEach(([slug, aliases]) => {
@@ -3968,11 +4066,29 @@ function buildLogoLookup(table){
 }
 const AFL_TEAM_LOGO_LOOKUP = buildLogoLookup(AFL_TEAM_LOGOS);
 const NRL_TEAM_LOGO_LOOKUP = buildLogoLookup(NRL_TEAM_LOGOS);
+const NBA_TEAM_LOGO_LOOKUP = buildLogoLookup(NBA_TEAM_LOGOS);
+const MLB_TEAM_LOGO_LOOKUP = buildLogoLookup(MLB_TEAM_LOGOS);
+const NFL_TEAM_LOGO_LOOKUP = buildLogoLookup(NFL_TEAM_LOGOS);
+// Only these 10 nicknames are actually reused across leagues (e.g. NRL
+// Broncos vs NFL Broncos) and need a league-prefixed filename to avoid
+// clashing in the flat /team-logos/ folder. Every other team keeps its
+// plain nickname filename — no renaming needed for the other ~80 logos.
+// nrl/afl are untouched since they were already deployed.
+const LOGO_SLUG_COLLISIONS = new Set(['warriors', 'tigers', 'titans', 'broncos', 'dolphins', 'cowboys', 'panthers', 'raiders', 'cardinals', 'giants']);
+const LEAGUE_LOGO_LOOKUPS = {
+  nrl: { lookup: NRL_TEAM_LOGO_LOOKUP, prefix: '' },
+  nba: { lookup: NBA_TEAM_LOGO_LOOKUP, prefix: 'nba-' },
+  mlb: { lookup: MLB_TEAM_LOGO_LOOKUP, prefix: 'mlb-' },
+  nfl: { lookup: NFL_TEAM_LOGO_LOOKUP, prefix: 'nfl-' },
+};
 function teamLogoUrl(teamName, league){
   const norm = normTeamName(teamName);
-  const lookup = league === 'nrl' ? NRL_TEAM_LOGO_LOOKUP : AFL_TEAM_LOGO_LOOKUP;
+  const entry = LEAGUE_LOGO_LOOKUPS[league];
+  const lookup = entry ? entry.lookup : AFL_TEAM_LOGO_LOOKUP;
   const slug = lookup[norm];
-  return slug ? `/team-logos/${slug}.png` : null;
+  if(!slug) return null;
+  const needsPrefix = entry && entry.prefix && LOGO_SLUG_COLLISIONS.has(slug);
+  return `/team-logos/${needsPrefix ? entry.prefix : ''}${slug}.png`;
 }
 function teamLogoImg(teamName, size, league){
   const url = teamLogoUrl(teamName, league);
