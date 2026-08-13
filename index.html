@@ -196,8 +196,9 @@
   .lb-sticky.my-row{ background:#1a3a2c; }
   th.lb-sticky{ z-index:2; }
   td.name.profile-link{
-    cursor:pointer; padding-top:9px; padding-bottom:9px; position:relative;
+    cursor:pointer; padding-top:9px; padding-bottom:9px;
   }
+  .lb-joker-icon{ font-size:11px; margin-left:2px; }
   td.name.profile-link::after{
     content:"›"; color:var(--brass-dim); margin-left:4px; font-weight:700;
   }
@@ -872,12 +873,6 @@
       <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data, tipping reads, config, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
       <div id="healthCheckResults" style="margin-top:10px;"></div>
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
-    </div>
-    <div class="panel">
-      <h2>🧪 Isolated Write Test</h2>
-      <div class="hint">Tries several minimal writes one at a time to a real, temporary, harmless test path — reports exactly which ones Firebase actually accepts. Built specifically to isolate the Round 23 picks/Joker save failure since every rules-based theory has been directly disproven.</div>
-      <button type="button" id="runWriteTestBtn">Run isolated write test</button>
-      <div id="writeTestResults" style="margin-top:10px;"></div>
     </div>
     <div class="panel">
       <h2>🔔 Test Push Notification</h2>
@@ -2262,9 +2257,14 @@ function render(state){
     const rank = i + 1;
     const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
     const rowCls = `${rank===1?'rank-1':''}${isMe ? ' my-row' : ''}`;
+    // Shows only for members whose Tipping account is linked (linkedUid) —
+    // no way to know a Joker round for someone who's never linked. Icon
+    // disappears once that round's lock time has passed, i.e. once the
+    // Joker's actually been used, not just picked.
+    const hasActiveJoker = m.linkedUid && boardJokerActiveByUid[m.linkedUid];
     html += `<tr class="${rowCls}">
       <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
-      <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
+      <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}${hasActiveJoker ? ' <span class="lb-joker-icon" title="Joker round selected">🃏</span>' : ''}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
       <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
       <td>${(m.winPct*100).toFixed(0)}%</td>
       <td>${m.dataScore.toFixed(2)}</td>
@@ -2483,71 +2483,6 @@ document.getElementById('testPushBtn').addEventListener('click', async () => {
     status.className = 'status-msg error';
     status.textContent = 'Could not send: ' + e.message;
   }
-  btn.disabled = false;
-});
-
-document.getElementById('runWriteTestBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('runWriteTestBtn');
-  const resultsEl = document.getElementById('writeTestResults');
-  btn.disabled = true;
-  resultsEl.innerHTML = '<div class="empty">Running…</div>';
-
-  const auth = await getValidAuth();
-  if(!auth){
-    resultsEl.innerHTML = '<div class="empty" style="color:var(--loss);">Not signed in.</div>';
-    btn.disabled = false;
-    return;
-  }
-
-  // Three minimal, isolated writes to a real (harmless, temporary) test
-  // path — designed to isolate exactly one variable at a time, since every
-  // rules-content theory (timing, status, uid matching, prior data) has
-  // now been directly disproven by evidence. The one pattern never
-  // actually tested in isolation: every write that's ever succeeded in
-  // this whole build writes a single primitive value; every write that's
-  // failed writes a JSON object spanning multiple fields.
-  const tests = [
-    { label: 'Primitive value (matches the pattern that has always worked)', path: `/tipping/writeTest/${auth.uid}/primitiveOnly.json`, body: JSON.stringify(12345) },
-    { label: 'Object value, no uid check in the rule', path: `/tipping/writeTest/${auth.uid}/objectNoUid.json`, body: JSON.stringify({ a: 1, b: 2 }) },
-    { label: 'Object value, WITH auth.uid===$uid in the rule', path: `/tipping/writeTest/${auth.uid}/objectWithUid.json`, body: JSON.stringify({ a: 1, b: 2 }) },
-    { label: 'Dynamic .child() lookup using a NUMBER from newData (matches Joker\'s exact pattern)', path: `/tipping/writeTest/${auth.uid}/dynamicChildFromNumber.json`, body: JSON.stringify({ testRound: 23 }) },
-    { label: 'SAME dynamic lookup, but coerced to a string first (the proposed fix)', path: `/tipping/writeTest/${auth.uid}/dynamicChildFromNumberFixed.json`, body: JSON.stringify({ testRound: 23 }) },
-    { label: 'Exact Picks pattern (real game ID + real commence_time_ms timing check)', path: (() => {
-        const realGameId = Object.keys(tippingRoundGameMeta || {})[0];
-        return realGameId ? `/tipping/picksTest/${realGameId}/${auth.uid}/pick.json` : null;
-      })(), body: JSON.stringify('home') },
-    { label: 'Exact Picks pattern, COMBINED write (pick+margin+name together, matching what Save All Picks actually sends)', path: (() => {
-        const realGameId = Object.keys(tippingRoundGameMeta || {})[0];
-        return realGameId ? `/tipping/picksTest/${realGameId}/${auth.uid}.json` : null;
-      })(), body: JSON.stringify({ pick: 'home', margin: 10, name: currentUserName || 'Test' }) },
-  ];
-
-  let html = '';
-  for(const t of tests){
-    if(!t.path){
-      html += `<div style="padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
-        <span style="color:var(--muted);">⏭️</span> <b>${escapeHtml(t.label)}</b><br>
-        <span style="color:var(--muted); margin-left:20px;">Skipped — open the Tipping tab's Games view first so a real game ID is available, then run this again.</span>
-      </div>`;
-      continue;
-    }
-    try{
-      const res = await authedFetch(t.path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: t.body });
-      let bodyText = '';
-      try{ bodyText = await res.text(); }catch(e){}
-      const icon = res.ok ? '✅' : '❌';
-      html += `<div style="padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
-        <span style="color:${res.ok ? 'var(--win)' : 'var(--loss)'};">${icon}</span> <b>${escapeHtml(t.label)}</b><br>
-        <span style="color:var(--muted); margin-left:20px;">${res.ok ? 'Accepted' : `Rejected (${res.status}${bodyText ? ': ' + bodyText.slice(0,100) : ''})`}</span>
-      </div>`;
-    }catch(e){
-      html += `<div style="padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
-        <span style="color:var(--loss);">❌</span> <b>${escapeHtml(t.label)}</b><br>
-        <span style="color:var(--muted); margin-left:20px;">Network error: ${escapeHtml(e.message)}</span>
-      </div>`;
-    }
-  }
-  resultsEl.innerHTML = html;
   btn.disabled = false;
 });
 
@@ -3286,6 +3221,39 @@ function roundHasStarted(games, round){
 }
 
 let allJokers = null; // uid -> {round} for everyone, used to show a 🃏 icon next to names in the picker list
+
+// Separate, lighter-weight cache specifically for the Board tab's
+// leaderboard icon — computed once and refreshed periodically rather than
+// on every 15s poll, since Joker picks don't change that often. Maps
+// uid -> whether they currently have an upcoming (not yet locked) Joker
+// round selected.
+let boardJokerActiveByUid = {};
+async function refreshBoardJokerData(){
+  try{
+    const res = await authedFetch('/tipping/joker.json');
+    const jokers = (await res.json()) || {};
+    const uniqueRounds = [...new Set(Object.values(jokers).map(j => j && j.round).filter(r => r != null))];
+    const lockTimes = {};
+    await Promise.all(uniqueRounds.map(async r => {
+      try{
+        const lockRes = await authedFetch(`/tipping/roundLockTime/${r}.json`);
+        lockTimes[r] = await lockRes.json();
+      }catch(e){}
+    }));
+    const now = Date.now();
+    const active = {};
+    Object.entries(jokers).forEach(([uid, j]) => {
+      if(!j || j.round == null) return;
+      const lockMs = lockTimes[j.round];
+      // If we don't have a synced lock time for some reason, default to
+      // still showing it rather than assuming it's been used — a missing
+      // reminder is a smaller problem than an icon vanishing incorrectly.
+      const stillUpcoming = lockMs == null || now < lockMs;
+      if(stillUpcoming) active[uid] = true;
+    });
+    boardJokerActiveByUid = active;
+  }catch(e){}
+}
 
 async function loadMyJoker(auth){
   try{
@@ -4645,6 +4613,8 @@ function startApp(){
   startSmartPolling(refreshTippingLadderOnly, 240000); // ladder is read-heavy (1 DB read per finished game this season) — every 4 min is plenty, was riding the 60s cycle before
   refreshNews();
   startSmartPolling(refreshNews, 300000); // headlines don't need to be checked often — every 5 min
+  refreshBoardJokerData();
+  startSmartPolling(refreshBoardJokerData, 240000); // Joker picks don't change often — every 4 min is plenty, same cadence as the ladder
 }
 initAuthGate();
 </script>
