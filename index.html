@@ -2264,7 +2264,7 @@ function render(state){
     const hasActiveJoker = m.linkedUid && boardJokerActiveByUid[m.linkedUid];
     html += `<tr class="${rowCls}">
       <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
-      <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}">${hasActiveJoker ? '<span class="lb-joker-icon" title="Joker round selected">🃏</span> ' : ''}${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
+      <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}" data-uid="${escapeHtml(m.linkedUid || '')}"><span class="lb-joker-icon-slot">${hasActiveJoker ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
       <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
       <td>${(m.winPct*100).toFixed(0)}%</td>
       <td>${m.dataScore.toFixed(2)}</td>
@@ -2275,6 +2275,7 @@ function render(state){
   });
   html += '</table></div>';
   document.getElementById('leaderboardArea').innerHTML = html;
+  refreshJokerIconSlots();
   document.getElementById('leaderboardArea').querySelectorAll('.profile-link').forEach(el => {
     el.addEventListener('click', () => openProfile(el.dataset.profileName));
   });
@@ -3225,34 +3226,53 @@ let allJokers = null; // uid -> {round} for everyone, used to show a 🃏 icon n
 // Separate, lighter-weight cache specifically for the Board tab's
 // leaderboard icon — computed once and refreshed periodically rather than
 // on every 15s poll, since Joker picks don't change that often. Maps
-// uid -> whether they currently have an upcoming (not yet locked) Joker
-// round selected.
+// uid -> whether their Joker round is still "in play" (icon shown) —
+// true from selection right through the whole round, only clearing once
+// every game in that round has actually finished and points are settled.
+// Deliberately NOT tied to roundLockTime: locking just means the pick can
+// no longer be changed, it doesn't mean the Joker's been "used" yet — the
+// round could still be live. Showing it through the live round is the
+// point (so the group can see how many Jokers are still in play), not a
+// bug to fix later.
 let boardJokerActiveByUid = {};
 async function refreshBoardJokerData(){
   try{
-    const res = await authedFetch('/tipping/joker.json');
-    const jokers = (await res.json()) || {};
-    const uniqueRounds = [...new Set(Object.values(jokers).map(j => j && j.round).filter(r => r != null))];
-    const lockTimes = {};
-    await Promise.all(uniqueRounds.map(async r => {
-      try{
-        const lockRes = await authedFetch(`/tipping/roundLockTime/${r}.json`);
-        lockTimes[r] = await lockRes.json();
-      }catch(e){}
-    }));
-    const now = Date.now();
+    const [jokerRes, games] = await Promise.all([
+      authedFetch('/tipping/joker.json'),
+      fetchTippingFixtures().catch(() => [])
+    ]);
+    const jokers = (await jokerRes.json()) || {};
+    const roundTotals = {}; // round -> { total, done }
+    games.forEach(g => {
+      if(g.round == null) return;
+      if(!roundTotals[g.round]) roundTotals[g.round] = { total: 0, done: 0 };
+      roundTotals[g.round].total++;
+      if(g.complete >= 100) roundTotals[g.round].done++;
+    });
     const active = {};
     Object.entries(jokers).forEach(([uid, j]) => {
       if(!j || j.round == null) return;
-      const lockMs = lockTimes[j.round];
-      // If we don't have a synced lock time for some reason, default to
-      // still showing it rather than assuming it's been used — a missing
-      // reminder is a smaller problem than an icon vanishing incorrectly.
-      const stillUpcoming = lockMs == null || now < lockMs;
-      if(stillUpcoming) active[uid] = true;
+      const counts = roundTotals[j.round];
+      // If we don't have fixture data for this round for some reason,
+      // default to still showing it rather than assuming it's used — a
+      // missing icon is a smaller problem than one vanishing incorrectly.
+      const roundFullyDone = counts && counts.total > 0 && counts.done === counts.total;
+      if(!roundFullyDone) active[uid] = true;
     });
     boardJokerActiveByUid = active;
+    refreshJokerIconSlots();
   }catch(e){}
+}
+// Cheap DOM-only patch: updates any already-rendered Joker icon slot (Board
+// leaderboard + Tipping ladder) from the current boardJokerActiveByUid,
+// without re-running either view's full (expensive, per-game-read) render.
+// Called every time Joker data loads/changes so an icon can never sit stale
+// or missing just because it loaded after the table it belongs on.
+function refreshJokerIconSlots(){
+  document.querySelectorAll('[data-uid] > .lb-joker-icon-slot').forEach(slot => {
+    const uid = slot.parentElement.getAttribute('data-uid');
+    slot.innerHTML = (uid && boardJokerActiveByUid[uid]) ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : '';
+  });
 }
 
 async function loadMyJoker(auth){
@@ -4057,6 +4077,40 @@ const NFL_TEAM_LOGOS = {
   titans: ['titans', 'tennesseetitans'],
   commanders: ['commanders', 'washingtoncommanders'],
 };
+const NHL_TEAM_LOGOS = {
+  ducks: ['ducks', 'anaheimducks'],
+  coyotes: ['coyotes', 'arizonacoyotes', 'utahhockeyclub', 'utah'],
+  bruins: ['bruins', 'bostonbruins'],
+  sabres: ['sabres', 'buffalosabres'],
+  flames: ['flames', 'calgaryflames'],
+  hurricanes: ['hurricanes', 'carolinahurricanes', 'canes'],
+  blackhawks: ['blackhawks', 'chicagoblackhawks'],
+  avalanche: ['avalanche', 'coloradoavalanche', 'avs'],
+  bluejackets: ['bluejackets', 'columbusbluejackets'],
+  stars: ['stars', 'dallasstars'],
+  redwings: ['redwings', 'detroitredwings'],
+  oilers: ['oilers', 'edmontonoilers'],
+  panthers: ['floridapanthers'],
+  kings: ['kings', 'losangeleskings', 'lakings'],
+  wild: ['wild', 'minnesotawild'],
+  canadiens: ['canadiens', 'montrealcanadiens', 'habs'],
+  predators: ['predators', 'nashvillepredators', 'preds'],
+  devils: ['devils', 'newjerseydevils'],
+  islanders: ['islanders', 'newyorkislanders', 'nyislanders'],
+  rangers: ['rangers', 'newyorkrangers', 'nyrangers'],
+  senators: ['senators', 'ottawasenators', 'sens'],
+  flyers: ['flyers', 'philadelphiaflyers'],
+  penguins: ['penguins', 'pittsburghpenguins'],
+  sharks: ['sharks', 'sanjosesharks'],
+  kraken: ['kraken', 'seattlekraken'],
+  blues: ['blues', 'stlouisblues'],
+  lightning: ['lightning', 'tampabaylightning'],
+  mapleleafs: ['mapleleafs', 'torontomapleleafs'],
+  canucks: ['canucks', 'vancouvercanucks'],
+  goldenknights: ['goldenknights', 'vegasgoldenknights', 'vgk'],
+  capitals: ['capitals', 'washingtoncapitals', 'caps'],
+  jets: ['jets', 'winnipegjets'],
+};
 function buildLogoLookup(table){
   const map = {};
   Object.entries(table).forEach(([slug, aliases]) => {
@@ -4069,17 +4123,19 @@ const NRL_TEAM_LOGO_LOOKUP = buildLogoLookup(NRL_TEAM_LOGOS);
 const NBA_TEAM_LOGO_LOOKUP = buildLogoLookup(NBA_TEAM_LOGOS);
 const MLB_TEAM_LOGO_LOOKUP = buildLogoLookup(MLB_TEAM_LOGOS);
 const NFL_TEAM_LOGO_LOOKUP = buildLogoLookup(NFL_TEAM_LOGOS);
-// Only these 10 nicknames are actually reused across leagues (e.g. NRL
-// Broncos vs NFL Broncos) and need a league-prefixed filename to avoid
-// clashing in the flat /team-logos/ folder. Every other team keeps its
-// plain nickname filename — no renaming needed for the other ~80 logos.
+const NHL_TEAM_LOGO_LOOKUP = buildLogoLookup(NHL_TEAM_LOGOS);
+// Only these nicknames are actually reused across leagues (e.g. NRL Broncos
+// vs NFL Broncos, or NBA Kings vs NHL Kings) and need a league-prefixed
+// filename to avoid clashing in the flat /team-logos/ folder. Every other
+// team keeps its plain nickname filename — no renaming needed for those.
 // nrl/afl are untouched since they were already deployed.
-const LOGO_SLUG_COLLISIONS = new Set(['warriors', 'tigers', 'titans', 'broncos', 'dolphins', 'cowboys', 'panthers', 'raiders', 'cardinals', 'giants']);
+const LOGO_SLUG_COLLISIONS = new Set(['warriors', 'tigers', 'titans', 'broncos', 'dolphins', 'cowboys', 'panthers', 'raiders', 'cardinals', 'giants', 'kings', 'rangers', 'sharks', 'jets']);
 const LEAGUE_LOGO_LOOKUPS = {
   nrl: { lookup: NRL_TEAM_LOGO_LOOKUP, prefix: '' },
   nba: { lookup: NBA_TEAM_LOGO_LOOKUP, prefix: 'nba-' },
   mlb: { lookup: MLB_TEAM_LOGO_LOOKUP, prefix: 'mlb-' },
   nfl: { lookup: NFL_TEAM_LOGO_LOOKUP, prefix: 'nfl-' },
+  nhl: { lookup: NHL_TEAM_LOGO_LOOKUP, prefix: 'nhl-' },
 };
 function teamLogoUrl(teamName, league){
   const norm = normTeamName(teamName);
@@ -4640,10 +4696,18 @@ async function renderTippingLadder(games){
       move > 0 ? `<span class="ladder-move-up" title="Up ${move} since last round">▲${move}</span>` :
       move < 0 ? `<span class="ladder-move-down" title="Down ${Math.abs(move)} since last round">▼${Math.abs(move)}</span>` :
       `<span class="ladder-move-same" title="Same position as last round">–</span>`;
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td>${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    // Joker icon lives in its own slot, keyed by data-uid, so it can be
+    // refreshed independently by refreshJokerIconSlots() the instant Joker
+    // data loads/changes — without needing this whole (expensive, per-game-read)
+    // ladder render to re-run. Previously the icon was baked in at render time
+    // only, so if boardJokerActiveByUid hadn't loaded yet when this ran (a real
+    // race on first load), or updated later, nothing ever told the ladder to
+    // reflect it — it could sit wrong for a full 4-minute poll cycle or more.
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td data-uid="${escapeHtml(r.uid)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;
+  refreshJokerIconSlots();
 
   // Your points over the season, round by round — same pattern as the
   // money P/L chart on the Home tab.
