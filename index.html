@@ -2281,7 +2281,7 @@ function render(state){
       return `<div class="multi-leg-block ${resultCls}">
         <div class="multi-leg-row">
           <span class="multi-leg-name${b.result === 'Loss' ? ' loss' : ''}">${escapeHtml(b.name || '')}</span>
-          <span class="multi-leg-result">${icon}</span>
+          <span class="multi-leg-result">${b.pl != null ? `<span style="margin-right:6px; font-weight:700; color:${b.pl >= 0 ? 'var(--win)' : 'var(--loss)'};">${fmtMoney(b.pl)}</span>` : ''}${icon}</span>
         </div>
         ${b.sgm ? `<div class="sgm-badge ${b.sgmResult === 'Win' ? 'win' : (b.sgmResult === 'Loss' ? 'loss' : 'pending')}">
           <span>${b.sgmResult === 'Win' ? '✅' : (b.sgmResult === 'Loss' ? '❌' : '➖')}</span> SGM Bonus Bet Received${(b.sgmResult === 'Win' && b.sgmAmount != null) ? ` <span class="sgm-amount">+${fmtMoney(b.sgmAmount).replace('+','')}</span>` : ''}
