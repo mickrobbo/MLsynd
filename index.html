@@ -2269,7 +2269,24 @@ function render(state){
   if(weeklyBets.length === 0){
     document.getElementById('weeklyIndividualBetsArea').innerHTML = polishedEmptyState('🎲', 'No individual bets locked in for this week yet.', 'Check back after entry');
   } else {
-    document.getElementById('weeklyIndividualBetsArea').innerHTML = weeklyBets.map(b => {
+    // Group same-name bets together (someone can now have more than one in
+    // a week) rather than showing them in raw entry order, which scattered
+    // a person's second bet away from their first. Stable: first-appearance
+    // order of each name is preserved, only same-name entries get pulled
+    // adjacent to each other.
+    const groupedWeeklyBets = [];
+    const nameGroupIndex = {};
+    weeklyBets.forEach(b => {
+      const key = b && b.name;
+      if(key != null && nameGroupIndex[key] !== undefined){
+        groupedWeeklyBets.splice(nameGroupIndex[key] + 1, 0, b);
+        Object.keys(nameGroupIndex).forEach(k => { if(nameGroupIndex[k] > nameGroupIndex[key]) nameGroupIndex[k]++; });
+      } else {
+        groupedWeeklyBets.push(b);
+        if(key != null) nameGroupIndex[key] = groupedWeeklyBets.length - 1;
+      }
+    });
+    document.getElementById('weeklyIndividualBetsArea').innerHTML = groupedWeeklyBets.map(b => {
       const icon = b.result === 'Win' ? '✅' : (b.result === 'Loss' ? '❌' : '➖');
       const resultCls = b.result === 'Win' ? 'result-win' : (b.result === 'Loss' ? 'result-loss' : 'result-void');
       let roastHtml = '';
