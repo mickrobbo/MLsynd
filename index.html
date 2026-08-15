@@ -251,11 +251,14 @@
   }
   .game-bubble.active .game-bubble-label{ color:#2a2005; }
 
-  /* ---- Casino landing hub — Games / Rules / How to earn XP ---- */
-  .casino-hub-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:4px; }
+  /* ---- Casino landing hub — Games / Rules / How to earn XP / Badges ---- */
+  /* Grid, not a flex-wrap row — learned from the earlier 6-across game-
+     bubble bug: cramming items into one row forces small, awkward text.
+     A 2x2 grid gives each bubble real width no matter how many there are. */
+  .casino-hub-row{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-top:4px; }
   .casino-hub-bubble{
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
-    flex:1; min-width:88px; padding:16px 8px; border-radius:16px; cursor:pointer;
+    padding:16px 8px; border-radius:16px; cursor:pointer;
     background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
     box-shadow: 0 4px 10px rgba(0,0,0,.25);
   }
@@ -277,6 +280,27 @@
   .xp-source-amount{ color:var(--brass-light); font-weight:700; font-family:'IBM Plex Mono',monospace; white-space:nowrap; }
   .weekly-bonus-pill{ margin-top:10px; }
   .weekly-bonus-pill.claimed{ opacity:.55; }
+
+  /* ---- Casino badges ---- */
+  .casino-badge-row{
+    display:flex; align-items:center; gap:12px; padding:12px 6px;
+    border-bottom:1px solid var(--line); transition: opacity .2s ease;
+  }
+  .casino-badge-row.locked{ opacity:.4; }
+  .casino-badge-icon{
+    font-size:28px; width:42px; height:42px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--felt-3), var(--ink));
+    box-shadow: inset 0 0 0 1px rgba(255,214,120,.25);
+  }
+  .casino-badge-row.unlocked .casino-badge-icon{
+    background: radial-gradient(circle at 32% 26%, #fff6de, var(--brass-light) 35%, var(--brass) 65%, var(--brass-dim) 100%);
+    box-shadow:0 0 14px rgba(255,214,120,.5), inset 0 2px 3px rgba(255,255,255,.6);
+  }
+  .casino-badge-info{ flex:1; min-width:0; }
+  .casino-badge-name{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; letter-spacing:.3px; text-transform:uppercase; color:var(--chalk); }
+  .casino-badge-row.unlocked .casino-badge-name{ color:var(--brass-light); }
+  .casino-badge-desc{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .casino-badge-status{ font-size:17px; flex-shrink:0; }
 
   /* ---- Slots (5-reel) ---- */
   .slots-cabinet{
@@ -1356,6 +1380,11 @@
           <span class="casino-hub-label">Earning XP</span>
           <span class="casino-hub-sub">Where it comes from</span>
         </div>
+        <div class="casino-hub-bubble" id="hubBadgesBtn">
+          <span class="casino-hub-icon">🏅</span>
+          <span class="casino-hub-label">Badges</span>
+          <span class="casino-hub-sub">Founding Player &amp; XP milestones</span>
+        </div>
       </div>
     </div>
 
@@ -1366,6 +1395,15 @@
         <button type="button" class="pill-btn" id="rulesHubBackBtn">← Back</button>
       </div>
       <div id="casinoRulesHubList"></div>
+    </div>
+
+    <!-- Badges view -->
+    <div class="panel casino-view" id="casinoBadgesView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">🏅 Badges</h2>
+        <button type="button" class="pill-btn" id="badgesBackBtn">← Back</button>
+      </div>
+      <div id="casinoBadgesBody"><div class="empty">Loading…</div></div>
     </div>
 
     <!-- Earning XP view -->
@@ -2456,6 +2494,56 @@ function renderXpInfoView(){
     + `<div class="hint" style="margin-top:6px;">Once you've got XP, spend it in any Casino game — wins and losses adjust your balance from there, same as a real table.</div>`;
 }
 
+// ---- Casino badges ----
+// Lifetime XP milestones — tracked separately from the spendable balance
+// (losses don't reduce lifetimeEarned, see awardXP), so these only ever
+// unlock, never un-unlock.
+const XP_MILESTONE_BADGES = [
+  { key: 'xp10k', threshold: 10000, icon: '🥉', name: '10K Club' },
+  { key: 'xp100k', threshold: 100000, icon: '🥈', name: '100K Club' },
+  { key: 'xp250k', threshold: 250000, icon: '🥇', name: '250K Club' },
+  { key: 'xp500k', threshold: 500000, icon: '💎', name: '500K Club' },
+  { key: 'xp1m', threshold: 1000000, icon: '👑', name: 'Millionaire' }
+];
+function casinoBadgeRowHtml(icon, name, desc, unlocked){
+  return `<div class="casino-badge-row ${unlocked ? 'unlocked' : 'locked'}">
+    <span class="casino-badge-icon">${icon}</span>
+    <div class="casino-badge-info">
+      <div class="casino-badge-name">${escapeHtml(name)}</div>
+      <div class="casino-badge-desc">${escapeHtml(desc)}</div>
+    </div>
+    <span class="casino-badge-status">${unlocked ? '✅' : '🔒'}</span>
+  </div>`;
+}
+async function renderCasinoBadgesView(){
+  const body = document.getElementById('casinoBadgesBody');
+  if(!body || !currentUserUid) return;
+  body.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const [lifetimeRes, foundingRes] = await Promise.all([
+      authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`),
+      authedFetch(`/xp/${currentUserUid}/foundingNumber.json`)
+    ]);
+    const lifetime = (await lifetimeRes.json()) || 0;
+    const founding = await foundingRes.json();
+
+    const rows = [];
+    rows.push(casinoBadgeRowHtml(
+      '🎰',
+      founding ? `Founding Player #${founding}` : 'Founding Player',
+      'Awarded to the first 11 people who ever opened the Casino — all 11 spots are claimed for good.',
+      !!founding
+    ));
+    XP_MILESTONE_BADGES.forEach(b => {
+      rows.push(casinoBadgeRowHtml(b.icon, b.name, `Earn ${b.threshold.toLocaleString()} lifetime XP.`, lifetime >= b.threshold));
+    });
+
+    body.innerHTML = `<div class="hint" style="margin-bottom:4px;">Lifetime XP earned: <b style="color:var(--brass-light);">${lifetime.toLocaleString()}</b></div>` + rows.join('');
+  }catch(e){
+    body.innerHTML = '<div class="empty">Could not load badges — try again.</div>';
+  }
+}
+
 async function ensureXPInitialized(){
   if(!currentUserUid) return;
   try{
@@ -2466,7 +2554,31 @@ async function ensureXPInitialized(){
         method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(XP_SIGNUP_BONUS)
       });
       await awardXP(XP_SIGNUP_BONUS, 'Signup bonus', { silent: true });
+      await assignFoundingNumberIfEligible();
     }
+  }catch(e){}
+}
+
+// First 11 accounts to ever open the Casino (i.e. the first 11 to hit the
+// brand-new-/xp/{uid} branch above) get a permanent Founding Player badge,
+// numbered in the order they joined. Read-then-write on a shared counter
+// isn't transactionally safe against two people opening Casino in the
+// exact same instant, but for an ~11-person friendly group that's an
+// accepted, low-stakes race — same tradeoff this app already makes for XP
+// balances themselves.
+async function assignFoundingNumberIfEligible(){
+  if(!currentUserUid) return;
+  try{
+    const res = await authedFetch('/xpMeta/foundingCount.json');
+    const count = (await res.json()) || 0;
+    if(count >= 11) return;
+    const myNumber = count + 1;
+    await authedFetch('/xpMeta/foundingCount.json', {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(myNumber)
+    });
+    await authedFetch(`/xp/${currentUserUid}/foundingNumber.json`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(myNumber)
+    });
   }catch(e){}
 }
 
@@ -2497,6 +2609,18 @@ async function awardXP(amount, reason, opts){
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
     });
+    // Lifetime-earned only ever goes up — losses don't reduce it. This is
+    // what the 10K/100K/250K/500K/1M milestone badges track, deliberately
+    // separate from the spendable balance above (which losses DO reduce).
+    if(amount > 0){
+      try{
+        const ltRes = await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`);
+        const ltCurrent = (await ltRes.json()) || 0;
+        await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`, {
+          method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(ltCurrent + amount)
+        });
+      }catch(e){}
+    }
     if(!(opts && opts.silent)) updateXPBalanceDisplay(next);
   }catch(e){}
 }
@@ -3103,8 +3227,10 @@ function showCasinoView(viewId){
 document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
 document.getElementById('hubRulesBtn').addEventListener('click', () => showCasinoView('casinoRulesHubView'));
 document.getElementById('hubXpBtn').addEventListener('click', () => { renderXpInfoView(); showCasinoView('casinoXpInfoView'); });
+document.getElementById('hubBadgesBtn').addEventListener('click', () => { renderCasinoBadgesView(); showCasinoView('casinoBadgesView'); });
 document.getElementById('rulesHubBackBtn').addEventListener('click', () => showCasinoView(null));
 document.getElementById('xpInfoBackBtn').addEventListener('click', () => showCasinoView(null));
+document.getElementById('badgesBackBtn').addEventListener('click', () => showCasinoView(null));
 
 // ---- Casino game selector ----
 document.querySelectorAll('.game-bubble').forEach(btn => {
