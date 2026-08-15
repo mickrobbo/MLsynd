@@ -1329,6 +1329,7 @@
       </div>
       <div class="hint" id="xpEarnHint">XP is play money for this tab only, separate from the real ledger.</div>
       <button type="button" id="weeklyBonusBtn" class="pill-btn weekly-bonus-pill" style="display:none;">🎁 Claim weekly bonus</button>
+      <div id="weeklyBonusStatus" class="status-msg error" style="margin-top:6px; text-align:center;"></div>
       <button type="button" id="xpLeaderboardToggleBtn" class="pill-btn" style="margin-top:10px; padding:8px 16px;">🏆 Leaderboard</button>
     </div>
 
@@ -2374,14 +2375,43 @@ async function getWeeklyBonusStatus(){
     return { weekKey, claimed: !!claimed };
   }catch(e){ return null; }
 }
+// IMPORTANT: fetch() does NOT throw on an HTTP error response (403
+// permission-denied included) — it resolves normally. The original version
+// of this function fired awardXP() unconditionally right after the "mark
+// as claimed" write, without ever checking whether that write actually
+// landed. If the Firebase rule for /xp/{uid}/weeklyBonus isn't live yet (or
+// the write fails for any other reason), the claimed-flag write silently
+// no-ops, getWeeklyBonusStatus keeps reporting claimed:false forever, and
+// every tap re-awards XP — unlimited free XP with no error shown anywhere.
+// This is the exact "unchecked write" bug class that's bitten this project
+// before (saveAllTippingPicks, setMyJoker, syncGameMeta) — same fix here:
+// check the response, only award XP once the guard write is CONFIRMED to
+// have landed, and surface the real reason on failure instead of
+// pretending it worked.
 async function claimWeeklyBonus(){
   const status = await getWeeklyBonusStatus();
-  if(!status || status.claimed) return false;
-  await authedFetch(`/xp/${currentUserUid}/weeklyBonus/${status.weekKey}.json`, {
-    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(true)
-  });
+  if(!status) return { ok: false, reason: 'Could not check your weekly bonus status — try again.' };
+  if(status.claimed) return { ok: false, reason: 'Already claimed this week.' };
+  let markRes;
+  try{
+    markRes = await authedFetch(`/xp/${currentUserUid}/weeklyBonus/${status.weekKey}.json`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(true)
+    });
+  }catch(e){
+    return { ok: false, reason: 'Network error — try again.' };
+  }
+  if(!markRes || !markRes.ok){
+    return { ok: false, reason: `Could not claim right now (server said ${markRes ? markRes.status : 'no response'}). If this keeps happening, the live Firebase rules may need updating.` };
+  }
+  // Re-check what actually landed rather than trusting our own PUT blindly
+  // — if two taps race, whichever write truly stuck wins, and only ONE of
+  // them should still go on to award XP.
+  const confirmed = await getWeeklyBonusStatus();
+  if(!confirmed || !confirmed.claimed){
+    return { ok: false, reason: 'Claim did not stick — try again.' };
+  }
   await awardXP(XP_WEEKLY_BONUS, 'Weekly bonus');
-  return true;
+  return { ok: true };
 }
 async function refreshWeeklyBonusButton(){
   const btn = document.getElementById('weeklyBonusBtn');
@@ -2394,11 +2424,17 @@ async function refreshWeeklyBonusButton(){
   btn.textContent = status.claimed ? '🎁 Weekly bonus claimed' : `🎁 Claim weekly bonus (+${XP_WEEKLY_BONUS})`;
 }
 document.getElementById('weeklyBonusBtn').addEventListener('click', async () => {
-  const ok = await claimWeeklyBonus();
-  if(ok){
+  const btn = document.getElementById('weeklyBonusBtn');
+  const statusEl = document.getElementById('weeklyBonusStatus');
+  btn.disabled = true;
+  if(statusEl) statusEl.textContent = '';
+  const result = await claimWeeklyBonus();
+  if(result.ok){
     const bal = await getXPBalance();
     updateXPBalanceDisplay(bal);
     renderXPLog();
+  } else if(statusEl){
+    statusEl.textContent = result.reason;
   }
   refreshWeeklyBonusButton();
 });
@@ -2493,18 +2529,39 @@ async function renderXPLog(){
   const area = document.getElementById('xpLogArea');
   if(!area || !currentUserUid) return;
   try{
-    const res = await authedFetch(`/xp/${currentUserUid}/log.json?orderBy="ts"&limitToLast=15`);
-    const data = (await res.json()) || {};
-    const entries = Object.values(data).sort((a,b) => b.ts - a.ts);
+    // Deliberately NOT using ?orderBy="ts"&limitToLast=15 here anymore —
+    // that requires a matching .indexOn rule on the LIVE Firebase rules,
+    // and this project has already been caught once by code quietly
+    // depending on rules that hadn't actually been redeployed yet. A plain
+    // unfiltered fetch works under any rules that grant read at all, so
+    // sorting/limiting happens client-side instead — a personal XP log is
+    // small enough that this costs nothing in practice.
+    const res = await authedFetch(`/xp/${currentUserUid}/log.json`);
+    if(!res.ok){
+      area.innerHTML = `<div class="empty">Couldn't load XP activity (server said ${res.status}).</div>`;
+      return;
+    }
+    const data = await res.json();
+    // Defensive against any malformed/legacy entry (missing amount, missing
+    // ts) — this used to render literally as "undefined" in red rather than
+    // being filtered out or given a safe fallback.
+    const entries = (data && typeof data === 'object' ? Object.values(data) : [])
+      .filter(e => e && typeof e === 'object')
+      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      .slice(0, 15);
     if(entries.length === 0){
       area.innerHTML = '<div class="empty">No XP activity yet.</div>';
       return;
     }
-    area.innerHTML = entries.map(e => `
+    area.innerHTML = entries.map(e => {
+      const amount = typeof e.amount === 'number' && !isNaN(e.amount) ? e.amount : 0;
+      const reason = e.reason || '(unlabeled)';
+      return `
       <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
-        <span style="color:var(--muted);">${escapeHtml(e.reason || '')}</span>
-        <span style="font-weight:700; color:${e.amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${e.amount >= 0 ? '+' : ''}${e.amount}</span>
-      </div>`).join('');
+        <span style="color:var(--muted);">${escapeHtml(reason)}</span>
+        <span style="font-weight:700; color:${amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${amount >= 0 ? '+' : ''}${amount}</span>
+      </div>`;
+    }).join('');
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load XP activity.</div>';
   }
@@ -4167,17 +4224,24 @@ function slotsEvaluateLine(finals){
   return { multiplier: 0, label: 'No match', isJackpot: false };
 }
 async function slotsSpin(){
+  const spinBtn = document.getElementById('slotsSpinBtn');
+  const sameBtn = document.getElementById('slotsSameBetBtn');
+  // Disabling the button used to happen AFTER the `await getXPBalance()`
+  // below — that await is a real gap where a fast double-tap fires this
+  // function twice before the button visually locks, letting two spins
+  // run concurrently. Disabling synchronously, as the very first thing,
+  // closes that gap; every early-return path below now re-enables it.
+  if(spinBtn.disabled) return;
+  spinBtn.disabled = true;
   const errEl = document.getElementById('slotsBetError');
   errEl.textContent = '';
   const amount = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
-  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; return; }
+  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
   const balance = await getXPBalance();
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
+  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; spinBtn.disabled = false; return; }
 
-  const spinBtn = document.getElementById('slotsSpinBtn');
-  const sameBtn = document.getElementById('slotsSameBetBtn');
-  spinBtn.disabled = true; sameBtn.disabled = true;
+  sameBtn.disabled = true;
   const resultEl = document.getElementById('slotsResultMsg');
   resultEl.textContent = ''; resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
 
@@ -4334,13 +4398,16 @@ function vpHighlightPayout(key){
   if(key) document.getElementById('vpPayRow_' + key).classList.add('vp-hit');
 }
 async function vpDeal(){
+  const dealBtn = document.getElementById('vpDealBtn');
+  if(dealBtn.disabled) return;
+  dealBtn.disabled = true;
   const errEl = document.getElementById('vpBetError');
   errEl.textContent = '';
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
-  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; return; }
+  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; dealBtn.disabled = false; return; }
   const balance = await getXPBalance();
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; dealBtn.disabled = false; return; }
+  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; dealBtn.disabled = false; return; }
 
   vpDeck = bjFreshDeck();
   vpHand = vpDeck.splice(0, 5);
@@ -4393,6 +4460,7 @@ async function vpDraw(){
   vpStage = 'idle';
   document.getElementById('vpDrawBtn').disabled = false;
   document.getElementById('vpDrawBtn').style.display = 'none';
+  document.getElementById('vpDealBtn').disabled = false;
   document.getElementById('vpDealBtn').style.display = 'inline-block';
   document.getElementById('vpChipRail').style.pointerEvents = '';
   document.getElementById('vpChipRail').style.opacity = '';
