@@ -3113,6 +3113,19 @@ function rouletteDetectBetFromSelection(strNums){
   }
   return null;
 }
+// Tailored guidance per selection size, since "not valid" alone doesn't
+// explain what the actual valid shapes look like — someone tapping three
+// numbers straight down a column (a genuine roulette table has no such
+// bet) has no way to know that from a generic error otherwise.
+function rouletteInvalidSelectionMessage(count){
+  if(count === 0) return 'No spot selected';
+  if(count === 1) return 'Not a valid bet \u2014 pick a single number for Straight';
+  if(count === 2) return 'Not adjacent \u2014 Split needs two numbers sharing an edge';
+  if(count === 3) return 'Not a full row \u2014 Street needs 3 numbers straight across (e.g. 1-2-3), not stacked in a column';
+  if(count === 4) return 'Not a square \u2014 Corner needs 4 numbers meeting at one point';
+  if(count === 6) return 'Not two full rows \u2014 Six Line needs 6 numbers across two adjacent rows';
+  return 'Not a valid bet \u2014 try 2 (Split), 3 in a row (Street), 4 in a block (Corner), or 6 across two rows (Six Line)';
+}
 function rouletteToggleNumberCell(cell){
   const val = cell.dataset.betValue;
   // Starting a fresh number-based selection while an outside bet (or a
@@ -3146,7 +3159,7 @@ function rouletteToggleNumberCell(cell){
     spotEl.style.color = '';
   } else {
     rouletteSelectedBet = null;
-    spotEl.textContent = rouletteSelectedNums.length ? 'Not a valid bet \u2014 try adjacent numbers' : 'No spot selected';
+    spotEl.textContent = rouletteInvalidSelectionMessage(rouletteSelectedNums.length);
     spotEl.style.color = rouletteSelectedNums.length ? 'var(--loss)' : '';
   }
   rouletteRefreshChipBadges();
