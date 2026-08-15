@@ -2492,14 +2492,19 @@ function renderXpInfoView(){
 // refreshes/re-logins and are consistent across every device the same
 // account signs into.
 //
-// 1) 🎰 Founding Player — awarded to the first 11 accounts, ever, to open
-//    the Casino tab for the very first time. Unlock path:
-//      - Trigger: ensureXPInitialized() detects a brand-new /xp/{uid}
-//        node (balance === null), which only happens once per account,
-//        the very first time Casino loads for them.
-//      - assignFoundingNumberIfEligible() then reads the shared counter
-//        at /xpMeta/foundingCount. If it's below 11, this account claims
-//        the next number (1–11) and that count is bumped.
+// 1) 🎰 Founding Player — awarded to the first 11 accounts to claim a
+//    spot. Two trigger points, both landing on the same
+//    assignFoundingNumberIfEligible():
+//      - ensureXPInitialized() for a brand-new /xp/{uid} node (balance
+//        === null) — a genuinely first-ever Casino visit.
+//      - renderCasinoBadgesView(), the first time an account WITHOUT a
+//        foundingNumber opens the Badges screen — this is what makes the
+//        11 spots claimable at all for accounts that already existed
+//        before this badge shipped (their balance was never null, so the
+//        first trigger alone could never fire for them).
+//      - Either way: reads the shared counter at /xpMeta/foundingCount;
+//        if it's below 11, this account claims the next number (1–11)
+//        and the count is bumped.
 //      - Persisted at /xp/{uid}/foundingNumber. Once set, it's set for
 //        good — there's no code path that ever clears it.
 //      - After all 11 slots are taken, foundingCount stops advancing, so
@@ -2550,13 +2555,19 @@ async function renderCasinoBadgesView(){
       authedFetch(`/xp/${currentUserUid}/foundingNumber.json`)
     ]);
     const lifetime = (await lifetimeRes.json()) || 0;
-    const founding = await foundingRes.json();
+    let founding = await foundingRes.json();
+    // Retroactive claim for existing accounts — see the comment on
+    // assignFoundingNumberIfEligible() for why this can't just rely on
+    // the brand-new-account trigger alone.
+    if(!founding){
+      founding = await assignFoundingNumberIfEligible();
+    }
 
     const rows = [];
     rows.push(casinoBadgeRowHtml(
       '🎰',
       founding ? `Founding Player #${founding}` : 'Founding Player',
-      'Awarded to the first 11 people who ever opened the Casino — all 11 spots are claimed for good.',
+      'One of the first 11 people to claim a spot — all 11 are gone for good once claimed.',
       !!founding
     ));
     XP_MILESTONE_BADGES.forEach(b => {
@@ -2584,19 +2595,25 @@ async function ensureXPInitialized(){
   }catch(e){}
 }
 
-// First 11 accounts to ever open the Casino (i.e. the first 11 to hit the
-// brand-new-/xp/{uid} branch above) get a permanent Founding Player badge,
-// numbered in the order they joined. Read-then-write on a shared counter
-// isn't transactionally safe against two people opening Casino in the
-// exact same instant, but for an ~11-person friendly group that's an
-// accepted, low-stakes race — same tradeoff this app already makes for XP
-// balances themselves.
+// First 11 accounts to claim a spot get a permanent Founding Player badge,
+// numbered in the order they claimed it. Originally this only fired for a
+// brand-new /xp/{uid} node (i.e. literally the first time someone ever
+// opened Casino) — but since Casino already existed before badges did,
+// EVERY existing account already had a balance, so that trigger could
+// never fire for any of them and the badge was structurally unclaimable.
+// Now also called from renderCasinoBadgesView() the first time someone
+// without a foundingNumber opens the Badges screen, so the remaining
+// spots are still claimable by whoever checks it out first. Read-then-
+// write on a shared counter isn't transactionally safe against two people
+// claiming in the exact same instant, but for an ~11-person friendly
+// group that's an accepted, low-stakes race — same tradeoff this app
+// already makes for XP balances themselves.
 async function assignFoundingNumberIfEligible(){
-  if(!currentUserUid) return;
+  if(!currentUserUid) return null;
   try{
     const res = await authedFetch('/xpMeta/foundingCount.json');
     const count = (await res.json()) || 0;
-    if(count >= 11) return;
+    if(count >= 11) return null;
     const myNumber = count + 1;
     await authedFetch('/xpMeta/foundingCount.json', {
       method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(myNumber)
@@ -2604,7 +2621,8 @@ async function assignFoundingNumberIfEligible(){
     await authedFetch(`/xp/${currentUserUid}/foundingNumber.json`, {
       method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(myNumber)
     });
-  }catch(e){}
+    return myNumber;
+  }catch(e){ return null; }
 }
 
 async function getXPBalance(){
