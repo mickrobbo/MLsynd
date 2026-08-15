@@ -227,8 +227,22 @@
   }
 
   /* ---- Casino game selector + Roulette wheel ---- */
-  .casino-game-tab.active{ background:var(--brass-dim); border-color:var(--brass); color:var(--ink); }
-  .casino-game-tab.active::after{ display:none; } /* the idle sheen sweep is for CTAs, not the currently-selected tab */
+  .game-bubble-row{ display:flex; gap:6px; justify-content:center; flex-wrap:nowrap; }
+  .game-bubble{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    flex:1; min-width:0; padding:10px 4px; border-radius:12px; cursor:pointer;
+    background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
+    transition: transform .1s ease, box-shadow .2s ease;
+  }
+  .game-bubble:active{ transform:scale(.96); }
+  .game-bubble-icon{ font-size:19px; line-height:1; }
+  .game-bubble-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:9.5px; letter-spacing:.3px; text-transform:uppercase; color:var(--chalk); white-space:nowrap; }
+  .game-bubble.active{
+    background: linear-gradient(165deg, var(--brass-light), var(--brass));
+    border-color: var(--brass-light);
+    box-shadow: 0 0 20px rgba(255,214,120,.45), 0 4px 10px rgba(0,0,0,.3);
+  }
+  .game-bubble.active .game-bubble-label{ color:#2a2005; }
 
   .roulette-wheel-wrap{
     position:relative; width:250px; height:250px; margin:14px auto 10px;
@@ -1208,15 +1222,16 @@
     </div>
 
     <div class="panel" style="padding:10px; text-align:center;">
-      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-        <button type="button" class="pill-btn casino-game-tab active" data-game="blackjack">🃏 Blackjack</button>
-        <button type="button" class="pill-btn casino-game-tab" data-game="baccarat">🎴 Baccarat</button>
-        <button type="button" class="pill-btn casino-game-tab" data-game="roulette">🎡 Roulette</button>
-        <button type="button" class="pill-btn casino-game-tab" data-game="war">⚔️ Casino War</button>
+      <div class="game-bubble-row">
+        <button type="button" class="game-bubble active" data-game="blackjack"><span class="game-bubble-icon">🃏</span><span class="game-bubble-label">Blackjack</span></button>
+        <button type="button" class="game-bubble" data-game="baccarat"><span class="game-bubble-icon">🎴</span><span class="game-bubble-label">Baccarat</span></button>
+        <button type="button" class="game-bubble" data-game="roulette"><span class="game-bubble-icon">🎡</span><span class="game-bubble-label">Roulette</span></button>
+        <button type="button" class="game-bubble" data-game="war"><span class="game-bubble-icon">⚔️</span><span class="game-bubble-label">Casino War</span></button>
       </div>
     </div>
 
     <div class="casino-game-panel" id="casinoGameBlackjack">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="blackjack">📜 Rules</button></div>
     <div class="panel" id="bjBetPanel">
       <div style="display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;">
         <div class="bj-chip" id="bjChipDisplay">50</div>
@@ -1260,6 +1275,7 @@
       <div id="bjOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
         <button type="button" id="bjHitBtn" class="pill-btn" style="padding:8px 18px;">Hit</button>
+        <button type="button" id="bjDoubleBtn" class="pill-btn" style="padding:8px 18px; display:none;">Double Down</button>
         <button type="button" id="bjStandBtn" class="pill-btn" style="padding:8px 18px;">Stand</button>
         <button type="button" id="bjNewHandBtn" class="pill-btn" style="padding:8px 18px; display:none;">New hand</button>
       </div>
@@ -1267,6 +1283,7 @@
     </div>
 
     <div class="casino-game-panel" id="casinoGameBaccarat" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="baccarat">📜 Rules</button></div>
     <div class="panel" id="bacBetPanel">
       <div style="display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;">
         <div class="bet-spot-row">
@@ -1304,12 +1321,14 @@
       </div>
       <div id="bacOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:14px; min-height:24px;"></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+        <button type="button" id="bacHitBtn" class="pill-btn" style="padding:8px 18px; display:none;">Hit</button>
         <button type="button" id="bacNewHandBtn" class="pill-btn" style="padding:8px 18px; display:none;">New hand</button>
       </div>
     </div>
     </div>
 
     <div class="casino-game-panel" id="casinoGameRoulette" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="roulette">📜 Rules</button></div>
     <div class="panel" id="rouletteWheelPanel" style="text-align:center;">
       <div class="roulette-wheel-wrap">
         <div class="roulette-bezel-outer"></div>
@@ -1346,6 +1365,7 @@
     </div>
 
     <div class="casino-game-panel" id="casinoGameWar" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="war">📜 Rules</button></div>
     <div class="panel" id="warBetPanel">
       <div class="hint">One card each — higher card wins. Tie? Go to war (double the bet) or surrender half.</div>
       <div style="display:flex; justify-content:center; margin-top:8px;">
@@ -1499,6 +1519,16 @@
       <p>The total prize pool is split as follows:</p>
       <p>1st place – 70%<br>2nd place – 20%<br>3rd place – 10%</p>
     </div>
+  </div>
+</div>
+
+<div id="casinoRulesModal" class="profile-modal">
+  <div class="profile-sheet" style="text-align:left;">
+    <button type="button" class="profile-close" id="casinoRulesCloseBtn">✕</button>
+    <div class="profile-header" style="text-align:center;">
+      <h2 id="casinoRulesTitle" style="font-size:20px;">Rules</h2>
+    </div>
+    <div class="rules-body" id="casinoRulesBody"></div>
   </div>
 </div>
 <script>
@@ -1760,6 +1790,65 @@ async function checkApprovalAndProceed(){
   }
 }
 
+// Finds which state.members[] entry belongs to a signed-in person, by
+// persisted uid-link first, falling back to exact-name match (writing the
+// link once found) or a one-time "which name is you" picker. Lives at
+// top level (not nested in initAuthGate like it originally was) so the
+// startup sequence can call it automatically for every sign-in, not just
+// when someone happens to open Edit Name — that gap was the actual bug
+// behind "a member isn't showing up on the ladder": nothing ever linked
+// their account unless they'd specifically used Edit Name at least once.
+function pickMyMemberIndex(){
+  return new Promise(resolve => {
+    const modal = document.getElementById('linkMemberModal');
+    const list = document.getElementById('linkMemberList');
+    list.innerHTML = (currentState.members || []).map((m, i) =>
+      `<button type="button" class="link-member-option" data-idx="${i}" style="padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:9px; color:var(--chalk); text-align:left; font-size:14px; font-weight:600;">${escapeHtml(m.name)}</button>`
+    ).join('');
+    modal.classList.add('open');
+    let resolved = false;
+    const finish = (val) => {
+      if(resolved) return;
+      resolved = true;
+      modal.classList.remove('open');
+      resolve(val);
+    };
+    list.querySelectorAll('.link-member-option').forEach(btn => {
+      btn.addEventListener('click', () => finish(parseInt(btn.dataset.idx, 10)));
+    });
+    document.getElementById('linkMemberCloseBtn').onclick = () => finish(null);
+  });
+}
+
+async function resolveMyMemberIndex(oldName){
+  if(!currentState || !currentState.members) return null;
+
+  let idx = currentState.members.findIndex(m => m.linkedUid === currentUserUid);
+  if(idx !== -1) return idx;
+
+  idx = currentState.members.findIndex(m => m.name === oldName);
+  if(idx !== -1){
+    try{
+      await authedFetch(`/state/members/${idx}/linkedUid.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentUserUid)
+      });
+      currentState.members[idx].linkedUid = currentUserUid;
+    }catch(e){}
+    return idx;
+  }
+
+  idx = await pickMyMemberIndex();
+  if(idx !== null){
+    try{
+      await authedFetch(`/state/members/${idx}/linkedUid.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentUserUid)
+      });
+      currentState.members[idx].linkedUid = currentUserUid;
+    }catch(e){}
+  }
+  return idx;
+}
+
 function initAuthGate(){
   const tabLogin = document.getElementById('authTabLogin');
   const tabSignup = document.getElementById('authTabSignup');
@@ -1816,27 +1905,6 @@ function initAuthGate(){
 
   document.getElementById('authSignOutBtn').addEventListener('click', authSignOut);
   document.getElementById('mainSignOutBtn').addEventListener('click', authSignOut);
-  function pickMyMemberIndex(){
-    return new Promise(resolve => {
-      const modal = document.getElementById('linkMemberModal');
-      const list = document.getElementById('linkMemberList');
-      list.innerHTML = (currentState.members || []).map((m, i) =>
-        `<button type="button" class="link-member-option" data-idx="${i}" style="padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:9px; color:var(--chalk); text-align:left; font-size:14px; font-weight:600;">${escapeHtml(m.name)}</button>`
-      ).join('');
-      modal.classList.add('open');
-      let resolved = false;
-      const finish = (val) => {
-        if(resolved) return;
-        resolved = true;
-        modal.classList.remove('open');
-        resolve(val);
-      };
-      list.querySelectorAll('.link-member-option').forEach(btn => {
-        btn.addEventListener('click', () => finish(parseInt(btn.dataset.idx, 10)));
-      });
-      document.getElementById('linkMemberCloseBtn').onclick = () => finish(null);
-    });
-  }
 
   document.getElementById('tippingRulesBtn').addEventListener('click', () => {
     document.getElementById('tippingRulesModal').classList.add('open');
@@ -1853,34 +1921,6 @@ function initAuthGate(){
   // someone's Tipping profile name and Board name have already drifted
   // apart (exactly what happened here) — so this prefers a persisted link
   // first, and only falls back to matching/asking when that's not there yet.
-  async function resolveMyMemberIndex(oldName){
-    if(!currentState || !currentState.members) return null;
-
-    let idx = currentState.members.findIndex(m => m.linkedUid === currentUserUid);
-    if(idx !== -1) return idx;
-
-    idx = currentState.members.findIndex(m => m.name === oldName);
-    if(idx !== -1){
-      try{
-        await authedFetch(`/state/members/${idx}/linkedUid.json`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentUserUid)
-        });
-        currentState.members[idx].linkedUid = currentUserUid;
-      }catch(e){}
-      return idx;
-    }
-
-    idx = await pickMyMemberIndex();
-    if(idx !== null){
-      try{
-        await authedFetch(`/state/members/${idx}/linkedUid.json`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentUserUid)
-        });
-        currentState.members[idx].linkedUid = currentUserUid;
-      }catch(e){}
-    }
-    return idx;
-  }
 
   document.getElementById('editNameBtn').addEventListener('click', async () => {
     // Once a month, to stop members repeatedly renaming themselves as a joke
@@ -2424,6 +2464,7 @@ async function bjStartHand(){
   ppOutcomeEl.textContent = '';
   document.getElementById('bjHitBtn').style.display = 'inline-block';
   document.getElementById('bjStandBtn').style.display = 'inline-block';
+  document.getElementById('bjDoubleBtn').style.display = 'inline-block';
   document.getElementById('bjNewHandBtn').style.display = 'none';
   bjRenderTable(true);
 
@@ -2448,6 +2489,7 @@ async function bjStartHand(){
 }
 function bjHit(){
   if(!bjHandActive) return;
+  document.getElementById('bjDoubleBtn').style.display = 'none'; // doubling is a first-decision-only move
   bjPlayerHand.push(bjDeck.pop());
   bjPlayCardSound();
   const area = document.getElementById('bjPlayerCards');
@@ -2460,10 +2502,39 @@ function bjHit(){
   document.getElementById('bjPlayerTotal').textContent = `Total: ${bjHandTotal(bjPlayerHand)}`;
   if(bjHandTotal(bjPlayerHand) > 21) bjResolveHand();
 }
+// Only ever valid on the very first decision (exactly two cards, nothing
+// hit yet) — doubles the bet, takes exactly one more card, then goes
+// straight to the dealer's resolution regardless of the result.
+async function bjDoubleDown(){
+  if(!bjHandActive || bjPlayerHand.length !== 2) return;
+  const balance = await getXPBalance();
+  if(balance == null || balance < bjCurrentBet){
+    const errEl = document.getElementById('bjOutcomeMsg');
+    errEl.textContent = 'Not enough XP to double down.';
+    errEl.style.color = 'var(--loss)';
+    return;
+  }
+  document.getElementById('bjDoubleBtn').style.display = 'none';
+  document.getElementById('bjHitBtn').style.display = 'none';
+  bjCurrentBet *= 2;
+  bjPlayerHand.push(bjDeck.pop());
+  bjPlayCardSound();
+  const area = document.getElementById('bjPlayerCards');
+  const c = bjPlayerHand[bjPlayerHand.length - 1];
+  const isRed = c.suit === '♥' || c.suit === '♦';
+  const card = document.createElement('div');
+  card.className = `playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt`;
+  card.innerHTML = bjPipHtml(c);
+  area.appendChild(card);
+  document.getElementById('bjPlayerTotal').textContent = `Total: ${bjHandTotal(bjPlayerHand)}`;
+  await bjWait(500);
+  bjResolveHand();
+}
 async function bjResolveHand(){
   bjHandActive = false;
   document.getElementById('bjHitBtn').style.display = 'none';
   document.getElementById('bjStandBtn').style.display = 'none';
+  document.getElementById('bjDoubleBtn').style.display = 'none';
 
   const playerTotal = bjHandTotal(bjPlayerHand);
 
@@ -2559,13 +2630,14 @@ document.getElementById('bjBetInput').addEventListener('input', (e) => {
   chip.classList.add('pc-chip-pulse');
 });
 document.getElementById('bjHitBtn').addEventListener('click', bjHit);
+document.getElementById('bjDoubleBtn').addEventListener('click', bjDoubleDown);
 document.getElementById('bjStandBtn').addEventListener('click', bjResolveHand);
 document.getElementById('bjNewHandBtn').addEventListener('click', bjNewHand);
 
 // ---- Casino game selector ----
-document.querySelectorAll('.casino-game-tab').forEach(btn => {
+document.querySelectorAll('.game-bubble').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.casino-game-tab').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.game-bubble').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
     document.getElementById('casinoGame' + btn.dataset.game.charAt(0).toUpperCase() + btn.dataset.game.slice(1)).style.display = 'block';
     if(btn.dataset.game === 'roulette' && !rouletteWheelBuilt){ rouletteBuildWheel(); rouletteBuildBetGrid(); }
@@ -2628,6 +2700,63 @@ document.getElementById('xpLeaderboardToggleBtn').addEventListener('click', () =
 // .chip-clear-btn to zero it out. Dispatches a real 'input' event so each
 // game's existing display-sync listener (chip circle + pulse) fires
 // exactly as it did for manual typing — no per-game duplication needed.
+// ---- Per-game rules modal (shared sheet, content swapped per game) ----
+const CASINO_RULES = {
+  blackjack: { title: '🃏 Blackjack Rules', body: `
+    <h3>Object</h3>
+    <p>Get closer to 21 than the dealer without going over. Number cards are face value, J/Q/K are 10, Aces are 1 or 11 (whichever helps your hand more).</p>
+    <h3>Play</h3>
+    <p>You and the dealer each get two cards — one of the dealer's stays face down until you finish. Hit to take another card, Stand to hold. The dealer must draw to 17 and stand on 17+.</p>
+    <h3>Double Down</h3>
+    <p>On your first two cards only, you can Double Down: your bet is doubled, you take exactly one more card, then automatically stand. A classic move when your first two cards add up to a strong total.</p>
+    <h3>Payouts</h3>
+    <p>Win: 1:1. Blackjack (an Ace + a 10-value card on the first two cards, dealer doesn't match it): 3:2. Push (tie): bet returned. Bust (over 21): lose.</p>
+    <h3>Perfect Pairs (side bet)</h3>
+    <p>Optional, wagered separately before the deal. Pays out if your first two cards share a rank. Colored Pair (same rank, same colour, different suit) pays 12:1. Mixed Pair (same rank, different colour) pays 6:1. A true "perfect" same-suit pair can't happen from a single 52-card deck, so it isn't offered.</p>
+  `},
+  baccarat: { title: '🎴 Baccarat Rules', body: `
+    <h3>Object</h3>
+    <p>Bet on whether Player or Banker will have the higher hand, or on a Tie. Card values: Aces = 1, 2–9 = face value, 10/J/Q/K = 0. A hand's total is the last digit of the sum of its cards (so 7+8=15 counts as 5).</p>
+    <h3>Play</h3>
+    <p>Tap Hit to reveal cards one at a time — Player's first card, Banker's first, Player's second, Banker's second. If either hand has 8 or 9 at that point (a "Natural"), the hand ends there. Otherwise, fixed drawing rules decide whether Player and/or Banker draw a third card — there's no strategy or choice involved, the rules are automatic, keep tapping Hit to reveal what happens.</p>
+    <h3>Payouts</h3>
+    <p>Player wins: 1:1. Banker wins: 0.95:1 (a standard 5% commission). Tie: 8:1, and Player/Banker bets push (are returned) rather than lose if the hand ties.</p>
+  `},
+  roulette: { title: '🎡 Roulette Rules', body: `
+    <h3>The wheel</h3>
+    <p>American double-zero wheel — 38 pockets: 1 to 36 plus 0 and 00. 18 numbers are red, 18 are black, 0 and 00 are green.</p>
+    <h3>Inside bets (on the number grid)</h3>
+    <p>Tap one number for a Straight bet (35:1). Tap two adjacent numbers (sharing an edge) for a Split (17:1). Tap all three numbers in a row for a Street (11:1). Tap four numbers meeting at a corner for a Corner (8:1). Tap all six numbers across two adjacent rows for a Six Line (5:1). Tap exactly 0, 1, 2 and 3 together for the First Four (8:1). The table will tell you if a selection isn't a valid combination.</p>
+    <h3>Outside bets</h3>
+    <p>Red/Black, Odd/Even, 1–18/19–36 all pay 1:1. A dozen (1st/2nd/3rd 12) pays 2:1. Every outside and dozen bet loses if the ball lands on 0 or 00 — that's the house edge on this wheel.</p>
+    <h3>How to bet</h3>
+    <p>Tap chips to build your bet amount, tap your spot(s) on the table, then Spin.</p>
+  `},
+  war: { title: '⚔️ Casino War Rules', body: `
+    <h3>Object</h3>
+    <p>You and the dealer each get one card. Higher card wins (Aces are high). Win pays 1:1.</p>
+    <h3>Ties — go to war, or surrender</h3>
+    <p>If it's a tie, you choose: <b>Go to War</b> — your bet is matched (doubled total risk), three cards are burned, and you each get one new card. Higher card wins the war: winning pays 1:1 on your original bet (the raise is simply returned), losing the war loses everything wagered. A second tie during the war is a full push — everything's returned. Or <b>Surrender</b> — forfeit half your original bet immediately and end the hand there.</p>
+    <h3>Pairs (side bet)</h3>
+    <p>Optional, wagered separately before the deal. Pays 10:1 if your card and the dealer's very first card share the same rank (which also means the hand is about to tie).</p>
+  `}
+};
+document.querySelectorAll('.casino-rules-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const rules = CASINO_RULES[btn.dataset.rules];
+    if(!rules) return;
+    document.getElementById('casinoRulesTitle').textContent = rules.title;
+    document.getElementById('casinoRulesBody').innerHTML = rules.body;
+    document.getElementById('casinoRulesModal').classList.add('open');
+  });
+});
+document.getElementById('casinoRulesCloseBtn').addEventListener('click', () => {
+  document.getElementById('casinoRulesModal').classList.remove('open');
+});
+document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
+  if(e.target.id === 'casinoRulesModal') document.getElementById('casinoRulesModal').classList.remove('open');
+});
+
 function initChipRail(rail){
   const targetId = rail.dataset.target;
   rail.querySelectorAll('.table-chip').forEach(btn => {
@@ -2672,6 +2801,11 @@ wirePPToggle('warPerfectPairsCheck', 'warPPChipRail');
 // never actually Blackjack-specific under the hood.
 let bacDeck = [];
 let bacSelectedBet = 'player';
+let bacStep = 'start';
+let bacPlayerHand = [], bacBankerHand = [];
+let bacBetAmountLocked = 0, bacBetTypeLocked = '';
+let bacPlayerDrew = false, bacPlayerThirdVal = null;
+
 document.querySelectorAll('.bet-spot-btn[data-bac-bet]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.bet-spot-btn[data-bac-bet]').forEach(b => b.classList.toggle('active', b === btn));
@@ -2696,6 +2830,20 @@ function bacPulseChip(el, val){
   el.textContent = val;
   el.classList.remove('pc-chip-tap'); void el.offsetWidth; el.classList.add('pc-chip-tap');
 }
+// Cards reveal one at a time via the Hit button, in real baccarat's fixed
+// order (Player1, Banker1, Player2, Banker2, then conditionally a Player
+// third and/or Banker third) — the DRAWING RULES stay fully automatic and
+// non-negotiable, exactly as real baccarat works (there's no player choice
+// in when a third card is drawn). Hit only controls the pacing/reveal, not
+// the outcome — makes the hand feel interactive without inventing a
+// "strategy" baccarat doesn't actually have.
+function bacAppendCard(containerEl, card){
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  const el = document.createElement('div');
+  el.className = `playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt`;
+  el.innerHTML = bjPipHtml(card);
+  containerEl.appendChild(el);
+}
 async function bacDeal(){
   const betType = bacSelectedBet;
   const betInput = document.getElementById('bacBetInput');
@@ -2707,63 +2855,89 @@ async function bacDeal(){
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
+  bacBetAmountLocked = bet;
+  bacBetTypeLocked = betType;
+  bacDeck = bjFreshDeck();
+  bacPlayerHand = []; bacBankerHand = [];
+  bacStep = 'start';
+  bacPlayerDrew = false; bacPlayerThirdVal = null;
+
   document.getElementById('bacBetPanel').style.display = 'none';
   document.getElementById('bacTableArea').style.display = 'block';
+  document.getElementById('bacPlayerCards').innerHTML = '';
+  document.getElementById('bacBankerCards').innerHTML = '';
+  document.getElementById('bacPlayerTotal').textContent = '';
+  document.getElementById('bacBankerTotal').textContent = '';
   const outcomeEl = document.getElementById('bacOutcomeMsg');
   outcomeEl.textContent = ''; outcomeEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
   document.getElementById('bacNewHandBtn').style.display = 'none';
+  document.getElementById('bacHitBtn').style.display = 'inline-block';
+  document.getElementById('bacHitBtn').disabled = false;
   bacPulseChip(document.getElementById('bacBankerChip'), 0);
   bacPulseChip(document.getElementById('bacPlayerChip'), 0);
 
-  bacDeck = bjFreshDeck();
-  let playerHand = [bacDeck.pop(), bacDeck.pop()];
-  let bankerHand = [bacDeck.pop(), bacDeck.pop()];
+  await bacHit(); // reveal the first card straight away so the table isn't empty
+}
+async function bacHit(){
+  const hitBtn = document.getElementById('bacHitBtn');
+  hitBtn.disabled = true;
   const pCardsEl = document.getElementById('bacPlayerCards');
   const bCardsEl = document.getElementById('bacBankerCards');
-  pCardsEl.innerHTML = bjRenderCards(playerHand, true);
-  bCardsEl.innerHTML = bjRenderCards(bankerHand, false);
-  setTimeout(bjPlayCardSound, 260); setTimeout(bjPlayCardSound, 390);
-  document.getElementById('bacPlayerTotal').textContent = `Total: ${bacHandTotal(playerHand)}`;
-  document.getElementById('bacBankerTotal').textContent = `Total: ${bacHandTotal(bankerHand)}`;
-  bacPulseChip(document.getElementById('bacPlayerChip'), bacHandTotal(playerHand));
-  bacPulseChip(document.getElementById('bacBankerChip'), bacHandTotal(bankerHand));
-  await bjWait(650);
 
-  let playerTotal = bacHandTotal(playerHand);
-  let bankerTotal = bacHandTotal(bankerHand);
-  const isNatural = playerTotal >= 8 || bankerTotal >= 8;
-  let playerDrew = false, playerThirdVal = null;
-
-  if(!isNatural){
-    if(playerTotal <= 5){
-      const c = bacDeck.pop();
-      playerHand.push(c); playerDrew = true; playerThirdVal = bacCardValue(c);
-      bjPlayCardSound();
-      const card = document.createElement('div');
-      const isRed = c.suit === '♥' || c.suit === '♦';
-      card.className = `playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt`;
-      card.innerHTML = bjPipHtml(c);
-      pCardsEl.appendChild(card);
-      playerTotal = bacHandTotal(playerHand);
-      document.getElementById('bacPlayerTotal').textContent = `Total: ${playerTotal}`;
-      bacPulseChip(document.getElementById('bacPlayerChip'), playerTotal);
-      await bjWait(500);
+  if(bacStep === 'start'){
+    const c = bacDeck.pop(); bacPlayerHand.push(c);
+    bacAppendCard(pCardsEl, c); bjPlayCardSound();
+    bacStep = 'p1done';
+  } else if(bacStep === 'p1done'){
+    const c = bacDeck.pop(); bacBankerHand.push(c);
+    bacAppendCard(bCardsEl, c); bjPlayCardSound();
+    bacStep = 'b1done';
+  } else if(bacStep === 'b1done'){
+    const c = bacDeck.pop(); bacPlayerHand.push(c);
+    bacAppendCard(pCardsEl, c); bjPlayCardSound();
+    document.getElementById('bacPlayerTotal').textContent = `Total: ${bacHandTotal(bacPlayerHand)}`;
+    bacPulseChip(document.getElementById('bacPlayerChip'), bacHandTotal(bacPlayerHand));
+    bacStep = 'p2done';
+  } else if(bacStep === 'p2done'){
+    const c = bacDeck.pop(); bacBankerHand.push(c);
+    bacAppendCard(bCardsEl, c); bjPlayCardSound();
+    document.getElementById('bacBankerTotal').textContent = `Total: ${bacHandTotal(bacBankerHand)}`;
+    bacPulseChip(document.getElementById('bacBankerChip'), bacHandTotal(bacBankerHand));
+    const pt = bacHandTotal(bacPlayerHand), bt = bacHandTotal(bacBankerHand);
+    if(pt >= 8 || bt >= 8) bacStep = 'done';
+    else if(pt <= 5) bacStep = 'needPlayerThird';
+    else bacStep = 'needBankerCheck';
+  } else if(bacStep === 'needPlayerThird'){
+    const c = bacDeck.pop(); bacPlayerHand.push(c);
+    bacPlayerDrew = true; bacPlayerThirdVal = bacCardValue(c);
+    bacAppendCard(pCardsEl, c); bjPlayCardSound();
+    document.getElementById('bacPlayerTotal').textContent = `Total: ${bacHandTotal(bacPlayerHand)}`;
+    bacPulseChip(document.getElementById('bacPlayerChip'), bacHandTotal(bacPlayerHand));
+    bacStep = 'needBankerCheck';
+  } else if(bacStep === 'needBankerCheck'){
+    const bt = bacHandTotal(bacBankerHand);
+    if(bacBankerShouldDraw(bt, bacPlayerDrew, bacPlayerThirdVal)){
+      const c = bacDeck.pop(); bacBankerHand.push(c);
+      bacAppendCard(bCardsEl, c); bjPlayCardSound();
+      document.getElementById('bacBankerTotal').textContent = `Total: ${bacHandTotal(bacBankerHand)}`;
+      bacPulseChip(document.getElementById('bacBankerChip'), bacHandTotal(bacBankerHand));
     }
-    if(bacBankerShouldDraw(bankerTotal, playerDrew, playerThirdVal)){
-      const c = bacDeck.pop();
-      bankerHand.push(c);
-      bjPlayCardSound();
-      const card = document.createElement('div');
-      const isRed = c.suit === '♥' || c.suit === '♦';
-      card.className = `playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt`;
-      card.innerHTML = bjPipHtml(c);
-      bCardsEl.appendChild(card);
-      bankerTotal = bacHandTotal(bankerHand);
-      document.getElementById('bacBankerTotal').textContent = `Total: ${bankerTotal}`;
-      bacPulseChip(document.getElementById('bacBankerChip'), bankerTotal);
-      await bjWait(500);
-    }
+    bacStep = 'done';
   }
+
+  if(bacStep === 'done'){
+    hitBtn.style.display = 'none';
+    await bjWait(300);
+    await bacResolve();
+  } else {
+    hitBtn.disabled = false;
+  }
+}
+async function bacResolve(){
+  const playerTotal = bacHandTotal(bacPlayerHand);
+  const bankerTotal = bacHandTotal(bacBankerHand);
+  const isNatural = (bacPlayerHand.length === 2 && playerTotal >= 8) || (bacBankerHand.length === 2 && bankerTotal >= 8);
+  const betType = bacBetTypeLocked, bet = bacBetAmountLocked;
 
   let winner = playerTotal > bankerTotal ? 'player' : (bankerTotal > playerTotal ? 'banker' : 'tie');
   let outcome, delta;
@@ -2778,6 +2952,7 @@ async function bacDeal(){
     outcome = `${winner === 'player' ? 'Player' : 'Banker'} wins${naturalTag} — you lose`; delta = -bet;
   }
 
+  const outcomeEl = document.getElementById('bacOutcomeMsg');
   const isJackpot = betType === 'tie' && winner === 'tie';
   outcomeEl.textContent = `${outcome} (${delta >= 0 ? '+' : ''}${delta} XP)`;
   outcomeEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)'));
@@ -2806,6 +2981,7 @@ function bacNewHand(){
   document.getElementById('bacTableArea').style.display = 'none';
 }
 document.getElementById('bacDealBtn').addEventListener('click', bacDeal);
+document.getElementById('bacHitBtn').addEventListener('click', bacHit);
 document.getElementById('bacNewHandBtn').addEventListener('click', bacNewHand);
 document.getElementById('bacBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('bacChipDisplay');
@@ -2876,37 +3052,129 @@ function rouletteBuildBetGrid(){
     <div class="rt-cell rt-outside" data-bet-type="high">19-36</div>
   </div>`;
   grid.innerHTML = html;
-  grid.querySelectorAll('.rt-cell').forEach(cell => {
-    cell.addEventListener('click', () => rouletteSelectSpot(cell));
+  grid.querySelectorAll('.rt-cell[data-bet-type="straight"]').forEach(cell => {
+    cell.addEventListener('click', () => rouletteToggleNumberCell(cell));
+  });
+  grid.querySelectorAll('.rt-cell:not([data-bet-type="straight"])').forEach(cell => {
+    cell.addEventListener('click', () => rouletteSelectOutsideCell(cell));
   });
 }
 const ROULETTE_BET_LABELS = {
   red: 'Red (1:1)', black: 'Black (1:1)', odd: 'Odd (1:1)', even: 'Even (1:1)',
-  low: '1–18 (1:1)', high: '19–36 (1:1)', dozen1: '1st 12 (2:1)', dozen2: '2nd 12 (2:1)', dozen3: '3rd 12 (2:1)'
+  low: '1\u201318 (1:1)', high: '19\u201336 (1:1)', dozen1: '1st 12 (2:1)', dozen2: '2nd 12 (2:1)', dozen3: '3rd 12 (2:1)'
 };
-function rouletteSelectSpot(cell){
-  document.querySelectorAll('.rt-cell').forEach(c => { c.classList.remove('selected'); const b = c.querySelector('.rt-chip-badge'); if(b) b.remove(); });
-  cell.classList.add('selected');
-  const betType = cell.dataset.betType;
-  const betValue = cell.dataset.betValue;
-  rouletteSelectedBet = betType === 'straight'
-    ? { type: 'straight', value: betValue, label: `Straight ${betValue} (35:1)` }
-    : { type: betType, value: null, label: ROULETTE_BET_LABELS[betType] || betType };
-  document.getElementById('rouletteSelectedSpot').textContent = `Selected: ${rouletteSelectedBet.label}`;
-  rouletteRefreshChipBadge();
+// Inside bets are built by geometry, not a menu — tap 1, 2, 3, 4 or 6
+// numbers on the grid (in the right adjacent arrangement) and the exact
+// bet type/payout is auto-detected from the shape of your selection,
+// exactly like tapping the real felt between numbers on a physical table.
+let rouletteSelectedNums = [];
+function rouletteNumRow(n){ return Math.floor((n - 1) / 3); }  // 0 = bottom row {1,2,3}
+function rouletteNumCol(n){ return (n - 1) % 3; }               // 0 = left column {1,4,7...}
+function rouletteDetectBetFromSelection(strNums){
+  const hasZero = strNums.includes('0') || strNums.includes('00');
+  if(hasZero){
+    const set = new Set(strNums);
+    if(set.size === 4 && set.has('0') && set.has('1') && set.has('2') && set.has('3')){
+      return { type: 'firstfour', nums: ['0','1','2','3'], label: 'First Four (0-1-2-3) \u2014 8:1' };
+    }
+    if(set.size === 1) return { type: 'straight', value: strNums[0], label: `Straight ${strNums[0]} (35:1)` };
+    return null; // any other combination touching 0/00 isn't offered here
+  }
+  const n = strNums.map(Number).sort((a, b) => a - b);
+  if(n.length === 1) return { type: 'straight', value: String(n[0]), label: `Straight ${n[0]} (35:1)` };
+  if(n.length === 2){
+    const [a, b] = n;
+    const adjH = rouletteNumRow(a) === rouletteNumRow(b) && Math.abs(rouletteNumCol(a) - rouletteNumCol(b)) === 1;
+    const adjV = rouletteNumCol(a) === rouletteNumCol(b) && Math.abs(rouletteNumRow(a) - rouletteNumRow(b)) === 1;
+    if(adjH || adjV) return { type: 'split', nums: n.map(String), label: `Split ${a}-${b} (17:1)` };
+    return null;
+  }
+  if(n.length === 3){
+    const r = rouletteNumRow(n[0]);
+    if(n.every(x => rouletteNumRow(x) === r) && rouletteNumCol(n[0]) === 0 && rouletteNumCol(n[1]) === 1 && rouletteNumCol(n[2]) === 2){
+      return { type: 'street', nums: n.map(String), label: `Street ${n[0]}-${n[2]} (11:1)` };
+    }
+    return null;
+  }
+  if(n.length === 4){
+    const expected = [n[0], n[0] + 1, n[0] + 3, n[0] + 4];
+    if(rouletteNumCol(n[0]) <= 1 && JSON.stringify(n) === JSON.stringify(expected)){
+      return { type: 'corner', nums: n.map(String), label: `Corner ${n.join('-')} (8:1)` };
+    }
+    return null;
+  }
+  if(n.length === 6){
+    const r = rouletteNumRow(n[0]);
+    const expected = [3*r+1, 3*r+2, 3*r+3, 3*r+4, 3*r+5, 3*r+6];
+    if(JSON.stringify(n) === JSON.stringify(expected)){
+      return { type: 'sixline', nums: n.map(String), label: `Six Line ${n[0]}-${n[5]} (5:1)` };
+    }
+    return null;
+  }
+  return null;
+}
+function rouletteToggleNumberCell(cell){
+  const val = cell.dataset.betValue;
+  // Starting a fresh number-based selection while an outside bet (or a
+  // stale selection from before) is still highlighted needs to clear that
+  // first — otherwise both stay visually "selected" even though only the
+  // new one is actually the active bet.
+  if(rouletteSelectedNums.length === 0){
+    document.querySelectorAll('.rt-cell.selected').forEach(c => {
+      if(c !== cell){ c.classList.remove('selected'); const b = c.querySelector('.rt-chip-badge'); if(b) b.remove(); }
+    });
+  }
+  const idx = rouletteSelectedNums.indexOf(val);
+  if(idx >= 0){
+    rouletteSelectedNums.splice(idx, 1);
+    cell.classList.remove('selected');
+    const b = cell.querySelector('.rt-chip-badge'); if(b) b.remove();
+  } else {
+    if(rouletteSelectedNums.length >= 6){
+      // starting a fresh selection rather than silently refusing the tap
+      rouletteSelectedNums = [];
+      document.querySelectorAll('.rt-cell.selected').forEach(c => { c.classList.remove('selected'); const b = c.querySelector('.rt-chip-badge'); if(b) b.remove(); });
+    }
+    rouletteSelectedNums.push(val);
+    cell.classList.add('selected');
+  }
+  const bet = rouletteDetectBetFromSelection(rouletteSelectedNums);
+  const spotEl = document.getElementById('rouletteSelectedSpot');
+  if(bet){
+    rouletteSelectedBet = bet;
+    spotEl.textContent = `Selected: ${bet.label}`;
+    spotEl.style.color = '';
+  } else {
+    rouletteSelectedBet = null;
+    spotEl.textContent = rouletteSelectedNums.length ? 'Not a valid bet \u2014 try adjacent numbers' : 'No spot selected';
+    spotEl.style.color = rouletteSelectedNums.length ? 'var(--loss)' : '';
+  }
+  rouletteRefreshChipBadges();
   bjPlayChipSound();
 }
-function rouletteRefreshChipBadge(){
-  const selected = document.querySelector('.rt-cell.selected');
-  if(!selected) return;
-  let badge = selected.querySelector('.rt-chip-badge');
+function rouletteSelectOutsideCell(cell){
+  rouletteSelectedNums = [];
+  document.querySelectorAll('.rt-cell.selected').forEach(c => { c.classList.remove('selected'); const b = c.querySelector('.rt-chip-badge'); if(b) b.remove(); });
+  cell.classList.add('selected');
+  const betType = cell.dataset.betType;
+  rouletteSelectedBet = { type: betType, value: null, label: ROULETTE_BET_LABELS[betType] || betType };
+  const spotEl = document.getElementById('rouletteSelectedSpot');
+  spotEl.textContent = `Selected: ${rouletteSelectedBet.label}`;
+  spotEl.style.color = '';
+  rouletteRefreshChipBadges();
+  bjPlayChipSound();
+}
+function rouletteRefreshChipBadges(){
   const amount = document.getElementById('rouletteBetInput').value || '0';
-  if(!badge){
-    badge = document.createElement('div');
-    badge.className = 'rt-chip-badge';
-    selected.appendChild(badge);
-  }
-  badge.textContent = amount;
+  document.querySelectorAll('.rt-cell.selected').forEach(selected => {
+    let badge = selected.querySelector('.rt-chip-badge');
+    if(!badge){
+      badge = document.createElement('div');
+      badge.className = 'rt-chip-badge';
+      selected.appendChild(badge);
+    }
+    badge.textContent = amount;
+  });
 }
 document.getElementById('rouletteBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('rouletteChipDisplay');
@@ -2914,10 +3182,15 @@ document.getElementById('rouletteBetInput').addEventListener('input', (e) => {
     chip.textContent = e.target.value || '0';
     chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
   }
-  rouletteRefreshChipBadge();
+  rouletteRefreshChipBadges();
 });
 function rouletteEvaluate(bet, pocket){
   if(bet.type === 'straight') return pocket === bet.value ? 35 : -1;
+  if(bet.type === 'firstfour') return ['0','1','2','3'].includes(pocket) ? 8 : -1;
+  if(bet.type === 'split') return bet.nums.includes(pocket) ? 17 : -1;
+  if(bet.type === 'street') return bet.nums.includes(pocket) ? 11 : -1;
+  if(bet.type === 'corner') return bet.nums.includes(pocket) ? 8 : -1;
+  if(bet.type === 'sixline') return bet.nums.includes(pocket) ? 5 : -1;
   if(pocket === '0' || pocket === '00') return -1; // standard house rule: all outside/dozen bets lose on zero
   const num = parseInt(pocket, 10);
   const color = rouletteColorOf(pocket);
@@ -6486,7 +6759,15 @@ document.getElementById('newsCategorySelect').addEventListener('change', () => {
 });
 
 function startApp(){
-  refresh();
+  refresh().then(() => {
+    // Auto-link this account to its Board/Ledger roster entry on every
+    // sign-in — previously this only ever ran inside the Edit Name flow,
+    // so anyone who'd never touched that button had no link at all: no
+    // ladder entry, no "You" highlight, no Joker icon, nothing tied to
+    // their account. Needs currentState loaded first, hence chained after
+    // refresh() rather than fired alongside it.
+    resolveMyMemberIndex(currentUserName).catch(() => {});
+  });
   startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded)
   refreshAfl();
   startSmartPolling(refreshAfl, 20000); // Sport tab scores (paused while backgrounded)
