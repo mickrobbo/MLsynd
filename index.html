@@ -190,7 +190,7 @@
     0%,100%{ box-shadow:0 4px 10px rgba(0,0,0,.4), 0 0 0 rgba(255,214,120,0); }
     50%{ box-shadow:0 4px 14px rgba(0,0,0,.4), 0 0 18px rgba(255,214,120,.55); }
   }
-  #bjDealBtn, #bjHitBtn, #bjStandBtn, #bacDealBtn, #rouletteSpinBtn{ animation: ctaGlow 2.2s ease-in-out infinite; }
+  #bjDealBtn, #bjHitBtn, #bjStandBtn, #bacDealBtn, #rouletteSpinBtn, #warDealBtn, #slotsSpinBtn, #vpDealBtn{ animation: ctaGlow 2.2s ease-in-out infinite; }
 
   /* A soft diagonal sheen that sweeps across every pill button in this tab
      on a loop — small, but it's what pushes buttons from "flat rectangle"
@@ -227,22 +227,99 @@
   }
 
   /* ---- Casino game selector + Roulette wheel ---- */
-  .game-bubble-row{ display:flex; gap:6px; justify-content:center; flex-wrap:nowrap; }
+  /* 3x2 grid, not a 6-across nowrap row — six games squeezed into one row
+     forced 9.5px unreadable nowrap text; a grid gives each bubble real
+     width so the label can breathe (and wrap to 2 lines) at a size people
+     can actually read. */
+  .game-bubble-row{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
   .game-bubble{
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-    flex:1; min-width:0; padding:10px 4px; border-radius:12px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    padding:14px 6px; border-radius:14px; cursor:pointer;
     background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
     transition: transform .1s ease, box-shadow .2s ease;
   }
   .game-bubble:active{ transform:scale(.96); }
-  .game-bubble-icon{ font-size:19px; line-height:1; }
-  .game-bubble-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:9.5px; letter-spacing:.3px; text-transform:uppercase; color:var(--chalk); white-space:nowrap; }
+  .game-bubble-icon{ font-size:25px; line-height:1; }
+  .game-bubble-label{
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:.3px;
+    text-transform:uppercase; color:var(--chalk); white-space:normal; text-align:center; line-height:1.15;
+  }
   .game-bubble.active{
     background: linear-gradient(165deg, var(--brass-light), var(--brass));
     border-color: var(--brass-light);
     box-shadow: 0 0 20px rgba(255,214,120,.45), 0 4px 10px rgba(0,0,0,.3);
   }
   .game-bubble.active .game-bubble-label{ color:#2a2005; }
+
+  /* ---- Casino landing hub — Games / Rules / How to earn XP ---- */
+  .casino-hub-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:4px; }
+  .casino-hub-bubble{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    flex:1; min-width:88px; padding:16px 8px; border-radius:16px; cursor:pointer;
+    background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
+    box-shadow: 0 4px 10px rgba(0,0,0,.25);
+  }
+  .casino-hub-bubble:active{ transform:scale(.96); }
+  .casino-hub-icon{ font-size:26px; line-height:1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+  .casino-hub-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); }
+  .casino-hub-sub{ font-size:9.5px; color:var(--muted); text-align:center; line-height:1.3; }
+  .casino-view{ display:none; }
+  .casino-view.active{ display:block; }
+  #casinoRulesHubList, #xpInfoModalBody .xp-source-row{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:10px 4px; border-bottom:1px solid var(--line); font-size:12.5px;
+  }
+  #casinoRulesHubList button{
+    width:100%; text-align:left; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk);
+    border-radius:10px; padding:12px 14px; margin-bottom:8px; font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  #casinoRulesHubList button:active{ border-color:var(--brass); }
+  .xp-source-amount{ color:var(--brass-light); font-weight:700; font-family:'IBM Plex Mono',monospace; white-space:nowrap; }
+  .weekly-bonus-pill{ margin-top:10px; }
+  .weekly-bonus-pill.claimed{ opacity:.55; }
+
+  /* ---- Slots (5-reel) ---- */
+  .slots-cabinet{
+    background: radial-gradient(ellipse at 50% 20%, #124631 0%, #0A2A1E 65%, #071c14 100%);
+    border:1px solid var(--brass-dim); border-radius:16px; padding:18px 10px;
+    box-shadow: inset 0 0 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+  .slots-reel-row{ display:flex; gap:6px; justify-content:center; }
+  .slots-reel{
+    width:56px; height:76px; border-radius:8px; overflow:hidden; position:relative;
+    background:linear-gradient(160deg,#FDFBF5,#EDE6D3); border:1px solid rgba(0,0,0,.3);
+    box-shadow: inset 0 4px 8px rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.5);
+  }
+  .slots-reel-strip{ display:flex; flex-direction:column; align-items:center; will-change:transform; }
+  .slots-symbol{ width:56px; height:76px; display:flex; align-items:center; justify-content:center; font-size:34px; flex-shrink:0; }
+  .slots-reel.spinning .slots-reel-strip{ animation: slotsSpin .12s linear infinite; }
+  @keyframes slotsSpin{ from{ transform:translateY(0); } to{ transform:translateY(76px); } }
+  .slots-payline{ position:absolute; left:0; right:0; top:50%; height:2px; margin-top:-1px; background:rgba(255,214,120,.5); pointer-events:none; z-index:2; }
+  .slots-reel.pc-winner-flash{ animation: roulettePocketFlash .5s ease 3; }
+  @keyframes slotsReelStopBounce{
+    0%{ transform:translateY(-8px); }
+    55%{ transform:translateY(4px); }
+    100%{ transform:translateY(0); }
+  }
+  .slots-reel.pc-reel-stop{ animation: slotsReelStopBounce .3s cubic-bezier(.34,1.6,.5,1); }
+  .slots-reel.pc-wild-land{ box-shadow: 0 0 20px rgba(255,214,120,.9), inset 0 4px 8px rgba(0,0,0,.35); border-color:var(--brass-light); }
+  @keyframes slotsCabinetPulse{ 0%,100%{ box-shadow: inset 0 0 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03); } 50%{ box-shadow: inset 0 0 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03), 0 0 26px rgba(255,214,120,.35); } }
+  .slots-cabinet.pc-jackpot-pulse{ animation: slotsCabinetPulse .5s ease 4; }
+
+  /* ---- Video Poker ---- */
+  .vp-hand-row{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .vp-card-col{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .vp-hold-pill{
+    padding:5px 12px; font-size:10.5px; border-radius:999px; cursor:pointer;
+    background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--muted); font-weight:700;
+  }
+  .vp-hold-pill.held{ background:linear-gradient(165deg, var(--brass-light), var(--brass)); border-color:var(--brass-light); color:#2a2005; box-shadow:0 0 12px rgba(255,214,120,.4); }
+  .vp-card-col .playing-card.pc-held-glow{ box-shadow:0 0 0 2px var(--brass-light), 0 4px 10px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.6); }
+  @keyframes vpHoldPop{ 0%{ transform:scale(1); } 45%{ transform:scale(1.08) translateY(-3px); } 100%{ transform:scale(1); } }
+  .vp-card-col .playing-card.pc-hold-pop{ animation: vpHoldPop .25s cubic-bezier(.34,1.6,.5,1); }
+  .vp-paytable{ width:100%; min-width:0; border-collapse:collapse; font-size:11px; margin-top:10px; }
+  .vp-paytable td{ padding:4px 6px; border-bottom:1px solid var(--line); }
+  .vp-paytable tr.vp-hit td{ color:var(--brass-light); font-weight:700; }
 
   .roulette-wheel-wrap{
     position:relative; width:250px; height:250px; margin:14px auto 10px;
@@ -318,11 +395,38 @@
   .table-chip.chip-250{ background: radial-gradient(circle at 35% 30%, #b568d8, #7a2fa0 60%, #4f1c69); }
   @keyframes chipTapPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.25) translateY(-4px); } 100%{ transform:scale(1); } }
   .table-chip.pc-chip-tap{ animation: chipTapPop .3s cubic-bezier(.34,1.6,.5,1); }
+  /* Clear-chips control: a labelled pill (not a bare red circle+✕) so its
+     purpose reads at a glance and it matches every other control's language. */
   .chip-clear-btn{
-    width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:rgba(193,96,74,.18); border:1px solid var(--loss); color:var(--loss); font-weight:700; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:4px;
+    height:44px; padding:0 16px; border-radius:999px; white-space:nowrap;
+    background:rgba(193,96,74,.14); border:1px solid var(--loss); color:var(--loss);
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:13px; letter-spacing:.6px; text-transform:uppercase;
+    cursor:pointer;
   }
-  .chip-clear-btn:active{ transform:scale(.9); }
+  .chip-clear-btn:active{ transform:scale(.92); border-color:#e07a60; background:rgba(193,96,74,.24); }
+
+  /* ---- Shared "deal row" — primary action + any pill toggles beside it ---- */
+  .deal-row{ display:flex; align-items:center; justify-content:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .pill-btn-primary{
+    background:var(--brass); color:var(--ink); font-weight:700; padding:13px 30px;
+    font-family:'Barlow Condensed', sans-serif; font-size:16px; letter-spacing:.8px; text-transform:uppercase;
+  }
+  .pill-btn-action{
+    padding:10px 18px; font-family:'Barlow Condensed', sans-serif; font-size:13px; font-weight:700; letter-spacing:.6px; text-transform:uppercase;
+  }
+  .pill-btn-action:disabled{ opacity:.45; cursor:default; border-style:dashed; }
+  .pill-btn-action:disabled::after{ display:none; }
+
+  /* Perfect Pairs / side-bet toggle pill (replaces the old checkbox+label row) */
+  .pp-toggle-pill{
+    padding:10px 18px; font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:.6px; text-transform:uppercase; font-weight:700;
+  }
+  .pp-toggle-pill.active{
+    background:linear-gradient(165deg, var(--brass-light), var(--brass));
+    border-color:var(--brass-light); color:#2a2005;
+    box-shadow:0 0 14px rgba(255,214,120,.4);
+  }
 
   .side-bet-row{
     display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; padding-top:12px;
@@ -1223,8 +1327,9 @@
           <div id="xpBalanceDisplay" style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:28px; color:var(--brass);">—</div>
         </div>
       </div>
-      <div class="hint">XP is earned automatically from Tipping points, individual bet wins, and group multi leg wins — it's play money for this game only, separate from the real ledger.</div>
-      <button type="button" id="xpLeaderboardToggleBtn" class="pill-btn" style="margin-top:12px; padding:8px 16px;">🏆 Leaderboard</button>
+      <div class="hint" id="xpEarnHint">XP is play money for this tab only, separate from the real ledger.</div>
+      <button type="button" id="weeklyBonusBtn" class="pill-btn weekly-bonus-pill" style="display:none;">🎁 Claim weekly bonus</button>
+      <button type="button" id="xpLeaderboardToggleBtn" class="pill-btn" style="margin-top:10px; padding:8px 16px;">🏆 Leaderboard</button>
     </div>
 
     <div class="panel" id="xpLeaderboardPanel" style="display:none;">
@@ -1232,16 +1337,60 @@
       <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
     </div>
 
-    <div class="panel" style="padding:10px; text-align:center;">
-      <div class="game-bubble-row">
-        <button type="button" class="game-bubble active" data-game="blackjack"><span class="game-bubble-icon">🃏</span><span class="game-bubble-label">Blackjack</span></button>
-        <button type="button" class="game-bubble" data-game="baccarat"><span class="game-bubble-icon">🎴</span><span class="game-bubble-label">Baccarat</span></button>
-        <button type="button" class="game-bubble" data-game="roulette"><span class="game-bubble-icon">🎡</span><span class="game-bubble-label">Roulette</span></button>
-        <button type="button" class="game-bubble" data-game="war"><span class="game-bubble-icon">⚔️</span><span class="game-bubble-label">Casino War</span></button>
+    <!-- Landing hub: lands here first, never straight into a table. -->
+    <div class="panel" id="casinoHubPanel" style="padding:14px 10px; text-align:center;">
+      <div class="casino-hub-row">
+        <div class="casino-hub-bubble" id="hubGamesBtn">
+          <span class="casino-hub-icon">🎮</span>
+          <span class="casino-hub-label">Games</span>
+          <span class="casino-hub-sub">Blackjack, Roulette &amp; more</span>
+        </div>
+        <div class="casino-hub-bubble" id="hubRulesBtn">
+          <span class="casino-hub-icon">📜</span>
+          <span class="casino-hub-label">Rules</span>
+          <span class="casino-hub-sub">How each game plays</span>
+        </div>
+        <div class="casino-hub-bubble" id="hubXpBtn">
+          <span class="casino-hub-icon">✨</span>
+          <span class="casino-hub-label">Earning XP</span>
+          <span class="casino-hub-sub">Where it comes from</span>
+        </div>
       </div>
     </div>
 
-    <div class="casino-game-panel" id="casinoGameBlackjack">
+    <!-- Rules hub view: list of every game, opens the existing rules modal per-game -->
+    <div class="panel casino-view" id="casinoRulesHubView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">📜 Game Rules</h2>
+        <button type="button" class="pill-btn" id="rulesHubBackBtn">← Back</button>
+      </div>
+      <div id="casinoRulesHubList"></div>
+    </div>
+
+    <!-- Earning XP view -->
+    <div class="panel casino-view" id="casinoXpInfoView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">✨ How to earn XP</h2>
+        <button type="button" class="pill-btn" id="xpInfoBackBtn">← Back</button>
+      </div>
+      <div id="xpInfoModalBody"></div>
+    </div>
+
+    <!-- Game selector + tables view -->
+    <div class="casino-view" id="casinoGamesView">
+    <div class="panel" style="padding:10px; text-align:center;">
+      <div class="game-bubble-row">
+        <button type="button" class="game-bubble" data-game="blackjack"><span class="game-bubble-icon">🃏</span><span class="game-bubble-label">Blackjack</span></button>
+        <button type="button" class="game-bubble" data-game="baccarat"><span class="game-bubble-icon">🎴</span><span class="game-bubble-label">Baccarat</span></button>
+        <button type="button" class="game-bubble" data-game="roulette"><span class="game-bubble-icon">🎡</span><span class="game-bubble-label">Roulette</span></button>
+        <button type="button" class="game-bubble" data-game="war"><span class="game-bubble-icon">⚔️</span><span class="game-bubble-label">Casino War</span></button>
+        <button type="button" class="game-bubble" data-game="slots"><span class="game-bubble-icon">🎰</span><span class="game-bubble-label">Slots</span></button>
+        <button type="button" class="game-bubble" data-game="videopoker"><span class="game-bubble-icon">🂡</span><span class="game-bubble-label">Video Poker</span></button>
+      </div>
+    </div>
+    <div class="panel" id="casinoGamesEmptyState">Pick a game above to sit down at the table.</div>
+
+    <div class="casino-game-panel" id="casinoGameBlackjack" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="blackjack">📜 Rules</button></div>
     <div class="panel" id="bjBetPanel">
       <div style="display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;">
@@ -1257,19 +1406,21 @@
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
         <button type="button" class="table-chip chip-100" data-val="100">100</button>
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="bjBetInput">✕</button>
+        <button type="button" class="chip-clear-btn" data-target="bjBetInput">Clear Chips</button>
       </div>
-      <label class="side-bet-row">
-        <input type="checkbox" id="bjPerfectPairsCheck">
-        <span>Perfect Pairs side bet</span>
-        <input type="number" id="bjPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px;">
-      </label>
+      <input type="checkbox" id="bjPerfectPairsCheck" style="display:none;">
+      <div id="bjPPAmountRow" class="hint" style="display:none; text-align:center; margin-top:10px;">
+        Perfect Pairs bet: <input type="number" id="bjPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;">
+      </div>
       <div class="chip-rail chip-rail-small" data-target="bjPerfectPairsAmount" id="bjPPChipRail" style="display:none;">
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
-        <button type="button" class="chip-clear-btn" data-target="bjPerfectPairsAmount">✕</button>
+        <button type="button" class="chip-clear-btn" data-target="bjPerfectPairsAmount">Clear Chips</button>
       </div>
-      <button type="button" id="bjDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
+      <div class="deal-row">
+        <button type="button" id="bjPerfectPairsToggle" class="pill-btn pp-toggle-pill">🎴 Perfect Pairs</button>
+        <button type="button" id="bjDealBtn" class="pill-btn pill-btn-primary">Deal</button>
+      </div>
       <div id="bjBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
 
@@ -1318,9 +1469,9 @@
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
         <button type="button" class="table-chip chip-100" data-val="100">100</button>
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="bacBetInput">✕</button>
+        <button type="button" class="chip-clear-btn" data-target="bacBetInput">Clear Chips</button>
       </div>
-      <button type="button" id="bacDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
+      <button type="button" id="bacDealBtn" class="pill-btn pill-btn-primary" style="margin-top:10px;">Deal</button>
       <div id="bacBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
 
@@ -1364,7 +1515,6 @@
       <div class="roulette-table-grid" id="rouletteTableGrid"></div>
       <div id="rouletteActiveBetsArea" class="roulette-active-bets"></div>
       <div id="rouletteSelectedSpot" class="roulette-selected-spot">No bets placed yet</div>
-      <button type="button" id="rouletteClearAllBtn" class="pill-btn" style="padding:5px 12px; font-size:10.5px; margin-top:4px; display:none;">Clear all bets</button>
       <div style="display:flex; justify-content:center; margin-top:10px;">
         <div class="bj-chip" id="rouletteChipDisplay">50</div>
         <input type="number" id="rouletteBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
@@ -1375,9 +1525,12 @@
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
         <button type="button" class="table-chip chip-100" data-val="100">100</button>
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="rouletteBetInput">✕</button>
       </div>
-      <button type="button" id="rouletteSpinBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Spin</button>
+      <div class="deal-row">
+        <button type="button" id="rouletteClearAllBtn" class="pill-btn pill-btn-action" disabled>Clear Bet</button>
+        <button type="button" id="rouletteSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+        <button type="button" id="rouletteSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
+      </div>
       <div id="rouletteBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
     </div>
@@ -1396,19 +1549,21 @@
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
         <button type="button" class="table-chip chip-100" data-val="100">100</button>
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="warBetInput">✕</button>
+        <button type="button" class="chip-clear-btn" data-target="warBetInput">Clear Chips</button>
       </div>
-      <label class="side-bet-row">
-        <input type="checkbox" id="warPerfectPairsCheck">
-        <span>Pairs side bet (player &amp; dealer card match) — 10:1</span>
-        <input type="number" id="warPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px;">
-      </label>
+      <input type="checkbox" id="warPerfectPairsCheck" style="display:none;">
+      <div id="warPPAmountRow" class="hint" style="display:none; text-align:center; margin-top:10px;">
+        Pairs bet (player &amp; dealer card match, 10:1): <input type="number" id="warPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;">
+      </div>
       <div class="chip-rail chip-rail-small" data-target="warPerfectPairsAmount" id="warPPChipRail" style="display:none;">
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
-        <button type="button" class="chip-clear-btn" data-target="warPerfectPairsAmount">✕</button>
+        <button type="button" class="chip-clear-btn" data-target="warPerfectPairsAmount">Clear Chips</button>
       </div>
-      <button type="button" id="warDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
+      <div class="deal-row">
+        <button type="button" id="warPerfectPairsToggle" class="pill-btn pp-toggle-pill">🂠 Pairs bet</button>
+        <button type="button" id="warDealBtn" class="pill-btn pill-btn-primary">Deal</button>
+      </div>
       <div id="warBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
 
@@ -1429,7 +1584,70 @@
     </div>
     </div>
 
-    <div class="panel">
+    <div class="casino-game-panel" id="casinoGameSlots" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="slots">📜 Rules</button></div>
+    <div class="panel slots-cabinet" style="text-align:center;">
+      <div class="slots-reel-row" id="slotsReelRow">
+        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip0"></div></div>
+        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip1"></div></div>
+        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip2"></div></div>
+        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip3"></div></div>
+        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip4"></div></div>
+      </div>
+      <div id="slotsResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
+    </div>
+    <div class="panel" id="slotsBetPanel">
+      <div style="display:flex; justify-content:center; margin-top:4px;">
+        <div class="bj-chip" id="slotsChipDisplay">50</div>
+        <input type="number" id="slotsBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="slotsBetInput">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="slotsBetInput">Clear Chips</button>
+      </div>
+      <div class="deal-row">
+        <button type="button" id="slotsSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+        <button type="button" id="slotsSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
+      </div>
+      <div id="slotsBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameVideoPoker" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="videopoker">📜 Rules</button></div>
+    <div class="panel bj-table" style="text-align:center;">
+      <div class="vp-hand-row" id="vpHandRow"></div>
+      <div id="vpOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
+      <table class="vp-paytable" id="vpPaytable"></table>
+    </div>
+    <div class="panel" id="vpBetPanel">
+      <div style="display:flex; justify-content:center; margin-top:4px;">
+        <div class="bj-chip" id="vpChipDisplay">50</div>
+        <input type="number" id="vpBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="vpBetInput" id="vpChipRail">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="vpBetInput">Clear Chips</button>
+      </div>
+      <div class="deal-row">
+        <button type="button" id="vpDealBtn" class="pill-btn pill-btn-primary">Deal</button>
+        <button type="button" id="vpDrawBtn" class="pill-btn pill-btn-primary" style="display:none;">Draw</button>
+      </div>
+      <div id="vpBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    </div>
+
+    </div><!-- /#casinoGamesView -->
+
+    <div class="panel" id="casinoXpLogPanel">
       <h2 style="font-size:14px;">Recent XP activity</h2>
       <div id="xpLogArea"><div class="empty">Loading…</div></div>
     </div>
@@ -1721,7 +1939,7 @@ let currentUserRole = null; // 'full' | 'dashboard' | 'tipping' | null (null/leg
 let currentUserName = null;
 let currentUserUid = null;
 let currentUserEmail = null;
-const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping'];
+const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping', 'casino'];
 
 function applyRoleTabRestrictions(){
   if(currentUserRole !== 'tipping') return;
@@ -1820,9 +2038,17 @@ function pickMyMemberIndex(){
   return new Promise(resolve => {
     const modal = document.getElementById('linkMemberModal');
     const list = document.getElementById('linkMemberList');
-    list.innerHTML = (currentState.members || []).map((m, i) =>
-      `<button type="button" class="link-member-option" data-idx="${i}" style="padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:9px; color:var(--chalk); text-align:left; font-size:14px; font-weight:600;">${escapeHtml(m.name)}</button>`
-    ).join('');
+    // Only offer roster names nobody's already linked to — this is what
+    // stops a second person from ever being able to select an already-
+    // claimed name and silently bump the real person off it.
+    const available = (currentState.members || []).map((m, i) => ({ m, i })).filter(({ m }) => !m.linkedUid);
+    if(available.length === 0){
+      list.innerHTML = `<div class="hint" style="padding:10px 4px;">Every roster name already has an account linked to it. If one of these is wrong, ask the admin to fix it from the Ledger's Admin — access panel.</div>`;
+    } else {
+      list.innerHTML = available.map(({ m, i }) =>
+        `<button type="button" class="link-member-option" data-idx="${i}" style="padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:9px; color:var(--chalk); text-align:left; font-size:14px; font-weight:600;">${escapeHtml(m.name)}</button>`
+      ).join('');
+    }
     modal.classList.add('open');
     let resolved = false;
     const finish = (val) => {
@@ -1844,7 +2070,13 @@ async function resolveMyMemberIndex(oldName){
   let idx = currentState.members.findIndex(m => m.linkedUid === currentUserUid);
   if(idx !== -1) return idx;
 
-  idx = currentState.members.findIndex(m => m.name === oldName);
+  // Exact-name self-heal — but ONLY into a slot nobody else has already
+  // claimed. This used to overwrite linkedUid unconditionally on a name
+  // match, which is exactly how two different people can end up silently
+  // sharing one roster row (whoever signs in most recently wins, and the
+  // person who was linked before gets silently kicked off) — the root
+  // cause behind multiple people all showing as the same member.
+  idx = currentState.members.findIndex(m => m.name === oldName && !m.linkedUid);
   if(idx !== -1){
     try{
       await authedFetch(`/state/members/${idx}/linkedUid.json`, {
@@ -2118,6 +2350,75 @@ function showUpdateBanner(){
 // already accepted elsewhere in this app for a friendly ~11-person group.
 const XP_RATES = { perTippingPoint: 10, perDollarIndividualWin: 1, perGroupLegWin: 100 };
 const XP_SIGNUP_BONUS = 500;
+// A tipping-tier account can't see Board/Cash/Slips (no individual bets or
+// group multi legs to earn XP from), so a small recurring bonus plus their
+// Tipping points conversion are deliberately their ONLY XP sources — full
+// and dashboard-tier accounts also see this bonus, it's just not their
+// only source the way it is for tipping-tier.
+const XP_WEEKLY_BONUS = 150;
+function xpWeekKey(d){
+  const now = d || new Date();
+  const date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
+async function getWeeklyBonusStatus(){
+  if(!currentUserUid) return null;
+  const weekKey = xpWeekKey();
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/weeklyBonus/${weekKey}.json`);
+    const claimed = await res.json();
+    return { weekKey, claimed: !!claimed };
+  }catch(e){ return null; }
+}
+async function claimWeeklyBonus(){
+  const status = await getWeeklyBonusStatus();
+  if(!status || status.claimed) return false;
+  await authedFetch(`/xp/${currentUserUid}/weeklyBonus/${status.weekKey}.json`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(true)
+  });
+  await awardXP(XP_WEEKLY_BONUS, 'Weekly bonus');
+  return true;
+}
+async function refreshWeeklyBonusButton(){
+  const btn = document.getElementById('weeklyBonusBtn');
+  if(!btn || !currentUserUid) return;
+  const status = await getWeeklyBonusStatus();
+  if(!status) return;
+  btn.style.display = 'inline-block';
+  btn.classList.toggle('claimed', status.claimed);
+  btn.disabled = status.claimed;
+  btn.textContent = status.claimed ? '🎁 Weekly bonus claimed' : `🎁 Claim weekly bonus (+${XP_WEEKLY_BONUS})`;
+}
+document.getElementById('weeklyBonusBtn').addEventListener('click', async () => {
+  const ok = await claimWeeklyBonus();
+  if(ok){
+    const bal = await getXPBalance();
+    updateXPBalanceDisplay(bal);
+    renderXPLog();
+  }
+  refreshWeeklyBonusButton();
+});
+function renderXpInfoView(){
+  const body = document.getElementById('xpInfoModalBody');
+  const isTipping = currentUserRole === 'tipping';
+  const rows = [
+    ['🎁 Signup bonus', `+${XP_SIGNUP_BONUS} once, the first time you open Casino`],
+    ['📅 Weekly bonus', `+${XP_WEEKLY_BONUS} once every week — claim it from the button above the Leaderboard`],
+    ['🏉 Tipping points', `+${XP_RATES.perTippingPoint} XP per correct tip, awarded automatically once a round finishes (Joker doubles it, same as your Tipping score)`],
+  ];
+  if(!isTipping){
+    rows.push(['🎲 Individual bet wins', `+${XP_RATES.perDollarIndividualWin} XP per $ won`]);
+    rows.push(['🤝 Group multi leg wins', `+${XP_RATES.perGroupLegWin} XP per winning leg`]);
+  }
+  body.innerHTML = rows.map(([label, desc]) =>
+    `<div class="xp-source-row"><span>${escapeHtml(label)}</span></div><div class="hint" style="padding:0 4px 10px;">${escapeHtml(desc)}</div>`).join('')
+    + (isTipping ? `<div class="hint" style="margin-top:6px;">Your account earns XP from the weekly bonus and Tipping points only — the individual bet and group multi sources apply to full-access accounts.</div>` : '')
+    + `<div class="hint" style="margin-top:6px;">Once you've got XP, spend it in any Casino game — wins and losses adjust your balance from there, same as a real table.</div>`;
+}
 
 async function ensureXPInitialized(){
   if(!currentUserUid) return;
@@ -2733,20 +3034,40 @@ document.getElementById('bjSplitBtn').addEventListener('click', bjSplit);
 document.getElementById('bjStandBtn').addEventListener('click', bjStand);
 document.getElementById('bjNewHandBtn').addEventListener('click', bjNewHand);
 
+// ---- Casino landing hub (Games / Rules / Earning XP) ----
+const CASINO_GAME_PANEL_IDS = {
+  blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
+  war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker'
+};
+function showCasinoView(viewId){
+  document.querySelectorAll('.casino-view').forEach(v => v.classList.toggle('active', v.id === viewId));
+  document.getElementById('casinoHubPanel').style.display = viewId ? 'none' : 'block';
+}
+document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
+document.getElementById('hubRulesBtn').addEventListener('click', () => showCasinoView('casinoRulesHubView'));
+document.getElementById('hubXpBtn').addEventListener('click', () => { renderXpInfoView(); showCasinoView('casinoXpInfoView'); });
+document.getElementById('rulesHubBackBtn').addEventListener('click', () => showCasinoView(null));
+document.getElementById('xpInfoBackBtn').addEventListener('click', () => showCasinoView(null));
+
 // ---- Casino game selector ----
 document.querySelectorAll('.game-bubble').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.game-bubble').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
-    document.getElementById('casinoGame' + btn.dataset.game.charAt(0).toUpperCase() + btn.dataset.game.slice(1)).style.display = 'block';
+    document.getElementById('casinoGamesEmptyState').style.display = 'none';
+    document.getElementById(CASINO_GAME_PANEL_IDS[btn.dataset.game]).style.display = 'block';
     if(btn.dataset.game === 'roulette' && !rouletteWheelBuilt){ rouletteBuildWheel(); rouletteBuildBetGrid(); }
+    if(btn.dataset.game === 'slots' && !slotsBuilt){ slotsBuildReels(); }
+    if(btn.dataset.game === 'videopoker' && !vpBuilt){ vpBuildPaytable(); vpRenderIdleHand(); }
   });
 });
 
 document.querySelector('[data-tab="casino"]').addEventListener('click', async () => {
+  showCasinoView(null);
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
+  refreshWeeklyBonusButton();
 });
 
 // ---- XP leaderboard ----
@@ -2831,7 +3152,7 @@ const CASINO_RULES = {
     <h3>Outside bets</h3>
     <p>Red/Black, Odd/Even, 1–18/19–36 all pay 1:1. A Dozen (1st/2nd/3rd 12, a horizontal third of the grid) pays 2:1. A Column (2:1, one of the three vertical columns running the full height of the grid) is a separate bet from Dozens, also 2:1. Every outside, dozen and column bet loses if the ball lands on 0 or 00 — that's the house edge on this wheel.</p>
     <h3>Multiple bets</h3>
-    <p>Just like a real table, you can have several bets active at once — a number, a colour, a column, whatever combination you like. Every confirmed bet shows in the list with its own amount; the Spin button stakes the total across all of them and each is resolved independently against the same spin. Tap an already-placed bet's own spot again to remove just that one, or use "Clear all bets" to start over.</p>
+    <p>Just like a real table, you can have several bets active at once — a number, a colour, a column, whatever combination you like. Every confirmed bet shows in the list with its own amount; the Spin button stakes the total across all of them and each is resolved independently against the same spin. Tap an already-placed bet's own spot again to remove just that one, or use the "Clear Bet" pill next to Spin to start over. "Same Bet" repeats exactly what was on the table last spin.</p>
     <h3>How to bet</h3>
     <p>Tap chips to set your amount, tap a spot to place a bet at that amount, repeat for more bets, then Spin.</p>
   `},
@@ -2841,23 +3162,52 @@ const CASINO_RULES = {
     <h3>Ties — go to war, or surrender</h3>
     <p>If it's a tie, you choose: <b>Go to War</b> — your bet is matched (doubled total risk), three cards are burned, and you each get one new card. Higher card wins the war: winning pays 1:1 on your original bet (the raise is simply returned), losing the war loses everything wagered. A second tie during the war is a full push — everything's returned. Or <b>Surrender</b> — forfeit half your original bet immediately and end the hand there.</p>
     <h3>Pairs (side bet)</h3>
-    <p>Optional, wagered separately before the deal. Pays 10:1 if your card and the dealer's very first card share the same rank (which also means the hand is about to tie).</p>
+    <p>Optional, wagered separately before the deal — tap the "Pairs bet" pill next to Deal to switch it on. Pays 10:1 if your card and the dealer's very first card share the same rank (which also means the hand is about to tie).</p>
+  `},
+  slots: { title: '🎰 Slots Rules', body: `
+    <h3>Object</h3>
+    <p>Five reels, one payline straight across the middle. Set your bet, hit Spin, and see what lines up.</p>
+    <h3>Symbols &amp; payouts (per line, multiplier on your bet)</h3>
+    <p>7️⃣ Seven — wild, substitutes for any other symbol. 💎 Diamond — top paying standard symbol. 🔔 Bell, ⭐ Star, 🍇 Grapes, 🍋 Lemon, 🍒 Cherry — in descending value.</p>
+    <p>3 matching symbols left-to-right pays out; 4 and 5 in a row pay considerably more. Two Cherries from the leftmost reel pays a small consolation even without a third. The paytable is shown on the Slots screen and scales with whatever you've got staked.</p>
+    <h3>Wild</h3>
+    <p>7️⃣ counts as any symbol when forming a line, and a wild-boosted line always pays at least as much as the matching non-wild line would.</p>
+  `},
+  videopoker: { title: '🂡 Video Poker Rules', body: `
+    <h3>Object</h3>
+    <p>Jacks or Better draw poker. Set your bet and Deal — you're shown 5 cards from a single 52-card deck.</p>
+    <h3>Hold &amp; Draw</h3>
+    <p>Tap Hold under any card you want to keep, then hit Draw — every card you didn't hold is replaced once. Your final 5-card hand is scored against the paytable below.</p>
+    <h3>Payouts (multiplier on your bet)</h3>
+    <p>Royal Flush 250:1 &middot; Straight Flush 50:1 &middot; Four of a Kind 25:1 &middot; Full House 9:1 &middot; Flush 6:1 &middot; Straight 4:1 &middot; Three of a Kind 3:1 &middot; Two Pair 2:1 &middot; Jacks or Better (a pair of J/Q/K/A) 1:1. Anything weaker than a pair of Jacks returns nothing.</p>
   `}
 };
+function openCasinoRules(key){
+  const rules = CASINO_RULES[key];
+  if(!rules) return;
+  document.getElementById('casinoRulesTitle').textContent = rules.title;
+  document.getElementById('casinoRulesBody').innerHTML = rules.body;
+  document.getElementById('casinoRulesModal').classList.add('open');
+}
 document.querySelectorAll('.casino-rules-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const rules = CASINO_RULES[btn.dataset.rules];
-    if(!rules) return;
-    document.getElementById('casinoRulesTitle').textContent = rules.title;
-    document.getElementById('casinoRulesBody').innerHTML = rules.body;
-    document.getElementById('casinoRulesModal').classList.add('open');
-  });
+  btn.addEventListener('click', () => openCasinoRules(btn.dataset.rules));
 });
 document.getElementById('casinoRulesCloseBtn').addEventListener('click', () => {
   document.getElementById('casinoRulesModal').classList.remove('open');
 });
 document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
   if(e.target.id === 'casinoRulesModal') document.getElementById('casinoRulesModal').classList.remove('open');
+});
+// ---- Rules hub (Casino landing → Rules bubble) — one tile per game, opens
+// the exact same modal used by each table's own "📜 Rules" button. ----
+const CASINO_RULES_HUB_ORDER = [
+  ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
+  ['war', '⚔️ Casino War'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker']
+];
+document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
+  `<button type="button" data-rules-key="${key}">${label}</button>`).join('');
+document.getElementById('casinoRulesHubList').querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', () => openCasinoRules(btn.dataset.rulesKey));
 });
 
 function initChipRail(rail){
@@ -2883,16 +3233,26 @@ function initChipRail(rail){
 }
 document.querySelectorAll('.chip-rail').forEach(initChipRail);
 
-// Perfect Pairs side-bet checkboxes just reveal their own small chip rail —
-// shared toggle pattern for Blackjack and Casino War.
-function wirePPToggle(checkboxId, railId){
+// Perfect Pairs side bet is now a pill next to Deal rather than a checkbox
+// row — the pill toggles a hidden checkbox (so every other read of
+// `.checked` elsewhere in the code needs zero changes) plus reveals its
+// amount row + chip rail. Shared pattern for Blackjack and Casino War.
+function wirePPTogglePill(pillId, checkboxId, amountRowId, railId){
+  const pill = document.getElementById(pillId);
   const cb = document.getElementById(checkboxId);
+  const amountRow = document.getElementById(amountRowId);
   const rail = document.getElementById(railId);
-  if(!cb || !rail) return;
-  cb.addEventListener('change', () => { rail.style.display = cb.checked ? 'flex' : 'none'; });
+  if(!pill || !cb) return;
+  pill.addEventListener('click', () => {
+    cb.checked = !cb.checked;
+    pill.classList.toggle('active', cb.checked);
+    if(amountRow) amountRow.style.display = cb.checked ? 'block' : 'none';
+    if(rail) rail.style.display = cb.checked ? 'flex' : 'none';
+    cb.dispatchEvent(new Event('change'));
+  });
 }
-wirePPToggle('bjPerfectPairsCheck', 'bjPPChipRail');
-wirePPToggle('warPerfectPairsCheck', 'warPPChipRail');
+wirePPTogglePill('bjPerfectPairsToggle', 'bjPerfectPairsCheck', 'bjPPAmountRow', 'bjPPChipRail');
+wirePPTogglePill('warPerfectPairsToggle', 'warPerfectPairsCheck', 'warPPAmountRow', 'warPPChipRail');
 
 // ---- Baccarat ----
 // Standard punto banco rules: card values A=1, 2-9=pip, 10/J/Q/K=0, hand
@@ -3115,6 +3475,11 @@ let rouletteHistory = [];
 // cell(s) again removes just that one bet, without disturbing any others.
 let rouletteActiveBets = [];
 let rouletteBetIdCounter = 0;
+// Snapshot of the bets that were on the table for the last completed spin —
+// powers the "Same Bet" pill so a repeat player doesn't have to re-tap the
+// whole table every round. cellEls are real DOM nodes from the (never
+// rebuilt) grid, so they're safe to reuse directly.
+let rouletteLastBets = [];
 // In-progress number taps that haven't yet formed (or been confirmed into)
 // a valid inside bet — separate from rouletteActiveBets, which only ever
 // holds fully-confirmed, already-placed bets.
@@ -3383,10 +3748,10 @@ function rouletteRenderActiveBets(){
   const clearBtn = document.getElementById('rouletteClearAllBtn');
   if(rouletteActiveBets.length === 0){
     area.innerHTML = '';
-    clearBtn.style.display = 'none';
+    clearBtn.disabled = true;
     return;
   }
-  clearBtn.style.display = 'inline-block';
+  clearBtn.disabled = false;
   const total = rouletteActiveBets.reduce((s, b) => s + b.amount, 0);
   area.innerHTML = rouletteActiveBets.map(b => `
     <div class="roulette-active-bet-row">
@@ -3403,6 +3768,28 @@ document.getElementById('rouletteClearAllBtn').addEventListener('click', () => {
   document.getElementById('rouletteSelectedSpot').textContent = 'No spot selected';
   document.getElementById('rouletteSelectedSpot').style.color = '';
 });
+// Re-places every bet from the last completed spin exactly as it was —
+// replaces whatever's currently on the table rather than stacking on top,
+// so tapping it twice in a row is a no-op, not a doubled bet.
+function rouletteRepeatLastBet(){
+  if(rouletteLastBets.length === 0) return;
+  rouletteConfirmPendingStraightIfAny();
+  rouletteActiveBets.slice().forEach(b => rouletteRemoveBet(b.id));
+  rouletteLastBets.forEach(lb => {
+    const bet = { id: ++rouletteBetIdCounter, type: lb.type, value: lb.value, nums: lb.nums, label: lb.label, amount: lb.amount, cellEls: lb.cellEls };
+    rouletteActiveBets.push(bet);
+    bet.cellEls.forEach(c => {
+      c.classList.add('selected');
+      const badge = document.createElement('div');
+      badge.className = 'rt-chip-badge';
+      badge.textContent = bet.amount;
+      c.appendChild(badge);
+    });
+  });
+  rouletteRenderActiveBets();
+  bjPlayChipSound();
+}
+document.getElementById('rouletteSameBetBtn').addEventListener('click', rouletteRepeatLastBet);
 document.getElementById('rouletteBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('rouletteChipDisplay');
   if(chip){
@@ -3515,7 +3902,10 @@ async function rouletteSpin(){
   renderXPLog();
 
   // Bets are consumed by the spin, same as chips being swept off a real
-  // table — clear everything ready for the next round.
+  // table — clear everything ready for the next round. Snapshot them first
+  // so the Same Bet pill can re-place this exact spread next round.
+  rouletteLastBets = rouletteActiveBets.map(b => ({ ...b, cellEls: b.cellEls.slice() }));
+  document.getElementById('rouletteSameBetBtn').disabled = rouletteLastBets.length === 0;
   rouletteActiveBets.forEach(b => b.cellEls.forEach(c => { c.classList.remove('selected'); const bd = c.querySelector('.rt-chip-badge'); if(bd) bd.remove(); }));
   rouletteActiveBets = [];
   rouletteRenderActiveBets();
@@ -3662,6 +4052,355 @@ document.getElementById('warSurrenderBtn').addEventListener('click', warSurrende
 document.getElementById('warNewHandBtn').addEventListener('click', warNewHand);
 document.getElementById('warBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('warChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+
+// ---- Slots (5 reels, single payline) ----
+// Dedicated sound set — a continuous mechanical whir for the spin, a sharp
+// per-reel "clunk" as each one locks in, and a bright coin cascade for a
+// win (bigger cascade for a jackpot) — distinct from the card-table sounds
+// so Slots has its own audio identity rather than reusing chip/chime SFX.
+function slotsPlayWhir(durationSec){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * durationSec)), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const noise = ctx.createBufferSource(); noise.buffer = buffer;
+  const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.Q.value = 2.4;
+  filter.frequency.setValueAtTime(950, ctx.currentTime);
+  filter.frequency.linearRampToValueAtTime(650, ctx.currentTime + durationSec);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.11, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + durationSec);
+  noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  noise.start(); noise.stop(ctx.currentTime + durationSec);
+}
+function slotsPlayReelStop(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator(); osc.type = 'square'; osc.frequency.setValueAtTime(150, now);
+  osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.16, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.1);
+}
+function slotsPlayCoinCascade(big){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const count = big ? 16 : 7;
+  for(let i = 0; i < count; i++){
+    const t = now + i * 0.045 + Math.random() * 0.012;
+    const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 1500 + Math.random() * 900;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.13, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.16);
+  }
+}
+// Weighted symbol pool (rarer symbols pay more). 7️⃣ is wild — substitutes
+// for any symbol when forming the line, and 5 wilds is the top jackpot.
+// pay values are net multipliers on the bet (matches this app's existing
+// "35:1"-style convention used by Roulette/Blackjack, not a total return).
+const SLOTS_SYMBOLS = [
+  { key:'cherry',  icon:'🍒', weight:30, pay:{3:1,  4:3,   5:10  } },
+  { key:'lemon',   icon:'🍋', weight:24, pay:{3:2,  4:5,   5:15  } },
+  { key:'grapes',  icon:'🍇', weight:18, pay:{3:3,  4:8,   5:25  } },
+  { key:'star',    icon:'⭐', weight:12, pay:{3:4,  4:12,  5:50  } },
+  { key:'bell',    icon:'🔔', weight:8,  pay:{3:6,  4:20,  5:80  } },
+  { key:'diamond', icon:'💎', weight:5,  pay:{3:10, 4:40,  5:200 } },
+  { key:'wild',    icon:'7️⃣', weight:3,  pay:{3:20, 4:100, 5:500 } }
+];
+let SLOTS_POOL = null;
+function slotsBuildPool(){ SLOTS_POOL = []; SLOTS_SYMBOLS.forEach(s => { for(let i=0;i<s.weight;i++) SLOTS_POOL.push(s.key); }); }
+function slotsWeightedPick(){ if(!SLOTS_POOL) slotsBuildPool(); return SLOTS_POOL[Math.floor(Math.random() * SLOTS_POOL.length)]; }
+function slotsSymbolIcon(key){ return SLOTS_SYMBOLS.find(s => s.key === key).icon; }
+let slotsBuilt = false;
+let slotsLastBet = 0;
+function slotsBuildReels(){
+  for(let i = 0; i < 5; i++){
+    const strip = document.getElementById('slotsStrip' + i);
+    strip.innerHTML = `<div class="slots-symbol">${slotsSymbolIcon(slotsWeightedPick())}</div>`;
+    strip.style.transform = 'translateY(0)';
+  }
+  slotsBuilt = true;
+}
+function slotsSpinReel(i, finalKey, stopDelay){
+  const reelEl = document.querySelectorAll('#slotsReelRow .slots-reel')[i];
+  const strip = document.getElementById('slotsStrip' + i);
+  strip.style.transform = 'translateY(0)';
+  strip.innerHTML = `<div class="slots-symbol">${slotsSymbolIcon(slotsWeightedPick())}</div><div class="slots-symbol">${slotsSymbolIcon(slotsWeightedPick())}</div>`;
+  reelEl.classList.add('spinning');
+  reelEl.classList.remove('pc-wild-land');
+  setTimeout(() => {
+    reelEl.classList.remove('spinning');
+    strip.innerHTML = `<div class="slots-symbol">${slotsSymbolIcon(finalKey)}</div>`;
+    strip.style.transform = 'translateY(0)';
+    reelEl.classList.remove('pc-reel-stop'); void reelEl.offsetWidth; reelEl.classList.add('pc-reel-stop');
+    slotsPlayReelStop();
+    if(finalKey === 'wild'){ reelEl.classList.add('pc-wild-land'); }
+  }, stopDelay);
+}
+// Longest run from the leftmost reel wins (wilds count toward any run).
+// A lone 2-cherry lead-in (which wouldn't otherwise qualify) still pays a
+// small consolation, same spirit as most physical cherry-lead slots.
+function slotsEvaluateLine(finals){
+  let baseKey = finals.find(f => f !== 'wild');
+  if(baseKey === undefined){
+    const wildSym = SLOTS_SYMBOLS.find(s => s.key === 'wild');
+    return { multiplier: wildSym.pay[5], label: '5× 7️⃣ WILD JACKPOT!', isJackpot: true };
+  }
+  let run = 0;
+  for(const f of finals){ if(f === baseKey || f === 'wild'){ run++; } else break; }
+  if(run >= 3){
+    const sym = SLOTS_SYMBOLS.find(s => s.key === baseKey);
+    return { multiplier: sym.pay[run], label: `${run}× ${sym.icon}`, isJackpot: (baseKey === 'diamond' || baseKey === 'wild') && run === 5 };
+  }
+  if(finals[0] === 'cherry' && finals[1] === 'cherry'){
+    return { multiplier: 0.5, label: '2× 🍒', isJackpot: false };
+  }
+  return { multiplier: 0, label: 'No match', isJackpot: false };
+}
+async function slotsSpin(){
+  const errEl = document.getElementById('slotsBetError');
+  errEl.textContent = '';
+  const amount = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
+  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; return; }
+  const balance = await getXPBalance();
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+
+  const spinBtn = document.getElementById('slotsSpinBtn');
+  const sameBtn = document.getElementById('slotsSameBetBtn');
+  spinBtn.disabled = true; sameBtn.disabled = true;
+  const resultEl = document.getElementById('slotsResultMsg');
+  resultEl.textContent = ''; resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+
+  const finals = [0,0,0,0,0].map(() => slotsWeightedPick());
+  const stopDelays = [500, 750, 1000, 1250, 1500];
+  slotsPlayWhir((stopDelays[4] + 250) / 1000);
+  for(let i = 0; i < 5; i++) slotsSpinReel(i, finals[i], stopDelays[i]);
+  await bjWait(stopDelays[4] + 350);
+
+  const { multiplier, label, isJackpot } = slotsEvaluateLine(finals);
+  const delta = multiplier > 0 ? Math.round(amount * multiplier) : -amount;
+
+  spinBtn.disabled = false;
+  slotsLastBet = amount;
+  sameBtn.disabled = false;
+
+  resultEl.textContent = `${label}  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
+  resultEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)'));
+  resultEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+
+  const cabinetEl = document.querySelector('#casinoGameSlots .slots-cabinet');
+  if(delta > 0){
+    slotsPlayCoinCascade(isJackpot);
+    document.querySelectorAll('#slotsReelRow .slots-reel').forEach(r => { r.classList.remove('pc-winner-flash'); void r.offsetWidth; r.classList.add('pc-winner-flash'); });
+    bjLaunchConfetti(resultEl, isJackpot ? 42 : 20);
+    if(isJackpot && cabinetEl){ cabinetEl.classList.remove('pc-jackpot-pulse'); void cabinetEl.offsetWidth; cabinetEl.classList.add('pc-jackpot-pulse'); }
+  } else if(delta < 0){
+    bjPlayChime(false);
+  }
+
+  await awardXP(delta, delta > 0 ? `Slots win (${label})` : 'Slots loss', { silent: true });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+document.getElementById('slotsSpinBtn').addEventListener('click', slotsSpin);
+document.getElementById('slotsSameBetBtn').addEventListener('click', () => {
+  if(!slotsLastBet) return;
+  const input = document.getElementById('slotsBetInput');
+  input.value = slotsLastBet;
+  input.dispatchEvent(new Event('input'));
+});
+document.getElementById('slotsBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('slotsChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+
+// ---- Video Poker (Jacks or Better) ----
+const VP_PAYTABLE = [
+  { key:'royal',    label:'Royal Flush',      mult:250 },
+  { key:'straightf',label:'Straight Flush',   mult:50  },
+  { key:'quads',    label:'Four of a Kind',   mult:25  },
+  { key:'fullhouse',label:'Full House',       mult:9   },
+  { key:'flush',    label:'Flush',            mult:6   },
+  { key:'straight', label:'Straight',         mult:4   },
+  { key:'trips',    label:'Three of a Kind',  mult:3   },
+  { key:'twopair',  label:'Two Pair',         mult:2   },
+  { key:'jacks',    label:'Jacks or Better',  mult:1   }
+];
+let vpBuilt = false;
+let vpDeck = [];
+let vpHand = [];
+let vpHeld = [false, false, false, false, false];
+let vpStage = 'idle'; // idle | dealt
+function vpBuildPaytable(){
+  const table = document.getElementById('vpPaytable');
+  table.innerHTML = VP_PAYTABLE.map(p => `<tr id="vpPayRow_${p.key}"><td>${p.label}</td><td style="text-align:right;">${p.mult}:1</td></tr>`).join('');
+  vpBuilt = true;
+}
+function vpRenderIdleHand(){
+  document.getElementById('vpHandRow').innerHTML = [0,1,2,3,4].map(() =>
+    `<div class="vp-card-col"><div class="playing-card pc-back" style="width:56px;height:80px;"></div><span class="vp-hold-pill" style="visibility:hidden;">Hold</span></div>`).join('');
+}
+const VP_RANK_ORDER = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+function vpRankValue(r){ return VP_RANK_ORDER.indexOf(r) + 2; }
+function vpEvaluateHand(hand){
+  const ranks = hand.map(c => vpRankValue(c.rank)).sort((a,b) => a - b);
+  const suits = hand.map(c => c.suit);
+  const isFlush = suits.every(s => s === suits[0]);
+  const counts = {};
+  ranks.forEach(r => counts[r] = (counts[r] || 0) + 1);
+  const countVals = Object.values(counts).sort((a,b) => b - a);
+  const uniqueRanks = Object.keys(counts).map(Number).sort((a,b) => a - b);
+  let isStraight = false;
+  if(uniqueRanks.length === 5){
+    isStraight = (uniqueRanks[4] - uniqueRanks[0] === 4);
+    // Ace-low straight: A-2-3-4-5 (ranks stored as 14,2,3,4,5 → sorted 2,3,4,5,14)
+    if(!isStraight && uniqueRanks.join(',') === '2,3,4,5,14') isStraight = true;
+  }
+  const isRoyal = isFlush && isStraight && uniqueRanks.includes(10) && uniqueRanks.includes(14) && uniqueRanks[0] === 10;
+
+  if(isRoyal) return { key:'royal', label:'Royal Flush' };
+  if(isStraight && isFlush) return { key:'straightf', label:'Straight Flush' };
+  if(countVals[0] === 4) return { key:'quads', label:'Four of a Kind' };
+  if(countVals[0] === 3 && countVals[1] === 2) return { key:'fullhouse', label:'Full House' };
+  if(isFlush) return { key:'flush', label:'Flush' };
+  if(isStraight) return { key:'straight', label:'Straight' };
+  if(countVals[0] === 3) return { key:'trips', label:'Three of a Kind' };
+  if(countVals[0] === 2 && countVals[1] === 2) return { key:'twopair', label:'Two Pair' };
+  if(countVals[0] === 2){
+    const pairRank = Number(Object.keys(counts).find(r => counts[r] === 2));
+    if(pairRank >= 11) return { key:'jacks', label:'Jacks or Better' };
+  }
+  return null;
+}
+// Distinct short tick for toggling Hold — pitched up when holding, down
+// when releasing, so the two states are audibly different at a glance.
+function vpPlayHoldClick(held){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator(); osc.type = 'square'; osc.frequency.value = held ? 720 : 420;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.11, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.1);
+}
+// animateIdx: which card positions should deal-in-animate this render —
+// defaults to every card (initial Deal). On Draw, only the freshly-drawn
+// (non-held) positions are passed, so held cards visibly stay put instead
+// of re-dealing themselves, which is what a real video poker draw looks
+// and sounds like.
+function vpRenderHand(animate, animateIdx){
+  const animateSet = animateIdx || [0,1,2,3,4];
+  document.getElementById('vpHandRow').innerHTML = vpHand.map((c, i) => {
+    const isRed = c.suit === '♥' || c.suit === '♦';
+    const willAnimate = animate && animateSet.includes(i);
+    const orderInAnim = animateSet.indexOf(i);
+    const delay = willAnimate ? Math.max(0, orderInAnim) * 130 : 0;
+    if(willAnimate) setTimeout(bjPlayCardSound, delay);
+    const heldGlow = vpHeld[i] ? ' pc-held-glow' : '';
+    return `<div class="vp-card-col">
+      <div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${willAnimate ? ' pc-dealt' : ''}${heldGlow}" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>
+      <button type="button" class="vp-hold-pill${vpHeld[i] ? ' held' : ''}" data-idx="${i}">${vpHeld[i] ? 'Held' : 'Hold'}</button>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#vpHandRow .vp-hold-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(vpStage !== 'dealt') return;
+      const idx = parseInt(btn.dataset.idx, 10);
+      vpHeld[idx] = !vpHeld[idx];
+      vpPlayHoldClick(vpHeld[idx]);
+      vpRenderHand(false);
+      const cardEl = document.querySelectorAll('#vpHandRow .playing-card')[idx];
+      if(cardEl){ cardEl.classList.remove('pc-hold-pop'); void cardEl.offsetWidth; cardEl.classList.add('pc-hold-pop'); }
+    });
+  });
+}
+function vpHighlightPayout(key){
+  VP_PAYTABLE.forEach(p => document.getElementById('vpPayRow_' + p.key).classList.remove('vp-hit'));
+  if(key) document.getElementById('vpPayRow_' + key).classList.add('vp-hit');
+}
+async function vpDeal(){
+  const errEl = document.getElementById('vpBetError');
+  errEl.textContent = '';
+  const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
+  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; return; }
+  const balance = await getXPBalance();
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+
+  vpDeck = bjFreshDeck();
+  vpHand = vpDeck.splice(0, 5);
+  vpHeld = [false, false, false, false, false];
+  vpStage = 'dealt';
+  document.getElementById('vpOutcomeMsg').textContent = '';
+  vpHighlightPayout(null);
+  vpRenderHand(true);
+  document.getElementById('vpDealBtn').style.display = 'none';
+  document.getElementById('vpDrawBtn').style.display = 'inline-block';
+  document.getElementById('vpChipRail').style.pointerEvents = 'none';
+  document.getElementById('vpChipRail').style.opacity = '.5';
+}
+async function vpDraw(){
+  const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
+  document.getElementById('vpDrawBtn').disabled = true;
+  const drawnIdx = vpHeld.map((h, i) => h ? -1 : i).filter(i => i !== -1);
+  vpHand = vpHand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
+  vpRenderHand(true, drawnIdx);
+  await bjWait(drawnIdx.length * 130 + 250);
+
+  const result = vpEvaluateHand(vpHand);
+  const outcomeEl = document.getElementById('vpOutcomeMsg');
+  const panelEl = document.getElementById('casinoGameVideoPoker');
+  let delta;
+  if(result){
+    const pay = VP_PAYTABLE.find(p => p.key === result.key);
+    delta = amount * pay.mult;
+    vpHighlightPayout(result.key);
+    outcomeEl.textContent = `${result.label}!  +${delta} XP`;
+    outcomeEl.style.color = '';
+    const isBigWin = result.key === 'royal' || result.key === 'straightf';
+    outcomeEl.classList.add(isBigWin ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+    bjPlayChime(true);
+    slotsPlayCoinCascade(isBigWin || result.key === 'quads');
+    bjLaunchConfetti(outcomeEl, isBigWin ? 42 : 20);
+  } else {
+    delta = -amount;
+    outcomeEl.textContent = `No pair of Jacks or better — ${delta} XP`;
+    outcomeEl.style.color = 'var(--loss)';
+    outcomeEl.classList.add('bj-outcome-pop');
+    bjPlayChime(false);
+    panelEl.classList.add('pc-shake'); setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
+  }
+  await awardXP(delta, delta > 0 ? `Video Poker — ${result.label}` : 'Video Poker loss', { silent: true });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+
+  vpStage = 'idle';
+  document.getElementById('vpDrawBtn').disabled = false;
+  document.getElementById('vpDrawBtn').style.display = 'none';
+  document.getElementById('vpDealBtn').style.display = 'inline-block';
+  document.getElementById('vpChipRail').style.pointerEvents = '';
+  document.getElementById('vpChipRail').style.opacity = '';
+}
+document.getElementById('vpDealBtn').addEventListener('click', vpDeal);
+document.getElementById('vpDrawBtn').addEventListener('click', vpDraw);
+document.getElementById('vpBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('vpChipDisplay');
   if(!chip) return;
   chip.textContent = e.target.value || '0';
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
