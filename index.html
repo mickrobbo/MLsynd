@@ -29,15 +29,6 @@
     min-height:100vh;
   }
   .wrap{ max-width: 720px; margin:0 auto; padding: 0 12px; }
-  /* Desktop/dashboard mode — manually toggled (mirrors the SCS Console's
-     header toggle), never auto-applied by screen width, so a phone in
-     landscape isn't affected either. Only widens the existing centered
-     column and scales up text/spacing for a big wall-mounted monitor;
-     doesn't touch any rule above, so mobile is completely untouched. */
-  body.desktop-mode .wrap{ max-width: 1400px; }
-  body.desktop-mode{ font-size: 15px; }
-  body.desktop-mode .panel, body.desktop-mode .lb-scroll, body.desktop-mode table{ font-size: 1.05em; }
-  body.desktop-mode .tabbar{ max-width: 1400px; left:50%; transform:translateX(-50%); right:auto; width:100%; }
 
   /* ---- Polish layer: transitions, feedback, depth ---- */
   button, .tab-btn, select, input, .toteboard-cell, .highlight-row, .runner-row, .slip-card{
@@ -101,12 +92,338 @@
     font-size:11px; color:var(--muted);
   }
   .account-bar span#accountName{ font-weight:600; color:var(--chalk); width:100%; text-align:center; margin-bottom:4px; }
-  .account-bar .pill-btn{
+  .pill-btn{
     background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); font-size:11px; font-family:'IBM Plex Sans', sans-serif;
     text-decoration:none; cursor:pointer; padding:6px 12px; border-radius:999px; font-weight:600; line-height:1.2;
   }
-  .account-bar .pill-btn:active{ border-color:var(--brass); }
-  .account-bar .pill-btn.active-toggle{ background:var(--brass-dim); border-color:var(--brass); color:var(--ink); }
+  .pill-btn:active{ border-color:var(--brass); }
+  .pill-btn.active-toggle{ background:var(--brass-dim); border-color:var(--brass); color:var(--ink); }
+
+  /* ---- Blackjack table + playing cards ---- */
+  .bj-table{
+    background: radial-gradient(ellipse at 50% 35%, #124631 0%, #0A2A1E 65%, #071c14 100%);
+    border: 1px solid var(--brass-dim); border-radius: 16px;
+    padding: 22px 12px; box-shadow: inset 0 0 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);
+    position:relative; overflow:hidden;
+  }
+  .bj-table::before{ /* soft ambient spotlight, purely decorative */
+    content:''; position:absolute; top:-20%; left:50%; transform:translateX(-50%);
+    width:140%; height:60%; background: radial-gradient(ellipse, rgba(255,224,150,.06) 0%, rgba(255,224,150,0) 70%);
+    pointer-events:none;
+  }
+  .bj-table::after{ /* separate flash overlay so it never fights the spotlight gradient above */
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
+  }
+  .bj-hand-row{ display:flex; justify-content:center; gap:10px; min-height:88px; align-items:flex-start; flex-wrap:wrap; position:relative; z-index:1; }
+
+  .playing-card{
+    width:56px; height:80px; border-radius:7px; background:linear-gradient(160deg,#FDFBF5,#EDE6D3);
+    border:1px solid rgba(0,0,0,.25); box-shadow:0 4px 10px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.6);
+    position:relative; flex-shrink:0; font-family:'IBM Plex Sans', sans-serif; overflow:hidden;
+  }
+  .playing-card::before{ /* glossy sheen, sits above the face, below the pips (z-index) */
+    content:''; position:absolute; inset:0; z-index:0; border-radius:6px;
+    background: linear-gradient(135deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 68%, rgba(255,255,255,.12) 100%);
+    pointer-events:none;
+  }
+  .pc-pip{ position:absolute; z-index:1; display:flex; flex-direction:column; align-items:center; line-height:1; font-size:12px; font-weight:800; }
+  .pc-pip-tl{ top:5px; left:5px; }
+  .pc-pip-br{ bottom:5px; right:5px; transform:rotate(180deg); }
+  .pc-suit-mini{ font-size:10px; margin-top:1px; }
+  .pc-suit-big{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:26px; z-index:1; text-shadow:0 1px 1px rgba(0,0,0,.08); }
+  .playing-card.pc-red{ color:#B5342A; }
+  .playing-card.pc-black{ color:#1c1c1c; }
+
+  .playing-card.pc-back{
+    background: repeating-linear-gradient(45deg, var(--brass-dim), var(--brass-dim) 4px, var(--felt-3) 4px, var(--felt-3) 8px);
+    border:1px solid var(--brass); box-shadow:0 4px 10px rgba(0,0,0,.5);
+  }
+  .playing-card.pc-back::after{
+    content:''; position:absolute; inset:5px; border:1px solid var(--brass-light); border-radius:4px; opacity:.6;
+  }
+
+  /* Deal-in: each card flies/settles in from above, staggered per-card via
+     inline animation-delay set in JS — this + the synthesized card-flick
+     sound on each deal is what actually sells "cards being dealt" rather
+     than just appearing. */
+  @keyframes cardDealIn{
+    0%{ opacity:0; transform: translateY(-46px) translateX(8px) rotate(-10deg) scale(.82); }
+    65%{ opacity:1; }
+    100%{ opacity:1; transform: translateY(0) translateX(0) rotate(0deg) scale(1); }
+  }
+  .playing-card.pc-dealt{ animation: cardDealIn .4s cubic-bezier(.22,.9,.32,1.15) both; }
+
+  /* Fold-away: existing cards sweep off before a new hand starts, like a
+     dealer clearing the table rather than the row just vanishing. */
+  @keyframes cardFoldOut{
+    0%{ opacity:1; transform: translateY(0) rotate(0deg) scale(1); }
+    100%{ opacity:0; transform: translateY(26px) rotate(14deg) scale(.68); }
+  }
+  .playing-card.pc-folding{ animation: cardFoldOut .32s ease-in both; }
+
+  /* Dealer's hole card: a real 3D flip rather than a swap, front=back
+     pattern, back=the actual card, rotated into view on reveal. */
+  .pc-flip-wrap{ width:56px; height:80px; perspective:700px; flex-shrink:0; }
+  .pc-flip-inner{ position:relative; width:100%; height:100%; transition: transform .55s cubic-bezier(.4,.2,.15,1); transform-style:preserve-3d; }
+  .pc-flip-wrap.pc-flipped .pc-flip-inner{ transform: rotateY(180deg); }
+  .pc-flip-face{ position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+  .pc-flip-face.pc-flip-back{ transform: rotateY(180deg); }
+
+  .bj-chip{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:46px; height:46px; border-radius:50%; font-weight:700; font-size:12px;
+    background: radial-gradient(circle at 35% 30%, var(--brass-light), var(--brass) 60%, var(--brass-dim) 100%);
+    color:#2a2005; border:3px dashed rgba(255,255,255,.55); box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 rgba(255,224,150,0);
+    transition: transform .18s cubic-bezier(.34,1.6,.6,1);
+  }
+  @keyframes chipPulse{
+    0%{ transform:scale(1) rotate(0deg); }
+    35%{ transform:scale(1.3) rotate(-18deg); }
+    65%{ transform:scale(1.12) rotate(10deg); }
+    100%{ transform:scale(1) rotate(0deg); }
+  }
+  .bj-chip.pc-chip-pulse{ animation: chipPulse .45s cubic-bezier(.34,1.6,.5,1); }
+
+  /* Idle "breathing" glow so the primary action always reads as tappable —
+     a real table doesn't sit static waiting for you to notice the button. */
+  @keyframes ctaGlow{
+    0%,100%{ box-shadow:0 4px 10px rgba(0,0,0,.4), 0 0 0 rgba(255,214,120,0); }
+    50%{ box-shadow:0 4px 14px rgba(0,0,0,.4), 0 0 18px rgba(255,214,120,.55); }
+  }
+  #bjDealBtn, #bjHitBtn, #bjStandBtn, #bacDealBtn, #rouletteSpinBtn{ animation: ctaGlow 2.2s ease-in-out infinite; }
+
+  /* A soft diagonal sheen that sweeps across every pill button in this tab
+     on a loop — small, but it's what pushes buttons from "flat rectangle"
+     to "polished casino chrome". */
+  #tab-casino .pill-btn{
+    position:relative; overflow:hidden;
+    transition: transform .1s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  #tab-casino .pill-btn::after{
+    content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
+    background: linear-gradient(115deg, transparent, rgba(255,255,255,.35), transparent);
+    transform: skewX(-20deg); animation: btnSheen 2.6s ease-in-out infinite;
+  }
+  @keyframes btnSheen{ 0%{ left:-60%; } 35%{ left:130%; } 100%{ left:130%; } }
+  #tab-casino .pill-btn:active{ transform: scale(.9); border-color:var(--brass); box-shadow:0 0 16px rgba(255,214,120,.6); }
+
+  /* Outcome text: bigger, bouncier entrance than a plain fade, plus a
+     dedicated jackpot-tier treatment for a Blackjack specifically. */
+  @keyframes outcomeGlow{
+    0%{ text-shadow:0 0 0 rgba(255,224,150,0); transform:scale(.6); opacity:0; }
+    35%{ transform:scale(1.18); opacity:1; }
+    55%{ text-shadow:0 0 20px rgba(255,224,150,.75); transform:scale(.96); }
+    100%{ text-shadow:0 0 8px rgba(255,224,150,.35); transform:scale(1); }
+  }
+  .bj-outcome-pop{ animation: outcomeGlow .6s cubic-bezier(.3,1.6,.4,1) both; display:inline-block; }
+  @keyframes jackpotShimmer{
+    0%,100%{ background-position: 0% 50%; }
+    50%{ background-position: 100% 50%; }
+  }
+  .bj-outcome-jackpot{
+    background: linear-gradient(90deg, var(--brass), #FFF3C4, var(--brass-light), #FFF3C4, var(--brass));
+    background-size: 300% auto; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation: outcomeGlow .6s cubic-bezier(.3,1.6,.4,1) both, jackpotShimmer 1.4s linear infinite .6s;
+  }
+
+  /* ---- Casino game selector + Roulette wheel ---- */
+  .casino-game-tab.active{ background:var(--brass-dim); border-color:var(--brass); color:var(--ink); }
+  .casino-game-tab.active::after{ display:none; } /* the idle sheen sweep is for CTAs, not the currently-selected tab */
+
+  .roulette-wheel-wrap{
+    position:relative; width:250px; height:250px; margin:14px auto 10px;
+    filter: drop-shadow(0 12px 22px rgba(0,0,0,.65));
+  }
+  /* Metallic bezel ring — a spun-gold conic gradient standing in for a
+     beveled rim, plus a bright top-left highlight and dark bottom-right
+     shadow so it reads as a genuine curved metal surface, not a flat ring. */
+  .roulette-bezel-outer{
+    position:absolute; inset:-9px; border-radius:50%;
+    background:
+      radial-gradient(circle at 30% 22%, rgba(255,255,255,.55), rgba(255,255,255,0) 32%),
+      conic-gradient(from -40deg, #f7e2a4, #b9903c, #6b4f1a, #b9903c, #f7e2a4, #b9903c, #6b4f1a, #b9903c, #f7e2a4);
+    box-shadow: 0 3px 10px rgba(0,0,0,.5), inset 0 3px 5px rgba(255,255,255,.5), inset 0 -4px 8px rgba(0,0,0,.55);
+  }
+  .roulette-wheel{
+    position:absolute; inset:0; border-radius:50%;
+    box-shadow: inset 0 0 28px rgba(0,0,0,.65), inset 0 0 0 3px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,255,255,.08);
+  }
+  /* Thin bright separator line at every pocket boundary — this alone is
+     most of what made the earlier version read as "flat colour wedges"
+     rather than an actual wheel with individually walled pockets. */
+  .roulette-pocket-dividers{
+    position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    background: repeating-conic-gradient(rgba(255,224,160,.4) 0deg 0.35deg, transparent 0.35deg 9.474deg);
+  }
+  /* A soft diagonal glass-dome sheen sitting above the pockets — the
+     single biggest thing that sells "premium lacquered wheel" over
+     "coloured circle". */
+  .roulette-glass-shine{
+    position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    background: linear-gradient(125deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0) 68%, rgba(255,255,255,.1) 100%);
+  }
+  .roulette-pocket-label{
+    position:absolute; top:50%; left:50%; width:20px; height:14px; margin:-7px 0 0 -10px;
+    font-size:9px; font-weight:700; color:#F5EFDC; text-align:center; line-height:14px;
+    text-shadow:0 1px 2px rgba(0,0,0,.6);
+  }
+  .roulette-ball-track{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+  .roulette-ball{
+    position:absolute; top:5px; left:50%; width:12px; height:12px; margin-left:-6px; border-radius:50%;
+    background: radial-gradient(circle at 30% 25%, #ffffff, #e2e2e2 45%, #a8a8a8 75%, #757575);
+    box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset;
+  }
+  .roulette-hub{
+    position:absolute; top:50%; left:50%; width:46px; height:46px; margin:-23px 0 0 -23px; border-radius:50%;
+    background: radial-gradient(circle at 32% 26%, #fff6de, var(--brass-light) 35%, var(--brass) 65%, var(--brass-dim) 100%);
+    display:flex; align-items:center; justify-content:center; color:#2a2005; font-size:16px;
+    box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 2px 3px rgba(255,255,255,.6), inset 0 -3px 5px rgba(0,0,0,.35); z-index:4;
+  }
+  .roulette-pointer{
+    position:absolute; top:-15px; left:50%; margin-left:-9px; width:0; height:0; z-index:5;
+    border-left:9px solid transparent; border-right:9px solid transparent; border-top:17px solid var(--brass-light);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
+  }
+  @keyframes roulettePocketFlash{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(2.1); } }
+  .roulette-wheel.pc-winner-flash{ animation: roulettePocketFlash .5s ease 3; }
+
+  /* ---- Tap-to-add chip rail (reused across every game's bet panel) ---- */
+  .chip-rail{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+  .chip-rail-small{ margin-top:8px; }
+  .table-chip{
+    width:44px; height:44px; border-radius:50%; font-weight:700; font-size:12px; font-family:'IBM Plex Mono',monospace;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; border:3px dashed rgba(255,255,255,.5);
+    box-shadow:0 3px 6px rgba(0,0,0,.5); transition: transform .12s cubic-bezier(.34,1.6,.6,1);
+    color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+  .table-chip:active{ transform:scale(.88); }
+  .table-chip.chip-10{ background: radial-gradient(circle at 35% 30%, #e8e8e8, #b8b8b8 60%, #888); color:#222; text-shadow:none; }
+  .table-chip.chip-25{ background: radial-gradient(circle at 35% 30%, #4fae74, #1f7a4a 60%, #145535); }
+  .table-chip.chip-50{ background: radial-gradient(circle at 35% 30%, #5b9fd6, #2a6ca8 60%, #1a4a78); }
+  .table-chip.chip-100{ background: radial-gradient(circle at 35% 30%, #2a2a2a, #0d0d0d 60%, #000); border-color:var(--brass-light); }
+  .table-chip.chip-250{ background: radial-gradient(circle at 35% 30%, #b568d8, #7a2fa0 60%, #4f1c69); }
+  @keyframes chipTapPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.25) translateY(-4px); } 100%{ transform:scale(1); } }
+  .table-chip.pc-chip-tap{ animation: chipTapPop .3s cubic-bezier(.34,1.6,.5,1); }
+  .chip-clear-btn{
+    width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:rgba(193,96,74,.18); border:1px solid var(--loss); color:var(--loss); font-weight:700; cursor:pointer;
+  }
+  .chip-clear-btn:active{ transform:scale(.9); }
+
+  .side-bet-row{
+    display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; padding-top:12px;
+    border-top:1px dashed var(--brass-dim); font-size:11.5px; color:var(--muted); cursor:pointer;
+  }
+  .side-bet-row input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--brass); }
+  .side-bet-row input[type="number"]{
+    background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;
+  }
+
+  .bet-spot-row{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .bet-spot-btn{
+    background:var(--felt-2); border:2px solid var(--brass-dim); border-radius:10px; color:var(--chalk);
+    padding:10px 16px; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; cursor:pointer;
+    transition: all .15s ease; line-height:1.3;
+  }
+  .bet-spot-btn small{ font-weight:500; color:var(--muted); font-size:10px; }
+  .bet-spot-btn.active{ background:var(--brass-dim); border-color:var(--brass); color:var(--ink); box-shadow:0 0 14px rgba(255,214,120,.5); }
+  .bet-spot-btn.active small{ color:#3a2e08; }
+
+  .hand-total-chip{
+    display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 5px;
+    border-radius:50%; background:var(--felt-3); border:1px solid var(--brass-dim); font-family:'IBM Plex Mono',monospace;
+    font-size:11px; font-weight:700; color:var(--brass); vertical-align:middle; transition: transform .2s cubic-bezier(.34,1.6,.5,1);
+  }
+  .hand-total-chip.pc-chip-tap{ animation: chipTapPop .3s cubic-bezier(.34,1.6,.5,1); }
+
+  /* ---- Table box — the felt-marked outline every hand sits inside, like
+     a real dealt-card position on a physical table, used across every
+     card game (Blackjack, Baccarat, Casino War). ---- */
+  .table-box{
+    position:relative; border:2px solid var(--brass-dim); border-radius:14px;
+    padding:18px 10px 12px; margin:0 4px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,224,150,.05) 0%, rgba(0,0,0,.18) 75%);
+    box-shadow: inset 0 0 16px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+  .table-box::before{
+    content: attr(data-label); position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+    background: var(--felt-2); border:1px solid var(--brass-dim); border-radius:6px; padding:2px 12px;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; letter-spacing:1.5px;
+    color:var(--brass-light); text-transform:uppercase; white-space:nowrap;
+  }
+  .table-box-chip{ position:absolute; top:8px; right:10px; }
+
+  /* ---- Roulette betting table — real grid lines like a felt layout ---- */
+  .roulette-table-grid{
+    background: linear-gradient(165deg, #0d3524, #0a2a1c); border:2px solid var(--brass-dim); border-radius:10px;
+    padding:2px; overflow:hidden;
+  }
+  .rt-row{ display:flex; }
+  .rt-zero-row .rt-cell{ font-size:13px; }
+  .rt-number-grid{ display:grid; grid-template-columns: repeat(3, 1fr); }
+  .rt-cell{
+    flex:1; display:flex; align-items:center; justify-content:center; border:1px solid rgba(203,177,102,.28);
+    color:#fff; font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:12px; padding:9px 2px;
+    cursor:pointer; position:relative; transition: filter .1s ease; user-select:none;
+  }
+  .rt-cell:active{ filter:brightness(1.3); }
+  .rt-cell.rt-red-num{ background:#7a231c; }
+  .rt-cell.rt-black-num{ background:#141414; }
+  .rt-cell.rt-green{ background:#1f7a4a; font-size:13px; }
+  .rt-cell.rt-outside{ background:rgba(255,255,255,.03); font-size:10.5px; letter-spacing:.5px; }
+  .rt-cell.rt-red-cell{ background:#5a1a15; }
+  .rt-cell.rt-black-cell{ background:#0d0d0d; }
+  .rt-cell.selected{ background:var(--brass) !important; color:#2a2005 !important; box-shadow:inset 0 0 0 2px var(--brass-light); }
+  .rt-cell .rt-chip-badge{
+    position:absolute; top:-8px; right:-6px; width:20px; height:20px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, var(--brass-light), var(--brass) 60%, var(--brass-dim));
+    color:#2a2005; font-size:8.5px; display:flex; align-items:center; justify-content:center;
+    border:1.5px solid rgba(255,255,255,.6); box-shadow:0 2px 4px rgba(0,0,0,.5); z-index:2;
+  }
+  .roulette-selected-spot{ text-align:center; font-size:12px; color:var(--brass-light); margin-top:8px; font-weight:600; }
+  .roulette-history{ display:flex; gap:5px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+  .roulette-history-chip{
+    width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:700; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.5); flex-shrink:0;
+  }
+
+  /* Loss/bust: the table itself takes a hit rather than just the text
+     changing colour — a short sharp shake plus a red flash reads as real
+     impact, matching the celebration weight on the win side. */
+  @keyframes tableShake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-7px) rotate(-.4deg); }
+    40%{ transform:translateX(6px) rotate(.3deg); }
+    60%{ transform:translateX(-4px); }
+    80%{ transform:translateX(3px); }
+  }
+  .bj-table.pc-shake, .pc-shake{ animation: tableShake .4s ease; }
+  @keyframes tableFlashRed{ 0%{ background-color:rgba(193,96,74,0); } 25%{ background-color:rgba(193,96,74,.28); } 100%{ background-color:rgba(193,96,74,0); } }
+  .panel.pc-flash-red::after{ animation: tableFlashRed .5s ease; }
+  @keyframes tableFlashGold{ 0%{ background-color:rgba(255,214,120,0); } 25%{ background-color:rgba(255,214,120,.22); } 100%{ background-color:rgba(255,214,120,0); } }
+  .panel.pc-flash-gold::after{ animation: tableFlashGold .6s ease; }
+  /* Roulette's wheel panel is a plain .panel, not a .bj-table — it needs
+     its own ::after since .bj-table::after (used for the flash above) is
+     scoped to that class and wouldn't otherwise fire here. */
+  #rouletteWheelPanel::after{ content:''; position:absolute; inset:0; pointer-events:none; z-index:2; border-radius:inherit; }
+
+  /* Confetti burst — lightweight DOM particles (not canvas), positioned and
+     angled from JS, each just a small rotated rect flying outward and
+     falling with gravity-ish easing before fading. */
+  .bj-confetti-piece{
+    position:fixed; top:0; left:0; width:8px; height:14px; z-index:500; pointer-events:none;
+    border-radius:2px; will-change:transform, opacity;
+  }
+  @keyframes confettiFall{
+    0%{ transform:translate(var(--cx), var(--cy)) rotate(0deg); opacity:1; }
+    100%{ transform:translate(var(--tx), var(--ty)) rotate(var(--rot)); opacity:0; }
+  }
+
+  /* XP balance ticking — the number itself gets a colour flash + brief pop
+     while it counts, rather than just snapping to the new value. */
+  @keyframes xpPop{ 0%{ transform:scale(1); } 30%{ transform:scale(1.22); } 100%{ transform:scale(1); } }
+  #xpBalanceDisplay.pc-xp-up{ animation: xpPop .5s cubic-bezier(.34,1.6,.5,1); color:var(--win) !important; }
+  #xpBalanceDisplay.pc-xp-down{ animation: xpPop .5s cubic-bezier(.34,1.6,.5,1); color:var(--loss) !important; }
 
   .toteboard-strip{ display:flex; gap:8px; margin-bottom:16px; }
   .toteboard-cell{
@@ -872,6 +1189,214 @@
     <div style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;">Fixtures via Squiggle · Odds via PuntersEdge</div>
   </div>
 
+  <div class="tab-panel" id="tab-casino">
+    <div class="panel" style="text-align:center;">
+      <h2>🎰 Casino</h2>
+      <div style="display:flex; justify-content:center; gap:24px; margin:10px 0;">
+        <div>
+          <div class="hint" style="margin:0;">Your XP</div>
+          <div id="xpBalanceDisplay" style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:28px; color:var(--brass);">—</div>
+        </div>
+      </div>
+      <div class="hint">XP is earned automatically from Tipping points, individual bet wins, and group multi leg wins — it's play money for this game only, separate from the real ledger.</div>
+      <button type="button" id="xpLeaderboardToggleBtn" class="pill-btn" style="margin-top:12px; padding:8px 16px;">🏆 Leaderboard</button>
+    </div>
+
+    <div class="panel" id="xpLeaderboardPanel" style="display:none;">
+      <h2 style="font-size:14px;">🏆 XP Leaderboard</h2>
+      <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="panel" style="padding:10px; text-align:center;">
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <button type="button" class="pill-btn casino-game-tab active" data-game="blackjack">🃏 Blackjack</button>
+        <button type="button" class="pill-btn casino-game-tab" data-game="baccarat">🎴 Baccarat</button>
+        <button type="button" class="pill-btn casino-game-tab" data-game="roulette">🎡 Roulette</button>
+        <button type="button" class="pill-btn casino-game-tab" data-game="war">⚔️ Casino War</button>
+      </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameBlackjack">
+    <div class="panel" id="bjBetPanel">
+      <div style="display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;">
+        <div class="bj-chip" id="bjChipDisplay">50</div>
+        <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+          <label style="font-size:11px; color:var(--muted);">Bet amount</label>
+          <input type="number" id="bjBetInput" min="10" step="10" value="50" readonly style="width:90px; text-align:center; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:8px; padding:8px; font-size:14px;">
+        </div>
+      </div>
+      <div class="chip-rail" data-target="bjBetInput">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="bjBetInput">✕</button>
+      </div>
+      <label class="side-bet-row">
+        <input type="checkbox" id="bjPerfectPairsCheck">
+        <span>Perfect Pairs side bet</span>
+        <input type="number" id="bjPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px;">
+      </label>
+      <div class="chip-rail chip-rail-small" data-target="bjPerfectPairsAmount" id="bjPPChipRail" style="display:none;">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="chip-clear-btn" data-target="bjPerfectPairsAmount">✕</button>
+      </div>
+      <button type="button" id="bjDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
+      <div id="bjBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+
+    <div class="panel bj-table" id="bjTableArea" style="display:none;">
+      <div class="table-box" data-label="Dealer">
+        <div id="bjDealerCards" class="bj-hand-row"></div>
+        <div id="bjDealerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
+      </div>
+      <div class="table-box" data-label="You" style="margin-top:22px;">
+        <div id="bjPlayerCards" class="bj-hand-row"></div>
+        <div id="bjPlayerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
+      </div>
+      <div id="bjPPOutcomeMsg" style="text-align:center; font-size:12.5px; color:var(--brass-light); margin-top:8px; min-height:16px;"></div>
+      <div id="bjOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+        <button type="button" id="bjHitBtn" class="pill-btn" style="padding:8px 18px;">Hit</button>
+        <button type="button" id="bjStandBtn" class="pill-btn" style="padding:8px 18px;">Stand</button>
+        <button type="button" id="bjNewHandBtn" class="pill-btn" style="padding:8px 18px; display:none;">New hand</button>
+      </div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameBaccarat" style="display:none;">
+    <div class="panel" id="bacBetPanel">
+      <div style="display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;">
+        <div class="bet-spot-row">
+          <button type="button" class="bet-spot-btn active" data-bac-bet="player">Player<br><small>1:1</small></button>
+          <button type="button" class="bet-spot-btn" data-bac-bet="banker">Banker<br><small>0.95:1</small></button>
+          <button type="button" class="bet-spot-btn" data-bac-bet="tie">Tie<br><small>8:1</small></button>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center; margin-top:10px;">
+        <div class="bj-chip" id="bacChipDisplay">50</div>
+        <input type="number" id="bacBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="bacBetInput">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="bacBetInput">✕</button>
+      </div>
+      <button type="button" id="bacDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
+      <div id="bacBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+
+    <div class="panel bj-table" id="bacTableArea" style="display:none;">
+      <div class="table-box" data-label="Banker">
+        <span class="hand-total-chip table-box-chip" id="bacBankerChip">0</span>
+        <div id="bacBankerCards" class="bj-hand-row"></div>
+        <div id="bacBankerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
+      </div>
+      <div class="table-box" data-label="Player" style="margin-top:22px;">
+        <span class="hand-total-chip table-box-chip" id="bacPlayerChip">0</span>
+        <div id="bacPlayerCards" class="bj-hand-row"></div>
+        <div id="bacPlayerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
+      </div>
+      <div id="bacOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:14px; min-height:24px;"></div>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+        <button type="button" id="bacNewHandBtn" class="pill-btn" style="padding:8px 18px; display:none;">New hand</button>
+      </div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameRoulette" style="display:none;">
+    <div class="panel" id="rouletteWheelPanel" style="text-align:center;">
+      <div class="roulette-wheel-wrap">
+        <div class="roulette-bezel-outer"></div>
+        <div class="roulette-wheel" id="rouletteWheel"></div>
+        <div class="roulette-pocket-dividers"></div>
+        <div class="roulette-glass-shine"></div>
+        <div class="roulette-ball-track" id="rouletteBallTrack"><div class="roulette-ball"></div></div>
+        <div class="roulette-hub">◆</div>
+        <div class="roulette-pointer"></div>
+      </div>
+      <div id="rouletteResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:20px; margin-top:6px; min-height:26px;"></div>
+      <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent spins</div>
+      <div class="roulette-history" id="rouletteHistory"></div>
+    </div>
+    <div class="panel" id="rouletteBetPanel">
+      <div class="hint" style="margin-bottom:8px;">American table — tap a number or outside bet to select your spot, add chips below, then spin.</div>
+      <div class="roulette-table-grid" id="rouletteTableGrid"></div>
+      <div id="rouletteSelectedSpot" class="roulette-selected-spot">No spot selected</div>
+      <div style="display:flex; justify-content:center; margin-top:10px;">
+        <div class="bj-chip" id="rouletteChipDisplay">50</div>
+        <input type="number" id="rouletteBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="rouletteBetInput">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="rouletteBetInput">✕</button>
+      </div>
+      <button type="button" id="rouletteSpinBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Spin</button>
+      <div id="rouletteBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameWar" style="display:none;">
+    <div class="panel" id="warBetPanel">
+      <div class="hint">One card each — higher card wins. Tie? Go to war (double the bet) or surrender half.</div>
+      <div style="display:flex; justify-content:center; margin-top:8px;">
+        <div class="bj-chip" id="warChipDisplay">50</div>
+        <input type="number" id="warBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="warBetInput">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="warBetInput">✕</button>
+      </div>
+      <label class="side-bet-row">
+        <input type="checkbox" id="warPerfectPairsCheck">
+        <span>Pairs side bet (player &amp; dealer card match) — 10:1</span>
+        <input type="number" id="warPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px;">
+      </label>
+      <div class="chip-rail chip-rail-small" data-target="warPerfectPairsAmount" id="warPPChipRail" style="display:none;">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="chip-clear-btn" data-target="warPerfectPairsAmount">✕</button>
+      </div>
+      <button type="button" id="warDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
+      <div id="warBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+
+    <div class="panel bj-table" id="warTableArea" style="display:none;">
+      <div class="table-box" data-label="Dealer">
+        <div id="warDealerCards" class="bj-hand-row"></div>
+      </div>
+      <div class="table-box" data-label="You" style="margin-top:22px;">
+        <div id="warPlayerCards" class="bj-hand-row"></div>
+      </div>
+      <div id="warPPOutcomeMsg" style="text-align:center; font-size:12.5px; color:var(--brass-light); margin-top:8px; min-height:16px;"></div>
+      <div id="warOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
+      <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+        <button type="button" id="warGoBtn" class="pill-btn" style="padding:8px 18px; display:none;">Go to War</button>
+        <button type="button" id="warSurrenderBtn" class="pill-btn" style="padding:8px 18px; display:none;">Surrender</button>
+        <button type="button" id="warNewHandBtn" class="pill-btn" style="padding:8px 18px; display:none;">New hand</button>
+      </div>
+    </div>
+    </div>
+
+    <div class="panel">
+      <h2 style="font-size:14px;">Recent XP activity</h2>
+      <div id="xpLogArea"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
   <div class="tab-panel" id="tab-diag">
     <div class="panel">
       <h2>🔧 Diagnostics</h2>
@@ -901,7 +1426,6 @@
     <button type="button" class="pill-btn" id="editNameBtn" title="Change your name">✎ Edit name</button>
     <button type="button" class="pill-btn" id="resyncNameBtn" title="Re-sync your name onto past Tipping picks">🔄</button>
     <button type="button" class="pill-btn" id="pushToggleBtn" title="Get notified when a tip's about to lock">🔔 Notify me</button>
-    <button type="button" class="pill-btn" id="desktopModeToggleBtn" title="Switch between mobile and desktop layout">🖥️ Desktop view</button>
     <button type="button" class="pill-btn" id="mainSignOutBtn" title="Sign out">Sign out</button>
   </div>
 </div>
@@ -913,6 +1437,7 @@
   <button class="tab-btn" data-tab="slips"><span class="icon">📎</span>Slips</button>
   <button class="tab-btn" data-tab="afl"><span class="icon">🏆</span>Sport</button>
   <button class="tab-btn" data-tab="tipping"><span class="icon">🏉</span>Tipping</button>
+  <button class="tab-btn" data-tab="casino"><span class="icon">🃏</span>Casino</button>
   <button class="tab-btn" data-tab="diag" id="diagTabBtn" style="display:none;"><span class="icon">🔧</span>Diag</button>
 </nav>
 
@@ -1163,27 +1688,6 @@ function renderAccountBar(){
   if(el) el.textContent = currentUserName || '';
   updatePushToggleUI();
 }
-
-// Desktop/dashboard layout toggle — manual only (same reasoning as the SCS
-// Console's own toggle: a fixed monitor doesn't need auto-detection, and
-// this way a phone in landscape is never accidentally caught by it).
-// Persisted per-device via localStorage so a dashboard screen keeps its
-// setting across reloads without affecting anyone else's phone.
-function applyDesktopMode(on){
-  document.body.classList.toggle('desktop-mode', on);
-  const btn = document.getElementById('desktopModeToggleBtn');
-  if(btn) btn.textContent = on ? '📱 Mobile view' : '🖥️ Desktop view';
-}
-(function initDesktopMode(){
-  const saved = localStorage.getItem('mlsynd-desktop-mode') === '1';
-  applyDesktopMode(saved);
-  const btn = document.getElementById('desktopModeToggleBtn');
-  if(btn) btn.addEventListener('click', () => {
-    const nowOn = !document.body.classList.contains('desktop-mode');
-    localStorage.setItem('mlsynd-desktop-mode', nowOn ? '1' : '0');
-    applyDesktopMode(nowOn);
-  });
-})();
 
 // ---------- Push notifications (top-level - called from renderAccountBar,
 // the notify-me toggle inside initAuthGate, and the Diag tab's test button,
@@ -1547,7 +2051,1112 @@ function showUpdateBanner(){
   el.querySelector('button').addEventListener('click', () => location.reload());
   document.body.appendChild(el);
 }
+// ================= Casino / XP system =================
+// Design note: XP is play-money, earned automatically from real betting
+// performance (Tipping points, individual bet wins, group leg wins) and
+// spendable only in the Casino tab. It intentionally reuses the existing
+// per-user write pattern (each signed-in client only ever writes its own
+// /xp/{uid} path) rather than any new security model — same trust level
+// already accepted elsewhere in this app for a friendly ~11-person group.
+const XP_RATES = { perTippingPoint: 10, perDollarIndividualWin: 1, perGroupLegWin: 100 };
+const XP_SIGNUP_BONUS = 500;
+
+async function ensureXPInitialized(){
+  if(!currentUserUid) return;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/balance.json`);
+    const bal = await res.json();
+    if(bal == null){
+      await authedFetch(`/xp/${currentUserUid}/balance.json`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(XP_SIGNUP_BONUS)
+      });
+      await awardXP(XP_SIGNUP_BONUS, 'Signup bonus', { silent: true });
+    }
+  }catch(e){}
+}
+
+async function getXPBalance(){
+  if(!currentUserUid) return null;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/balance.json`);
+    const bal = await res.json();
+    return bal == null ? 0 : bal;
+  }catch(e){ return null; }
+}
+
+// Reads-modifies-writes the balance, then logs the change. Not
+// transactionally safe against true concurrent writes from two open tabs
+// of the SAME account at the exact same instant, but that's an accepted,
+// low-stakes risk for play money in a friendly group — same tradeoff
+// already made elsewhere in this app for real-money paths.
+async function awardXP(amount, reason, opts){
+  if(!currentUserUid || !amount) return;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/balance.json`);
+    const current = (await res.json()) || 0;
+    const next = current + amount;
+    await authedFetch(`/xp/${currentUserUid}/balance.json`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(next)
+    });
+    await authedFetch(`/xp/${currentUserUid}/log.json`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
+    });
+    if(!(opts && opts.silent)) updateXPBalanceDisplay(next);
+  }catch(e){}
+}
+
+function updateXPBalanceDisplay(bal){
+  const el = document.getElementById('xpBalanceDisplay');
+  if(!el || bal == null) return;
+  const current = parseInt(el.textContent.replace(/,/g, ''), 10);
+  const start = isNaN(current) ? bal : current;
+  if(start === bal){ el.textContent = bal.toLocaleString(); return; }
+  el.classList.remove('pc-xp-up', 'pc-xp-down');
+  void el.offsetWidth;
+  el.classList.add(bal > start ? 'pc-xp-up' : 'pc-xp-down');
+  // Odometer-style count rather than snapping straight to the new number —
+  // small detail, but a number that just appears reads as a bug on a table
+  // this animated everywhere else.
+  const duration = 550, startTime = performance.now();
+  function tick(now){
+    const p = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    const value = Math.round(start + (bal - start) * eased);
+    el.textContent = value.toLocaleString();
+    if(p < 1) requestAnimationFrame(tick);
+    else setTimeout(() => el.classList.remove('pc-xp-up', 'pc-xp-down'), 350);
+  }
+  requestAnimationFrame(tick);
+}
+
+async function renderXPLog(){
+  const area = document.getElementById('xpLogArea');
+  if(!area || !currentUserUid) return;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/log.json?orderBy="ts"&limitToLast=15`);
+    const data = (await res.json()) || {};
+    const entries = Object.values(data).sort((a,b) => b.ts - a.ts);
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No XP activity yet.</div>';
+      return;
+    }
+    area.innerHTML = entries.map(e => `
+      <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
+        <span style="color:var(--muted);">${escapeHtml(e.reason || '')}</span>
+        <span style="font-weight:700; color:${e.amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${e.amount >= 0 ? '+' : ''}${e.amount}</span>
+      </div>`).join('');
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load XP activity.</div>';
+  }
+}
+
+// ---- Tipping points → XP ----
+// Deliberately a self-contained, isolated recomputation rather than hooking
+// into the existing ladder-scoring code — that scoring logic has a long,
+// hard-won history of subtle bugs in this project (see the Round 23 saga),
+// so awarding real XP off of it directly would inherit any of its edge
+// cases. This recomputes independently and only for the signed-in user's
+// own picks, guarded by a per-round idempotency flag so re-running it on
+// every poll never double-awards.
+async function checkAndAwardTippingXP(){
+  if(!currentUserUid) return;
+  try{
+    let seasonStartRound = 1;
+    try{
+      const r = await authedFetch('/tipping/config/firstRound.json');
+      const v = await r.json();
+      if(v != null) seasonStartRound = Number(v);
+    }catch(e){}
+
+    const games = await fetchTippingFixtures().catch(() => []);
+    const relevant = games.filter(g => g.round >= seasonStartRound);
+    const byRound = {};
+    relevant.forEach(g => {
+      if(!byRound[g.round]) byRound[g.round] = [];
+      byRound[g.round].push(g);
+    });
+
+    const jokerRes = await authedFetch(`/tipping/joker/${currentUserUid}.json`);
+    const myJoker = await jokerRes.json();
+    const myJokerRound = myJoker && myJoker.round != null ? Number(myJoker.round) : null;
+
+    for(const roundStr of Object.keys(byRound)){
+      const round = Number(roundStr);
+      const roundGames = byRound[round];
+      const allDone = roundGames.length > 0 && roundGames.every(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)));
+      if(!allDone) continue;
+
+      const alreadyRes = await authedFetch(`/xp/${currentUserUid}/awardedTippingRounds/${round}.json`);
+      const already = await alreadyRes.json();
+      if(already) continue;
+
+      let points = 0, correct = 0, hadAutoTip = false;
+      for(const g of roundGames){
+        const pickRes = await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}.json`);
+        const pickData = await pickRes.json();
+        const actualWinner = g.hscore === g.ascore ? 'draw' : (g.hscore > g.ascore ? g.hteam : g.ateam);
+        let myPick = pickData && pickData.pick ? pickData.pick : null;
+        if(!myPick){ myPick = g.ateam; hadAutoTip = true; } // missed tips auto-Away, matches existing rule
+        if(myPick === actualWinner){ points += 1; correct += 1; }
+      }
+      if(!hadAutoTip && roundGames.length >= 8 && correct === roundGames.length) points += 2; // Perfect Round bonus
+      if(myJokerRound === round) points *= 2;
+
+      if(points > 0){
+        await awardXP(points * XP_RATES.perTippingPoint, `Tipping Round ${round} (${points}pt${points === 1 ? '' : 's'})`);
+      }
+      await authedFetch(`/xp/${currentUserUid}/awardedTippingRounds/${round}.json`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(true)
+      });
+    }
+  }catch(e){}
+}
+
+// ---- Blackjack ----
+let bjDeck = [], bjPlayerHand = [], bjDealerHand = [], bjCurrentBet = 0, bjHandActive = false;
+let bjAudioCtx = null;
+function bjGetAudioCtx(){
+  if(!bjAudioCtx){ try{ bjAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){} }
+  if(bjAudioCtx && bjAudioCtx.state === 'suspended'){ bjAudioCtx.resume().catch(() => {}); }
+  return bjAudioCtx;
+}
+// All sounds are synthesized (no audio files to host/serve) — a short
+// filtered noise burst for a card flick, a couple of layered high triangle
+// blips for a chip click, and a small ascending/descending chime for
+// win/lose so the table has real audio feedback without adding assets.
+function bjPlayCardSound(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const dur = 0.07;
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2.2);
+  const noise = ctx.createBufferSource(); noise.buffer = buffer;
+  const filter = ctx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 1400;
+  const gain = ctx.createGain(); gain.gain.value = 0.22;
+  noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  noise.start();
+}
+function bjPlayChipSound(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  [0, 0.05, 0.1].forEach((t, idx) => {
+    const osc = ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = 1900 + idx * 350;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now + t);
+    gain.gain.exponentialRampToValueAtTime(0.16, now + t + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.1);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now + t); osc.stop(now + t + 0.12);
+  });
+}
+function bjPlayChime(ascending){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const notes = ascending ? [523.25, 659.25, 783.99] : [440, 349.23, 293.66];
+  notes.forEach((freq, idx) => {
+    const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = freq;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now + idx * 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.14, now + idx * 0.1 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.1 + 0.32);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(now + idx * 0.1); osc.stop(now + idx * 0.1 + 0.36);
+  });
+}
+// A descending filtered-noise rattle for the roulette spin — synthesized
+// like everything else here, no audio file involved. Frequency sweeps down
+// over ~2s to suggest the ball losing momentum, even though the visual
+// spin itself runs longer (4.2s) — the sound doesn't need to cover the
+// full duration to sell the moment, it just needs to mark the launch.
+// A short bright "ding" for side-bet wins (Perfect Pairs / Pairs) — kept
+// deliberately distinct from bjPlayChime's fuller 3-note fanfare so a side
+// bet hitting doesn't feel like it's duplicating the main hand's own win
+// celebration, which still gets the bigger sound a moment later.
+function bjPlaySideBetDing(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 880;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.4);
+}
+function bjPlaySpinSound(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const dur = 2.1;
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const noise = ctx.createBufferSource(); noise.buffer = buffer;
+  const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.Q.value = 1.2;
+  filter.frequency.setValueAtTime(2200, ctx.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + dur);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.14, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.015, ctx.currentTime + dur);
+  noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  noise.start(); noise.stop(ctx.currentTime + dur);
+}
+function bjWait(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+// Lightweight DOM confetti (not canvas) — each piece is a small fixed-position
+// div, angled and timed from here, animated purely by the CSS confettiFall
+// keyframe. Cheap enough for a mobile browser, self-removing so nothing
+// piles up in the DOM across repeated hands.
+function bjLaunchConfetti(originEl, count){
+  const rect = originEl.getBoundingClientRect();
+  const originX = rect.left + rect.width / 2;
+  const originY = rect.top + rect.height / 2;
+  const colors = ['var(--brass)', 'var(--brass-light)', 'var(--win)', '#FFF3C4', '#ffffff'];
+  for(let i = 0; i < count; i++){
+    const piece = document.createElement('div');
+    piece.className = 'bj-confetti-piece';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 70 + Math.random() * 170;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist - 70; // biased upward on launch, gravity added below
+    piece.style.setProperty('--cx', originX + 'px');
+    piece.style.setProperty('--cy', originY + 'px');
+    piece.style.setProperty('--tx', (originX + tx) + 'px');
+    piece.style.setProperty('--ty', (originY + ty + 240) + 'px'); // falls back down to finish
+    piece.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animation = `confettiFall ${0.9 + Math.random() * 0.5}s cubic-bezier(.2,.7,.3,1) ${Math.random() * 0.12}s forwards`;
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 1800);
+  }
+}
+
+function bjFreshDeck(){
+  const suits = ['♠','♥','♦','♣'];
+  const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const deck = [];
+  suits.forEach(s => ranks.forEach(r => deck.push({ rank: r, suit: s })));
+  for(let i = deck.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+function bjCardValue(card){ return card.rank === 'A' ? 11 : (['J','Q','K'].includes(card.rank) ? 10 : Number(card.rank)); }
+function bjHandTotal(hand){
+  let total = hand.reduce((s,c) => s + bjCardValue(c), 0);
+  let aces = hand.filter(c => c.rank === 'A').length;
+  while(total > 21 && aces > 0){ total -= 10; aces--; }
+  return total;
+}
+function bjPipHtml(c){
+  return `<div class="pc-pip pc-pip-tl">${c.rank}<span class="pc-suit-mini">${c.suit}</span></div>
+    <div class="pc-suit-big">${c.suit}</div>
+    <div class="pc-pip pc-pip-br">${c.rank}<span class="pc-suit-mini">${c.suit}</span></div>`;
+}
+// Renders a batch of cards as already-revealed faces, each staggered with
+// its own deal-in animation delay and a card-flick sound timed to match.
+function bjRenderCards(hand, animate){
+  return hand.map((c, i) => {
+    const isRed = c.suit === '♥' || c.suit === '♦';
+    const delay = animate ? i * 130 : 0;
+    if(animate) setTimeout(bjPlayCardSound, delay);
+    return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''}" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
+  }).join('');
+}
+function bjRenderFlipWrap(id, card){
+  const isRed = card.suit === '♥' || card.suit === '♦';
+  return `<div class="pc-flip-wrap" id="${id}">
+    <div class="pc-flip-inner">
+      <div class="pc-flip-face pc-flip-front playing-card pc-back"></div>
+      <div class="pc-flip-face pc-flip-back playing-card ${isRed ? 'pc-red' : 'pc-black'}">${bjPipHtml(card)}</div>
+    </div>
+  </div>`;
+}
+function bjRenderTable(animate){
+  document.getElementById('bjPlayerCards').innerHTML = bjRenderCards(bjPlayerHand, animate);
+  document.getElementById('bjPlayerTotal').textContent = `Total: ${bjHandTotal(bjPlayerHand)}`;
+  // Dealer's up-card shows normally; the hole card is a flip-wrap so the
+  // later reveal is a real flip animation, not a swap of DOM content.
+  const upCardHtml = bjRenderCards([bjDealerHand[0]], animate);
+  const holeCardDelay = animate ? 130 : 0;
+  if(animate) setTimeout(bjPlayCardSound, holeCardDelay);
+  document.getElementById('bjDealerCards').innerHTML = upCardHtml + bjRenderFlipWrap('bjHoleCardWrap', bjDealerHand[1]);
+  document.getElementById('bjDealerTotal').textContent = '';
+}
+function bjIsRedCard(c){ return c.suit === '♥' || c.suit === '♦'; }
+// Perfect Pairs paytable adjusted for a genuine single 52-card deck: a
+// same-rank+same-suit "perfect" pair is mathematically impossible here
+// (only one of each card exists), so that tier is deliberately left off
+// rather than offering a bet that can never pay out. Colored (same rank,
+// same colour, different suit) and Mixed (same rank, different colour)
+// are both real, achievable outcomes in a single deck.
+function bjEvaluatePerfectPairs(hand){
+  if(hand.length < 2 || hand[0].rank !== hand[1].rank) return null;
+  const sameColor = bjIsRedCard(hand[0]) === bjIsRedCard(hand[1]);
+  return sameColor ? { label: 'Colored Pair', mult: 12 } : { label: 'Mixed Pair', mult: 6 };
+}
+async function bjStartHand(){
+  const betInput = document.getElementById('bjBetInput');
+  const errEl = document.getElementById('bjBetError');
+  errEl.textContent = '';
+  const bet = parseInt(betInput.value, 10);
+  const ppOn = document.getElementById('bjPerfectPairsCheck').checked;
+  const ppBet = parseInt(document.getElementById('bjPerfectPairsAmount').value, 10) || 0;
+  const balance = await getXPBalance();
+  const totalStake = bet + (ppOn ? ppBet : 0);
+  if(!bet || bet < 10){ errEl.textContent = 'Minimum bet is 10 XP.'; return; }
+  if(ppOn && ppBet < 10){ errEl.textContent = 'Minimum Perfect Pairs side bet is 10 XP.'; return; }
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+
+  bjPlayChipSound();
+  bjCurrentBet = bet;
+  bjDeck = bjFreshDeck();
+  bjPlayerHand = [bjDeck.pop(), bjDeck.pop()];
+  bjDealerHand = [bjDeck.pop(), bjDeck.pop()];
+  bjHandActive = true;
+
+  document.getElementById('bjBetPanel').style.display = 'none';
+  document.getElementById('bjTableArea').style.display = 'block';
+  const outcomeEl = document.getElementById('bjOutcomeMsg');
+  outcomeEl.textContent = '';
+  outcomeEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  const ppOutcomeEl = document.getElementById('bjPPOutcomeMsg');
+  ppOutcomeEl.textContent = '';
+  document.getElementById('bjHitBtn').style.display = 'inline-block';
+  document.getElementById('bjStandBtn').style.display = 'inline-block';
+  document.getElementById('bjNewHandBtn').style.display = 'none';
+  bjRenderTable(true);
+
+  if(ppOn){
+    const pp = bjEvaluatePerfectPairs(bjPlayerHand);
+    if(pp){
+      const win = ppBet * pp.mult;
+      ppOutcomeEl.innerHTML = `<span style="color:var(--win); font-weight:700;">${pp.label}! +${win} XP</span>`;
+      ppOutcomeEl.classList.remove('bj-outcome-pop'); void ppOutcomeEl.offsetWidth; ppOutcomeEl.classList.add('bj-outcome-pop');
+      bjPlaySideBetDing();
+      bjLaunchConfetti(ppOutcomeEl, 14);
+      await awardXP(win, `Blackjack Perfect Pairs (${pp.label})`, { silent: true });
+    } else {
+      ppOutcomeEl.innerHTML = `<span style="color:var(--loss);">Perfect Pairs: no pair (-${ppBet} XP)</span>`;
+      await awardXP(-ppBet, 'Blackjack Perfect Pairs (no pair)', { silent: true });
+    }
+    const bal = await getXPBalance();
+    updateXPBalanceDisplay(bal);
+  }
+
+  if(bjHandTotal(bjPlayerHand) === 21){ await bjWait(500); await bjResolveHand(); }
+}
+function bjHit(){
+  if(!bjHandActive) return;
+  bjPlayerHand.push(bjDeck.pop());
+  bjPlayCardSound();
+  const area = document.getElementById('bjPlayerCards');
+  const c = bjPlayerHand[bjPlayerHand.length - 1];
+  const isRed = c.suit === '♥' || c.suit === '♦';
+  const card = document.createElement('div');
+  card.className = `playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt`;
+  card.innerHTML = bjPipHtml(c);
+  area.appendChild(card);
+  document.getElementById('bjPlayerTotal').textContent = `Total: ${bjHandTotal(bjPlayerHand)}`;
+  if(bjHandTotal(bjPlayerHand) > 21) bjResolveHand();
+}
+async function bjResolveHand(){
+  bjHandActive = false;
+  document.getElementById('bjHitBtn').style.display = 'none';
+  document.getElementById('bjStandBtn').style.display = 'none';
+
+  const playerTotal = bjHandTotal(bjPlayerHand);
+
+  // Reveal the hole card with a real flip, then — if the dealer needs to
+  // draw — deal each extra card out one at a time with its own sound and
+  // pause, rather than dumping the whole final hand in at once.
+  bjPlayCardSound();
+  const flipWrap = document.getElementById('bjHoleCardWrap');
+  if(flipWrap) flipWrap.classList.add('pc-flipped');
+  await bjWait(600);
+  document.getElementById('bjDealerTotal').textContent = `Total: ${bjHandTotal(bjDealerHand)}`;
+
+  if(playerTotal <= 21){
+    const dealerArea = document.getElementById('bjDealerCards');
+    while(bjHandTotal(bjDealerHand) < 17){
+      const c = bjDeck.pop();
+      bjDealerHand.push(c);
+      bjPlayCardSound();
+      const isRed = c.suit === '♥' || c.suit === '♦';
+      const card = document.createElement('div');
+      card.className = `playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt`;
+      card.innerHTML = bjPipHtml(c);
+      dealerArea.appendChild(card);
+      document.getElementById('bjDealerTotal').textContent = `Total: ${bjHandTotal(bjDealerHand)}`;
+      await bjWait(450);
+    }
+  }
+
+  let outcome, delta;
+  if(playerTotal > 21){
+    outcome = 'Bust — you lose'; delta = -bjCurrentBet;
+  } else {
+    const dealerTotal = bjHandTotal(bjDealerHand);
+    const playerBJ = bjPlayerHand.length === 2 && playerTotal === 21;
+    const dealerBJ = bjDealerHand.length === 2 && dealerTotal === 21;
+    if(playerBJ && !dealerBJ){ outcome = 'Blackjack! 3:2 payout'; delta = Math.floor(bjCurrentBet * 1.5); }
+    else if(dealerTotal > 21){ outcome = 'Dealer busts — you win'; delta = bjCurrentBet; }
+    else if(playerTotal > dealerTotal || (playerBJ && !dealerBJ)){ outcome = 'You win'; delta = bjCurrentBet; }
+    else if(playerTotal === dealerTotal){ outcome = 'Push — bet returned'; delta = 0; }
+    else { outcome = 'Dealer wins'; delta = -bjCurrentBet; }
+  }
+
+  const outcomeEl = document.getElementById('bjOutcomeMsg');
+  const isJackpot = outcome.startsWith('Blackjack!');
+  outcomeEl.textContent = `${outcome} (${delta >= 0 ? '+' : ''}${delta} XP)`;
+  // The jackpot treatment uses a clipped gradient (color:transparent) for
+  // the shimmer effect — an inline color here would sit on top of that and
+  // hide it, so it's deliberately skipped for that one case only.
+  outcomeEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)'));
+  outcomeEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  void outcomeEl.offsetWidth;
+  outcomeEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+  document.getElementById('bjNewHandBtn').style.display = 'inline-block';
+
+  const tableEl = document.getElementById('bjTableArea');
+  if(delta > 0){
+    bjPlayChime(true);
+    tableEl.classList.remove('pc-flash-gold'); void tableEl.offsetWidth; tableEl.classList.add('pc-flash-gold');
+    bjLaunchConfetti(outcomeEl, isJackpot ? 42 : 22);
+    setTimeout(() => tableEl.classList.remove('pc-flash-gold'), 700);
+  } else if(delta < 0){
+    bjPlayChime(false);
+    tableEl.classList.remove('pc-shake', 'pc-flash-red'); void tableEl.offsetWidth; tableEl.classList.add('pc-shake', 'pc-flash-red');
+    setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700);
+  }
+
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Blackjack win' : 'Blackjack loss', { silent: true });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+async function bjNewHand(){
+  // Fold the current cards away first — a table that snaps straight to
+  // empty reads as a bug, not a dealer clearing the felt.
+  const cards = document.querySelectorAll('#bjDealerCards .playing-card, #bjDealerCards .pc-flip-wrap, #bjPlayerCards .playing-card');
+  cards.forEach((el, i) => {
+    el.style.animation = 'none';
+    void el.offsetWidth; // restart animation cleanly if one was still running
+    el.style.animationDelay = (i * 40) + 'ms';
+    el.classList.add('pc-folding');
+  });
+  await bjWait(420);
+  document.getElementById('bjBetPanel').style.display = 'block';
+  document.getElementById('bjTableArea').style.display = 'none';
+}
+document.getElementById('bjDealBtn').addEventListener('click', bjStartHand);
+document.getElementById('bjBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('bjChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse');
+  void chip.offsetWidth;
+  chip.classList.add('pc-chip-pulse');
+});
+document.getElementById('bjHitBtn').addEventListener('click', bjHit);
+document.getElementById('bjStandBtn').addEventListener('click', bjResolveHand);
+document.getElementById('bjNewHandBtn').addEventListener('click', bjNewHand);
+
+// ---- Casino game selector ----
+document.querySelectorAll('.casino-game-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.casino-game-tab').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
+    document.getElementById('casinoGame' + btn.dataset.game.charAt(0).toUpperCase() + btn.dataset.game.slice(1)).style.display = 'block';
+    if(btn.dataset.game === 'roulette' && !rouletteWheelBuilt){ rouletteBuildWheel(); rouletteBuildBetGrid(); }
+  });
+});
+
+document.querySelector('[data-tab="casino"]').addEventListener('click', async () => {
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+});
+
+// ---- XP leaderboard ----
+// Reads every linked member's own /xp/{uid}/balance in parallel — relies on
+// the wider group-read rule added for this (same visibility level as the
+// Board's P/L), not the self-or-admin-only rule XP writes still use.
+async function renderXPLeaderboard(){
+  const area = document.getElementById('xpLeaderboardArea');
+  if(!currentState || !currentState.members){ area.innerHTML = '<div class="empty">No roster loaded yet.</div>'; return; }
+  const linked = currentState.members.filter(m => m.linkedUid);
+  if(linked.length === 0){ area.innerHTML = '<div class="empty">Nobody\'s linked an account yet.</div>'; return; }
+  try{
+    const rows = await Promise.all(linked.map(async m => {
+      try{
+        const res = await authedFetch(`/xp/${m.linkedUid}/balance.json`);
+        const bal = await res.json();
+        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0 };
+      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null }; }
+    }));
+    rows.sort((a,b) => (b.balance || 0) - (a.balance || 0));
+    const medals = ['🥇','🥈','🥉'];
+    area.innerHTML = rows.map((r, i) => {
+      const isMe = r.uid === currentUserUid || r.name === currentUserName;
+      return `<div style="display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--line); ${isMe ? 'background:rgba(203,177,102,.1); border-radius:8px;' : ''}">
+        <span style="width:26px; text-align:center; font-size:15px;">${medals[i] || (i+1)}</span>
+        <span style="flex:1; font-size:13px; ${isMe ? 'font-weight:700; color:var(--brass-light);' : 'color:var(--chalk);'}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</span>
+        <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--brass);">${r.balance != null ? r.balance.toLocaleString() : '—'}</span>
+      </div>`;
+    }).join('');
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load the leaderboard — try again.</div>';
+  }
+}
+document.getElementById('xpLeaderboardToggleBtn').addEventListener('click', () => {
+  const panel = document.getElementById('xpLeaderboardPanel');
+  const btn = document.getElementById('xpLeaderboardToggleBtn');
+  const showing = panel.style.display !== 'none';
+  if(showing){
+    panel.style.display = 'none';
+    btn.textContent = '🏆 Leaderboard';
+  } else {
+    panel.style.display = 'block';
+    btn.textContent = '🃏 Back to table';
+    renderXPLeaderboard(); // always refetch on open — balances change often enough that a stale cached view isn't worth avoiding a handful of small reads
+  }
+});
+// ---- Tap-to-add chip rail (shared by every game's bet panel) ----
+// Generic: any element with class chip-rail wires its .table-chip buttons
+// to add their value onto the input named in data-target, and its
+// .chip-clear-btn to zero it out. Dispatches a real 'input' event so each
+// game's existing display-sync listener (chip circle + pulse) fires
+// exactly as it did for manual typing — no per-game duplication needed.
+function initChipRail(rail){
+  const targetId = rail.dataset.target;
+  rail.querySelectorAll('.table-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(targetId);
+      if(!input) return;
+      const cur = parseInt(input.value, 10) || 0;
+      input.value = cur + parseInt(btn.dataset.val, 10);
+      input.dispatchEvent(new Event('input'));
+      bjPlayChipSound();
+      btn.classList.remove('pc-chip-tap'); void btn.offsetWidth; btn.classList.add('pc-chip-tap');
+    });
+  });
+  const clearBtn = rail.querySelector('.chip-clear-btn');
+  if(clearBtn) clearBtn.addEventListener('click', () => {
+    const input = document.getElementById(targetId);
+    if(!input) return;
+    input.value = 0;
+    input.dispatchEvent(new Event('input'));
+  });
+}
+document.querySelectorAll('.chip-rail').forEach(initChipRail);
+
+// Perfect Pairs side-bet checkboxes just reveal their own small chip rail —
+// shared toggle pattern for Blackjack and Casino War.
+function wirePPToggle(checkboxId, railId){
+  const cb = document.getElementById(checkboxId);
+  const rail = document.getElementById(railId);
+  if(!cb || !rail) return;
+  cb.addEventListener('change', () => { rail.style.display = cb.checked ? 'flex' : 'none'; });
+}
+wirePPToggle('bjPerfectPairsCheck', 'bjPPChipRail');
+wirePPToggle('warPerfectPairsCheck', 'warPPChipRail');
+
+// ---- Baccarat ----
+// Standard punto banco rules: card values A=1, 2-9=pip, 10/J/Q/K=0, hand
+// total is the last digit of the sum. Player draws a third card on 0-5,
+// stands on 6-7. Banker's third-card draw depends on both its own total
+// and the player's third card (the standard baccarat drawing table below).
+// Reuses the same generic card render/deal helpers built for Blackjack —
+// bjRenderCards, bjPipHtml, bjFreshDeck, bjWait, bjPlayCardSound etc. were
+// never actually Blackjack-specific under the hood.
+let bacDeck = [];
+let bacSelectedBet = 'player';
+document.querySelectorAll('.bet-spot-btn[data-bac-bet]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.bet-spot-btn[data-bac-bet]').forEach(b => b.classList.toggle('active', b === btn));
+    bacSelectedBet = btn.dataset.bacBet;
+  });
+});
+function bacCardValue(c){ if(c.rank === 'A') return 1; if(['10','J','Q','K'].includes(c.rank)) return 0; return Number(c.rank); }
+function bacHandTotal(hand){ return hand.reduce((s,c) => s + bacCardValue(c), 0) % 10; }
+function bacBankerShouldDraw(bankerTotal, playerDrew, playerThirdVal){
+  if(bankerTotal <= 2) return true;
+  if(bankerTotal >= 7) return false;
+  if(!playerDrew) return bankerTotal <= 5;
+  switch(bankerTotal){
+    case 3: return playerThirdVal !== 8;
+    case 4: return playerThirdVal >= 2 && playerThirdVal <= 7;
+    case 5: return playerThirdVal >= 4 && playerThirdVal <= 7;
+    case 6: return playerThirdVal === 6 || playerThirdVal === 7;
+  }
+  return false;
+}
+function bacPulseChip(el, val){
+  el.textContent = val;
+  el.classList.remove('pc-chip-tap'); void el.offsetWidth; el.classList.add('pc-chip-tap');
+}
+async function bacDeal(){
+  const betType = bacSelectedBet;
+  const betInput = document.getElementById('bacBetInput');
+  const errEl = document.getElementById('bacBetError');
+  errEl.textContent = '';
+  const bet = parseInt(betInput.value, 10);
+  const balance = await getXPBalance();
+  if(!bet || bet < 10){ errEl.textContent = 'Minimum bet is 10 XP.'; return; }
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+
+  document.getElementById('bacBetPanel').style.display = 'none';
+  document.getElementById('bacTableArea').style.display = 'block';
+  const outcomeEl = document.getElementById('bacOutcomeMsg');
+  outcomeEl.textContent = ''; outcomeEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  document.getElementById('bacNewHandBtn').style.display = 'none';
+  bacPulseChip(document.getElementById('bacBankerChip'), 0);
+  bacPulseChip(document.getElementById('bacPlayerChip'), 0);
+
+  bacDeck = bjFreshDeck();
+  let playerHand = [bacDeck.pop(), bacDeck.pop()];
+  let bankerHand = [bacDeck.pop(), bacDeck.pop()];
+  const pCardsEl = document.getElementById('bacPlayerCards');
+  const bCardsEl = document.getElementById('bacBankerCards');
+  pCardsEl.innerHTML = bjRenderCards(playerHand, true);
+  bCardsEl.innerHTML = bjRenderCards(bankerHand, false);
+  setTimeout(bjPlayCardSound, 260); setTimeout(bjPlayCardSound, 390);
+  document.getElementById('bacPlayerTotal').textContent = `Total: ${bacHandTotal(playerHand)}`;
+  document.getElementById('bacBankerTotal').textContent = `Total: ${bacHandTotal(bankerHand)}`;
+  bacPulseChip(document.getElementById('bacPlayerChip'), bacHandTotal(playerHand));
+  bacPulseChip(document.getElementById('bacBankerChip'), bacHandTotal(bankerHand));
+  await bjWait(650);
+
+  let playerTotal = bacHandTotal(playerHand);
+  let bankerTotal = bacHandTotal(bankerHand);
+  const isNatural = playerTotal >= 8 || bankerTotal >= 8;
+  let playerDrew = false, playerThirdVal = null;
+
+  if(!isNatural){
+    if(playerTotal <= 5){
+      const c = bacDeck.pop();
+      playerHand.push(c); playerDrew = true; playerThirdVal = bacCardValue(c);
+      bjPlayCardSound();
+      const card = document.createElement('div');
+      const isRed = c.suit === '♥' || c.suit === '♦';
+      card.className = `playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt`;
+      card.innerHTML = bjPipHtml(c);
+      pCardsEl.appendChild(card);
+      playerTotal = bacHandTotal(playerHand);
+      document.getElementById('bacPlayerTotal').textContent = `Total: ${playerTotal}`;
+      bacPulseChip(document.getElementById('bacPlayerChip'), playerTotal);
+      await bjWait(500);
+    }
+    if(bacBankerShouldDraw(bankerTotal, playerDrew, playerThirdVal)){
+      const c = bacDeck.pop();
+      bankerHand.push(c);
+      bjPlayCardSound();
+      const card = document.createElement('div');
+      const isRed = c.suit === '♥' || c.suit === '♦';
+      card.className = `playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt`;
+      card.innerHTML = bjPipHtml(c);
+      bCardsEl.appendChild(card);
+      bankerTotal = bacHandTotal(bankerHand);
+      document.getElementById('bacBankerTotal').textContent = `Total: ${bankerTotal}`;
+      bacPulseChip(document.getElementById('bacBankerChip'), bankerTotal);
+      await bjWait(500);
+    }
+  }
+
+  let winner = playerTotal > bankerTotal ? 'player' : (bankerTotal > playerTotal ? 'banker' : 'tie');
+  let outcome, delta;
+  const naturalTag = isNatural ? ` — Natural ${Math.max(playerTotal, bankerTotal)}!` : '';
+  if(betType === winner){
+    if(betType === 'tie'){ outcome = `Tie wins!${naturalTag} 8:1 payout`; delta = bet * 8; }
+    else if(betType === 'banker'){ outcome = `Banker wins${naturalTag} — you win (5% commission)`; delta = Math.floor(bet * 0.95); }
+    else { outcome = `Player wins${naturalTag} — you win`; delta = bet; }
+  } else if(winner === 'tie'){
+    outcome = `Tie${naturalTag} — Player/Banker bets push`; delta = 0;
+  } else {
+    outcome = `${winner === 'player' ? 'Player' : 'Banker'} wins${naturalTag} — you lose`; delta = -bet;
+  }
+
+  const isJackpot = betType === 'tie' && winner === 'tie';
+  outcomeEl.textContent = `${outcome} (${delta >= 0 ? '+' : ''}${delta} XP)`;
+  outcomeEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)'));
+  outcomeEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+  document.getElementById('bacNewHandBtn').style.display = 'inline-block';
+
+  const tableEl = document.getElementById('bacTableArea');
+  if(delta > 0){
+    bjPlayChime(true);
+    tableEl.classList.remove('pc-flash-gold'); void tableEl.offsetWidth; tableEl.classList.add('pc-flash-gold');
+    bjLaunchConfetti(outcomeEl, isJackpot ? 42 : 22);
+    setTimeout(() => tableEl.classList.remove('pc-flash-gold'), 700);
+  } else if(delta < 0){
+    bjPlayChime(false);
+    tableEl.classList.add('pc-shake', 'pc-flash-red');
+    setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700);
+  }
+
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Baccarat win' : 'Baccarat loss', { silent: true });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+function bacNewHand(){
+  document.getElementById('bacBetPanel').style.display = 'block';
+  document.getElementById('bacTableArea').style.display = 'none';
+}
+document.getElementById('bacDealBtn').addEventListener('click', bacDeal);
+document.getElementById('bacNewHandBtn').addEventListener('click', bacNewHand);
+document.getElementById('bacBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('bacChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+
+// ---- Roulette ----
+// American double-zero (0/00) wheel — 38 pockets, real physical wheel
+// order. Pocket identity is kept as a STRING everywhere ('0', '00', '17'
+// etc.) specifically because '00' has no sane numeric representation
+// without colliding with plain 0 — every comparison downstream (color,
+// odd/even, high/low, dozens) treats '0'/'00' as the two green pockets
+// that lose every outside bet, matching the real house-edge rule.
+// The ball's orbit rotates (via a plain CSS transform transition, several
+// full spins plus the exact landing angle) around a STATIC wheel, rather
+// than spinning the numbered wheel itself.
+const ROULETTE_WHEEL_ORDER = ['0','28','9','26','30','11','7','20','32','17','5','22','34','15','3','24','36','13','1','00','27','10','25','29','12','8','19','31','18','6','21','33','16','4','23','35','14','2'];
+const ROULETTE_RED = new Set(['1','3','5','7','9','12','14','16','18','19','21','23','25','27','30','32','34','36']);
+function rouletteColorOf(pocket){ if(pocket === '0' || pocket === '00') return 'green'; return ROULETTE_RED.has(pocket) ? 'red' : 'black'; }
+let rouletteWheelBuilt = false;
+let rouletteBallRotation = 0;
+let rouletteSelectedBet = null; // { type, value (for straight), label }
+let rouletteHistory = [];
+function rouletteBuildWheel(){
+  const wheel = document.getElementById('rouletteWheel');
+  const n = ROULETTE_WHEEL_ORDER.length;
+  const anglePer = 360 / n;
+  const stops = ROULETTE_WHEEL_ORDER.map((pocket, i) => {
+    const color = rouletteColorOf(pocket);
+    const col = color === 'green' ? '#1f7a4a' : (color === 'red' ? '#8c2a22' : '#161616');
+    return `${col} ${(i * anglePer).toFixed(3)}deg ${((i + 1) * anglePer).toFixed(3)}deg`;
+  });
+  wheel.style.background = `conic-gradient(${stops.join(',')})`;
+  wheel.innerHTML = ROULETTE_WHEEL_ORDER.map((pocket, i) => {
+    const angle = i * anglePer + anglePer / 2;
+    return `<div class="roulette-pocket-label" style="transform: rotate(${angle}deg) translateY(-104px) rotate(${-angle}deg);">${pocket}</div>`;
+  }).join('');
+  rouletteWheelBuilt = true;
+}
+function rouletteBuildBetGrid(){
+  const grid = document.getElementById('rouletteTableGrid');
+  let html = '<div class="rt-row rt-zero-row">';
+  html += `<div class="rt-cell rt-green" data-bet-type="straight" data-bet-value="0">0</div>`;
+  html += `<div class="rt-cell rt-green" data-bet-type="straight" data-bet-value="00">00</div>`;
+  html += '</div><div class="rt-number-grid">';
+  for(let r = 0; r < 12; r++){
+    const base = 34 - r * 3;
+    for(let c = 0; c < 3; c++){
+      const num = String(base + c);
+      const colorClass = rouletteColorOf(num) === 'red' ? 'rt-red-num' : 'rt-black-num';
+      html += `<div class="rt-cell ${colorClass}" data-bet-type="straight" data-bet-value="${num}">${num}</div>`;
+    }
+  }
+  html += '</div>';
+  html += `<div class="rt-row rt-dozens-row">
+    <div class="rt-cell rt-outside" data-bet-type="dozen1">1st 12</div>
+    <div class="rt-cell rt-outside" data-bet-type="dozen2">2nd 12</div>
+    <div class="rt-cell rt-outside" data-bet-type="dozen3">3rd 12</div>
+  </div>`;
+  html += `<div class="rt-row rt-outside-row">
+    <div class="rt-cell rt-outside" data-bet-type="low">1-18</div>
+    <div class="rt-cell rt-outside rt-black-cell" data-bet-type="even">EVEN</div>
+    <div class="rt-cell rt-outside rt-red-cell" data-bet-type="red">RED</div>
+    <div class="rt-cell rt-outside rt-black-cell" data-bet-type="black">BLACK</div>
+    <div class="rt-cell rt-outside" data-bet-type="odd">ODD</div>
+    <div class="rt-cell rt-outside" data-bet-type="high">19-36</div>
+  </div>`;
+  grid.innerHTML = html;
+  grid.querySelectorAll('.rt-cell').forEach(cell => {
+    cell.addEventListener('click', () => rouletteSelectSpot(cell));
+  });
+}
+const ROULETTE_BET_LABELS = {
+  red: 'Red (1:1)', black: 'Black (1:1)', odd: 'Odd (1:1)', even: 'Even (1:1)',
+  low: '1–18 (1:1)', high: '19–36 (1:1)', dozen1: '1st 12 (2:1)', dozen2: '2nd 12 (2:1)', dozen3: '3rd 12 (2:1)'
+};
+function rouletteSelectSpot(cell){
+  document.querySelectorAll('.rt-cell').forEach(c => { c.classList.remove('selected'); const b = c.querySelector('.rt-chip-badge'); if(b) b.remove(); });
+  cell.classList.add('selected');
+  const betType = cell.dataset.betType;
+  const betValue = cell.dataset.betValue;
+  rouletteSelectedBet = betType === 'straight'
+    ? { type: 'straight', value: betValue, label: `Straight ${betValue} (35:1)` }
+    : { type: betType, value: null, label: ROULETTE_BET_LABELS[betType] || betType };
+  document.getElementById('rouletteSelectedSpot').textContent = `Selected: ${rouletteSelectedBet.label}`;
+  rouletteRefreshChipBadge();
+  bjPlayChipSound();
+}
+function rouletteRefreshChipBadge(){
+  const selected = document.querySelector('.rt-cell.selected');
+  if(!selected) return;
+  let badge = selected.querySelector('.rt-chip-badge');
+  const amount = document.getElementById('rouletteBetInput').value || '0';
+  if(!badge){
+    badge = document.createElement('div');
+    badge.className = 'rt-chip-badge';
+    selected.appendChild(badge);
+  }
+  badge.textContent = amount;
+}
+document.getElementById('rouletteBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('rouletteChipDisplay');
+  if(chip){
+    chip.textContent = e.target.value || '0';
+    chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+  }
+  rouletteRefreshChipBadge();
+});
+function rouletteEvaluate(bet, pocket){
+  if(bet.type === 'straight') return pocket === bet.value ? 35 : -1;
+  if(pocket === '0' || pocket === '00') return -1; // standard house rule: all outside/dozen bets lose on zero
+  const num = parseInt(pocket, 10);
+  const color = rouletteColorOf(pocket);
+  switch(bet.type){
+    case 'red': return color === 'red' ? 1 : -1;
+    case 'black': return color === 'black' ? 1 : -1;
+    case 'odd': return num % 2 === 1 ? 1 : -1;
+    case 'even': return num % 2 === 0 ? 1 : -1;
+    case 'low': return num <= 18 ? 1 : -1;
+    case 'high': return num >= 19 ? 1 : -1;
+    case 'dozen1': return num >= 1 && num <= 12 ? 2 : -1;
+    case 'dozen2': return num >= 13 && num <= 24 ? 2 : -1;
+    case 'dozen3': return num >= 25 && num <= 36 ? 2 : -1;
+  }
+  return -1;
+}
+function rouletteRenderHistory(){
+  const el = document.getElementById('rouletteHistory');
+  el.innerHTML = rouletteHistory.slice(-10).reverse().map(pocket => {
+    const color = rouletteColorOf(pocket);
+    const bg = color === 'green' ? '#1f7a4a' : (color === 'red' ? '#8c2a22' : '#141414');
+    return `<div class="roulette-history-chip" style="background:${bg};">${pocket}</div>`;
+  }).join('');
+}
+async function rouletteSpin(){
+  const errEl = document.getElementById('rouletteBetError');
+  errEl.textContent = '';
+  const bet = parseInt(document.getElementById('rouletteBetInput').value, 10);
+  const balance = await getXPBalance();
+  if(!rouletteSelectedBet){ errEl.textContent = 'Tap a number or outside bet on the table first.'; return; }
+  if(!bet || bet < 10){ errEl.textContent = 'Minimum bet is 10 XP.'; return; }
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+
+  document.getElementById('rouletteSpinBtn').disabled = true;
+  document.getElementById('rouletteResultMsg').textContent = '';
+  document.getElementById('rouletteResultMsg').classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  bjPlayChipSound();
+
+  const winningIndex = Math.floor(Math.random() * ROULETTE_WHEEL_ORDER.length);
+  const winningPocket = ROULETTE_WHEEL_ORDER[winningIndex];
+  const anglePer = 360 / ROULETTE_WHEEL_ORDER.length;
+  const targetAngle = winningIndex * anglePer + anglePer / 2;
+  const spins = 6 + Math.floor(Math.random() * 3);
+  rouletteBallRotation = rouletteBallRotation - (rouletteBallRotation % 360) + spins * 360 + targetAngle;
+  const track = document.getElementById('rouletteBallTrack');
+  track.style.transition = 'transform 4.2s cubic-bezier(.12,.67,.18,1)';
+  track.style.transform = `rotate(${rouletteBallRotation}deg)`;
+  bjPlaySpinSound();
+
+  await bjWait(4300);
+  document.getElementById('rouletteSpinBtn').disabled = false;
+
+  const color = rouletteColorOf(winningPocket);
+  const multiplier = rouletteEvaluate(rouletteSelectedBet, winningPocket);
+  const delta = multiplier > 0 ? bet * multiplier : -bet;
+  const isJackpot = rouletteSelectedBet.type === 'straight' && multiplier > 0;
+
+  rouletteHistory.push(winningPocket);
+  rouletteRenderHistory();
+
+  const wheel = document.getElementById('rouletteWheel');
+  wheel.classList.remove('pc-winner-flash'); void wheel.offsetWidth; wheel.classList.add('pc-winner-flash');
+
+  const resultEl = document.getElementById('rouletteResultMsg');
+  const colorLabel = color === 'green' ? '🟢 Green' : (color === 'red' ? '🔴 Red' : '⚫ Black');
+  resultEl.textContent = `${winningPocket} — ${colorLabel} (${delta >= 0 ? '+' : ''}${delta} XP)`;
+  resultEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : 'var(--loss)');
+  resultEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+
+  const panelEl = document.getElementById('casinoGameRoulette');
+  const wheelPanelEl = document.getElementById('rouletteWheelPanel');
+  if(delta > 0){
+    bjPlayChime(true);
+    wheelPanelEl.classList.remove('pc-flash-gold'); void wheelPanelEl.offsetWidth; wheelPanelEl.classList.add('pc-flash-gold');
+    bjLaunchConfetti(resultEl, isJackpot ? 42 : 22);
+    setTimeout(() => wheelPanelEl.classList.remove('pc-flash-gold'), 700);
+  } else {
+    bjPlayChime(false);
+    panelEl.classList.add('pc-shake');
+    setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
+  }
+
+  await awardXP(delta, delta > 0 ? 'Roulette win' : 'Roulette loss', { silent: true });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+document.getElementById('rouletteSpinBtn').addEventListener('click', rouletteSpin);
+
+// ---- Casino War ----
+// One card each, higher card wins (Ace high). A tie offers Go to War
+// (double the stake: burn 3 cards, deal one more each, higher of THIS
+// round wins) or Surrender (forfeit half the original bet immediately).
+// House rule used here, stated plainly since real casinos vary: winning
+// the war pays 1:1 on the ORIGINAL bet (the raise is simply returned,
+// i.e. pushed) — losing the war loses BOTH the original bet and the raise.
+// A second tie during the war is a full push (everything returned).
+let warDeck = [];
+let warOriginalBet = 0;
+let warPlayerCard = null, warDealerCard = null;
+function warCardValue(c){ if(c.rank === 'A') return 14; if(c.rank === 'K') return 13; if(c.rank === 'Q') return 12; if(c.rank === 'J') return 11; return Number(c.rank); }
+function warRenderSingle(containerId, card){
+  const el = document.getElementById(containerId);
+  el.innerHTML = bjRenderCards([card], true);
+}
+async function warDeal(){
+  const errEl = document.getElementById('warBetError');
+  errEl.textContent = '';
+  const bet = parseInt(document.getElementById('warBetInput').value, 10);
+  const ppOn = document.getElementById('warPerfectPairsCheck').checked;
+  const ppBet = parseInt(document.getElementById('warPerfectPairsAmount').value, 10) || 0;
+  const balance = await getXPBalance();
+  const totalStake = bet + (ppOn ? ppBet : 0);
+  if(!bet || bet < 10){ errEl.textContent = 'Minimum bet is 10 XP.'; return; }
+  if(ppOn && ppBet < 10){ errEl.textContent = 'Minimum Pairs side bet is 10 XP.'; return; }
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+
+  warOriginalBet = bet;
+  warDeck = bjFreshDeck();
+  warPlayerCard = warDeck.pop();
+  warDealerCard = warDeck.pop();
+
+  document.getElementById('warBetPanel').style.display = 'none';
+  document.getElementById('warTableArea').style.display = 'block';
+  const outcomeEl = document.getElementById('warOutcomeMsg');
+  outcomeEl.textContent = ''; outcomeEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  const ppEl = document.getElementById('warPPOutcomeMsg');
+  ppEl.textContent = '';
+  document.getElementById('warGoBtn').style.display = 'none';
+  document.getElementById('warSurrenderBtn').style.display = 'none';
+  document.getElementById('warNewHandBtn').style.display = 'none';
+
+  warRenderSingle('warDealerCards', warDealerCard);
+  warRenderSingle('warPlayerCards', warPlayerCard);
+  bjPlayCardSound();
+
+  if(ppOn){
+    const isPair = warPlayerCard.rank === warDealerCard.rank;
+    await bjWait(300);
+    if(isPair){
+      const win = ppBet * 10;
+      ppEl.innerHTML = `<span style="color:var(--win); font-weight:700;">Pairs! +${win} XP</span>`;
+      ppEl.classList.remove('bj-outcome-pop'); void ppEl.offsetWidth; ppEl.classList.add('bj-outcome-pop');
+      bjPlaySideBetDing();
+      bjLaunchConfetti(ppEl, 14);
+      await awardXP(win, 'Casino War Pairs side bet', { silent: true });
+    } else {
+      ppEl.innerHTML = `<span style="color:var(--loss);">Pairs: no match (-${ppBet} XP)</span>`;
+      await awardXP(-ppBet, 'Casino War Pairs side bet', { silent: true });
+    }
+    const bal = await getXPBalance();
+    updateXPBalanceDisplay(bal);
+  }
+
+  await bjWait(400);
+  const pv = warCardValue(warPlayerCard), dv = warCardValue(warDealerCard);
+  if(pv === dv){
+    outcomeEl.textContent = "It's a tie! Go to war, or surrender?";
+    outcomeEl.style.color = 'var(--brass-light)';
+    outcomeEl.classList.add('bj-outcome-pop');
+    document.getElementById('warGoBtn').style.display = 'inline-block';
+    document.getElementById('warSurrenderBtn').style.display = 'inline-block';
+  } else {
+    await warResolve(pv > dv ? bet : -bet, pv > dv ? 'You win' : 'Dealer wins', false);
+  }
+}
+async function warResolve(delta, label, wasWar){
+  const outcomeEl = document.getElementById('warOutcomeMsg');
+  outcomeEl.textContent = `${label} (${delta >= 0 ? '+' : ''}${delta} XP)`;
+  outcomeEl.style.color = delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)');
+  outcomeEl.classList.remove('bj-outcome-pop'); void outcomeEl.offsetWidth; outcomeEl.classList.add('bj-outcome-pop');
+  document.getElementById('warGoBtn').style.display = 'none';
+  document.getElementById('warSurrenderBtn').style.display = 'none';
+  document.getElementById('warNewHandBtn').style.display = 'inline-block';
+
+  const tableEl = document.getElementById('warTableArea');
+  if(delta > 0){
+    bjPlayChime(true);
+    tableEl.classList.remove('pc-flash-gold'); void tableEl.offsetWidth; tableEl.classList.add('pc-flash-gold');
+    bjLaunchConfetti(outcomeEl, wasWar ? 42 : 22);
+    setTimeout(() => tableEl.classList.remove('pc-flash-gold'), 700);
+  } else if(delta < 0){
+    bjPlayChime(false);
+    tableEl.classList.add('pc-shake', 'pc-flash-red');
+    setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700);
+  }
+
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Casino War win' : 'Casino War loss', { silent: true });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+async function warGoToWar(){
+  document.getElementById('warGoBtn').style.display = 'none';
+  document.getElementById('warSurrenderBtn').style.display = 'none';
+  bjPlayChipSound();
+  // burn three cards face down, matching the real-table ritual, then deal one more each
+  warDeck.pop(); warDeck.pop(); warDeck.pop();
+  await bjWait(350);
+  warPlayerCard = warDeck.pop();
+  warDealerCard = warDeck.pop();
+  warRenderSingle('warDealerCards', warDealerCard);
+  warRenderSingle('warPlayerCards', warPlayerCard);
+  bjPlayCardSound();
+  await bjWait(500);
+  const pv = warCardValue(warPlayerCard), dv = warCardValue(warDealerCard);
+  if(pv === dv){
+    await warResolve(0, 'Tied again — everything pushes', true);
+  } else if(pv > dv){
+    await warResolve(warOriginalBet, 'You win the war!', true);
+  } else {
+    await warResolve(-warOriginalBet * 2, 'Dealer wins the war', true);
+  }
+}
+async function warSurrender(){
+  const delta = -Math.floor(warOriginalBet / 2);
+  await warResolve(delta, 'Surrendered', false);
+}
+function warNewHand(){
+  document.getElementById('warBetPanel').style.display = 'block';
+  document.getElementById('warTableArea').style.display = 'none';
+}
+document.getElementById('warDealBtn').addEventListener('click', warDeal);
+document.getElementById('warGoBtn').addEventListener('click', warGoToWar);
+document.getElementById('warSurrenderBtn').addEventListener('click', warSurrender);
+document.getElementById('warNewHandBtn').addEventListener('click', warNewHand);
+document.getElementById('warBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('warChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+
+// ================= /Casino / XP system =================
+
 async function checkForUpdate(){
+
   try{
     const res = await fetch('version.json?_=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
@@ -1839,8 +3448,34 @@ function openProfile(name){
     <div class="profile-stat-cell"><span class="lbl">Individual Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
     <div class="profile-stat-cell"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></div>
     <div class="profile-stat-cell"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></div>
   `;
+  document.getElementById('profileModal').dataset.openName = name;
+  loadProfileXP(m.linkedUid, name);
   document.getElementById('profileModal').classList.add('open');
+}
+// Loaded separately/async from the rest of the profile (which is all local,
+// synchronous data) since XP lives in Firebase under the linked account's
+// uid, not on the member record itself. Guards against a fast second click
+// landing an in-flight fetch for the PREVIOUS profile onto the modal after
+// it's already moved on to a new one.
+async function loadProfileXP(linkedUid, forName){
+  const el = document.getElementById('profileXPVal');
+  if(!linkedUid){
+    if(el) el.textContent = '—';
+    return;
+  }
+  try{
+    const res = await authedFetch(`/xp/${linkedUid}/balance.json`);
+    const bal = await res.json();
+    if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
+    const freshEl = document.getElementById('profileXPVal');
+    if(freshEl) freshEl.textContent = bal != null ? bal.toLocaleString() : '—';
+  }catch(e){
+    if(document.getElementById('profileModal').dataset.openName !== forName) return;
+    const freshEl = document.getElementById('profileXPVal');
+    if(freshEl) freshEl.textContent = '—';
+  }
 }
 document.getElementById('profileCloseBtn').addEventListener('click', () => {
   document.getElementById('profileModal').classList.remove('open');
@@ -4865,6 +6500,8 @@ function startApp(){
   startSmartPolling(refreshNews, 300000); // headlines don't need to be checked often — every 5 min
   refreshBoardJokerData();
   startSmartPolling(refreshBoardJokerData, 240000); // Joker picks don't change often — every 4 min is plenty, same cadence as the ladder
+  ensureXPInitialized().then(() => checkAndAwardTippingXP());
+  startSmartPolling(checkAndAwardTippingXP, 300000); // catches newly-finished rounds without needing the Casino tab opened
 }
 initAuthGate();
 </script>
