@@ -5807,9 +5807,17 @@ function computeHighlights(history){
     });
     const ie = h.individualEntries || {};
     Object.entries(ie).forEach(([name, e]) => {
-      if(!e || !(e.pl > 0)) return;
-      if(!bestIndWin || e.pl > bestIndWin.pl){
-        bestIndWin = { name, pl: e.pl, week: h.label };
+      if(!e) return;
+      // maxPl is the biggest SINGLE bet that week — falls back to the
+      // combined pl for older saved weeks that predate this field, which
+      // is exactly correct for the common case (one bet that week) and
+      // only wrong for a genuinely-combined multi-bet week, which needs a
+      // manual touch-up via the Ledger's "Fix a saved week" tool anyway
+      // since the original per-bet breakdown isn't recoverable otherwise.
+      const single = e.maxPl != null ? e.maxPl : e.pl;
+      if(!(single > 0)) return;
+      if(!bestIndWin || single > bestIndWin.pl){
+        bestIndWin = { name, pl: single, week: h.label };
       }
     });
   });
