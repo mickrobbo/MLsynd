@@ -3515,7 +3515,13 @@ function bjOfferInsurance(){
     const onYes = async () => {
       cleanup();
       const balance = await getXPBalance();
-      if(balance == null || balance < insuranceCost){
+      // Checked against balance minus the main bet, not raw balance — the
+      // main bet is still fully at risk in this same hand (nothing gets
+      // deducted until resolution), so validating Insurance against the
+      // full balance let someone take on more than they actually had:
+      // lose Insurance, then also lose the main hand, and the two losses
+      // together could exceed what they started with.
+      if(balance == null || balance < bjCurrentBet + insuranceCost){
         const insEl = document.getElementById('bjInsuranceOutcomeMsg');
         insEl.textContent = 'Not enough XP for Insurance — skipped.';
         insEl.style.color = 'var(--loss)';
@@ -3623,7 +3629,11 @@ async function bjAdvanceOrFinishHand(){
 async function bjDoubleDown(){
   if(!bjHandActive || bjIsSplit || bjPlayerHand.length !== 2) return;
   const balance = await getXPBalance();
-  if(balance == null || balance < bjCurrentBet){
+  // Checked against double the current bet, not just the extra half —
+  // the original bet is still fully at risk in this same hand, so
+  // doubling needs balance for BOTH the amount already at risk and the
+  // matching amount being added, or a loss could take someone negative.
+  if(balance == null || balance < bjCurrentBet * 2){
     const errEl = document.getElementById('bjOutcomeMsg');
     errEl.textContent = 'Not enough XP to double down.';
     errEl.style.color = 'var(--loss)';
@@ -3646,7 +3656,11 @@ async function bjDoubleDown(){
 async function bjSplit(){
   if(!bjHandActive || bjIsSplit || bjPlayerHand.length !== 2 || bjCardValue(bjPlayerHand[0]) !== bjCardValue(bjPlayerHand[1])) return;
   const balance = await getXPBalance();
-  if(balance == null || balance < bjCurrentBet){
+  // Same reasoning as Double Down — the original bet is still fully at
+  // risk, and the second hand needs a matching bet of its own, so this
+  // needs balance for both, not just one more bjCurrentBet on top of an
+  // already-spent-looking balance.
+  if(balance == null || balance < bjCurrentBet * 2){
     const errEl = document.getElementById('bjOutcomeMsg');
     errEl.textContent = 'Not enough XP to split.';
     errEl.style.color = 'var(--loss)';
@@ -4932,6 +4946,17 @@ async function warResolve(delta, label, wasWar){
   renderXPLog();
 }
 async function warGoToWar(){
+  const balance = await getXPBalance();
+  // Same principle as Blackjack's Double Down/Split — going to war doubles
+  // the total at risk (the original bet stays live, plus a matching
+  // raise), so this needs balance for both, or a loss could take someone
+  // negative. This one had no balance check at all before now; Surrender
+  // remains available either way as the lower-risk option.
+  if(balance == null || balance < warOriginalBet * 2){
+    const errEl = document.getElementById('warOutcomeMsg');
+    if(errEl){ errEl.textContent = 'Not enough XP to go to war — try Surrender instead.'; errEl.style.color = 'var(--loss)'; }
+    return;
+  }
   document.getElementById('warGoBtn').style.display = 'none';
   document.getElementById('warSurrenderBtn').style.display = 'none';
   bjPlayChipSound();
