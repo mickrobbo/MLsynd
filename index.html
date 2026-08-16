@@ -5133,6 +5133,32 @@ document.getElementById('slotsBetInput').addEventListener('input', (e) => {
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
 });
 
+// A bright ascending coin-cascade sound for a casino win — originally part
+// of the Slots sound set, but Video Poker's win celebration (below) also
+// calls this on every winning hand. The Slots restoration earlier swapped
+// in a recovered implementation that reuses Spin the Wheel's peg-tick
+// sound instead and never redefined this function — leaving Video Poker
+// calling a function that no longer existed. That's a real crash (an
+// uncaught ReferenceError), not a cosmetic gap: it fired on every single
+// Video Poker win and halted vpDraw() mid-execution, which is exactly why
+// the hand could never reset back to a fresh Deal afterward — the reset
+// code sits after this call and never got to run. Restoring the function
+// fixes both the crash and, as a direct consequence, the stuck-hand bug.
+function slotsPlayCoinCascade(big){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const count = big ? 16 : 7;
+  for(let i = 0; i < count; i++){
+    const t = now + i * 0.045 + Math.random() * 0.012;
+    const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 1500 + Math.random() * 900;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.13, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.16);
+  }
+}
 // ---- Video Poker (Tens or Better) ----
 const VP_PAYTABLE = [
   { key:'royal',    label:'Royal Flush',      mult:250 },
