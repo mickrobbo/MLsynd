@@ -267,6 +267,19 @@
     background: radial-gradient(circle at 30% 25%, #ffffff, #e2e2e2 45%, #a8a8a8 75%, #757575);
     box-shadow:0 2px 4px rgba(0,0,0,.6), 0 0 4px rgba(255,255,255,.5), 0 1px 1px rgba(255,255,255,.6) inset;
   }
+  /* Perfect Pairs / Pairs toggle icon — a tiny CSS-built card, not an
+     emoji. 🎴 and 🂠 were rendering as two different generic fallback
+     glyphs (neither an actual card) depending on the game, which is
+     exactly why the two pills looked mismatched. A custom-built icon
+     renders identically everywhere, same as the Video Poker bubble icon
+     already does. */
+  .pp-pill-icon{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:13px; height:17px; border-radius:2px; background:#f0ead8;
+    box-shadow:0 1px 2px rgba(0,0,0,.45); border:1px solid rgba(0,0,0,.15);
+    vertical-align:-3px; margin-right:3px;
+  }
+  .pp-pill-icon span{ font-size:9px; font-weight:800; color:#a8283a; line-height:1; }
 
   /* ---- Casino hero — XP balance, rank, next-milestone progress ---- */
   .casino-hero{
@@ -1593,7 +1606,7 @@
         <button type="button" class="chip-clear-btn" data-target="bjPerfectPairsAmount">Clear Chips</button>
       </div>
       <div class="deal-row">
-        <button type="button" id="bjPerfectPairsToggle" class="pill-btn pp-toggle-pill">🎴 Perfect Pairs</button>
+        <button type="button" id="bjPerfectPairsToggle" class="pill-btn pp-toggle-pill"><span class="pp-pill-icon"><span>♥</span></span>Perfect Pairs</button>
         <button type="button" id="bjDealBtn" class="pill-btn pill-btn-primary">Deal</button>
       </div>
       <div id="bjBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
@@ -1746,7 +1759,7 @@
         <button type="button" class="chip-clear-btn" data-target="warPerfectPairsAmount">Clear Chips</button>
       </div>
       <div class="deal-row">
-        <button type="button" id="warPerfectPairsToggle" class="pill-btn pp-toggle-pill">🂠 Pairs bet</button>
+        <button type="button" id="warPerfectPairsToggle" class="pill-btn pp-toggle-pill"><span class="pp-pill-icon"><span>♥</span></span>Pairs bet</button>
         <button type="button" id="warDealBtn" class="pill-btn pill-btn-primary">Deal</button>
       </div>
       <div id="warBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
