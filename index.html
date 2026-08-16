@@ -153,6 +153,14 @@
   }
   .playing-card.pc-dealt{ animation: cardDealIn .4s cubic-bezier(.22,.9,.32,1.15) both; }
 
+  /* Fold-away: existing cards sweep off before a new hand starts, like a
+     dealer clearing the table rather than the row just vanishing. */
+  @keyframes cardFoldOut{
+    0%{ opacity:1; transform: translateY(0) rotate(0deg) scale(1); }
+    100%{ opacity:0; transform: translateY(26px) rotate(14deg) scale(.68); }
+  }
+  .playing-card.pc-folding{ animation: cardFoldOut .32s ease-in both; }
+
   /* Dealer's hole card: a real 3D flip rather than a swap, front=back
      pattern, back=the actual card, rotated into view on reveal. */
   .pc-flip-wrap{ width:56px; height:80px; perspective:700px; flex-shrink:0; }
@@ -182,7 +190,7 @@
     0%,100%{ box-shadow:0 4px 10px rgba(0,0,0,.4), 0 0 0 rgba(255,214,120,0); }
     50%{ box-shadow:0 4px 14px rgba(0,0,0,.4), 0 0 18px rgba(255,214,120,.55); }
   }
-  #bjDealBtn, #bjHitBtn, #bjStandBtn, #bacDealBtn, #rouletteSpinBtn, #warDealBtn, #slotsSpinBtn, #vpDealBtn{ animation: ctaGlow 2.2s ease-in-out infinite; }
+  #bjDealBtn, #bjHitBtn, #bjStandBtn, #bacDealBtn, #rouletteSpinBtn{ animation: ctaGlow 2.2s ease-in-out infinite; }
 
   /* A soft diagonal sheen that sweeps across every pill button in this tab
      on a loop — small, but it's what pushes buttons from "flat rectangle"
@@ -219,159 +227,32 @@
   }
 
   /* ---- Casino game selector + Roulette wheel ---- */
-  /* 3x2 grid, not a 6-across nowrap row — six games squeezed into one row
-     forced 9.5px unreadable nowrap text; a grid gives each bubble real
-     width so the label can breathe (and wrap to 2 lines) at a size people
-     can actually read. */
-  .game-bubble-row{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .game-bubble-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
   .game-bubble{
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
-    padding:14px 6px; border-radius:14px; cursor:pointer;
+    min-width:84px; padding:14px 10px; border-radius:14px; cursor:pointer;
     background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
     transition: transform .1s ease, box-shadow .2s ease;
   }
   .game-bubble:active{ transform:scale(.96); }
-  .game-bubble-icon{ font-size:25px; line-height:1; }
-  .game-bubble-label{
-    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:.3px;
-    text-transform:uppercase; color:var(--chalk); white-space:normal; text-align:center; line-height:1.15;
-  }
+  .game-bubble-icon{ font-size:26px; line-height:1; }
+  .game-bubble-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:.5px; text-transform:uppercase; color:var(--chalk); white-space:nowrap; }
   .game-bubble.active{
     background: linear-gradient(165deg, var(--brass-light), var(--brass));
     border-color: var(--brass-light);
     box-shadow: 0 0 20px rgba(255,214,120,.45), 0 4px 10px rgba(0,0,0,.3);
   }
   .game-bubble.active .game-bubble-label{ color:#2a2005; }
-
-  /* ---- Casino hero — XP balance, rank, next-milestone progress ---- */
-  .casino-hero{
-    position:relative; overflow:hidden;
-    background: radial-gradient(circle at 50% -20%, rgba(255,214,120,.22), transparent 62%), linear-gradient(165deg, var(--felt-2), var(--felt-3));
+  /* The Spin the Wheel CTA — deliberately NOT another small bubble in the
+     row, since it's a free bonus feature rather than one of the four core
+     wagering games, and stretches to match the row's own full width. */
+  .game-bubble-wide{
+    display:block; width:100%; margin-top:12px; padding:13px; border-radius:14px; cursor:pointer;
+    background: linear-gradient(165deg, var(--brass-light), var(--brass)); border:1px solid var(--brass-light);
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:15px; letter-spacing:.5px; text-transform:uppercase;
+    color:#2a2005; box-shadow:0 4px 12px rgba(0,0,0,.3); transition: transform .1s ease;
   }
-  .casino-hero-glow{ padding-top:2px; }
-  .casino-hero-xp{
-    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:46px; color:var(--brass-light);
-    text-shadow: 0 0 26px rgba(255,214,120,.55); margin:2px 0 1px; letter-spacing:.5px; line-height:1.1;
-  }
-  .casino-hero-rank{
-    font-size:11.5px; font-weight:700; letter-spacing:.3px; color:var(--brass);
-    min-height:15px; margin-bottom:2px;
-  }
-  .casino-milestone-track{ max-width:300px; margin:12px auto 6px; }
-  .casino-milestone-bar{
-    height:9px; border-radius:999px; background:rgba(0,0,0,.35); overflow:hidden;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.03);
-  }
-  .casino-milestone-fill{
-    height:100%; border-radius:999px; width:0%;
-    background:linear-gradient(90deg, var(--brass-dim), var(--brass-light));
-    box-shadow: 0 0 10px rgba(255,214,120,.6);
-    transition: width .7s cubic-bezier(.22,.9,.32,1.15);
-  }
-  .casino-hero-actions{ display:flex; gap:10px; justify-content:center; margin-top:16px; }
-  .casino-hero-action-btn{
-    flex:1; max-width:180px; padding:13px 10px; border-radius:14px; cursor:pointer;
-    background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
-    color:var(--brass-light); font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px;
-    letter-spacing:.4px; text-transform:uppercase; box-shadow: 0 4px 10px rgba(0,0,0,.25);
-    transition: transform .1s ease, box-shadow .2s ease;
-  }
-  .casino-hero-action-btn:active{ transform:scale(.96); }
-  .casino-hero-action-btn:disabled{ opacity:.5; cursor:default; }
-  #weeklyBonusBtn.claimed{
-    background: linear-gradient(165deg, var(--brass-light), var(--brass)); color:#2a2005; border-color:var(--brass-light);
-    box-shadow: 0 0 14px rgba(255,214,120,.4);
-  }
-
-  /* ---- Casino landing hub — Games / Rules / How to earn XP / Badges ---- */
-  /* Grid, not a flex-wrap row — learned from the earlier 6-across game-
-     bubble bug: cramming items into one row forces small, awkward text.
-     A 2x2 grid gives each bubble real width no matter how many there are. */
-  .casino-hub-row{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-top:4px; }
-  .casino-hub-bubble{
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
-    padding:16px 8px; border-radius:16px; cursor:pointer;
-    background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
-    box-shadow: 0 4px 10px rgba(0,0,0,.25);
-  }
-  .casino-hub-bubble:active{ transform:scale(.96); }
-  .casino-hub-icon{ font-size:26px; line-height:1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
-  .casino-hub-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); }
-  .casino-hub-sub{ font-size:9.5px; color:var(--muted); text-align:center; line-height:1.3; }
-  .casino-view{ display:none; }
-  .casino-view.active{ display:block; }
-  #casinoRulesHubList, #xpInfoModalBody .xp-source-row{
-    display:flex; justify-content:space-between; align-items:center; gap:10px;
-    padding:10px 4px; border-bottom:1px solid var(--line); font-size:12.5px;
-  }
-  #casinoRulesHubList button{
-    width:100%; text-align:left; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk);
-    border-radius:10px; padding:12px 14px; margin-bottom:8px; font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer;
-  }
-  #casinoRulesHubList button:active{ border-color:var(--brass); }
-
-  /* ---- Casino badges ---- */
-  .casino-badge-row{
-    display:flex; align-items:center; gap:12px; padding:12px 6px;
-    border-bottom:1px solid var(--line); transition: opacity .2s ease;
-  }
-  .casino-badge-row.locked{ opacity:.4; }
-  .casino-badge-icon{
-    font-size:28px; width:42px; height:42px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--felt-3), var(--ink));
-    box-shadow: inset 0 0 0 1px rgba(255,214,120,.25);
-  }
-  .casino-badge-row.unlocked .casino-badge-icon{
-    background: radial-gradient(circle at 32% 26%, #fff6de, var(--brass-light) 35%, var(--brass) 65%, var(--brass-dim) 100%);
-    box-shadow:0 0 14px rgba(255,214,120,.5), inset 0 2px 3px rgba(255,255,255,.6);
-  }
-  .casino-badge-info{ flex:1; min-width:0; }
-  .casino-badge-name{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; letter-spacing:.3px; text-transform:uppercase; color:var(--chalk); }
-  .casino-badge-row.unlocked .casino-badge-name{ color:var(--brass-light); }
-  .casino-badge-desc{ font-size:11px; color:var(--muted); margin-top:2px; }
-  .casino-badge-status{ font-size:17px; flex-shrink:0; }
-
-  /* ---- Slots (5-reel) ---- */
-  .slots-cabinet{
-    background: radial-gradient(ellipse at 50% 20%, #124631 0%, #0A2A1E 65%, #071c14 100%);
-    border:1px solid var(--brass-dim); border-radius:16px; padding:18px 10px;
-    box-shadow: inset 0 0 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);
-  }
-  .slots-reel-row{ display:flex; gap:6px; justify-content:center; }
-  .slots-reel{
-    width:56px; height:76px; border-radius:8px; overflow:hidden; position:relative;
-    background:linear-gradient(160deg,#FDFBF5,#EDE6D3); border:1px solid rgba(0,0,0,.3);
-    box-shadow: inset 0 4px 8px rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.5);
-  }
-  .slots-reel-strip{ display:flex; flex-direction:column; align-items:center; will-change:transform; }
-  .slots-symbol{ width:56px; height:76px; display:flex; align-items:center; justify-content:center; font-size:34px; flex-shrink:0; }
-  .slots-reel.spinning .slots-reel-strip{ animation: slotsSpin .12s linear infinite; }
-  @keyframes slotsSpin{ from{ transform:translateY(0); } to{ transform:translateY(76px); } }
-  .slots-reel.pc-winner-flash{ animation: roulettePocketFlash .5s ease 3; }
-  @keyframes slotsReelStopBounce{
-    0%{ transform:translateY(-8px); }
-    55%{ transform:translateY(4px); }
-    100%{ transform:translateY(0); }
-  }
-  .slots-reel.pc-reel-stop{ animation: slotsReelStopBounce .3s cubic-bezier(.34,1.6,.5,1); }
-  .slots-reel.pc-wild-land{ box-shadow: 0 0 20px rgba(255,214,120,.9), inset 0 4px 8px rgba(0,0,0,.35); border-color:var(--brass-light); }
-  @keyframes slotsCabinetPulse{ 0%,100%{ box-shadow: inset 0 0 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03); } 50%{ box-shadow: inset 0 0 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03), 0 0 26px rgba(255,214,120,.35); } }
-  .slots-cabinet.pc-jackpot-pulse{ animation: slotsCabinetPulse .5s ease 4; }
-
-  /* ---- Video Poker ---- */
-  .vp-hand-row{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
-  .vp-card-col{ display:flex; flex-direction:column; align-items:center; gap:8px; }
-  .vp-hold-pill{
-    padding:5px 12px; font-size:10.5px; border-radius:999px; cursor:pointer;
-    background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--muted); font-weight:700;
-  }
-  .vp-hold-pill.held{ background:linear-gradient(165deg, var(--brass-light), var(--brass)); border-color:var(--brass-light); color:#2a2005; box-shadow:0 0 12px rgba(255,214,120,.4); }
-  .vp-card-col .playing-card.pc-held-glow{ box-shadow:0 0 0 2px var(--brass-light), 0 4px 10px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.6); }
-  @keyframes vpHoldPop{ 0%{ transform:scale(1); } 45%{ transform:scale(1.08) translateY(-3px); } 100%{ transform:scale(1); } }
-  .vp-card-col .playing-card.pc-hold-pop{ animation: vpHoldPop .25s cubic-bezier(.34,1.6,.5,1); }
-  .vp-paytable{ width:100%; min-width:0; border-collapse:collapse; font-size:11px; margin-top:10px; }
-  .vp-paytable td{ padding:4px 6px; border-bottom:1px solid var(--line); }
-  .vp-paytable tr.vp-hit td{ color:var(--brass-light); font-weight:700; }
+  .game-bubble-wide:active{ transform:scale(.98); }
 
   .roulette-wheel-wrap{
     position:relative; width:250px; height:250px; margin:14px auto 10px;
@@ -416,6 +297,15 @@
     background: radial-gradient(circle at 30% 25%, #ffffff, #e2e2e2 45%, #a8a8a8 75%, #757575);
     box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset;
   }
+  /* Exact same pearlescent-white gradient/shadow as the real roulette ball
+     above, just sized for the game-bubble icon slot — gives Roulette its
+     own genuinely distinct, on-theme icon instead of sharing the ferris
+     wheel emoji with Spin the Wheel. */
+  .roulette-ball-icon{
+    display:inline-block; width:20px; height:20px; border-radius:50%;
+    background: radial-gradient(circle at 30% 25%, #ffffff, #e2e2e2 45%, #a8a8a8 75%, #757575);
+    box-shadow:0 2px 4px rgba(0,0,0,.6), 0 0 4px rgba(255,255,255,.5), 0 1px 1px rgba(255,255,255,.6) inset;
+  }
   .roulette-hub{
     position:absolute; top:50%; left:50%; width:46px; height:46px; margin:-23px 0 0 -23px; border-radius:50%;
     background: radial-gradient(circle at 32% 26%, #fff6de, var(--brass-light) 35%, var(--brass) 65%, var(--brass-dim) 100%);
@@ -429,6 +319,69 @@
   }
   @keyframes roulettePocketFlash{ 0%,100%{ filter:brightness(1); } 50%{ filter:brightness(2.1); } }
   .roulette-wheel.pc-winner-flash{ animation: roulettePocketFlash .5s ease 3; }
+
+  /* ---- Daily Spin prize wheel — same premium bezel/glass treatment as
+     Roulette's wheel, distinct prize-wheel colour palette, with extra
+     depth (dividers, layered bezel, glass sheen) since it's the newest
+     and most "look at me" feature on the tab. ---- */
+  .dailyspin-wheel-wrap{ position:relative; width:250px; height:250px; margin:14px auto 10px; filter: drop-shadow(0 14px 26px rgba(0,0,0,.7)); }
+  .dailyspin-bezel-outer{
+    position:absolute; inset:-11px; border-radius:50%;
+    background:
+      radial-gradient(circle at 30% 22%, rgba(255,255,255,.6), rgba(255,255,255,0) 30%),
+      conic-gradient(from -40deg, #fdf0c8, #d4af5a, #8a6620, #6b4f1a, #b9903c, #fdf0c8, #b9903c, #6b4f1a, #8a6620, #d4af5a, #fdf0c8);
+    box-shadow: 0 4px 14px rgba(0,0,0,.55), inset 0 4px 6px rgba(255,255,255,.55), inset 0 -5px 9px rgba(0,0,0,.6);
+  }
+  .dailyspin-bezel-outer::after{ /* inner beveled ring, sits between the gold rim and the wheel face for a stepped, jeweled-case look */
+    content:''; position:absolute; inset:6px; border-radius:50%;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.5), inset 0 -1px 2px rgba(255,255,255,.25);
+    border:1px solid rgba(0,0,0,.3);
+  }
+  .dailyspin-wheel{
+    position:absolute; inset:0; border-radius:50%;
+    box-shadow: inset 0 0 32px rgba(0,0,0,.7), inset 0 0 0 3px rgba(0,0,0,.55), inset 0 3px 5px rgba(255,255,255,.1);
+    transition: transform 4s cubic-bezier(.1,.6,.15,1);
+  }
+  /* Thin bright separator at every segment boundary — same trick as
+     Roulette's dividers, the single biggest thing that reads as "real
+     wheel with individually walled segments" over "pie chart". */
+  .dailyspin-dividers{
+    position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    background: repeating-conic-gradient(rgba(255,224,160,.5) 0deg 0.3deg, transparent 0.3deg 15deg);
+  }
+  .dailyspin-glass-shine{
+    position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    background: linear-gradient(125deg, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0) 68%, rgba(255,255,255,.1) 100%);
+  }
+  /* Labels live in their own non-rotating layer, positioned via the exact
+     same rotate/translate/counter-rotate trick as before, but ALSO get a
+     live counter-rotation applied at spin time (matching the wheel's own
+     transition duration+easing) so the text stays genuinely upright and
+     horizontal for the WHOLE animation, not just at rest — previously
+     the labels were children of the spinning wheel itself, so they
+     visibly tilted and jumbled together as soon as it moved. */
+  .dailyspin-labels-layer{ position:absolute; inset:0; z-index:2; pointer-events:none; }
+  .dailyspin-segment-label{
+    position:absolute; top:50%; left:50%; width:38px; margin:-7px 0 0 -19px;
+    font-size:9.5px; font-weight:800; text-align:center; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.75);
+    transition: transform 4s cubic-bezier(.1,.6,.15,1);
+  }
+  .dailyspin-segment-label.jackpot-label{
+    width:24px; margin-left:-12px; font-size:15px; line-height:1;
+    text-shadow:0 1px 3px rgba(0,0,0,.5);
+  }
+  .dailyspin-pointer{
+    position:absolute; top:-15px; left:50%; margin-left:-9px; width:0; height:0; z-index:5;
+    border-left:9px solid transparent; border-right:9px solid transparent; border-top:17px solid var(--brass-light);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.6));
+  }
+  .dailyspin-hub{
+    position:absolute; top:50%; left:50%; width:46px; height:46px; margin:-23px 0 0 -23px; border-radius:50%;
+    background: radial-gradient(circle at 32% 26%, #fff6de, var(--brass-light) 35%, var(--brass) 65%, var(--brass-dim) 100%);
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+    box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 2px 3px rgba(255,255,255,.6), inset 0 -3px 5px rgba(0,0,0,.35); z-index:4;
+  }
+  .dailyspin-wheel.pc-winner-flash{ animation: roulettePocketFlash .5s ease 3; }
 
   /* ---- Tap-to-add chip rail (reused across every game's bet panel) ---- */
   .chip-rail{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
@@ -447,44 +400,19 @@
   .table-chip.chip-250{ background: radial-gradient(circle at 35% 30%, #b568d8, #7a2fa0 60%, #4f1c69); }
   @keyframes chipTapPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.25) translateY(-4px); } 100%{ transform:scale(1); } }
   .table-chip.pc-chip-tap{ animation: chipTapPop .3s cubic-bezier(.34,1.6,.5,1); }
-  /* Roulette's "select a denomination" chip tray — the currently-selected
-     chip stays visibly raised/lit until a different one is tapped. */
-  .table-chip.active-chip{
-    box-shadow: 0 0 0 3px var(--brass-light), 0 5px 12px rgba(0,0,0,.55), 0 0 14px rgba(255,214,120,.5);
-    transform: translateY(-3px) scale(1.06);
-  }
-  /* Clear-chips control: a labelled pill (not a bare red circle+✕) so its
-     purpose reads at a glance and it matches every other control's language. */
   .chip-clear-btn{
-    display:inline-flex; align-items:center; justify-content:center; gap:4px;
-    height:44px; padding:0 16px; border-radius:999px; white-space:nowrap;
-    background:rgba(193,96,74,.14); border:1px solid var(--loss); color:var(--loss);
-    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:13px; letter-spacing:.6px; text-transform:uppercase;
-    cursor:pointer;
+    width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:rgba(193,96,74,.18); border:1px solid var(--loss); color:var(--loss); font-weight:700; cursor:pointer;
   }
-  .chip-clear-btn:active{ transform:scale(.92); border-color:#e07a60; background:rgba(193,96,74,.24); }
+  .chip-clear-btn:active{ transform:scale(.9); }
 
-  /* ---- Shared "deal row" — primary action + any pill toggles beside it ---- */
-  .deal-row{ display:flex; align-items:center; justify-content:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
-  .pill-btn-primary{
-    background:var(--brass); color:var(--ink); font-weight:700; padding:13px 30px;
-    font-family:'Barlow Condensed', sans-serif; font-size:16px; letter-spacing:.8px; text-transform:uppercase;
+  .side-bet-row{
+    display:flex; align-items:center; justify-content:center; gap:8px; margin-top:14px; padding-top:12px;
+    border-top:1px dashed var(--brass-dim); font-size:11.5px; color:var(--muted); cursor:pointer;
   }
-  .pill-btn-primary:disabled{ opacity:.45; cursor:default; background:var(--brass-dim); }
-  .pill-btn-action{
-    padding:10px 18px; font-family:'Barlow Condensed', sans-serif; font-size:13px; font-weight:700; letter-spacing:.6px; text-transform:uppercase;
-  }
-  .pill-btn-action:disabled{ opacity:.45; cursor:default; border-style:dashed; }
-  .pill-btn-action:disabled::after{ display:none; }
-
-  /* Perfect Pairs / side-bet toggle pill (replaces the old checkbox+label row) */
-  .pp-toggle-pill{
-    padding:10px 18px; font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:.6px; text-transform:uppercase; font-weight:700;
-  }
-  .pp-toggle-pill.active{
-    background:linear-gradient(165deg, var(--brass-light), var(--brass));
-    border-color:var(--brass-light); color:#2a2005;
-    box-shadow:0 0 14px rgba(255,214,120,.4);
+  .side-bet-row input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--brass); }
+  .side-bet-row input[type="number"]{
+    background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;
   }
 
   .bet-spot-row{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
@@ -604,6 +532,7 @@
   #xpBalanceDisplay.pc-xp-up{ animation: xpPop .5s cubic-bezier(.34,1.6,.5,1); color:var(--win) !important; }
   #xpBalanceDisplay.pc-xp-down{ animation: xpPop .5s cubic-bezier(.34,1.6,.5,1); color:var(--loss) !important; }
 
+  .toteboard-strip{ display:flex; gap:8px; margin-bottom:16px; }
   .toteboard-cell{
     flex:1; background: linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--line); border-radius:8px;
     padding:10px 8px; text-align:center; position:relative; overflow:hidden;
@@ -750,11 +679,6 @@
   .sgm-badge.win{ border:1px solid var(--win); color:var(--win); background:rgba(111,169,138,.12); }
   .sgm-badge.loss{ border:1px solid var(--loss); color:var(--loss); background:rgba(193,96,74,.12); }
   .sgm-badge.pending{ border:1px solid var(--brass-dim); color:var(--brass); }
-  .cashout-badge{
-    display:inline-block; margin-top:6px; margin-left:6px; padding:3px 9px; border-radius:20px;
-    font-family:'IBM Plex Mono', monospace; font-size:9.5px; font-weight:700; letter-spacing:.3px;
-    border:1px solid var(--win); color:#0d1f16; background:var(--win);
-  }
   .multi-leg-name.loss{ color:#ff9478; }
   .multi-leg-odds{ font-family:'IBM Plex Mono', monospace; color:var(--muted); flex:0 0 auto; }
   .multi-leg-result{ font-size:19px; flex:0 0 auto; }
@@ -811,6 +735,7 @@
     box-shadow: 0 3px 10px rgba(0,0,0,.2);
   }
   .subnav-icon{ font-size:20px; line-height:1; }
+  .subnav-icon-img{ width:24px; height:24px; object-fit:contain; display:block; margin:0 auto 2px; }
   .subnav-btn.active{
     background: linear-gradient(165deg, #dab868, var(--brass) 60%);
     border-color: var(--brass); color:#151007;
@@ -844,6 +769,7 @@
   .tip-margin-field input{ width:100%; background:#060A08; color:var(--chalk); border:1px solid var(--line); border-radius:5px; font-family:'IBM Plex Mono', monospace; font-size:13px; padding:8px; }
   .tip-locked-row{ display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:12.5px; }
   .tip-locked-row:last-child{ border-bottom:none; }
+  .tip-locked-row .tip-name{ color:var(--chalk); font-weight:600; }
   .tip-locked-row .tip-pick-label{ font-family:'IBM Plex Mono', monospace; color:var(--muted); }
   .tip-locked-row.correct .tip-pick-label{ color:var(--win); }
   .tip-locked-row.incorrect .tip-pick-label{ color:var(--loss); }
@@ -979,6 +905,7 @@
   .runner-price{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass); font-weight:600; margin-left:6px; padding:1px 4px; border-radius:4px; }
   .runner-price.price-flash{ animation: priceFlash 1.1s ease; }
   @keyframes priceFlash{ 0%{ background:rgba(199,162,72,.45); } 100%{ background:transparent; } }
+  .runner-price-bookmaker{ font-weight:400; color:var(--muted); }
   .runner-writeup{ font-size:11px; color:var(--chalk); opacity:0.85; line-height:1.4; padding-top:2px; }
 
   .status-bar{
@@ -991,6 +918,7 @@
   .pl-hero-val{ font-family:'IBM Plex Mono', monospace; font-size:38px; font-weight:700; line-height:1.1; }
   .pl-hero-val.pos{ color:var(--win); } .pl-hero-val.neg{ color:var(--loss); }
   .chart-tooltip{ min-height:16px; font-size:12px; color:var(--chalk); text-align:center; margin-top:4px; opacity:0; transition:opacity .15s; font-family:'IBM Plex Mono', monospace; }
+  .slip-upload{ margin-bottom:12px; }
   button.small{
     background: transparent; border:1px solid var(--brass-dim); color: var(--brass);
     font-family:'IBM Plex Sans', sans-serif; font-size:13px; font-weight:600;
@@ -1369,23 +1297,16 @@
   </div>
 
   <div class="tab-panel" id="tab-casino">
-    <div class="panel casino-hero" style="text-align:center;">
+    <div class="panel" style="text-align:center;">
       <h2>🎰 Casino</h2>
-      <div class="casino-hero-glow">
-        <div class="hint" style="margin:0;">Your XP</div>
-        <div id="xpBalanceDisplay" class="casino-hero-xp">—</div>
-        <div id="casinoHeroRank" class="casino-hero-rank"></div>
+      <div style="display:flex; justify-content:center; gap:24px; margin:10px 0;">
+        <div>
+          <div class="hint" style="margin:0;">Your XP</div>
+          <div id="xpBalanceDisplay" style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:28px; color:var(--brass);">—</div>
+        </div>
       </div>
-      <div class="casino-milestone-track" id="casinoMilestoneTrack" style="display:none;">
-        <div class="casino-milestone-bar"><div class="casino-milestone-fill" id="casinoMilestoneFill"></div></div>
-        <div class="hint" id="casinoMilestoneLabel" style="margin-top:5px;"></div>
-      </div>
-      <div class="hint" id="xpEarnHint">XP is play money for this tab only, separate from the real ledger.</div>
-      <div class="casino-hero-actions">
-        <button type="button" id="weeklyBonusBtn" class="casino-hero-action-btn" style="display:none;">🎁 Claim weekly bonus</button>
-        <button type="button" id="xpLeaderboardToggleBtn" class="casino-hero-action-btn">🏆 Leaderboard</button>
-      </div>
-      <div id="weeklyBonusStatus" class="status-msg error" style="margin-top:6px; text-align:center;"></div>
+      <div class="hint">XP is earned automatically from Tipping points, individual bet wins, and group multi leg wins — it's play money for this game only, separate from the real ledger.</div>
+      <button type="button" id="xpLeaderboardToggleBtn" class="pill-btn" style="margin-top:12px; padding:8px 16px;">🏆 Leaderboard</button>
     </div>
 
     <div class="panel" id="xpLeaderboardPanel" style="display:none;">
@@ -1393,74 +1314,17 @@
       <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
     </div>
 
-    <!-- Landing hub: lands here first, never straight into a table. -->
-    <div class="panel" id="casinoHubPanel" style="padding:14px 10px; text-align:center;">
-      <div class="casino-hub-row">
-        <div class="casino-hub-bubble" id="hubGamesBtn">
-          <span class="casino-hub-icon">🎮</span>
-          <span class="casino-hub-label">Games</span>
-          <span class="casino-hub-sub">Blackjack, Roulette &amp; more</span>
-        </div>
-        <div class="casino-hub-bubble" id="hubRulesBtn">
-          <span class="casino-hub-icon">📜</span>
-          <span class="casino-hub-label">Rules</span>
-          <span class="casino-hub-sub">How each game plays</span>
-        </div>
-        <div class="casino-hub-bubble" id="hubXpBtn">
-          <span class="casino-hub-icon">✨</span>
-          <span class="casino-hub-label">Earning XP</span>
-          <span class="casino-hub-sub">Where it comes from</span>
-        </div>
-        <div class="casino-hub-bubble" id="hubBadgesBtn">
-          <span class="casino-hub-icon">🏅</span>
-          <span class="casino-hub-label">Badges</span>
-          <span class="casino-hub-sub">Founding Player &amp; XP milestones</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Rules hub view: list of every game, opens the existing rules modal per-game -->
-    <div class="panel casino-view" id="casinoRulesHubView">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-        <h2 style="font-size:14px; margin:0;">📜 Game Rules</h2>
-        <button type="button" class="pill-btn" id="rulesHubBackBtn">← Back</button>
-      </div>
-      <div id="casinoRulesHubList"></div>
-    </div>
-
-    <!-- Badges view -->
-    <div class="panel casino-view" id="casinoBadgesView">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-        <h2 style="font-size:14px; margin:0;">🏅 Badges</h2>
-        <button type="button" class="pill-btn" id="badgesBackBtn">← Back</button>
-      </div>
-      <div id="casinoBadgesBody"><div class="empty">Loading…</div></div>
-    </div>
-
-    <!-- Earning XP view -->
-    <div class="panel casino-view" id="casinoXpInfoView">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-        <h2 style="font-size:14px; margin:0;">✨ How to earn XP</h2>
-        <button type="button" class="pill-btn" id="xpInfoBackBtn">← Back</button>
-      </div>
-      <div id="xpInfoModalBody"></div>
-    </div>
-
-    <!-- Game selector + tables view -->
-    <div class="casino-view" id="casinoGamesView">
     <div class="panel" style="padding:10px; text-align:center;">
       <div class="game-bubble-row">
-        <button type="button" class="game-bubble" data-game="blackjack"><span class="game-bubble-icon">🃏</span><span class="game-bubble-label">Blackjack</span></button>
+        <button type="button" class="game-bubble active" data-game="blackjack"><span class="game-bubble-icon">🃏</span><span class="game-bubble-label">Blackjack</span></button>
         <button type="button" class="game-bubble" data-game="baccarat"><span class="game-bubble-icon">🎴</span><span class="game-bubble-label">Baccarat</span></button>
-        <button type="button" class="game-bubble" data-game="roulette"><span class="game-bubble-icon">🎡</span><span class="game-bubble-label">Roulette</span></button>
+        <button type="button" class="game-bubble" data-game="roulette"><span class="roulette-ball-icon"></span><span class="game-bubble-label">Roulette</span></button>
         <button type="button" class="game-bubble" data-game="war"><span class="game-bubble-icon">⚔️</span><span class="game-bubble-label">Casino War</span></button>
-        <button type="button" class="game-bubble" data-game="slots"><span class="game-bubble-icon">🎰</span><span class="game-bubble-label">Slots</span></button>
-        <button type="button" class="game-bubble" data-game="videopoker"><span class="game-bubble-icon">🂡</span><span class="game-bubble-label">Video Poker</span></button>
       </div>
+      <button type="button" class="game-bubble-wide" data-game="dailyspin">🎁 Spin the Wheel</button>
     </div>
-    <div class="panel" id="casinoGamesEmptyState">Pick a game above to sit down at the table.</div>
 
-    <div class="casino-game-panel" id="casinoGameBlackjack" style="display:none;">
+    <div class="casino-game-panel" id="casinoGameBlackjack">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="blackjack">📜 Rules</button></div>
     <div class="panel" id="bjBetPanel">
       <div style="display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;">
@@ -1476,21 +1340,19 @@
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
         <button type="button" class="table-chip chip-100" data-val="100">100</button>
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="bjBetInput">Clear Chips</button>
+        <button type="button" class="chip-clear-btn" data-target="bjBetInput">✕</button>
       </div>
-      <input type="checkbox" id="bjPerfectPairsCheck" style="display:none;">
-      <div id="bjPPAmountRow" class="hint" style="display:none; text-align:center; margin-top:10px;">
-        Perfect Pairs bet: <input type="number" id="bjPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;">
-      </div>
+      <label class="side-bet-row">
+        <input type="checkbox" id="bjPerfectPairsCheck">
+        <span>Perfect Pairs side bet</span>
+        <input type="number" id="bjPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px;">
+      </label>
       <div class="chip-rail chip-rail-small" data-target="bjPerfectPairsAmount" id="bjPPChipRail" style="display:none;">
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
-        <button type="button" class="chip-clear-btn" data-target="bjPerfectPairsAmount">Clear Chips</button>
+        <button type="button" class="chip-clear-btn" data-target="bjPerfectPairsAmount">✕</button>
       </div>
-      <div class="deal-row">
-        <button type="button" id="bjPerfectPairsToggle" class="pill-btn pp-toggle-pill">🎴 Perfect Pairs</button>
-        <button type="button" id="bjDealBtn" class="pill-btn pill-btn-primary">Deal</button>
-      </div>
+      <button type="button" id="bjDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
       <div id="bjBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
 
@@ -1539,9 +1401,9 @@
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
         <button type="button" class="table-chip chip-100" data-val="100">100</button>
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="bacBetInput">Clear Chips</button>
+        <button type="button" class="chip-clear-btn" data-target="bacBetInput">✕</button>
       </div>
-      <button type="button" id="bacDealBtn" class="pill-btn pill-btn-primary" style="margin-top:10px;">Deal</button>
+      <button type="button" id="bacDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
       <div id="bacBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
 
@@ -1581,28 +1443,24 @@
       <div class="roulette-history" id="rouletteHistory"></div>
     </div>
     <div class="panel" id="rouletteBetPanel">
-      <div class="hint" style="margin-bottom:8px;">American table — pick a chip below, tap a number or outside bet to place it, then Spin. Tap adjacent numbers to build Split/Street/Corner/Double Street bets.</div>
+      <div class="hint" style="margin-bottom:8px;">American table — tap a number or outside bet to select your spot, add chips below, then spin.</div>
       <div class="roulette-table-grid" id="rouletteTableGrid"></div>
       <div id="rouletteActiveBetsArea" class="roulette-active-bets"></div>
       <div id="rouletteSelectedSpot" class="roulette-selected-spot">No bets placed yet</div>
-      <button type="button" id="rouletteConfirmBetBtn" class="pill-btn pill-btn-primary" style="display:none; margin-top:8px; padding:9px 20px; font-size:13px;">✓ Confirm Bet</button>
+      <button type="button" id="rouletteClearAllBtn" class="pill-btn" style="padding:5px 12px; font-size:10.5px; margin-top:4px; display:none;">Clear all bets</button>
       <div style="display:flex; justify-content:center; margin-top:10px;">
         <div class="bj-chip" id="rouletteChipDisplay">50</div>
         <input type="number" id="rouletteBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
-      <div class="chip-rail chip-rail-select" data-target="rouletteBetInput">
+      <div class="chip-rail" data-target="rouletteBetInput">
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
         <button type="button" class="table-chip chip-100" data-val="100">100</button>
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="rouletteBetInput">Clear Chips</button>
+        <button type="button" class="chip-clear-btn" data-target="rouletteBetInput">✕</button>
       </div>
-      <div class="deal-row">
-        <button type="button" id="rouletteClearAllBtn" class="pill-btn pill-btn-action" disabled>Clear Bet</button>
-        <button type="button" id="rouletteSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
-        <button type="button" id="rouletteSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
-      </div>
+      <button type="button" id="rouletteSpinBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Spin</button>
       <div id="rouletteBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
     </div>
@@ -1621,21 +1479,19 @@
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
         <button type="button" class="table-chip chip-100" data-val="100">100</button>
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="warBetInput">Clear Chips</button>
+        <button type="button" class="chip-clear-btn" data-target="warBetInput">✕</button>
       </div>
-      <input type="checkbox" id="warPerfectPairsCheck" style="display:none;">
-      <div id="warPPAmountRow" class="hint" style="display:none; text-align:center; margin-top:10px;">
-        Pairs bet (player &amp; dealer card match, 10:1): <input type="number" id="warPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;">
-      </div>
+      <label class="side-bet-row">
+        <input type="checkbox" id="warPerfectPairsCheck">
+        <span>Pairs side bet (player &amp; dealer card match) — 10:1</span>
+        <input type="number" id="warPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px;">
+      </label>
       <div class="chip-rail chip-rail-small" data-target="warPerfectPairsAmount" id="warPPChipRail" style="display:none;">
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
-        <button type="button" class="chip-clear-btn" data-target="warPerfectPairsAmount">Clear Chips</button>
+        <button type="button" class="chip-clear-btn" data-target="warPerfectPairsAmount">✕</button>
       </div>
-      <div class="deal-row">
-        <button type="button" id="warPerfectPairsToggle" class="pill-btn pp-toggle-pill">🂠 Pairs bet</button>
-        <button type="button" id="warDealBtn" class="pill-btn pill-btn-primary">Deal</button>
-      </div>
+      <button type="button" id="warDealBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:10px 22px; font-size:13px; margin-top:10px;">Deal</button>
       <div id="warBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
 
@@ -1656,70 +1512,24 @@
     </div>
     </div>
 
-    <div class="casino-game-panel" id="casinoGameSlots" style="display:none;">
-    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="slots">📜 Rules</button></div>
-    <div class="panel slots-cabinet" style="text-align:center;">
-      <div class="slots-reel-row" id="slotsReelRow">
-        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip0"></div></div>
-        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip1"></div></div>
-        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip2"></div></div>
-        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip3"></div></div>
-        <div class="slots-reel"><div class="slots-reel-strip" id="slotsStrip4"></div></div>
+    <div class="casino-game-panel" id="casinoGameDailyspin" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="dailyspin">📜 Rules</button></div>
+    <div class="panel dailyspin-panel" style="text-align:center;">
+      <div class="dailyspin-wheel-wrap">
+        <div class="dailyspin-bezel-outer"></div>
+        <div class="dailyspin-wheel" id="dailySpinWheel"></div>
+        <div class="dailyspin-dividers"></div>
+        <div class="dailyspin-glass-shine"></div>
+        <div class="dailyspin-labels-layer" id="dailySpinLabelsLayer"></div>
+        <div class="dailyspin-pointer"></div>
+        <div class="dailyspin-hub">🎁</div>
       </div>
-      <div id="slotsResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
-    </div>
-    <div class="panel" id="slotsBetPanel">
-      <div style="display:flex; justify-content:center; margin-top:4px;">
-        <div class="bj-chip" id="slotsChipDisplay">50</div>
-        <input type="number" id="slotsBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
-      </div>
-      <div class="chip-rail" data-target="slotsBetInput">
-        <button type="button" class="table-chip chip-10" data-val="10">10</button>
-        <button type="button" class="table-chip chip-25" data-val="25">25</button>
-        <button type="button" class="table-chip chip-50" data-val="50">50</button>
-        <button type="button" class="table-chip chip-100" data-val="100">100</button>
-        <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="slotsBetInput">Clear Chips</button>
-      </div>
-      <div class="deal-row">
-        <button type="button" id="slotsSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
-        <button type="button" id="slotsSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
-      </div>
-      <div id="slotsBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+      <div id="dailySpinResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:20px; margin-top:10px; min-height:26px;"></div>
+      <button type="button" id="dailySpinBtn" class="pill-btn" style="background:var(--brass); color:var(--ink); font-weight:700; padding:12px 26px; font-size:14px; margin-top:12px;">Spin the Wheel</button>
+      <div id="dailySpinCooldownMsg" class="hint" style="margin-top:10px;"></div>
     </div>
     </div>
-
-    <div class="casino-game-panel" id="casinoGameVideoPoker" style="display:none;">
-    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="videopoker">📜 Rules</button></div>
-    <div class="panel bj-table" style="text-align:center;">
-      <div class="vp-hand-row" id="vpHandRow"></div>
-      <div id="vpOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
-      <table class="vp-paytable" id="vpPaytable"></table>
-    </div>
-    <div class="panel" id="vpBetPanel">
-      <div style="display:flex; justify-content:center; margin-top:4px;">
-        <div class="bj-chip" id="vpChipDisplay">50</div>
-        <input type="number" id="vpBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
-      </div>
-      <div class="chip-rail" data-target="vpBetInput" id="vpChipRail">
-        <button type="button" class="table-chip chip-10" data-val="10">10</button>
-        <button type="button" class="table-chip chip-25" data-val="25">25</button>
-        <button type="button" class="table-chip chip-50" data-val="50">50</button>
-        <button type="button" class="table-chip chip-100" data-val="100">100</button>
-        <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="vpBetInput">Clear Chips</button>
-      </div>
-      <div class="deal-row">
-        <button type="button" id="vpDealBtn" class="pill-btn pill-btn-primary">Deal</button>
-        <button type="button" id="vpDrawBtn" class="pill-btn pill-btn-primary" style="display:none;">Draw</button>
-      </div>
-      <div id="vpBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
-    </div>
-    </div>
-
-    </div><!-- /#casinoGamesView -->
-
-    <div class="panel" id="casinoXpLogPanel">
+    <div class="panel">
       <h2 style="font-size:14px;">Recent XP activity</h2>
       <div id="xpLogArea"><div class="empty">Loading…</div></div>
     </div>
@@ -1732,7 +1542,7 @@
     </div>
     <div class="panel">
       <button type="button" id="runHealthCheckBtn">🩺 Run Full System Check</button>
-      <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data (including duplicate account links), season history, tipping reads, Joker validity, Casino XP/badge integrity, dues consistency, individual bet drafts, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
+      <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data, tipping reads, config, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
       <div id="healthCheckResults" style="margin-top:10px;"></div>
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
     </div>
@@ -1790,9 +1600,10 @@
     <button type="button" class="profile-close" id="linkMemberCloseBtn">✕</button>
     <div class="profile-header">
       <h2>Which name on the Board is you?</h2>
-      <div style="font-size:11px; color:var(--muted); margin-top:6px;">Only asked once — remembered from here on.</div>
+      <div style="font-size:11px; color:var(--muted); margin-top:6px;">Only asked once — remembered from here on. This is only about the season betting Board — Tipping and the Casino work fully either way.</div>
     </div>
     <div id="linkMemberList" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;"></div>
+    <button type="button" id="linkMemberNoneBtn" class="pill-btn" style="width:100%; margin-top:10px; padding:12px; justify-content:center;">I'm not on the Board</button>
   </div>
 </div>
 
@@ -2011,7 +1822,7 @@ let currentUserRole = null; // 'full' | 'dashboard' | 'tipping' | null (null/leg
 let currentUserName = null;
 let currentUserUid = null;
 let currentUserEmail = null;
-const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping', 'casino'];
+const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping'];
 
 function applyRoleTabRestrictions(){
   if(currentUserRole !== 'tipping') return;
@@ -2110,17 +1921,9 @@ function pickMyMemberIndex(){
   return new Promise(resolve => {
     const modal = document.getElementById('linkMemberModal');
     const list = document.getElementById('linkMemberList');
-    // Only offer roster names nobody's already linked to — this is what
-    // stops a second person from ever being able to select an already-
-    // claimed name and silently bump the real person off it.
-    const available = (currentState.members || []).map((m, i) => ({ m, i })).filter(({ m }) => !m.linkedUid);
-    if(available.length === 0){
-      list.innerHTML = `<div class="hint" style="padding:10px 4px;">Every roster name already has an account linked to it. If one of these is wrong, ask the admin to fix it from the Ledger's Admin — access panel.</div>`;
-    } else {
-      list.innerHTML = available.map(({ m, i }) =>
-        `<button type="button" class="link-member-option" data-idx="${i}" style="padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:9px; color:var(--chalk); text-align:left; font-size:14px; font-weight:600;">${escapeHtml(m.name)}</button>`
-      ).join('');
-    }
+    list.innerHTML = (currentState.members || []).map((m, i) =>
+      `<button type="button" class="link-member-option" data-idx="${i}" style="padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:9px; color:var(--chalk); text-align:left; font-size:14px; font-weight:600;">${escapeHtml(m.name)}</button>`
+    ).join('');
     modal.classList.add('open');
     let resolved = false;
     const finish = (val) => {
@@ -2132,23 +1935,34 @@ function pickMyMemberIndex(){
     list.querySelectorAll('.link-member-option').forEach(btn => {
       btn.addEventListener('click', () => finish(parseInt(btn.dataset.idx, 10)));
     });
+    // 'skip' is a real, distinct outcome from null-via-close — closing with
+    // the X just means "ask me again later" (e.g. a new member added
+    // mid-session), while this explicitly means "I will never have a
+    // Board entry, stop asking." resolveMyMemberIndex persists only this
+    // one permanently.
+    document.getElementById('linkMemberNoneBtn').onclick = () => finish('skip');
     document.getElementById('linkMemberCloseBtn').onclick = () => finish(null);
   });
 }
 
 async function resolveMyMemberIndex(oldName){
-  if(!currentState || !currentState.members) return null;
+  if(!currentState || !currentState.members || !currentUserUid) return null;
+
+  // Previously this had no way to remember "I'm genuinely not on the
+  // Board" — someone who only has Tipping/Casino rights (no bet in the
+  // season Board at all) would get asked to pick a name EVERY sign-in
+  // forever, with no correct answer, and a wrong guess would silently
+  // hijack a real bettor's Board identity. This flag makes "not on the
+  // Board" a real, permanent, safe answer, checked before anything else.
+  try{
+    const skipRes = await authedFetch(`/users/${currentUserUid}/noBoardEntry.json`);
+    if(await skipRes.json()) return null;
+  }catch(e){}
 
   let idx = currentState.members.findIndex(m => m.linkedUid === currentUserUid);
   if(idx !== -1) return idx;
 
-  // Exact-name self-heal — but ONLY into a slot nobody else has already
-  // claimed. This used to overwrite linkedUid unconditionally on a name
-  // match, which is exactly how two different people can end up silently
-  // sharing one roster row (whoever signs in most recently wins, and the
-  // person who was linked before gets silently kicked off) — the root
-  // cause behind multiple people all showing as the same member.
-  idx = currentState.members.findIndex(m => m.name === oldName && !m.linkedUid);
+  idx = currentState.members.findIndex(m => m.name === oldName);
   if(idx !== -1){
     try{
       await authedFetch(`/state/members/${idx}/linkedUid.json`, {
@@ -2159,16 +1973,24 @@ async function resolveMyMemberIndex(oldName){
     return idx;
   }
 
-  idx = await pickMyMemberIndex();
-  if(idx !== null){
+  const picked = await pickMyMemberIndex();
+  if(picked === 'skip'){
     try{
-      await authedFetch(`/state/members/${idx}/linkedUid.json`, {
+      await authedFetch(`/users/${currentUserUid}/noBoardEntry.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
+      });
+    }catch(e){}
+    return null;
+  }
+  if(picked !== null){
+    try{
+      await authedFetch(`/state/members/${picked}/linkedUid.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentUserUid)
       });
-      currentState.members[idx].linkedUid = currentUserUid;
+      currentState.members[picked].linkedUid = currentUserUid;
     }catch(e){}
   }
-  return idx;
+  return picked;
 }
 
 function initAuthGate(){
@@ -2420,208 +2242,8 @@ function showUpdateBanner(){
 // per-user write pattern (each signed-in client only ever writes its own
 // /xp/{uid} path) rather than any new security model — same trust level
 // already accepted elsewhere in this app for a friendly ~11-person group.
-const XP_RATES = { perTippingPoint: 150, perDollarIndividualWin: 1, perGroupLegWin: 150 };
+const XP_RATES = { perTippingPoint: 10, perDollarIndividualWin: 1, perGroupLegWin: 100 };
 const XP_SIGNUP_BONUS = 500;
-// A tipping-tier account can't see Board/Cash/Slips (no individual bets or
-// group multi legs to earn XP from), so a small recurring bonus plus their
-// Tipping points conversion are deliberately their ONLY XP sources — full
-// and dashboard-tier accounts also see this bonus, it's just not their
-// only source the way it is for tipping-tier.
-const XP_WEEKLY_BONUS = 350;
-function xpWeekKey(d){
-  const now = d || new Date();
-  const date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-  return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
-async function getWeeklyBonusStatus(){
-  if(!currentUserUid) return null;
-  const weekKey = xpWeekKey();
-  try{
-    const res = await authedFetch(`/xp/${currentUserUid}/weeklyBonus/${weekKey}.json`);
-    const claimed = await res.json();
-    return { weekKey, claimed: !!claimed };
-  }catch(e){ return null; }
-}
-// IMPORTANT: fetch() does NOT throw on an HTTP error response (403
-// permission-denied included) — it resolves normally. The original version
-// of this function fired awardXP() unconditionally right after the "mark
-// as claimed" write, without ever checking whether that write actually
-// landed. If the Firebase rule for /xp/{uid}/weeklyBonus isn't live yet (or
-// the write fails for any other reason), the claimed-flag write silently
-// no-ops, getWeeklyBonusStatus keeps reporting claimed:false forever, and
-// every tap re-awards XP — unlimited free XP with no error shown anywhere.
-// This is the exact "unchecked write" bug class that's bitten this project
-// before (saveAllTippingPicks, setMyJoker, syncGameMeta) — same fix here:
-// check the response, only award XP once the guard write is CONFIRMED to
-// have landed, and surface the real reason on failure instead of
-// pretending it worked.
-async function claimWeeklyBonus(){
-  const status = await getWeeklyBonusStatus();
-  if(!status) return { ok: false, reason: 'Could not check your weekly bonus status — try again.' };
-  if(status.claimed) return { ok: false, reason: 'Already claimed this week.' };
-  let markRes;
-  try{
-    markRes = await authedFetch(`/xp/${currentUserUid}/weeklyBonus/${status.weekKey}.json`, {
-      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(true)
-    });
-  }catch(e){
-    return { ok: false, reason: 'Network error — try again.' };
-  }
-  if(!markRes || !markRes.ok){
-    return { ok: false, reason: `Could not claim right now (server said ${markRes ? markRes.status : 'no response'}). If this keeps happening, the live Firebase rules may need updating.` };
-  }
-  // Re-check what actually landed rather than trusting our own PUT blindly
-  // — if two taps race, whichever write truly stuck wins, and only ONE of
-  // them should still go on to award XP.
-  const confirmed = await getWeeklyBonusStatus();
-  if(!confirmed || !confirmed.claimed){
-    return { ok: false, reason: 'Claim did not stick — try again.' };
-  }
-  await awardXP(XP_WEEKLY_BONUS, 'Weekly bonus');
-  return { ok: true };
-}
-async function refreshWeeklyBonusButton(){
-  const btn = document.getElementById('weeklyBonusBtn');
-  if(!btn || !currentUserUid) return;
-  const status = await getWeeklyBonusStatus();
-  if(!status) return;
-  btn.style.display = 'inline-block';
-  btn.classList.toggle('claimed', status.claimed);
-  btn.disabled = status.claimed;
-  btn.textContent = status.claimed ? '🎁 Weekly bonus claimed' : `🎁 Claim weekly bonus (+${XP_WEEKLY_BONUS})`;
-}
-document.getElementById('weeklyBonusBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('weeklyBonusBtn');
-  const statusEl = document.getElementById('weeklyBonusStatus');
-  btn.disabled = true;
-  if(statusEl) statusEl.textContent = '';
-  const result = await claimWeeklyBonus();
-  if(result.ok){
-    const bal = await getXPBalance();
-    updateXPBalanceDisplay(bal);
-    renderXPLog();
-  } else if(statusEl){
-    statusEl.textContent = result.reason;
-  }
-  refreshWeeklyBonusButton();
-});
-function renderXpInfoView(){
-  const body = document.getElementById('xpInfoModalBody');
-  const isTipping = currentUserRole === 'tipping';
-  const rows = [
-    ['🎁 Signup bonus', `+${XP_SIGNUP_BONUS} once, the first time you open Casino`],
-    ['📅 Weekly bonus', `+${XP_WEEKLY_BONUS} once every week — claim it from the button above the Leaderboard`],
-    ['🏉 Tipping points', `+${XP_RATES.perTippingPoint} XP per correct tip, awarded automatically once a round finishes (Joker doubles it, same as your Tipping score)`],
-  ];
-  if(!isTipping){
-    rows.push(['🎲 Individual bet wins', `+${XP_RATES.perDollarIndividualWin} XP per $ won`]);
-    rows.push(['🤝 Group multi leg wins', `+${XP_RATES.perGroupLegWin} XP per winning leg`]);
-  }
-  body.innerHTML = rows.map(([label, desc]) =>
-    `<div class="xp-source-row"><span>${escapeHtml(label)}</span></div><div class="hint" style="padding:0 4px 10px;">${escapeHtml(desc)}</div>`).join('')
-    + (isTipping ? `<div class="hint" style="margin-top:6px;">Your account earns XP from the weekly bonus and Tipping points only — the individual bet and group multi sources apply to full-access accounts.</div>` : '')
-    + `<div class="hint" style="margin-top:6px;">Once you've got XP, spend it in any Casino game — wins and losses adjust your balance from there, same as a real table.</div>`;
-}
-
-// =====================================================================
-// CASINO BADGES — unlock criteria (source of truth, read this first)
-// =====================================================================
-// Two families of badge, both permanent once unlocked (neither can be
-// lost) and both persisted server-side under /xp/{uid}, so they survive
-// refreshes/re-logins and are consistent across every device the same
-// account signs into.
-//
-// 1) 🎰 Founding Player — awarded to the first 11 accounts to claim a
-//    spot. Two trigger points, both landing on the same
-//    assignFoundingNumberIfEligible():
-//      - ensureXPInitialized() for a brand-new /xp/{uid} node (balance
-//        === null) — a genuinely first-ever Casino visit.
-//      - renderCasinoBadgesView(), the first time an account WITHOUT a
-//        foundingNumber opens the Badges screen — this is what makes the
-//        11 spots claimable at all for accounts that already existed
-//        before this badge shipped (their balance was never null, so the
-//        first trigger alone could never fire for them).
-//      - Either way: reads the shared counter at /xpMeta/foundingCount;
-//        if it's below 11, this account claims the next number (1–11)
-//        and the count is bumped.
-//      - Persisted at /xp/{uid}/foundingNumber. Once set, it's set for
-//        good — there's no code path that ever clears it.
-//      - After all 11 slots are taken, foundingCount stops advancing, so
-//        no 12th account can ever claim one.
-//
-// 2) 🥉🥈🥇💎👑 XP milestone badges (10K/100K/250K/500K/1M) — unlock the
-//    moment an account's LIFETIME XP EARNED crosses each threshold.
-//      - Lifetime-earned is tracked separately from spendable balance at
-//        /xp/{uid}/lifetimeEarned — every XP-crediting code path in both
-//        this file (awardXP) and the Ledger (applyXPAwards,
-//        awardXPToUid) bumps it whenever the amount is positive. Losses
-//        NEVER reduce it, so once a threshold is crossed it stays
-//        crossed even if the balance later drops from bad luck at the
-//        tables — that's deliberate: these are earned-XP badges, not
-//        balance badges.
-//      - Unlock check is a simple `lifetime >= threshold` comparison,
-//        evaluated fresh every time the Badges view is opened (no
-//        separate "unlocked" flag to fall out of sync).
-//
-// Both families render via renderCasinoBadgesView(), which is the single
-// place that decides locked vs unlocked — there's no other code path that
-// shows badge state, so there's nothing else to keep in sync.
-// =====================================================================
-const XP_MILESTONE_BADGES = [
-  { key: 'xp10k', threshold: 10000, icon: '🥉', name: '10K Club' },
-  { key: 'xp100k', threshold: 100000, icon: '🥈', name: '100K Club' },
-  { key: 'xp250k', threshold: 250000, icon: '🥇', name: '250K Club' },
-  { key: 'xp500k', threshold: 500000, icon: '💎', name: '500K Club' },
-  { key: 'xp1m', threshold: 1000000, icon: '👑', name: 'Millionaire' }
-];
-function casinoBadgeRowHtml(icon, name, desc, unlocked){
-  return `<div class="casino-badge-row ${unlocked ? 'unlocked' : 'locked'}">
-    <span class="casino-badge-icon">${icon}</span>
-    <div class="casino-badge-info">
-      <div class="casino-badge-name">${escapeHtml(name)}</div>
-      <div class="casino-badge-desc">${escapeHtml(desc)}</div>
-    </div>
-    <span class="casino-badge-status">${unlocked ? '✅' : '🔒'}</span>
-  </div>`;
-}
-async function renderCasinoBadgesView(){
-  const body = document.getElementById('casinoBadgesBody');
-  if(!body || !currentUserUid) return;
-  body.innerHTML = '<div class="empty">Loading…</div>';
-  try{
-    const [lifetimeRes, foundingRes] = await Promise.all([
-      authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`),
-      authedFetch(`/xp/${currentUserUid}/foundingNumber.json`)
-    ]);
-    const lifetime = (await lifetimeRes.json()) || 0;
-    let founding = await foundingRes.json();
-    // Retroactive claim for existing accounts — see the comment on
-    // assignFoundingNumberIfEligible() for why this can't just rely on
-    // the brand-new-account trigger alone.
-    if(!founding){
-      founding = await assignFoundingNumberIfEligible();
-    }
-
-    const rows = [];
-    rows.push(casinoBadgeRowHtml(
-      '🎰',
-      founding ? `Founding Player #${founding}` : 'Founding Player',
-      'One of the first 11 people to claim a spot — all 11 are gone for good once claimed.',
-      !!founding
-    ));
-    XP_MILESTONE_BADGES.forEach(b => {
-      rows.push(casinoBadgeRowHtml(b.icon, b.name, `Earn ${b.threshold.toLocaleString()} lifetime XP.`, lifetime >= b.threshold));
-    });
-
-    body.innerHTML = `<div class="hint" style="margin-bottom:4px;">Lifetime XP earned: <b style="color:var(--brass-light);">${lifetime.toLocaleString()}</b></div>` + rows.join('');
-  }catch(e){
-    body.innerHTML = '<div class="empty">Could not load badges — try again.</div>';
-  }
-}
 
 async function ensureXPInitialized(){
   if(!currentUserUid) return;
@@ -2633,39 +2255,8 @@ async function ensureXPInitialized(){
         method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(XP_SIGNUP_BONUS)
       });
       await awardXP(XP_SIGNUP_BONUS, 'Signup bonus', { silent: true });
-      await assignFoundingNumberIfEligible();
     }
   }catch(e){}
-}
-
-// First 11 accounts to claim a spot get a permanent Founding Player badge,
-// numbered in the order they claimed it. Originally this only fired for a
-// brand-new /xp/{uid} node (i.e. literally the first time someone ever
-// opened Casino) — but since Casino already existed before badges did,
-// EVERY existing account already had a balance, so that trigger could
-// never fire for any of them and the badge was structurally unclaimable.
-// Now also called from renderCasinoBadgesView() the first time someone
-// without a foundingNumber opens the Badges screen, so the remaining
-// spots are still claimable by whoever checks it out first. Read-then-
-// write on a shared counter isn't transactionally safe against two people
-// claiming in the exact same instant, but for an ~11-person friendly
-// group that's an accepted, low-stakes race — same tradeoff this app
-// already makes for XP balances themselves.
-async function assignFoundingNumberIfEligible(){
-  if(!currentUserUid) return null;
-  try{
-    const res = await authedFetch('/xpMeta/foundingCount.json');
-    const count = (await res.json()) || 0;
-    if(count >= 11) return null;
-    const myNumber = count + 1;
-    await authedFetch('/xpMeta/foundingCount.json', {
-      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(myNumber)
-    });
-    await authedFetch(`/xp/${currentUserUid}/foundingNumber.json`, {
-      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(myNumber)
-    });
-    return myNumber;
-  }catch(e){ return null; }
 }
 
 async function getXPBalance(){
@@ -2695,18 +2286,6 @@ async function awardXP(amount, reason, opts){
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
     });
-    // Lifetime-earned only ever goes up — losses don't reduce it. This is
-    // what the 10K/100K/250K/500K/1M milestone badges track, deliberately
-    // separate from the spendable balance above (which losses DO reduce).
-    if(amount > 0){
-      try{
-        const ltRes = await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`);
-        const ltCurrent = (await ltRes.json()) || 0;
-        await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`, {
-          method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(ltCurrent + amount)
-        });
-      }catch(e){}
-    }
     if(!(opts && opts.silent)) updateXPBalanceDisplay(next);
   }catch(e){}
 }
@@ -2739,39 +2318,18 @@ async function renderXPLog(){
   const area = document.getElementById('xpLogArea');
   if(!area || !currentUserUid) return;
   try{
-    // Deliberately NOT using ?orderBy="ts"&limitToLast=15 here anymore —
-    // that requires a matching .indexOn rule on the LIVE Firebase rules,
-    // and this project has already been caught once by code quietly
-    // depending on rules that hadn't actually been redeployed yet. A plain
-    // unfiltered fetch works under any rules that grant read at all, so
-    // sorting/limiting happens client-side instead — a personal XP log is
-    // small enough that this costs nothing in practice.
-    const res = await authedFetch(`/xp/${currentUserUid}/log.json`);
-    if(!res.ok){
-      area.innerHTML = `<div class="empty">Couldn't load XP activity (server said ${res.status}).</div>`;
-      return;
-    }
-    const data = await res.json();
-    // Defensive against any malformed/legacy entry (missing amount, missing
-    // ts) — this used to render literally as "undefined" in red rather than
-    // being filtered out or given a safe fallback.
-    const entries = (data && typeof data === 'object' ? Object.values(data) : [])
-      .filter(e => e && typeof e === 'object')
-      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-      .slice(0, 15);
+    const res = await authedFetch(`/xp/${currentUserUid}/log.json?orderBy="ts"&limitToLast=15`);
+    const data = (await res.json()) || {};
+    const entries = Object.values(data).sort((a,b) => b.ts - a.ts);
     if(entries.length === 0){
       area.innerHTML = '<div class="empty">No XP activity yet.</div>';
       return;
     }
-    area.innerHTML = entries.map(e => {
-      const amount = typeof e.amount === 'number' && !isNaN(e.amount) ? e.amount : 0;
-      const reason = e.reason || '(unlabeled)';
-      return `
+    area.innerHTML = entries.map(e => `
       <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
-        <span style="color:var(--muted);">${escapeHtml(reason)}</span>
-        <span style="font-weight:700; color:${amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${amount >= 0 ? '+' : ''}${amount}</span>
-      </div>`;
-    }).join('');
+        <span style="color:var(--muted);">${escapeHtml(e.reason || '')}</span>
+        <span style="font-weight:700; color:${e.amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${e.amount >= 0 ? '+' : ''}${e.amount}</span>
+      </div>`).join('');
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load XP activity.</div>';
   }
@@ -3301,96 +2859,25 @@ document.getElementById('bjSplitBtn').addEventListener('click', bjSplit);
 document.getElementById('bjStandBtn').addEventListener('click', bjStand);
 document.getElementById('bjNewHandBtn').addEventListener('click', bjNewHand);
 
-// ---- Casino landing hub (Games / Rules / Earning XP) ----
-const CASINO_GAME_PANEL_IDS = {
-  blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
-  war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker'
-};
-function showCasinoView(viewId){
-  document.querySelectorAll('.casino-view').forEach(v => v.classList.toggle('active', v.id === viewId));
-  document.getElementById('casinoHubPanel').style.display = viewId ? 'none' : 'block';
-}
-document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
-document.getElementById('hubRulesBtn').addEventListener('click', () => showCasinoView('casinoRulesHubView'));
-document.getElementById('hubXpBtn').addEventListener('click', () => { renderXpInfoView(); showCasinoView('casinoXpInfoView'); });
-document.getElementById('hubBadgesBtn').addEventListener('click', () => { renderCasinoBadgesView(); showCasinoView('casinoBadgesView'); });
-document.getElementById('rulesHubBackBtn').addEventListener('click', () => showCasinoView(null));
-document.getElementById('xpInfoBackBtn').addEventListener('click', () => showCasinoView(null));
-document.getElementById('badgesBackBtn').addEventListener('click', () => showCasinoView(null));
-
 // ---- Casino game selector ----
-document.querySelectorAll('.game-bubble').forEach(btn => {
+document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.game-bubble').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
-    document.getElementById('casinoGamesEmptyState').style.display = 'none';
-    document.getElementById(CASINO_GAME_PANEL_IDS[btn.dataset.game]).style.display = 'block';
+    document.getElementById('casinoGame' + btn.dataset.game.charAt(0).toUpperCase() + btn.dataset.game.slice(1)).style.display = 'block';
     if(btn.dataset.game === 'roulette' && !rouletteWheelBuilt){ rouletteBuildWheel(); rouletteBuildBetGrid(); }
-    if(btn.dataset.game === 'slots' && !slotsBuilt){ slotsBuildReels(); }
-    if(btn.dataset.game === 'videopoker' && !vpBuilt){ vpBuildPaytable(); vpRenderIdleHand(); }
+    if(btn.dataset.game === 'dailyspin'){
+      if(!dailySpinWheelBuilt) dailySpinBuildWheel();
+      dailySpinRefreshCooldown();
+    }
   });
 });
 
 document.querySelector('[data-tab="casino"]').addEventListener('click', async () => {
-  showCasinoView(null);
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
-  refreshWeeklyBonusButton();
-  refreshCasinoHeroExtras();
 });
-// Rank + next-milestone progress on the hero card — the whole point is
-// giving someone a reason to glance at Casino without having to tap into
-// the Leaderboard or Badges screens first. Rank reuses the same linked-
-// members-balance fetch pattern as renderXPLeaderboard (kept separate
-// rather than sharing code, since this only needs MY position, not the
-// full sorted list, and firing both concurrently on tab-open is cheap).
-async function refreshCasinoHeroExtras(){
-  if(!currentUserUid) return;
-  // Next-milestone progress bar
-  try{
-    const res = await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`);
-    const lifetime = (await res.json()) || 0;
-    const next = XP_MILESTONE_BADGES.find(b => lifetime < b.threshold);
-    const track = document.getElementById('casinoMilestoneTrack');
-    const fill = document.getElementById('casinoMilestoneFill');
-    const label = document.getElementById('casinoMilestoneLabel');
-    if(next){
-      const prevThreshold = [...XP_MILESTONE_BADGES].reverse().find(b => lifetime >= b.threshold);
-      const floor = prevThreshold ? prevThreshold.threshold : 0;
-      const pct = Math.min(100, Math.max(0, ((lifetime - floor) / (next.threshold - floor)) * 100));
-      track.style.display = 'block';
-      fill.style.width = pct + '%';
-      label.textContent = `${next.icon} ${lifetime.toLocaleString()} / ${next.threshold.toLocaleString()} XP to ${next.name}`;
-    } else if(lifetime > 0) {
-      track.style.display = 'block';
-      fill.style.width = '100%';
-      label.textContent = '👑 All XP milestones unlocked';
-    } else {
-      track.style.display = 'none';
-    }
-  }catch(e){}
-
-  // Rank on the leaderboard
-  try{
-    if(!currentState || !currentState.members) return;
-    const linked = currentState.members.filter(m => m.linkedUid);
-    if(linked.length === 0) return;
-    const balances = await Promise.all(linked.map(async m => {
-      try{
-        const r = await authedFetch(`/xp/${m.linkedUid}/balance.json`);
-        return { uid: m.linkedUid, balance: (await r.json()) || 0 };
-      }catch(e){ return { uid: m.linkedUid, balance: 0 }; }
-    }));
-    balances.sort((a, b) => b.balance - a.balance);
-    const myIndex = balances.findIndex(b => b.uid === currentUserUid);
-    const rankEl = document.getElementById('casinoHeroRank');
-    if(myIndex !== -1 && rankEl){
-      const medals = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
-      rankEl.textContent = medals[myIndex] || `#${myIndex + 1} of ${balances.length}`;
-    }
-  }catch(e){}
-}
 
 // ---- XP leaderboard ----
 // Reads every linked member's own /xp/{uid}/balance in parallel — relies on
@@ -3411,16 +2898,12 @@ async function renderXPLeaderboard(){
     }));
     rows.sort((a,b) => (b.balance || 0) - (a.balance || 0));
     const medals = ['🥇','🥈','🥉'];
-    const topTint = ['rgba(255,214,120,.14)', 'rgba(210,210,220,.10)', 'rgba(198,140,90,.12)'];
-    const topGlow = ['0 0 12px rgba(255,214,120,.35)', '0 0 10px rgba(220,220,230,.25)', '0 0 10px rgba(198,140,90,.3)'];
     area.innerHTML = rows.map((r, i) => {
       const isMe = r.uid === currentUserUid || r.name === currentUserName;
-      const isTop3 = i < 3;
-      const bg = isMe ? 'background:rgba(203,177,102,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : '');
-      return `<div style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '11px 8px' : '8px 4px'}; border-bottom:1px solid var(--line); ${bg}">
-        <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
-        <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</span>
-        <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${r.balance != null ? r.balance.toLocaleString() : '—'}</span>
+      return `<div style="display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--line); ${isMe ? 'background:rgba(203,177,102,.1); border-radius:8px;' : ''}">
+        <span style="width:26px; text-align:center; font-size:15px;">${medals[i] || (i+1)}</span>
+        <span style="flex:1; font-size:13px; ${isMe ? 'font-weight:700; color:var(--brass-light);' : 'color:var(--chalk);'}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</span>
+        <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--brass);">${r.balance != null ? r.balance.toLocaleString() : '—'}</span>
       </div>`;
     }).join('');
   }catch(e){
@@ -3473,14 +2956,14 @@ const CASINO_RULES = {
   roulette: { title: '🎡 Roulette Rules', body: `
     <h3>The wheel</h3>
     <p>American double-zero wheel — 38 pockets: 1 to 36 plus 0 and 00. 18 numbers are red, 18 are black, 0 and 00 are green.</p>
-    <h3>Choosing your chip</h3>
-    <p>Tap a chip value to select it — it stays selected (highlighted) until you tap a different one. Every spot you tap places a bet at that value, so pick your denomination once and place several bets without re-tapping the chip each time.</p>
     <h3>Inside bets (on the number grid)</h3>
-    <p>Tap one number for a Straight bet (35:1). Tap an adjacent number to grow it into a Split (17:1) — keep tapping adjacent numbers and it keeps growing: three in a row makes a Street (11:1), four meeting at a corner makes a Corner (8:1), six across two adjacent rows makes a Double Street (5:1). Tap "✓ Confirm Bet" whenever you're happy with the shape, or it locks in automatically once it can't grow any further. Zero has its own bets too: a Split against 0 or 00 (17:1), or build the full Top Line — 0, 00, 1, 2 and 3 together (6:1).</p>
+    <p>Tap one number for a Straight bet (35:1). Tap two adjacent numbers (sharing an edge) for a Split (17:1). Tap all three numbers in a row for a Street (11:1). Tap four numbers meeting at a corner for a Corner (8:1). Tap all six numbers across two adjacent rows for a Six Line (5:1). Tap exactly 0, 1, 2 and 3 together for the First Four (8:1). The moment a valid shape forms it's placed as a bet at your current chip amount, freeing you to start tapping your next bet straight away.</p>
     <h3>Outside bets</h3>
     <p>Red/Black, Odd/Even, 1–18/19–36 all pay 1:1. A Dozen (1st/2nd/3rd 12, a horizontal third of the grid) pays 2:1. A Column (2:1, one of the three vertical columns running the full height of the grid) is a separate bet from Dozens, also 2:1. Every outside, dozen and column bet loses if the ball lands on 0 or 00 — that's the house edge on this wheel.</p>
     <h3>Multiple bets</h3>
-    <p>Just like a real table, you can have several bets active at once — a number, a colour, a column, whatever combination you like. Every confirmed bet shows in the list with its own amount; the Spin button stakes the total across all of them and each is resolved independently against the same spin. Tap an already-placed bet's own spot again to remove just that one, or use the "Clear Bet" pill next to Spin to start over. "Same Bet" repeats exactly what was on the table last spin.</p>
+    <p>Just like a real table, you can have several bets active at once — a number, a colour, a column, whatever combination you like. Every confirmed bet shows in the list with its own amount; the Spin button stakes the total across all of them and each is resolved independently against the same spin. Tap an already-placed bet's own spot again to remove just that one, or use "Clear all bets" to start over.</p>
+    <h3>How to bet</h3>
+    <p>Tap chips to set your amount, tap a spot to place a bet at that amount, repeat for more bets, then Spin.</p>
   `},
   war: { title: '⚔️ Casino War Rules', body: `
     <h3>Object</h3>
@@ -3488,52 +2971,31 @@ const CASINO_RULES = {
     <h3>Ties — go to war, or surrender</h3>
     <p>If it's a tie, you choose: <b>Go to War</b> — your bet is matched (doubled total risk), three cards are burned, and you each get one new card. Higher card wins the war: winning pays 1:1 on your original bet (the raise is simply returned), losing the war loses everything wagered. A second tie during the war is a full push — everything's returned. Or <b>Surrender</b> — forfeit half your original bet immediately and end the hand there.</p>
     <h3>Pairs (side bet)</h3>
-    <p>Optional, wagered separately before the deal — tap the "Pairs bet" pill next to Deal to switch it on. Pays 10:1 if your card and the dealer's very first card share the same rank (which also means the hand is about to tie).</p>
+    <p>Optional, wagered separately before the deal. Pays 10:1 if your card and the dealer's very first card share the same rank (which also means the hand is about to tie).</p>
   `},
-  slots: { title: '🎰 Slots Rules', body: `
+  dailyspin: { title: '🎡 Spin the Wheel Rules', body: `
     <h3>Object</h3>
-    <p>Five reels, one payline straight across the middle. Set your bet, hit Spin, and see what lines up.</p>
-    <h3>Symbols &amp; payouts (per line, multiplier on your bet)</h3>
-    <p>7️⃣ Seven — wild, substitutes for any other symbol. 💎 Diamond — top paying standard symbol. 🔔 Bell, ⭐ Star, 🍇 Grapes, 🍋 Lemon, 🍒 Cherry — in descending value.</p>
-    <p>3 matching symbols left-to-right pays out; 4 and 5 in a row pay considerably more. Two Cherries from the leftmost reel pays a small consolation even without a third. The paytable is shown on the Slots screen and scales with whatever you've got staked.</p>
-    <h3>Wild</h3>
-    <p>7️⃣ counts as any symbol when forming a line, and a wild-boosted line always pays at least as much as the matching non-wild line would.</p>
-  `},
-  videopoker: { title: '🂡 Video Poker Rules', body: `
-    <h3>Object</h3>
-    <p>Jacks or Better draw poker. Set your bet and Deal — you're shown 5 cards from a single 52-card deck.</p>
-    <h3>Hold &amp; Draw</h3>
-    <p>Tap Hold under any card you want to keep, then hit Draw — every card you didn't hold is replaced once. Your final 5-card hand is scored against the paytable below.</p>
-    <h3>Payouts (multiplier on your bet)</h3>
-    <p>Royal Flush 250:1 &middot; Straight Flush 50:1 &middot; Four of a Kind 25:1 &middot; Full House 9:1 &middot; Flush 6:1 &middot; Straight 4:1 &middot; Three of a Kind 3:1 &middot; Two Pair 2:1 &middot; Jacks or Better (a pair of J/Q/K/A) 1:1. Anything weaker than a pair of Jacks returns nothing.</p>
+    <p>One free spin every 2 days, no bet required — just tap Spin. Prizes are added straight to your XP balance.</p>
+    <h3>The wheel</h3>
+    <p>24 segments: 4 Nothing, 7&times;100 XP, 5&times;200 XP, 3&times;400 XP, 2&times;600 XP, 1&times;800 XP, 1&times;1000 XP, and 1 JACKPOT worth 2500 XP. The bigger the prize, the fewer segments carry it — the odds you see on the wheel are exactly the odds you get, nothing hidden behind them.</p>
+    <h3>Cooldown</h3>
+    <p>After spinning, the next spin unlocks exactly 2 days later. The button shows a countdown until then.</p>
   `}
 };
-function openCasinoRules(key){
-  const rules = CASINO_RULES[key];
-  if(!rules) return;
-  document.getElementById('casinoRulesTitle').textContent = rules.title;
-  document.getElementById('casinoRulesBody').innerHTML = rules.body;
-  document.getElementById('casinoRulesModal').classList.add('open');
-}
 document.querySelectorAll('.casino-rules-btn').forEach(btn => {
-  btn.addEventListener('click', () => openCasinoRules(btn.dataset.rules));
+  btn.addEventListener('click', () => {
+    const rules = CASINO_RULES[btn.dataset.rules];
+    if(!rules) return;
+    document.getElementById('casinoRulesTitle').textContent = rules.title;
+    document.getElementById('casinoRulesBody').innerHTML = rules.body;
+    document.getElementById('casinoRulesModal').classList.add('open');
+  });
 });
 document.getElementById('casinoRulesCloseBtn').addEventListener('click', () => {
   document.getElementById('casinoRulesModal').classList.remove('open');
 });
 document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
   if(e.target.id === 'casinoRulesModal') document.getElementById('casinoRulesModal').classList.remove('open');
-});
-// ---- Rules hub (Casino landing → Rules bubble) — one tile per game, opens
-// the exact same modal used by each table's own "📜 Rules" button. ----
-const CASINO_RULES_HUB_ORDER = [
-  ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
-  ['war', '⚔️ Casino War'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker']
-];
-document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
-  `<button type="button" data-rules-key="${key}">${label}</button>`).join('');
-document.getElementById('casinoRulesHubList').querySelectorAll('button').forEach(btn => {
-  btn.addEventListener('click', () => openCasinoRules(btn.dataset.rulesKey));
 });
 
 function initChipRail(rail){
@@ -3557,73 +3019,18 @@ function initChipRail(rail){
     input.dispatchEvent(new Event('input'));
   });
 }
-// Roulette-only chip behaviour: SELECT a denomination rather than ADD to a
-// running total. Every other game only ever places one bet per hand, so
-// stacking chips (10+25+50=85) to build up that single stake makes sense
-// there. Roulette places many separate bets per spin, and the chip amount
-// represents "which denomination am I placing right now" — tapping a chip
-// should set that value outright (like a real online table's chip tray),
-// not keep growing every tap, which is exactly what was confusing here.
-function initChipRailSelect(rail){
-  const targetId = rail.dataset.target;
-  const chips = rail.querySelectorAll('.table-chip');
-  chips.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = document.getElementById(targetId);
-      if(!input) return;
-      input.value = parseInt(btn.dataset.val, 10);
-      input.dispatchEvent(new Event('input'));
-      chips.forEach(c => c.classList.toggle('active-chip', c === btn));
-      bjPlayChipSound();
-      btn.classList.remove('pc-chip-tap'); void btn.offsetWidth; btn.classList.add('pc-chip-tap');
-    });
-  });
-  // Zeroes the staged chip amount AND drops the active-chip highlight —
-  // without this there was no way back to $0 once any chip had been
-  // tapped, since selecting always sets a positive denomination.
-  const clearBtn = rail.querySelector('.chip-clear-btn');
-  if(clearBtn) clearBtn.addEventListener('click', () => {
-    const input = document.getElementById(targetId);
-    if(!input) return;
-    input.value = 0;
-    input.dispatchEvent(new Event('input'));
-    chips.forEach(c => c.classList.remove('active-chip'));
-  });
-}
-document.querySelectorAll('.chip-rail').forEach(rail => {
-  if(rail.classList.contains('chip-rail-select')) initChipRailSelect(rail);
-  else initChipRail(rail);
-});
-// Mark the chip matching the input's starting value as active on load, so
-// there's always a clear "this is what I'm about to place" indicator.
-document.querySelectorAll('.chip-rail-select').forEach(rail => {
-  const input = document.getElementById(rail.dataset.target);
-  if(!input) return;
-  const startVal = parseInt(input.value, 10);
-  const match = rail.querySelector(`.table-chip[data-val="${startVal}"]`);
-  if(match) match.classList.add('active-chip');
-});
+document.querySelectorAll('.chip-rail').forEach(initChipRail);
 
-// Perfect Pairs side bet is now a pill next to Deal rather than a checkbox
-// row — the pill toggles a hidden checkbox (so every other read of
-// `.checked` elsewhere in the code needs zero changes) plus reveals its
-// amount row + chip rail. Shared pattern for Blackjack and Casino War.
-function wirePPTogglePill(pillId, checkboxId, amountRowId, railId){
-  const pill = document.getElementById(pillId);
+// Perfect Pairs side-bet checkboxes just reveal their own small chip rail —
+// shared toggle pattern for Blackjack and Casino War.
+function wirePPToggle(checkboxId, railId){
   const cb = document.getElementById(checkboxId);
-  const amountRow = document.getElementById(amountRowId);
   const rail = document.getElementById(railId);
-  if(!pill || !cb) return;
-  pill.addEventListener('click', () => {
-    cb.checked = !cb.checked;
-    pill.classList.toggle('active', cb.checked);
-    if(amountRow) amountRow.style.display = cb.checked ? 'block' : 'none';
-    if(rail) rail.style.display = cb.checked ? 'flex' : 'none';
-    cb.dispatchEvent(new Event('change'));
-  });
+  if(!cb || !rail) return;
+  cb.addEventListener('change', () => { rail.style.display = cb.checked ? 'flex' : 'none'; });
 }
-wirePPTogglePill('bjPerfectPairsToggle', 'bjPerfectPairsCheck', 'bjPPAmountRow', 'bjPPChipRail');
-wirePPTogglePill('warPerfectPairsToggle', 'warPerfectPairsCheck', 'warPPAmountRow', 'warPPChipRail');
+wirePPToggle('bjPerfectPairsCheck', 'bjPPChipRail');
+wirePPToggle('warPerfectPairsCheck', 'warPPChipRail');
 
 // ---- Baccarat ----
 // Standard punto banco rules: card values A=1, 2-9=pip, 10/J/Q/K=0, hand
@@ -3846,18 +3253,10 @@ let rouletteHistory = [];
 // cell(s) again removes just that one bet, without disturbing any others.
 let rouletteActiveBets = [];
 let rouletteBetIdCounter = 0;
-// Snapshot of the bets that were on the table for the last completed spin —
-// powers the "Same Bet" pill so a repeat player doesn't have to re-tap the
-// whole table every round. cellEls are real DOM nodes from the (never
-// rebuilt) grid, so they're safe to reuse directly.
-let rouletteLastBets = [];
 // In-progress number taps that haven't yet formed (or been confirmed into)
 // a valid inside bet — separate from rouletteActiveBets, which only ever
 // holds fully-confirmed, already-placed bets.
 let rouletteBuildingNums = [];
-// Populated once by rouletteBuildBetGrid() — number/'0'/'00' → its DOM cell.
-// Avoids a live CSS query on every bet confirmation.
-let rouletteCellByValue = {};
 
 function rouletteBuildWheel(){
   const wheel = document.getElementById('rouletteWheel');
@@ -3912,13 +3311,7 @@ function rouletteBuildBetGrid(){
     <div class="rt-cell rt-outside" data-bet-type="high">19-36</div>
   </div>`;
   grid.innerHTML = html;
-  // Cache number → cell once at build time instead of re-querying the DOM
-  // with an attribute-selector CSS query every single time a bet is
-  // confirmed (rouletteConfirmBuilding runs this lookup on every tap
-  // sequence, so it's worth avoiding a live querySelector per number).
-  rouletteCellByValue = {};
   grid.querySelectorAll('.rt-cell[data-bet-type="straight"]').forEach(cell => {
-    rouletteCellByValue[cell.dataset.betValue] = cell;
     cell.addEventListener('click', () => rouletteToggleNumberCell(cell));
   });
   grid.querySelectorAll('.rt-cell:not([data-bet-type="straight"])').forEach(cell => {
@@ -3945,20 +3338,8 @@ function rouletteDetectBetFromSelection(strNums){
   const hasZero = strNums.includes('0') || strNums.includes('00');
   if(hasZero){
     const set = new Set(strNums);
-    if(set.size === 5 && set.has('0') && set.has('00') && set.has('1') && set.has('2') && set.has('3')){
-      return { type: 'topline', nums: ['0','00','1','2','3'], label: 'Top Line (0-00-1-2-3) \u2014 6:1' };
-    }
-    if(set.size === 2){
-      // The real zero-adjacent splits available on an American (double-
-      // zero) table — 0-00 itself, plus each zero's neighbours across the
-      // felt. Anything else touching zero at 2 numbers isn't a real bet.
-      const has = (v) => set.has(v);
-      if(has('0') && has('00')) return { type: 'split', nums: ['0','00'], label: 'Split 0-00 (17:1)' };
-      if(has('0') && has('1')) return { type: 'split', nums: ['0','1'], label: 'Split 0-1 (17:1)' };
-      if(has('0') && has('2')) return { type: 'split', nums: ['0','2'], label: 'Split 0-2 (17:1)' };
-      if(has('00') && has('2')) return { type: 'split', nums: ['00','2'], label: 'Split 00-2 (17:1)' };
-      if(has('00') && has('3')) return { type: 'split', nums: ['00','3'], label: 'Split 00-3 (17:1)' };
-      return null;
+    if(set.size === 4 && set.has('0') && set.has('1') && set.has('2') && set.has('3')){
+      return { type: 'firstfour', nums: ['0','1','2','3'], label: 'First Four (0-1-2-3) \u2014 8:1' };
     }
     if(set.size === 1) return { type: 'straight', value: strNums[0], label: `Straight ${strNums[0]} (35:1)` };
     return null; // any other combination touching 0/00 isn't offered here
@@ -3990,27 +3371,23 @@ function rouletteDetectBetFromSelection(strNums){
     const r = rouletteNumRow(n[0]);
     const expected = [3*r+1, 3*r+2, 3*r+3, 3*r+4, 3*r+5, 3*r+6];
     if(JSON.stringify(n) === JSON.stringify(expected)){
-      return { type: 'sixline', nums: n.map(String), label: `Double Street ${n[0]}-${n[5]} (5:1)` };
+      return { type: 'sixline', nums: n.map(String), label: `Six Line ${n[0]}-${n[5]} (5:1)` };
     }
     return null;
   }
   return null;
 }
-// Whether two grid values are physically adjacent on the felt — the same
-// relationship a Split bet requires, plus the zero-column's own neighbours
-// (0 sits next to 00/1/2, 00 sits next to 0/2/3). Used to decide whether a
-// new tap is plausibly extending the current building selection (toward a
-// Corner or Double Street) versus starting an unrelated new bet.
-function rouletteAreAdjacent(aStr, bStr){
-  if(aStr === bStr) return false;
-  const zeroAdj = { '0': ['00','1','2'], '00': ['0','2','3'], '1': ['0'], '2': ['0','00'], '3': ['00'] };
-  if(zeroAdj[aStr] && zeroAdj[aStr].includes(bStr)) return true;
-  if(zeroAdj[bStr] && zeroAdj[bStr].includes(aStr)) return true;
-  if(aStr === '0' || aStr === '00' || bStr === '0' || bStr === '00') return false;
-  const a = Number(aStr), b = Number(bStr);
-  const adjH = rouletteNumRow(a) === rouletteNumRow(b) && Math.abs(rouletteNumCol(a) - rouletteNumCol(b)) === 1;
-  const adjV = rouletteNumCol(a) === rouletteNumCol(b) && Math.abs(rouletteNumRow(a) - rouletteNumRow(b)) === 1;
-  return adjH || adjV;
+// Tailored guidance per selection size, since "not valid" alone doesn't
+// explain what the actual valid shapes look like — someone tapping three
+// numbers straight down a column (a genuine roulette table has no such
+// bet) has no way to know that from a generic error otherwise.
+function rouletteInvalidSelectionMessage(count){
+  if(count === 1) return 'Building Straight \u2014 tap Spin-ready, or tap an adjacent number for Split';
+  if(count === 2) return 'Not adjacent \u2014 Split needs two numbers sharing an edge';
+  if(count === 3) return 'Not a full row \u2014 Street needs 3 numbers straight across (e.g. 1-2-3), not stacked in a column';
+  if(count === 4) return 'Not a square \u2014 Corner needs 4 numbers meeting at one point';
+  if(count === 6) return 'Not two full rows \u2014 Six Line needs 6 numbers across two adjacent rows';
+  return 'Not a valid bet \u2014 try 2 (Split), 3 in a row (Street), 4 in a block (Corner), or 6 across two rows (Six Line)';
 }
 function rouletteFindBetByCell(cell){
   return rouletteActiveBets.find(b => b.cellEls.includes(cell));
@@ -4030,47 +3407,16 @@ function rouletteRemoveBet(betId){
 function rouletteClearBuilding(){
   document.querySelectorAll('.rt-cell.building').forEach(c => c.classList.remove('building'));
   rouletteBuildingNums = [];
-  const confirmBtn = document.getElementById('rouletteConfirmBetBtn');
-  if(confirmBtn) confirmBtn.style.display = 'none';
-}
-// Updates the hint text + Confirm Bet pill to reflect the current pending
-// selection. `bet` is the CURRENT selection's resolved bet type if it's
-// already a complete, valid shape (Straight/Split/Street/Corner/Double
-// Street/Top Line) — or null if it's a legitimate work-in-progress (e.g.
-// 3 numbers on the way to a Corner) that isn't a valid bet YET on its own.
-function rouletteUpdateBuildingUI(bet){
-  const spotEl = document.getElementById('rouletteSelectedSpot');
-  const confirmBtn = document.getElementById('rouletteConfirmBetBtn');
-  if(rouletteBuildingNums.length === 0){
-    spotEl.textContent = 'No bets placed yet';
-    spotEl.style.color = '';
-    if(confirmBtn) confirmBtn.style.display = 'none';
-    return;
-  }
-  if(bet){
-    spotEl.textContent = `${bet.label} \u2014 tap Confirm Bet, or keep tapping adjacent numbers to grow it`;
-    spotEl.style.color = 'var(--brass-light)';
-    if(confirmBtn){ confirmBtn.style.display = 'inline-block'; confirmBtn.disabled = false; }
-  } else {
-    const n = rouletteBuildingNums.length;
-    spotEl.textContent = `${n} number${n === 1 ? '' : 's'} selected \u2014 tap another adjacent number to complete a bet`;
-    spotEl.style.color = '';
-    if(confirmBtn){ confirmBtn.style.display = 'inline-block'; confirmBtn.disabled = true; }
-  }
 }
 // Confirms whatever's currently in rouletteBuildingNums as a placed bet —
-// only ever called once we KNOW it's meant to be locked in (max shape size
-// reached, the player tapped Confirm Bet, or they moved on to something
-// else with a still-valid selection pending).
+// only ever called once we KNOW it's meant to be locked in (a valid 2+
+// shape just formed, or the player moved on to something else with a
+// single pending number still sitting there).
 function rouletteConfirmBuilding(detectedBet){
   const amount = parseInt(document.getElementById('rouletteBetInput').value, 10) || 0;
-  if(amount <= 0){
-    const errEl = document.getElementById('rouletteBetError');
-    if(errEl) errEl.textContent = 'Pick a chip amount first.';
-    rouletteClearBuilding();
-    return;
-  }
-  const cellEls = rouletteBuildingNums.map(v => rouletteCellByValue[v]).filter(Boolean);
+  const cellEls = rouletteBuildingNums.map(v =>
+    document.querySelector(`.rt-cell[data-bet-type="straight"][data-bet-value="${CSS.escape(v)}"]`)
+  ).filter(Boolean);
   const bet = { id: ++rouletteBetIdCounter, ...detectedBet, amount, cellEls };
   rouletteActiveBets.push(bet);
   cellEls.forEach(c => {
@@ -4082,26 +3428,24 @@ function rouletteConfirmBuilding(detectedBet){
     c.appendChild(badge);
   });
   rouletteBuildingNums = [];
-  rouletteUpdateBuildingUI(null);
+  const spotEl = document.getElementById('rouletteSelectedSpot');
+  spotEl.textContent = 'No spot selected';
+  spotEl.style.color = '';
   rouletteRenderActiveBets();
   bjPlayChipSound();
 }
-// Confirms any still-pending selection IF it currently resolves to a valid
-// bet — called right before anything that moves focus away from number-
-// building (an outside tap, Same Bet, or Spin) so a pending Straight/
-// Split/Street/etc never just gets silently abandoned or left ambiguous.
-// If the pending selection is mid-way through building toward a Corner or
-// Double Street and isn't valid on its own yet, it's simply abandoned —
-// there's no sensible bet to fall back to.
-function rouletteConfirmPendingSelectionIfAny(){
-  if(rouletteBuildingNums.length === 0) return;
-  const bet = rouletteDetectBetFromSelection(rouletteBuildingNums);
-  if(bet) rouletteConfirmBuilding(bet);
-  else rouletteClearBuilding();
+// If exactly one number is still pending (never got a second tap to form
+// a Split/Street/etc), it locks in as a plain Straight bet — called right
+// before anything else happens (an outside tap, or Spin) so a lone number
+// never just gets silently abandoned or left ambiguous.
+function rouletteConfirmPendingStraightIfAny(){
+  if(rouletteBuildingNums.length === 1){
+    const bet = rouletteDetectBetFromSelection(rouletteBuildingNums);
+    if(bet) rouletteConfirmBuilding(bet);
+  } else if(rouletteBuildingNums.length > 0){
+    rouletteClearBuilding(); // an incomplete/invalid multi-selection just gets abandoned
+  }
 }
-document.getElementById('rouletteConfirmBetBtn').addEventListener('click', () => {
-  rouletteConfirmPendingSelectionIfAny();
-});
 function rouletteToggleNumberCell(cell){
   // Tapping a cell that's already part of a CONFIRMED bet removes that
   // whole bet — this is the "clear selection" control the member asked
@@ -4110,54 +3454,58 @@ function rouletteToggleNumberCell(cell){
   if(existingBet){ rouletteRemoveBet(existingBet.id); return; }
 
   const val = cell.dataset.betValue;
+  const spotEl = document.getElementById('rouletteSelectedSpot');
   const idx = rouletteBuildingNums.indexOf(val);
   if(idx >= 0){
     // deselecting a number that's mid-build (not yet confirmed)
     rouletteBuildingNums.splice(idx, 1);
     cell.classList.remove('building');
-    rouletteUpdateBuildingUI(rouletteBuildingNums.length ? rouletteDetectBetFromSelection(rouletteBuildingNums) : null);
+    spotEl.textContent = rouletteBuildingNums.length ? 'Tap an adjacent number to build Split/Street/Corner \u2014 or tap elsewhere to confirm Straight' : 'No spot selected';
+    spotEl.style.color = '';
     return;
   }
 
-  // Taps accumulate into the building set WITHOUT requiring every
-  // intermediate size to itself be a valid bet — that requirement is what
-  // made Corner and Double Street unreachable before (a Corner's 3-number
-  // subset is an "L" shape, not a Street, so it could never pass through a
-  // valid waypoint on the way to 4). Only the FINAL confirmed selection
-  // needs to resolve to a real bet type.
-  // A tap that isn't adjacent to anything already building is read as an
-  // unrelated new bet: finalize whatever WAS pending (if valid) first.
-  const isAdjacentToBuilding = rouletteBuildingNums.some(v => rouletteAreAdjacent(v, val));
-  if(rouletteBuildingNums.length > 0 && !isAdjacentToBuilding){
-    rouletteConfirmPendingSelectionIfAny();
-  }
+  // A single number is technically always a "valid" Straight — the whole
+  // point of holding it in building state rather than confirming on the
+  // spot is to give a second tap the chance to upgrade it into a Split,
+  // Street, Corner or Six Line first.
+  const candidateNums = [...rouletteBuildingNums, val];
+  const candidateBet = rouletteDetectBetFromSelection(candidateNums);
 
-  const touchesZero = rouletteBuildingNums.includes('0') || rouletteBuildingNums.includes('00') || val === '0' || val === '00';
-  const hardCap = touchesZero ? 5 : 6; // Top Line tops out at 5, Double Street at 6 — nothing bigger exists
-  if(rouletteBuildingNums.length >= hardCap) return; // maxed out — tap Confirm Bet or deselect a number first
-
-  rouletteBuildingNums.push(val);
-  cell.classList.add('building');
-  const bet = rouletteDetectBetFromSelection(rouletteBuildingNums);
-  if(bet && rouletteBuildingNums.length >= hardCap){
-    rouletteConfirmBuilding(bet);
+  if(candidateBet && candidateNums.length >= 2){
+    rouletteBuildingNums.push(val);
+    cell.classList.add('building');
+    rouletteConfirmBuilding(candidateBet);
+  } else if(candidateNums.length === 1){
+    rouletteBuildingNums = candidateNums;
+    cell.classList.add('building');
+    spotEl.textContent = 'Tap an adjacent number to build Split/Street/Corner \u2014 or tap elsewhere to confirm Straight';
+    spotEl.style.color = '';
   } else {
-    rouletteUpdateBuildingUI(bet);
+    // This tap doesn't extend the pending selection into anything valid —
+    // rather than leave the player stuck, confirm whatever WAS pending
+    // (if it was a lone valid Straight) and start fresh with just this
+    // new tap, so every tap always does something sensible.
+    if(rouletteBuildingNums.length === 1){
+      const prevBet = rouletteDetectBetFromSelection(rouletteBuildingNums);
+      if(prevBet) rouletteConfirmBuilding(prevBet);
+    } else {
+      rouletteClearBuilding();
+    }
+    rouletteBuildingNums = [val];
+    cell.classList.add('building');
+    spotEl.textContent = 'Tap an adjacent number to build Split/Street/Corner \u2014 or tap elsewhere to confirm Straight';
+    spotEl.style.color = '';
   }
 }
 function rouletteTapOutsideCell(cell){
   const existingBet = rouletteFindBetByCell(cell);
   if(existingBet){ rouletteRemoveBet(existingBet.id); return; }
 
-  rouletteConfirmPendingSelectionIfAny();
+  rouletteConfirmPendingStraightIfAny();
 
   const betType = cell.dataset.betType;
   const amount = parseInt(document.getElementById('rouletteBetInput').value, 10) || 0;
-  if(amount <= 0){
-    const errEl = document.getElementById('rouletteBetError');
-    if(errEl) errEl.textContent = 'Pick a chip amount first.';
-    return;
-  }
   const bet = { id: ++rouletteBetIdCounter, type: betType, value: null, label: ROULETTE_BET_LABELS[betType] || betType, amount, cellEls: [cell] };
   rouletteActiveBets.push(bet);
   cell.classList.add('selected');
@@ -4172,11 +3520,11 @@ function rouletteRenderActiveBets(){
   const area = document.getElementById('rouletteActiveBetsArea');
   const clearBtn = document.getElementById('rouletteClearAllBtn');
   if(rouletteActiveBets.length === 0){
-    area.innerHTML = '<div class="roulette-total-staked">Total staked: 0 XP</div>';
-    clearBtn.disabled = true;
+    area.innerHTML = '';
+    clearBtn.style.display = 'none';
     return;
   }
-  clearBtn.disabled = false;
+  clearBtn.style.display = 'inline-block';
   const total = rouletteActiveBets.reduce((s, b) => s + b.amount, 0);
   area.innerHTML = rouletteActiveBets.map(b => `
     <div class="roulette-active-bet-row">
@@ -4193,40 +3541,16 @@ document.getElementById('rouletteClearAllBtn').addEventListener('click', () => {
   document.getElementById('rouletteSelectedSpot').textContent = 'No spot selected';
   document.getElementById('rouletteSelectedSpot').style.color = '';
 });
-// Re-places every bet from the last completed spin exactly as it was —
-// replaces whatever's currently on the table rather than stacking on top,
-// so tapping it twice in a row is a no-op, not a doubled bet.
-function rouletteRepeatLastBet(){
-  if(rouletteLastBets.length === 0) return;
-  rouletteConfirmPendingSelectionIfAny();
-  rouletteActiveBets.slice().forEach(b => rouletteRemoveBet(b.id));
-  rouletteLastBets.forEach(lb => {
-    const bet = { id: ++rouletteBetIdCounter, type: lb.type, value: lb.value, nums: lb.nums, label: lb.label, amount: lb.amount, cellEls: lb.cellEls };
-    rouletteActiveBets.push(bet);
-    bet.cellEls.forEach(c => {
-      c.classList.add('selected');
-      const badge = document.createElement('div');
-      badge.className = 'rt-chip-badge';
-      badge.textContent = bet.amount;
-      c.appendChild(badge);
-    });
-  });
-  rouletteRenderActiveBets();
-  bjPlayChipSound();
-}
-document.getElementById('rouletteSameBetBtn').addEventListener('click', rouletteRepeatLastBet);
 document.getElementById('rouletteBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('rouletteChipDisplay');
   if(chip){
     chip.textContent = e.target.value || '0';
     chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
   }
-  const errEl = document.getElementById('rouletteBetError');
-  if(errEl) errEl.textContent = '';
 });
 function rouletteEvaluate(bet, pocket){
   if(bet.type === 'straight') return pocket === bet.value ? 35 : -1;
-  if(bet.type === 'topline') return ['0','00','1','2','3'].includes(pocket) ? 6 : -1;
+  if(bet.type === 'firstfour') return ['0','1','2','3'].includes(pocket) ? 8 : -1;
   if(bet.type === 'split') return bet.nums.includes(pocket) ? 17 : -1;
   if(bet.type === 'street') return bet.nums.includes(pocket) ? 11 : -1;
   if(bet.type === 'corner') return bet.nums.includes(pocket) ? 8 : -1;
@@ -4259,7 +3583,7 @@ function rouletteRenderHistory(){
   }).join('');
 }
 async function rouletteSpin(){
-  rouletteConfirmPendingSelectionIfAny();
+  rouletteConfirmPendingStraightIfAny();
   const errEl = document.getElementById('rouletteBetError');
   errEl.textContent = '';
   if(rouletteActiveBets.length === 0){ errEl.textContent = 'Place at least one bet on the table first.'; return; }
@@ -4329,15 +3653,221 @@ async function rouletteSpin(){
   renderXPLog();
 
   // Bets are consumed by the spin, same as chips being swept off a real
-  // table — clear everything ready for the next round. Snapshot them first
-  // so the Same Bet pill can re-place this exact spread next round.
-  rouletteLastBets = rouletteActiveBets.map(b => ({ ...b, cellEls: b.cellEls.slice() }));
-  document.getElementById('rouletteSameBetBtn').disabled = rouletteLastBets.length === 0;
+  // table — clear everything ready for the next round.
   rouletteActiveBets.forEach(b => b.cellEls.forEach(c => { c.classList.remove('selected'); const bd = c.querySelector('.rt-chip-badge'); if(bd) bd.remove(); }));
   rouletteActiveBets = [];
   rouletteRenderActiveBets();
 }
 document.getElementById('rouletteSpinBtn').addEventListener('click', rouletteSpin);
+
+// ---- Daily Spin ----
+// 24 physical segments encode the desired odds directly (more copies of a
+// prize = more likely) rather than a separate probability table — what you
+// see on the wheel IS the odds, same honesty as a real prize wheel where
+// the segment sizes are the whole story. Skewed hard toward small/no
+// prizes with the big ones deliberately rare: 1 Jackpot, 1x1000, 1x800,
+// 2x600, 3x400, 5x200, 7x100, 4x Nothing.
+const DAILY_SPIN_SEGMENTS = [
+  { label: '1000', value: 1000 },
+  { label: '100', value: 100 },
+  { label: '200', value: 200 },
+  { label: '400', value: 400 },
+  { label: '100', value: 100 },
+  { label: 'Zero', value: 0 },
+  { label: '800', value: 800 },
+  { label: '100', value: 100 },
+  { label: '200', value: 200 },
+  { label: '400', value: 400 },
+  { label: '100', value: 100 },
+  { label: 'Zero', value: 0 },
+  { label: 'JACKPOT', value: 2500 },
+  { label: 'Zero', value: 0 },
+  { label: '200', value: 200 },
+  { label: '400', value: 400 },
+  { label: '100', value: 100 },
+  { label: 'Zero', value: 0 },
+  { label: '600', value: 600 },
+  { label: '100', value: 100 },
+  { label: '200', value: 200 },
+  { label: '200', value: 200 },
+  { label: '600', value: 600 },
+  { label: 'Zero', value: 0 }
+];
+const DAILY_SPIN_COOLDOWN_MS = 2 * 24 * 60 * 60 * 1000; // once every second day
+let dailySpinWheelBuilt = false;
+let dailySpinRotation = 0;
+let dailySpinSpinning = false;
+
+function dailySpinBuildWheel(){
+  const wheel = document.getElementById('dailySpinWheel');
+  const labelsLayer = document.getElementById('dailySpinLabelsLayer');
+  const n = DAILY_SPIN_SEGMENTS.length;
+  const anglePer = 360 / n;
+  // Alternating deep-green / burgundy segments, with the Jackpot slot
+  // picked out in bright gold so it visually reads as the one to chase.
+  const stops = DAILY_SPIN_SEGMENTS.map((seg, i) => {
+    let col;
+    if(seg.label === 'JACKPOT') col = '#e0b23e';
+    else if(seg.label === 'Zero') col = '#171b16';
+    else col = i % 2 === 0 ? '#123626' : '#5a1a1f';
+    return `${col} ${(i * anglePer).toFixed(3)}deg ${((i + 1) * anglePer).toFixed(3)}deg`;
+  });
+  wheel.style.background = `conic-gradient(${stops.join(',')})`;
+  // Labels sit in their own separate, non-rotating layer (not inside the
+  // colour wheel itself) specifically so they can be counter-rotated live
+  // during the spin — see dailySpinSpin() for the other half of this.
+  // Every segment gets exactly one horizontal line at the same radius —
+  // deliberately NOT split across two stacked lines for JACKPOT (an
+  // earlier version tried that): since a wedge can land pointing any
+  // direction around the wheel, which of the two lines ends up physically
+  // "on top" on screen flips depending on rotation — meaning the word
+  // could render as "POT" above "JACK" right at the exact moment someone
+  // actually wins. A single line has no such ordering to get wrong, ever.
+  let piecesHtml = '';
+  DAILY_SPIN_SEGMENTS.forEach((seg, i) => {
+    const angle = i * anglePer + anglePer / 2;
+    const isJackpot = seg.label === 'JACKPOT';
+    // The word "JACKPOT" (7 characters) genuinely cannot fit in the same
+    // arc-width every other segment gets without colliding into its
+    // neighbours, at any font size that stays legible — a trophy icon
+    // sidesteps the problem entirely rather than fighting it further, and
+    // the full word still appears clearly in the win message the moment
+    // it's actually hit.
+    const displayText = isJackpot ? '🏆' : seg.label;
+    piecesHtml += `<div class="dailyspin-segment-label${isJackpot ? ' jackpot-label' : ''}" data-base-angle="${angle}" data-radius="98" style="transform: rotate(${angle}deg) translateY(-98px) rotate(${-angle}deg);">${displayText}</div>`;
+  });
+  labelsLayer.innerHTML = piecesHtml;
+  dailySpinWheelBuilt = true;
+}
+function dailySpinFormatCountdown(msRemaining){
+  const totalMin = Math.ceil(msRemaining / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h ${m}m`;
+}
+async function dailySpinRefreshCooldown(){
+  const btn = document.getElementById('dailySpinBtn');
+  const msgEl = document.getElementById('dailySpinCooldownMsg');
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/dailySpinLastAt.json`);
+    const lastAt = await res.json();
+    const remaining = lastAt ? (lastAt + DAILY_SPIN_COOLDOWN_MS) - Date.now() : 0;
+    if(remaining > 0){
+      btn.disabled = true;
+      msgEl.textContent = `Next spin available in ${dailySpinFormatCountdown(remaining)}`;
+    } else {
+      btn.disabled = false;
+      msgEl.textContent = 'One free spin every 2 days.';
+    }
+  }catch(e){
+    btn.disabled = false;
+    msgEl.textContent = 'One free spin every 2 days.';
+  }
+}
+// A physical prize wheel's pointer clicks against a peg at every segment
+// boundary — fast and tight while the wheel's moving quickly, spreading
+// out as it slows, ending in a few final soft, spaced ticks right before
+// it stops. Scheduled with a power-curve timing distribution (not tied to
+// the CSS transition itself, which can't offer per-frame rotation
+// callbacks) rather than the real segment count, since matching a fixed
+// tick budget to the actual 24 segments made the ending drag on too long.
+function dailySpinPlayPegTick(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const osc = ctx.createOscillator(); osc.type = 'square'; osc.frequency.value = 1500;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.11, ctx.currentTime + 0.004);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.045);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(); osc.stop(ctx.currentTime + 0.05);
+}
+function dailySpinSchedulePegTicks(durationMs, totalTicks){
+  for(let i = 1; i <= totalTicks; i++){
+    const t = durationMs * Math.pow(i / totalTicks, 2.3);
+    setTimeout(dailySpinPlayPegTick, t);
+  }
+}
+async function dailySpinSpin(){
+  if(dailySpinSpinning) return;
+  const btn = document.getElementById('dailySpinBtn');
+  const msgEl = document.getElementById('dailySpinCooldownMsg');
+  const resultEl = document.getElementById('dailySpinResultMsg');
+
+  const checkRes = await authedFetch(`/xp/${currentUserUid}/dailySpinLastAt.json`);
+  const lastAt = await checkRes.json();
+  const remaining = lastAt ? (lastAt + DAILY_SPIN_COOLDOWN_MS) - Date.now() : 0;
+  if(remaining > 0){
+    msgEl.textContent = `Next spin available in ${dailySpinFormatCountdown(remaining)}`;
+    return;
+  }
+
+  dailySpinSpinning = true;
+  btn.disabled = true;
+  resultEl.textContent = '';
+  resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+
+  const winIndex = Math.floor(Math.random() * DAILY_SPIN_SEGMENTS.length);
+  const seg = DAILY_SPIN_SEGMENTS[winIndex];
+  const anglePer = 360 / DAILY_SPIN_SEGMENTS.length;
+  const targetAngle = winIndex * anglePer + anglePer / 2;
+  const spins = 5 + Math.floor(Math.random() * 2);
+  dailySpinRotation = dailySpinRotation - (dailySpinRotation % 360) + spins * 360 + (360 - targetAngle);
+  const wheel = document.getElementById('dailySpinWheel');
+  wheel.style.transform = `rotate(${dailySpinRotation}deg)`;
+  // Each label gets the SAME rotation added on top of its own fixed base
+  // angle, using the identical transition duration/easing as the wheel —
+  // CSS interpolates both in lockstep, so at every instant during the 4s
+  // spin the label's own rotate(...)...rotate(-...) pair keeps cancelling
+  // out correctly and the text stays upright and horizontal the whole
+  // time, not just once it stops.
+  document.querySelectorAll('.dailyspin-segment-label').forEach(label => {
+    const baseAngle = parseFloat(label.dataset.baseAngle);
+    const radius = parseFloat(label.dataset.radius);
+    const liveAngle = baseAngle + dailySpinRotation;
+    label.style.transform = `rotate(${liveAngle}deg) translateY(-${radius}px) rotate(${-liveAngle}deg)`;
+  });
+  dailySpinSchedulePegTicks(4000, 55);
+
+  await authedFetch(`/xp/${currentUserUid}/dailySpinLastAt.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
+  });
+
+  await bjWait(4200);
+
+  wheel.classList.remove('pc-winner-flash'); void wheel.offsetWidth; wheel.classList.add('pc-winner-flash');
+
+  const isBigWin = seg.value >= 800; // per the brief: real celebration treatment from 800 XP up
+  const isJackpot = seg.label === 'JACKPOT';
+  if(seg.value === 0){
+    resultEl.textContent = 'Nothing this time \u2014 back in 2 days';
+    resultEl.style.color = 'var(--muted)';
+    resultEl.classList.add('bj-outcome-pop');
+  } else {
+    resultEl.textContent = isJackpot ? `JACKPOT! +${seg.value} XP` : `+${seg.value} XP!`;
+    resultEl.style.color = isBigWin ? '' : 'var(--win)';
+    resultEl.classList.add(isBigWin ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+  }
+
+  const panelEl = document.getElementById('casinoGameDailyspin');
+  if(seg.value > 0){
+    bjPlayChime(true);
+    if(isBigWin){
+      panelEl.classList.remove('pc-flash-gold'); void panelEl.offsetWidth; panelEl.classList.add('pc-flash-gold');
+      bjLaunchConfetti(resultEl, isJackpot ? 60 : 40);
+      setTimeout(() => panelEl.classList.remove('pc-flash-gold'), 900);
+    } else {
+      bjLaunchConfetti(resultEl, 16);
+    }
+    await awardXP(seg.value, isJackpot ? 'Spin the Wheel JACKPOT' : 'Spin the Wheel prize', { silent: true });
+    const bal = await getXPBalance();
+    updateXPBalanceDisplay(bal);
+    renderXPLog();
+  }
+
+  dailySpinSpinning = false;
+  await dailySpinRefreshCooldown();
+}
+document.getElementById('dailySpinBtn').addEventListener('click', dailySpinSpin);
 
 // ---- Casino War ----
 // One card each, higher card wins (Ace high). A tie offers Go to War
@@ -4479,366 +4009,6 @@ document.getElementById('warSurrenderBtn').addEventListener('click', warSurrende
 document.getElementById('warNewHandBtn').addEventListener('click', warNewHand);
 document.getElementById('warBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('warChipDisplay');
-  if(!chip) return;
-  chip.textContent = e.target.value || '0';
-  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
-});
-
-// ---- Slots (5 reels, single payline) ----
-// Dedicated sound set — a continuous mechanical whir for the spin, a sharp
-// per-reel "clunk" as each one locks in, and a bright coin cascade for a
-// win (bigger cascade for a jackpot) — distinct from the card-table sounds
-// so Slots has its own audio identity rather than reusing chip/chime SFX.
-function slotsPlayWhir(durationSec){
-  const ctx = bjGetAudioCtx(); if(!ctx) return;
-  const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * durationSec)), ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for(let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-  const noise = ctx.createBufferSource(); noise.buffer = buffer;
-  const filter = ctx.createBiquadFilter(); filter.type = 'bandpass'; filter.Q.value = 2.4;
-  filter.frequency.setValueAtTime(950, ctx.currentTime);
-  filter.frequency.linearRampToValueAtTime(650, ctx.currentTime + durationSec);
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.11, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + durationSec);
-  noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-  noise.start(); noise.stop(ctx.currentTime + durationSec);
-}
-function slotsPlayReelStop(){
-  const ctx = bjGetAudioCtx(); if(!ctx) return;
-  const now = ctx.currentTime;
-  const osc = ctx.createOscillator(); osc.type = 'square'; osc.frequency.setValueAtTime(150, now);
-  osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.16, now);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.start(now); osc.stop(now + 0.1);
-}
-function slotsPlayCoinCascade(big){
-  const ctx = bjGetAudioCtx(); if(!ctx) return;
-  const now = ctx.currentTime;
-  const count = big ? 16 : 7;
-  for(let i = 0; i < count; i++){
-    const t = now + i * 0.045 + Math.random() * 0.012;
-    const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 1500 + Math.random() * 900;
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.13, t + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(t); osc.stop(t + 0.16);
-  }
-}
-// Weighted symbol pool (rarer symbols pay more). 7️⃣ is wild — substitutes
-// for any symbol when forming the line, and 5 wilds is the top jackpot.
-// pay values are net multipliers on the bet (matches this app's existing
-// "35:1"-style convention used by Roulette/Blackjack, not a total return).
-const SLOTS_SYMBOLS = [
-  { key:'cherry',  icon:'🍒', weight:30, pay:{3:1,  4:3,   5:10  } },
-  { key:'lemon',   icon:'🍋', weight:24, pay:{3:2,  4:5,   5:15  } },
-  { key:'grapes',  icon:'🍇', weight:18, pay:{3:3,  4:8,   5:25  } },
-  { key:'star',    icon:'⭐', weight:12, pay:{3:4,  4:12,  5:50  } },
-  { key:'bell',    icon:'🔔', weight:8,  pay:{3:6,  4:20,  5:80  } },
-  { key:'diamond', icon:'💎', weight:5,  pay:{3:10, 4:40,  5:200 } },
-  { key:'wild',    icon:'7️⃣', weight:3,  pay:{3:20, 4:100, 5:500 } }
-];
-let SLOTS_POOL = null;
-function slotsBuildPool(){ SLOTS_POOL = []; SLOTS_SYMBOLS.forEach(s => { for(let i=0;i<s.weight;i++) SLOTS_POOL.push(s.key); }); }
-function slotsWeightedPick(){ if(!SLOTS_POOL) slotsBuildPool(); return SLOTS_POOL[Math.floor(Math.random() * SLOTS_POOL.length)]; }
-function slotsSymbolIcon(key){ return SLOTS_SYMBOLS.find(s => s.key === key).icon; }
-let slotsBuilt = false;
-let slotsLastBet = 0;
-function slotsBuildReels(){
-  for(let i = 0; i < 5; i++){
-    const strip = document.getElementById('slotsStrip' + i);
-    strip.innerHTML = `<div class="slots-symbol">${slotsSymbolIcon(slotsWeightedPick())}</div>`;
-    strip.style.transform = 'translateY(0)';
-  }
-  slotsBuilt = true;
-}
-function slotsSpinReel(i, finalKey, stopDelay){
-  const reelEl = document.querySelectorAll('#slotsReelRow .slots-reel')[i];
-  const strip = document.getElementById('slotsStrip' + i);
-  strip.style.transform = 'translateY(0)';
-  strip.innerHTML = `<div class="slots-symbol">${slotsSymbolIcon(slotsWeightedPick())}</div><div class="slots-symbol">${slotsSymbolIcon(slotsWeightedPick())}</div>`;
-  reelEl.classList.add('spinning');
-  reelEl.classList.remove('pc-wild-land');
-  setTimeout(() => {
-    reelEl.classList.remove('spinning');
-    strip.innerHTML = `<div class="slots-symbol">${slotsSymbolIcon(finalKey)}</div>`;
-    strip.style.transform = 'translateY(0)';
-    reelEl.classList.remove('pc-reel-stop'); void reelEl.offsetWidth; reelEl.classList.add('pc-reel-stop');
-    slotsPlayReelStop();
-    if(finalKey === 'wild'){ reelEl.classList.add('pc-wild-land'); }
-  }, stopDelay);
-}
-// Longest run from the leftmost reel wins (wilds count toward any run).
-// A lone 2-cherry lead-in (which wouldn't otherwise qualify) still pays a
-// small consolation, same spirit as most physical cherry-lead slots.
-function slotsEvaluateLine(finals){
-  let baseKey = finals.find(f => f !== 'wild');
-  if(baseKey === undefined){
-    const wildSym = SLOTS_SYMBOLS.find(s => s.key === 'wild');
-    return { multiplier: wildSym.pay[5], label: '5× 7️⃣ WILD JACKPOT!', isJackpot: true };
-  }
-  let run = 0;
-  for(const f of finals){ if(f === baseKey || f === 'wild'){ run++; } else break; }
-  if(run >= 3){
-    const sym = SLOTS_SYMBOLS.find(s => s.key === baseKey);
-    return { multiplier: sym.pay[run], label: `${run}× ${sym.icon}`, isJackpot: (baseKey === 'diamond' || baseKey === 'wild') && run === 5 };
-  }
-  if(finals[0] === 'cherry' && finals[1] === 'cherry'){
-    return { multiplier: 0.5, label: '2× 🍒', isJackpot: false };
-  }
-  return { multiplier: 0, label: 'No match', isJackpot: false };
-}
-async function slotsSpin(){
-  const spinBtn = document.getElementById('slotsSpinBtn');
-  const sameBtn = document.getElementById('slotsSameBetBtn');
-  // Disabling the button used to happen AFTER the `await getXPBalance()`
-  // below — that await is a real gap where a fast double-tap fires this
-  // function twice before the button visually locks, letting two spins
-  // run concurrently. Disabling synchronously, as the very first thing,
-  // closes that gap; every early-return path below now re-enables it.
-  if(spinBtn.disabled) return;
-  spinBtn.disabled = true;
-  const errEl = document.getElementById('slotsBetError');
-  errEl.textContent = '';
-  const amount = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
-  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
-  const balance = await getXPBalance();
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
-  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; spinBtn.disabled = false; return; }
-
-  sameBtn.disabled = true;
-  const resultEl = document.getElementById('slotsResultMsg');
-  resultEl.textContent = ''; resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
-
-  const finals = [0,0,0,0,0].map(() => slotsWeightedPick());
-  const stopDelays = [500, 750, 1000, 1250, 1500];
-  slotsPlayWhir((stopDelays[4] + 250) / 1000);
-  for(let i = 0; i < 5; i++) slotsSpinReel(i, finals[i], stopDelays[i]);
-  await bjWait(stopDelays[4] + 350);
-
-  const { multiplier, label, isJackpot } = slotsEvaluateLine(finals);
-  const delta = multiplier > 0 ? Math.round(amount * multiplier) : -amount;
-
-  spinBtn.disabled = false;
-  slotsLastBet = amount;
-  sameBtn.disabled = false;
-
-  resultEl.textContent = `${label}  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
-  resultEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)'));
-  resultEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
-
-  const cabinetEl = document.querySelector('#casinoGameSlots .slots-cabinet');
-  if(delta > 0){
-    slotsPlayCoinCascade(isJackpot);
-    document.querySelectorAll('#slotsReelRow .slots-reel').forEach(r => { r.classList.remove('pc-winner-flash'); void r.offsetWidth; r.classList.add('pc-winner-flash'); });
-    bjLaunchConfetti(resultEl, isJackpot ? 42 : 20);
-    if(isJackpot && cabinetEl){ cabinetEl.classList.remove('pc-jackpot-pulse'); void cabinetEl.offsetWidth; cabinetEl.classList.add('pc-jackpot-pulse'); }
-  } else if(delta < 0){
-    bjPlayChime(false);
-  }
-
-  await awardXP(delta, delta > 0 ? `Slots win (${label})` : 'Slots loss', { silent: true });
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
-  renderXPLog();
-}
-document.getElementById('slotsSpinBtn').addEventListener('click', slotsSpin);
-document.getElementById('slotsSameBetBtn').addEventListener('click', () => {
-  if(!slotsLastBet) return;
-  const input = document.getElementById('slotsBetInput');
-  input.value = slotsLastBet;
-  input.dispatchEvent(new Event('input'));
-});
-document.getElementById('slotsBetInput').addEventListener('input', (e) => {
-  const chip = document.getElementById('slotsChipDisplay');
-  if(!chip) return;
-  chip.textContent = e.target.value || '0';
-  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
-});
-
-// ---- Video Poker (Jacks or Better) ----
-const VP_PAYTABLE = [
-  { key:'royal',    label:'Royal Flush',      mult:250 },
-  { key:'straightf',label:'Straight Flush',   mult:50  },
-  { key:'quads',    label:'Four of a Kind',   mult:25  },
-  { key:'fullhouse',label:'Full House',       mult:9   },
-  { key:'flush',    label:'Flush',            mult:6   },
-  { key:'straight', label:'Straight',         mult:4   },
-  { key:'trips',    label:'Three of a Kind',  mult:3   },
-  { key:'twopair',  label:'Two Pair',         mult:2   },
-  { key:'jacks',    label:'Jacks or Better',  mult:1   }
-];
-let vpBuilt = false;
-let vpDeck = [];
-let vpHand = [];
-let vpHeld = [false, false, false, false, false];
-let vpStage = 'idle'; // idle | dealt
-function vpBuildPaytable(){
-  const table = document.getElementById('vpPaytable');
-  table.innerHTML = VP_PAYTABLE.map(p => `<tr id="vpPayRow_${p.key}"><td>${p.label}</td><td style="text-align:right;">${p.mult}:1</td></tr>`).join('');
-  vpBuilt = true;
-}
-function vpRenderIdleHand(){
-  document.getElementById('vpHandRow').innerHTML = [0,1,2,3,4].map(() =>
-    `<div class="vp-card-col"><div class="playing-card pc-back" style="width:56px;height:80px;"></div><span class="vp-hold-pill" style="visibility:hidden;">Hold</span></div>`).join('');
-}
-const VP_RANK_ORDER = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-function vpRankValue(r){ return VP_RANK_ORDER.indexOf(r) + 2; }
-function vpEvaluateHand(hand){
-  const ranks = hand.map(c => vpRankValue(c.rank)).sort((a,b) => a - b);
-  const suits = hand.map(c => c.suit);
-  const isFlush = suits.every(s => s === suits[0]);
-  const counts = {};
-  ranks.forEach(r => counts[r] = (counts[r] || 0) + 1);
-  const countVals = Object.values(counts).sort((a,b) => b - a);
-  const uniqueRanks = Object.keys(counts).map(Number).sort((a,b) => a - b);
-  let isStraight = false;
-  if(uniqueRanks.length === 5){
-    isStraight = (uniqueRanks[4] - uniqueRanks[0] === 4);
-    // Ace-low straight: A-2-3-4-5 (ranks stored as 14,2,3,4,5 → sorted 2,3,4,5,14)
-    if(!isStraight && uniqueRanks.join(',') === '2,3,4,5,14') isStraight = true;
-  }
-  const isRoyal = isFlush && isStraight && uniqueRanks.includes(10) && uniqueRanks.includes(14) && uniqueRanks[0] === 10;
-
-  if(isRoyal) return { key:'royal', label:'Royal Flush' };
-  if(isStraight && isFlush) return { key:'straightf', label:'Straight Flush' };
-  if(countVals[0] === 4) return { key:'quads', label:'Four of a Kind' };
-  if(countVals[0] === 3 && countVals[1] === 2) return { key:'fullhouse', label:'Full House' };
-  if(isFlush) return { key:'flush', label:'Flush' };
-  if(isStraight) return { key:'straight', label:'Straight' };
-  if(countVals[0] === 3) return { key:'trips', label:'Three of a Kind' };
-  if(countVals[0] === 2 && countVals[1] === 2) return { key:'twopair', label:'Two Pair' };
-  if(countVals[0] === 2){
-    const pairRank = Number(Object.keys(counts).find(r => counts[r] === 2));
-    if(pairRank >= 11) return { key:'jacks', label:'Jacks or Better' };
-  }
-  return null;
-}
-// Distinct short tick for toggling Hold — pitched up when holding, down
-// when releasing, so the two states are audibly different at a glance.
-function vpPlayHoldClick(held){
-  const ctx = bjGetAudioCtx(); if(!ctx) return;
-  const now = ctx.currentTime;
-  const osc = ctx.createOscillator(); osc.type = 'square'; osc.frequency.value = held ? 720 : 420;
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.11, now + 0.008);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.start(now); osc.stop(now + 0.1);
-}
-// animateIdx: which card positions should deal-in-animate this render —
-// defaults to every card (initial Deal). On Draw, only the freshly-drawn
-// (non-held) positions are passed, so held cards visibly stay put instead
-// of re-dealing themselves, which is what a real video poker draw looks
-// and sounds like.
-function vpRenderHand(animate, animateIdx){
-  const animateSet = animateIdx || [0,1,2,3,4];
-  document.getElementById('vpHandRow').innerHTML = vpHand.map((c, i) => {
-    const isRed = c.suit === '♥' || c.suit === '♦';
-    const willAnimate = animate && animateSet.includes(i);
-    const orderInAnim = animateSet.indexOf(i);
-    const delay = willAnimate ? Math.max(0, orderInAnim) * 130 : 0;
-    if(willAnimate) setTimeout(bjPlayCardSound, delay);
-    const heldGlow = vpHeld[i] ? ' pc-held-glow' : '';
-    return `<div class="vp-card-col">
-      <div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${willAnimate ? ' pc-dealt' : ''}${heldGlow}" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>
-      <button type="button" class="vp-hold-pill${vpHeld[i] ? ' held' : ''}" data-idx="${i}">${vpHeld[i] ? 'Held' : 'Hold'}</button>
-    </div>`;
-  }).join('');
-  document.querySelectorAll('#vpHandRow .vp-hold-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if(vpStage !== 'dealt') return;
-      const idx = parseInt(btn.dataset.idx, 10);
-      vpHeld[idx] = !vpHeld[idx];
-      vpPlayHoldClick(vpHeld[idx]);
-      vpRenderHand(false);
-      const cardEl = document.querySelectorAll('#vpHandRow .playing-card')[idx];
-      if(cardEl){ cardEl.classList.remove('pc-hold-pop'); void cardEl.offsetWidth; cardEl.classList.add('pc-hold-pop'); }
-    });
-  });
-}
-function vpHighlightPayout(key){
-  VP_PAYTABLE.forEach(p => document.getElementById('vpPayRow_' + p.key).classList.remove('vp-hit'));
-  if(key) document.getElementById('vpPayRow_' + key).classList.add('vp-hit');
-}
-async function vpDeal(){
-  const dealBtn = document.getElementById('vpDealBtn');
-  if(dealBtn.disabled) return;
-  dealBtn.disabled = true;
-  const errEl = document.getElementById('vpBetError');
-  errEl.textContent = '';
-  const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
-  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; dealBtn.disabled = false; return; }
-  const balance = await getXPBalance();
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; dealBtn.disabled = false; return; }
-  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; dealBtn.disabled = false; return; }
-
-  vpDeck = bjFreshDeck();
-  vpHand = vpDeck.splice(0, 5);
-  vpHeld = [false, false, false, false, false];
-  vpStage = 'dealt';
-  document.getElementById('vpOutcomeMsg').textContent = '';
-  vpHighlightPayout(null);
-  vpRenderHand(true);
-  document.getElementById('vpDealBtn').style.display = 'none';
-  document.getElementById('vpDrawBtn').style.display = 'inline-block';
-  document.getElementById('vpChipRail').style.pointerEvents = 'none';
-  document.getElementById('vpChipRail').style.opacity = '.5';
-}
-async function vpDraw(){
-  const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
-  document.getElementById('vpDrawBtn').disabled = true;
-  const drawnIdx = vpHeld.map((h, i) => h ? -1 : i).filter(i => i !== -1);
-  vpHand = vpHand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
-  vpRenderHand(true, drawnIdx);
-  await bjWait(drawnIdx.length * 130 + 250);
-
-  const result = vpEvaluateHand(vpHand);
-  const outcomeEl = document.getElementById('vpOutcomeMsg');
-  const panelEl = document.getElementById('casinoGameVideoPoker');
-  let delta;
-  if(result){
-    const pay = VP_PAYTABLE.find(p => p.key === result.key);
-    delta = amount * pay.mult;
-    vpHighlightPayout(result.key);
-    outcomeEl.textContent = `${result.label}!  +${delta} XP`;
-    outcomeEl.style.color = '';
-    const isBigWin = result.key === 'royal' || result.key === 'straightf';
-    outcomeEl.classList.add(isBigWin ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
-    bjPlayChime(true);
-    slotsPlayCoinCascade(isBigWin || result.key === 'quads');
-    bjLaunchConfetti(outcomeEl, isBigWin ? 42 : 20);
-  } else {
-    delta = -amount;
-    outcomeEl.textContent = `No pair of Jacks or better — ${delta} XP`;
-    outcomeEl.style.color = 'var(--loss)';
-    outcomeEl.classList.add('bj-outcome-pop');
-    bjPlayChime(false);
-    panelEl.classList.add('pc-shake'); setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
-  }
-  await awardXP(delta, delta > 0 ? `Video Poker — ${result.label}` : 'Video Poker loss', { silent: true });
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
-  renderXPLog();
-
-  vpStage = 'idle';
-  document.getElementById('vpDrawBtn').disabled = false;
-  document.getElementById('vpDrawBtn').style.display = 'none';
-  document.getElementById('vpDealBtn').disabled = false;
-  document.getElementById('vpDealBtn').style.display = 'inline-block';
-  document.getElementById('vpChipRail').style.pointerEvents = '';
-  document.getElementById('vpChipRail').style.opacity = '';
-}
-document.getElementById('vpDealBtn').addEventListener('click', vpDeal);
-document.getElementById('vpDrawBtn').addEventListener('click', vpDraw);
-document.getElementById('vpBetInput').addEventListener('input', (e) => {
-  const chip = document.getElementById('vpChipDisplay');
   if(!chip) return;
   chip.textContent = e.target.value || '0';
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
@@ -5000,39 +4170,6 @@ const BADGE_DEFS = {
     desc: 'Lifetime P/L past +$100',
     auto: true,
     icon: `<text x="70" y="84" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="34" font-weight="700" fill="#3a2e0f">100</text>`
-  },
-  // ---- Casino badges — same visual language, sourced live from Firebase
-  // (see loadProfileCasinoBadges) rather than the member record, since
-  // Casino XP lives under the linked account's uid, not on state.members.
-  'founding-player': {
-    label: 'Founding Player',
-    desc: 'One of the first 11 people to claim a spot in the Casino',
-    icon: `<path d="M70,38 L76,56 L95,56 L80,67 L86,86 L70,75 L54,86 L60,67 L45,56 L64,56 Z" fill="#3a2e0f"/>`
-  },
-  'xp10k': {
-    label: '10K Club',
-    desc: 'Earned 10,000 lifetime Casino XP',
-    icon: `<text x="70" y="82" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="30" font-weight="700" fill="#3a2e0f">10K</text>`
-  },
-  'xp100k': {
-    label: '100K Club',
-    desc: 'Earned 100,000 lifetime Casino XP',
-    icon: `<text x="70" y="80" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="25" font-weight="700" fill="#3a2e0f">100K</text>`
-  },
-  'xp250k': {
-    label: '250K Club',
-    desc: 'Earned 250,000 lifetime Casino XP',
-    icon: `<text x="70" y="80" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="25" font-weight="700" fill="#3a2e0f">250K</text>`
-  },
-  'xp500k': {
-    label: '500K Club',
-    desc: 'Earned 500,000 lifetime Casino XP',
-    icon: `<path d="M70,42 L92,66 L70,98 L48,66 Z" fill="#3a2e0f"/>`
-  },
-  'xp1m': {
-    label: 'Millionaire',
-    desc: 'Earned 1,000,000 lifetime Casino XP',
-    icon: `<path d="M45,88 L50,55 L64,71 L70,48 L76,71 L90,55 L95,88 Z" fill="#3a2e0f"/>`
   }
 };
 function badgeSvg(badgeId, size){
@@ -5176,54 +4313,7 @@ function openProfile(name){
   `;
   document.getElementById('profileModal').dataset.openName = name;
   loadProfileXP(m.linkedUid, name);
-  loadProfileCasinoBadges(m.linkedUid, name);
   document.getElementById('profileModal').classList.add('open');
-}
-// Casino badges (Founding Player + XP milestones) live under the linked
-// account's Firebase uid, not on the member record, so they're fetched
-// and appended separately/async — same guard pattern as loadProfileXP,
-// so a fast second click doesn't land a stale fetch on the wrong profile.
-// Renders in the exact same circular-badge format as manual/auto badges,
-// additively — the Casino tab's own Badges screen is untouched by this.
-async function loadProfileCasinoBadges(linkedUid, forName){
-  if(!linkedUid) return;
-  try{
-    const [lifetimeRes, foundingRes] = await Promise.all([
-      authedFetch(`/xp/${linkedUid}/lifetimeEarned.json`),
-      authedFetch(`/xp/${linkedUid}/foundingNumber.json`)
-    ]);
-    if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
-    const lifetime = (await lifetimeRes.json()) || 0;
-    const founding = await foundingRes.json();
-    const unlockedIds = [];
-    if(founding) unlockedIds.push('founding-player');
-    XP_MILESTONE_BADGES.forEach(b => { if(lifetime >= b.threshold) unlockedIds.push(b.key); });
-    if(unlockedIds.length === 0) return;
-
-    const badgesArea = document.getElementById('profileBadges');
-    if(badgesArea.textContent.trim() === 'No badges yet') badgesArea.innerHTML = '';
-    const infoBubble = document.getElementById('badgeInfoBubble');
-    unlockedIds.forEach(id => {
-      if(badgesArea.querySelector(`[data-badge-id="${id}"]`)) return;
-      const def = BADGE_DEFS[id];
-      if(!def) return;
-      const el = document.createElement('div');
-      el.className = 'profile-badge';
-      el.dataset.badgeId = id;
-      el.innerHTML = `${badgeSvg(id, 60)}<span class="profile-badge-label">${escapeHtml(def.label)}</span>`;
-      el.addEventListener('click', () => {
-        if(infoBubble.dataset.currentBadge === id && infoBubble.style.display !== 'none'){
-          infoBubble.style.display = 'none';
-          infoBubble.dataset.currentBadge = '';
-          return;
-        }
-        infoBubble.innerHTML = `<b>${escapeHtml(def.label)}</b>${escapeHtml(def.desc)}`;
-        infoBubble.style.display = 'block';
-        infoBubble.dataset.currentBadge = id;
-      });
-      badgesArea.appendChild(el);
-    });
-  }catch(e){}
 }
 // Loaded separately/async from the rest of the profile (which is all local,
 // synchronous data) since XP lives in Firebase under the linked account's
@@ -5709,7 +4799,6 @@ function render(state){
         ${b.sgm ? `<div class="sgm-badge ${b.sgmResult === 'Win' ? 'win' : (b.sgmResult === 'Loss' ? 'loss' : 'pending')}">
           <span>${b.sgmResult === 'Win' ? '✅' : (b.sgmResult === 'Loss' ? '❌' : '➖')}</span> SGM Bonus Bet Received${(b.sgmResult === 'Win' && b.sgmAmount != null) ? ` <span class="sgm-amount">+${fmtMoney(b.sgmAmount).replace('+','')}</span>` : ''}
         </div>` : ''}
-        ${b.cashedOut ? `<div class="cashout-badge">💵 Cashed Out Early</div>` : ''}
         ${roastHtml}
       </div>`;
     }).join('');
@@ -5835,6 +4924,14 @@ function render(state){
 
 let currentState = null;
 
+async function saveState(newState){
+  await authedFetch(DATA_PATH, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(newState)
+  });
+}
+
 function renderOnThisDay(data){
   const area = document.getElementById('onThisDayArea');
   if(!data || !data.found){
@@ -5908,20 +5005,6 @@ function setActiveTab(tab){
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   window.scrollTo(0,0);
   try{ sessionStorage.setItem('mlsynd-active-tab', tab); }catch(e){}
-  // Sport/Tipping/Board polling is tab-scoped (see startTabScopedPolling)
-  // and skips its periodic tick while these tabs aren't showing — so
-  // switching INTO one needs an immediate refresh here, or its data could
-  // sit however-stale-it-got-while-backgrounded (up to 5 minutes on some
-  // of these) until the next tick happens to land while it's active.
-  // Guarded on appStarted since setActiveTab can also fire very early
-  // (restoring the last-open tab from sessionStorage, before auth/startApp
-  // have run) — startApp()'s own unconditional initial calls cover that
-  // first load instead.
-  if(appStarted){
-    if(tab === 'sport'){ refreshAfl(); refreshRacing(); refreshNews(); }
-    if(tab === 'tipping'){ refreshTipping(); refreshTippingLadderOnly(); }
-    if(tab === 'board'){ refreshBoardJokerData(); }
-  }
 }
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
@@ -6574,23 +5657,6 @@ document.addEventListener('visibilitychange', () => {
     smartPollers.forEach(fn => fn()); // came back into view — refresh right away instead of waiting for the next tick
   }
 });
-function isTabActive(tabId){
-  const el = document.getElementById('tab-' + tabId);
-  return !!el && el.classList.contains('active');
-}
-// For pollers whose entire output lives inside one or two specific
-// in-app tabs (Sport scores, Tipping ladder, Board Joker icons) — the
-// unconditional version of this used to fetch + re-render on every single
-// tick regardless of whether anyone could even see the result, for as
-// long as the app was open on ANY tab. Skipping the tick when none of the
-// target tabs are showing cuts that out entirely; switching INTO one of
-// these tabs (see setActiveTab) triggers an immediate refresh so nothing
-// goes stale from having been skipped while backgrounded.
-function startTabScopedPolling(fn, intervalMs, tabIds){
-  return startSmartPolling(() => {
-    if(tabIds.some(isTabActive)) fn();
-  }, intervalMs);
-}
 
 let priceRefreshTimer = null;
 let priceRefreshFn = null;
@@ -7860,92 +6926,6 @@ async function runFullHealthCheck(){
     check('Browser storage', 'fail', 'Blocked — likely private browsing mode: ' + e.message);
   }
 
-  // 9. Linked-account integrity — catches the exact "two different people
-  // both showing as the same roster member" bug class (one account's
-  // linkedUid silently overwriting another's). Every linkedUid across the
-  // whole roster should be unique; none should be blank/whitespace.
-  if(currentState && Array.isArray(currentState.members)){
-    const linkedEntries = currentState.members.filter(m => m.linkedUid).map(m => ({ name: m.name, uid: m.linkedUid }));
-    const uidCounts = {};
-    linkedEntries.forEach(e => { uidCounts[e.uid] = (uidCounts[e.uid] || []).concat(e.name); });
-    const dupes = Object.entries(uidCounts).filter(([uid, names]) => names.length > 1);
-    check('No two members share one account', dupes.length === 0 ? 'pass' : 'fail',
-      dupes.length === 0 ? `${linkedEntries.length} linked account(s), all unique` :
-      dupes.map(([uid, names]) => `${names.join(' & ')} are both linked to the same account (${uid.slice(0,8)}…)`).join('; '));
-  }
-
-  // 10. Casino XP integrity — for the CURRENT signed-in account: balance
-  // and lifetime-earned should both be real, non-negative numbers, and a
-  // Founding Player number (if any) should be a genuine 1–11.
-  if(currentUserUid){
-    try{
-      const [balRes, ltRes, foundRes] = await Promise.all([
-        authedFetch(`/xp/${currentUserUid}/balance.json`),
-        authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`),
-        authedFetch(`/xp/${currentUserUid}/foundingNumber.json`)
-      ]);
-      const bal = await balRes.json();
-      const lifetime = await ltRes.json();
-      const founding = await foundRes.json();
-      const balOk = bal == null || (typeof bal === 'number' && !isNaN(bal));
-      const ltOk = lifetime == null || (typeof lifetime === 'number' && lifetime >= 0 && !isNaN(lifetime));
-      const balVsLifetime = (typeof bal === 'number' && typeof lifetime === 'number' && bal > lifetime);
-      check('Casino XP balance shape', balOk ? 'pass' : 'fail', balOk ? `Balance: ${bal == null ? '(never initialized)' : bal.toLocaleString()}` : `Balance is not a valid number: ${JSON.stringify(bal)}`);
-      check('Casino lifetime-earned shape', ltOk ? 'pass' : 'fail', ltOk ? `Lifetime earned: ${lifetime == null ? '(never initialized)' : lifetime.toLocaleString()}` : `lifetimeEarned is invalid: ${JSON.stringify(lifetime)}`);
-      check('Balance vs lifetime-earned sanity', !balVsLifetime ? 'pass' : 'warn', !balVsLifetime ? 'Balance never exceeds lifetime earned (as expected — wins add to both, losses only reduce balance)' : `Balance (${bal}) is higher than lifetime earned (${lifetime}) — shouldn't be possible unless lifetimeEarned wasn't credited somewhere`);
-      const foundOk = founding == null || (Number.isInteger(founding) && founding >= 1 && founding <= 11);
-      check('Founding Player number range', foundOk ? 'pass' : 'fail', founding == null ? 'Not a Founding Player' : (foundOk ? `#${founding} — valid` : `Invalid founding number: ${JSON.stringify(founding)}`));
-    }catch(e){
-      check('Casino XP integrity', 'fail', e.message);
-    }
-  }
-
-  // 11. Founding Player counter sanity — the shared counter at
-  // /xpMeta/foundingCount should never exceed 11 (the hard cap enforced
-  // client-side when assigning numbers).
-  try{
-    const res = await authedFetch('/xpMeta/foundingCount.json');
-    const count = await res.json();
-    const ok = count == null || (Number.isInteger(count) && count <= 11 && count >= 0);
-    check('Founding Player counter', ok ? 'pass' : 'fail', count == null ? 'No Founding Players claimed yet' : (ok ? `${count} / 11 spots claimed` : `Counter is out of range: ${count} (should never exceed 11)`));
-  }catch(e){
-    check('Founding Player counter', 'fail', e.message);
-  }
-
-  // 12. Dues & financial totals consistency — each member's dues owed
-  // should never exceed their commitment, and the group financial fields
-  // (if present) should all be real numbers, not NaN from a bad manual
-  // entry somewhere.
-  if(currentState && Array.isArray(currentState.members)){
-    const overOwed = currentState.members.filter(m => Number(m.duesOwed) > Number(m.duesCommitment)).map(m => m.name);
-    check('Dues owed within commitment', overOwed.length === 0 ? 'pass' : 'warn', overOwed.length === 0 ? 'No member owes more than their commitment' : `Owes more than committed: ${overOwed.join(', ')}`);
-  }
-  if(currentState && currentState.group){
-    const g = currentState.group;
-    const fields = ['lottoOut','lottoRet','multiOut','multiRet','bonus','sgmWin'];
-    const badFields = fields.filter(f => g[f] != null && (typeof g[f] !== 'number' || isNaN(g[f])));
-    check('Group financial fields valid', badFields.length === 0 ? 'pass' : 'fail', badFields.length === 0 ? 'All numeric' : `Non-numeric/NaN: ${badFields.join(', ')}`);
-  }
-
-  // 13. Weekly individual bet drafts — a result marked Win/Loss with no $
-  // amount, or an SGM box ticked with no SGM result, will look wrong on
-  // the dashboard card even though nothing actually errors.
-  if(currentState && Array.isArray(currentState.weeklyIndividualBets)){
-    const bets = currentState.weeklyIndividualBets;
-    const missingAmount = bets.filter(b => b && b.result && (b.pl == null || isNaN(b.pl))).map(b => b.name);
-    const sgmNoResult = bets.filter(b => b && b.sgm && !b.sgmResult).map(b => b.name);
-    check('Individual bet drafts — $ amounts', missingAmount.length === 0 ? 'pass' : 'warn', missingAmount.length === 0 ? `${bets.length} bet(s), all have an amount where a result is set` : `Result set with no $ amount: ${missingAmount.join(', ')}`);
-    check('Individual bet drafts — SGM results', sgmNoResult.length === 0 ? 'pass' : 'warn', sgmNoResult.length === 0 ? 'No dangling SGM flags' : `SGM ticked with no result yet: ${sgmNoResult.join(', ')}`);
-  }
-
-  // 14. Group multi draft staleness — "who's cooking it" falls back to the
-  // last saved week until manually cleared; flag it if it's sitting there
-  // un-cleared so a stale slip doesn't get mistaken for this week's.
-  if(currentState){
-    const cleared = !!currentState.groupMultiCleared;
-    check('Group multi draft state', 'pass', cleared ? 'Cleared — dashboard is showing last saved week\u2019s slip as a fallback' : 'Active draft present (or nothing entered yet)');
-  }
-
   return results;
 }
 
@@ -7980,7 +6960,7 @@ function renderDiagTab(){
   const area = document.getElementById('diagTabArea');
   if(!area) return;
   area.innerHTML = '<div class="empty">Loading…</div>';
-  Promise.all([computeTippingDiagnostics(), computeDashboardHealthChecks(), computeCasinoDiagnostics()]).then(([tip, health, casino]) => {
+  Promise.all([computeTippingDiagnostics(), computeDashboardHealthChecks()]).then(([tip, health]) => {
     let html = '<div class="panel" style="margin:0; padding:0; border:none; background:none;">';
     html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">Dashboard Health</h3>';
     html += `<div style="font-size:11px; color:var(--muted); line-height:1.7;">
@@ -7988,17 +6968,6 @@ function renderDiagTab(){
       Prize pot (config): ${health.prizePot != null ? '$' + health.prizePot : 'not set'}<br>
       Commence-time sync run this session: ${health.commenceTimesSynced ? 'yes' : 'not yet'}
     </div>`;
-    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🎰 Casino</h3>';
-    if(!casino.ok){
-      html += `<div style="font-size:11px; color:var(--loss);">Could not run: ${escapeHtml(casino.error)}</div>`;
-    } else {
-      html += `<div style="font-size:11px; color:var(--muted); line-height:1.7;">
-        Your XP balance: ${casino.balance != null ? casino.balance.toLocaleString() : '(not initialized)'}<br>
-        Your lifetime XP earned: ${casino.lifetimeEarned != null ? casino.lifetimeEarned.toLocaleString() : '(not initialized)'}<br>
-        Founding Player spots claimed: ${casino.foundingCount} / 11${casino.myFoundingNumber ? ` (you're #${casino.myFoundingNumber})` : ''}<br>
-        Your unlocked milestone badges: ${casino.unlockedMilestones} / ${XP_MILESTONE_BADGES.length}
-      </div>`;
-    }
     html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">Tipping — Ladder Reads</h3>';
     if(!tip.ok){
       html += `<div style="font-size:11px; color:var(--loss);">Could not run: ${escapeHtml(tip.error)}</div>`;
@@ -8019,28 +6988,6 @@ function renderDiagTab(){
     html += '</div>';
     area.innerHTML = html;
   });
-}
-// Lightweight Casino summary for the at-a-glance Diag tab (separate from
-// the deeper pass/warn/fail checks in runFullHealthCheck — this is just
-// current numbers, no verdicts).
-async function computeCasinoDiagnostics(){
-  if(!currentUserUid) return { ok: false, error: 'Not signed in' };
-  try{
-    const [balRes, ltRes, foundRes, countRes] = await Promise.all([
-      authedFetch(`/xp/${currentUserUid}/balance.json`),
-      authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`),
-      authedFetch(`/xp/${currentUserUid}/foundingNumber.json`),
-      authedFetch('/xpMeta/foundingCount.json')
-    ]);
-    const balance = await balRes.json();
-    const lifetimeEarned = await ltRes.json();
-    const myFoundingNumber = await foundRes.json();
-    const foundingCount = (await countRes.json()) || 0;
-    const unlockedMilestones = XP_MILESTONE_BADGES.filter(b => (lifetimeEarned || 0) >= b.threshold).length;
-    return { ok: true, balance, lifetimeEarned, myFoundingNumber, foundingCount, unlockedMilestones };
-  }catch(e){
-    return { ok: false, error: e.message };
-  }
 }
 
 async function ensureCommenceTimesSynced(finishedGames){
@@ -8192,21 +7139,7 @@ async function renderTippingLadder(games){
     const roundGames = finishedGames.filter(g => g.round === round);
     const bonusEligible = isRoundComplete && roundCounts[round].total >= 8; // "minimum 8-9 games" per the comp rules — only ever awardable once the round is actually done
     const roundPicks = picksByRound[round] || {};
-    // The margin tiebreaker game is whichever game genuinely kicks off
-    // first in the round's FULL schedule — that's what the picker actually
-    // asked everyone to submit a margin against. This used to be computed
-    // from `roundGames` (finished games only), which silently picks a
-    // DIFFERENT game whenever the round's true first game hasn't finished
-    // yet but some later-kicking-off games already have (a Thursday-night
-    // opener still in progress while Friday/Saturday games are done, for
-    // instance) — everyone's margin lookup then misses entirely since it's
-    // keyed by the wrong game's id, and the column shows "—" for
-    // everyone even though margins were genuinely submitted. Searching the
-    // full round (not just the finished slice) fixes the selection; the
-    // existing hscore/ascore check right below still correctly withholds
-    // the column until that specific game has actually finished.
-    const allRoundGamesThisRound = games.filter(g => g.round === round);
-    const marginGame = allRoundGamesThisRound.find(g => isFirstGameOfRound(allRoundGamesThisRound, g));
+    const marginGame = roundGames.find(g => isFirstGameOfRound(roundGames, g));
     pointsByRoundByUid[round] = {};
 
     Object.keys(knownTippers).forEach(uid => {
@@ -8238,18 +7171,10 @@ async function renderTippingLadder(games){
       tally[uid].points += roundPoints;
       pointsByRoundByUid[round][uid] = roundPoints;
 
-      if(marginGame && marginGame.hscore != null && marginGame.ascore != null){
-        // The actual final margin was never being computed anywhere — this
-        // block used to check a `marginGame.margin` field that no code path
-        // in the app ever set, so it was always undefined and every single
-        // row fell back to the "—" placeholder regardless of whether
-        // anyone had actually entered a margin tip. Deriving it directly
-        // from the scores (which ARE always present once a game finishes)
-        // fixes that at the source instead of requiring a separate field.
-        const actualMargin = Math.abs(Number(marginGame.hscore) - Number(marginGame.ascore));
+      if(marginGame){
         const mine = roundPicks[marginGame.id] && roundPicks[marginGame.id][uid];
-        if(mine && mine.margin != null){
-          tally[uid].marginDiff += Math.abs(mine.margin - actualMargin);
+        if(mine && mine.margin != null && marginGame.margin != null){
+          tally[uid].marginDiff += Math.abs(mine.margin - marginGame.margin);
           tally[uid].marginCount++;
         }
       }
@@ -8426,21 +7351,21 @@ function startApp(){
     // refresh() rather than fired alongside it.
     resolveMyMemberIndex(currentUserName).catch(() => {});
   });
-  startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded) — feeds Home/Board/Cash simultaneously, so this one always runs regardless of active tab
+  startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded)
   refreshAfl();
-  startTabScopedPolling(refreshAfl, 20000, ['sport']); // Sport tab scores — only while Sport is actually showing
+  startSmartPolling(refreshAfl, 20000); // Sport tab scores (paused while backgrounded)
   refreshRacing();
-  startTabScopedPolling(refreshRacing, 300000, ['sport']); // meetings/races don't change often — every 5 min is plenty, and only while Sport is showing
+  startSmartPolling(refreshRacing, 300000); // meetings/races don't change often — every 5 min is plenty
   refreshTipping();
-  startTabScopedPolling(refreshTipping, 60000, ['tipping']); // picks reveal as games kick off — check every minute, only while Tipping is showing
+  startSmartPolling(refreshTipping, 60000); // picks reveal as games kick off — check every minute
   setTimeout(refreshTippingLadderOnly, 2500); // staggered — this reads one row per finished game this season and was competing with the round's own game cards for bandwidth on first load
-  startTabScopedPolling(refreshTippingLadderOnly, 240000, ['tipping']); // ladder is read-heavy (1 DB read per finished game this season) — every 4 min is plenty, was riding the 60s cycle before
+  startSmartPolling(refreshTippingLadderOnly, 240000); // ladder is read-heavy (1 DB read per finished game this season) — every 4 min is plenty, was riding the 60s cycle before
   refreshNews();
-  startTabScopedPolling(refreshNews, 300000, ['sport']); // headlines don't need to be checked often — every 5 min, only while Sport is showing
+  startSmartPolling(refreshNews, 300000); // headlines don't need to be checked often — every 5 min
   refreshBoardJokerData();
-  startTabScopedPolling(refreshBoardJokerData, 240000, ['board', 'tipping']); // Joker icons render on BOTH the Board leaderboard and Tipping's own Ladder sub-view — every 4 min, only while one of those is showing
+  startSmartPolling(refreshBoardJokerData, 240000); // Joker picks don't change often — every 4 min is plenty, same cadence as the ladder
   ensureXPInitialized().then(() => checkAndAwardTippingXP());
-  startSmartPolling(checkAndAwardTippingXP, 300000); // catches newly-finished rounds without needing the Casino tab opened — deliberately NOT tab-scoped, this has to keep running in the background
+  startSmartPolling(checkAndAwardTippingXP, 300000); // catches newly-finished rounds without needing the Casino tab opened
 }
 initAuthGate();
 </script>
