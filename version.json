@@ -1,1 +1,11 @@
-{"version": "2026-08-14.1"}
+{
+  "version": "2026-08-18.1",
+  "date": "2026-08-18",
+  "changes": [
+    "New: guest link — share a 2-hour view-only link, no signup needed",
+    "New: \"What's new\" banner (you're looking at it)",
+    "New: last-saved indicator on Home shows who saved and when",
+    "New: quick health-check traffic light on Home",
+    "New: backup reminder after Save Week in the Ledger"
+  ]
+}

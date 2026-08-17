@@ -1255,7 +1255,55 @@
   .auth-box button{ width:100%; margin-top:4px; }
   #authSubmitBtn{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1.5px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
   #authSubmitBtn:disabled{ opacity:.4; cursor:default; }
-  #authSignOutBtn{ font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:11px 16px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; }
+  #authSignOutBtn{ font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:11px 16px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; .guest-watermark{
+  position:fixed; inset:0; z-index:9999; pointer-events:none;
+  display:flex; flex-wrap:wrap; align-content:flex-start; justify-content:center;
+  overflow:hidden; opacity:.07;
+}
+.guest-watermark span{
+  display:block; width:60%; text-align:center; transform:rotate(-28deg);
+  font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:700;
+  color:var(--chalk); white-space:nowrap; margin:34px 0;
+}
+.guest-no-select{
+  -webkit-user-select:none; -moz-user-select:none; user-select:none;
+  -webkit-touch-callout:none;
+}
+.sync-status-row{
+  display:flex; align-items:center; gap:6px; margin-top:10px; padding-top:10px;
+  border-top:1px solid var(--line); font-size:11px; color:var(--muted);
+  font-family:'IBM Plex Mono', monospace; flex-wrap:wrap;
+}
+.sync-dot{
+  display:inline-block; width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  background:var(--win);
+}
+.sync-dot.amber{ background:#E8A15C; }
+.sync-dot.red{ background:var(--loss); }
+.health-pill{
+  margin-left:auto; display:inline-flex; align-items:center; gap:4px;
+  padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700;
+  letter-spacing:.3px; text-transform:uppercase; cursor:pointer;
+  border:1px solid var(--line); background:rgba(0,0,0,.15);
+}
+.health-pill.green{ color:var(--win); border-color:rgba(111,169,138,.4); }
+.health-pill.amber{ color:#E8A15C; border-color:rgba(232,161,92,.4); }
+.health-pill.red{ color:var(--loss); border-color:rgba(217,110,110,.4); }
+.changelog-banner{
+  background:var(--felt-2); border:1px solid var(--brass-dim); border-radius:10px;
+  padding:12px 14px; margin-bottom:12px; font-size:12.5px; color:var(--chalk);
+}
+.changelog-banner .cl-title{
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:14px;
+  letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light);
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;
+}
+.changelog-banner ul{ margin:0 0 10px; padding-left:18px; color:var(--muted); }
+.changelog-banner li{ margin-bottom:3px; }
+.changelog-banner button{
+  background:var(--brass); border:none; border-radius:8px; padding:6px 16px;
+  color:#0E1A16; font-size:12px; font-weight:700; cursor:pointer;
+}
 </style>
 </head>
 <body>
@@ -1299,6 +1347,12 @@
       <div class="hint">Your account is registered and waiting on approval. This checks automatically — no need to keep refreshing.</div>
       <button type="button" class="secondary" id="authSignOutBtn">Sign out</button>
     </div>
+    <div id="authGuestLoadingWrap" style="display:none;">
+      <div class="hint">Opening guest view…</div>
+    </div>
+    <div id="authGuestExpiredWrap" style="display:none;">
+      <div class="hint">This guest link has expired (links last 2 hours). Ask whoever shared it for a new one.</div>
+    </div>
   </div>
 </div>
 <div class="wrap">
@@ -1307,6 +1361,7 @@
   </header>
 
   <div class="tab-panel active" id="tab-balance">
+    <div id="changelogBanner" style="display:none;"></div>
     <div class="panel">
       <h2>Rolling balance</h2>
       <div class="balance-grid">
@@ -1316,6 +1371,11 @@
         <div class="toteboard-cell"><span class="lbl">Bonus pot</span><span class="val" id="balPot">$0</span></div>
         <div class="toteboard-cell" id="balPlOverallCell"><span class="lbl">P/L overall</span><span class="val" id="balPlOverall">$0</span></div>
         <div class="toteboard-cell" id="balPlWeeklyCell"><span class="lbl">P/L weekly</span><span class="val" id="balPlWeekly">$0</span></div>
+      </div>
+      <div class="sync-status-row" id="syncStatusRow" style="display:none;">
+        <span class="sync-dot" id="syncStatusDot"></span>
+        <span id="syncStatusLine"></span>
+        <span class="health-pill" id="healthPill" style="display:none;"></span>
       </div>
     </div>
 
@@ -1899,6 +1959,7 @@
 
   <div class="account-bar">
     <span id="accountName"></span>
+    <span id="guestBadge" style="display:none; width:100%; text-align:center; margin-bottom:4px; font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#9cc2e6;">👀 Guest view — read-only</span>
     <button type="button" class="pill-btn" id="editNameBtn" title="Change your name">✎ Edit name</button>
     <button type="button" class="pill-btn" id="resyncNameBtn" title="Re-sync your name onto past Tipping picks">🔄</button>
     <button type="button" class="pill-btn" id="pushToggleBtn" title="Get notified when a tip's about to lock">🔔 Notify me</button>
@@ -2138,6 +2199,15 @@ function authSignOut(){
 async function authedFetch(path, options){
   const auth = await getValidAuth();
   if(!auth) throw new Error('Not signed in');
+  // Single choke point for the read-only guest role: block every write
+  // (anything not a plain GET) here rather than hunting down each button,
+  // so no future write path can slip through unguarded. Server-side rules
+  // should still deny these too — this is the fast, always-current layer.
+  const method = ((options && options.method) || 'GET').toUpperCase();
+  if(currentUserRole === 'readonly' && method !== 'GET'){
+    if(typeof showToast === 'function') showToast('👀 Guest view — read-only');
+    throw new Error('Read-only guest access — changes are not saved.');
+  }
   const sep = path.includes('?') ? '&' : '?';
   return fetch(`${FIREBASE_URL}${path}${sep}auth=${auth.idToken}`, options);
 }
@@ -2148,14 +2218,16 @@ let approvalPollFn = null;
 
 function showAuthGate(mode){
   document.getElementById('authGate').style.display = 'flex';
-  document.getElementById('authFormWrap').style.display = mode === 'pending' ? 'none' : 'block';
+  document.getElementById('authFormWrap').style.display = mode === 'form' ? 'block' : 'none';
   document.getElementById('authPendingWrap').style.display = mode === 'pending' ? 'block' : 'none';
+  document.getElementById('authGuestLoadingWrap').style.display = mode === 'guestLoading' ? 'block' : 'none';
+  document.getElementById('authGuestExpiredWrap').style.display = mode === 'guestExpired' ? 'block' : 'none';
 }
 function hideAuthGate(){
   document.getElementById('authGate').style.display = 'none';
 }
 
-let currentUserRole = null; // 'full' | 'dashboard' | 'tipping' | null (null/legacy = full)
+let currentUserRole = null; // 'full' | 'dashboard' | 'tipping' | 'readonly' | null (null/legacy = full)
 let currentUserName = null;
 let currentUserUid = null;
 let currentUserEmail = null;
@@ -2169,10 +2241,123 @@ function applyRoleTabRestrictions(){
   setActiveTab('tipping');
 }
 
+function blockGuestContextMenu(e){ e.preventDefault(); }
+function blockGuestCopy(e){ e.preventDefault(); }
+
+// Not a real security boundary (no web page can actually stop an OS-level
+// screenshot) — this is a deterrent + traceability layer: a visible
+// watermark so a leaked screenshot is identifiable, plus disabling the
+// easy right-click/copy paths.
+function applyGuestProtections(){
+  const isReadOnly = currentUserRole === 'readonly';
+  let wm = document.getElementById('guestWatermark');
+  if(isReadOnly){
+    if(!wm){
+      wm = document.createElement('div');
+      wm.id = 'guestWatermark';
+      wm.className = 'guest-watermark';
+      document.body.appendChild(wm);
+    }
+    const label = `MLSYND GUEST · ${new Date().toLocaleString()}`;
+    wm.innerHTML = Array.from({ length: 36 }).map(() => `<span>${escapeHtml(label)}</span>`).join('');
+    document.body.classList.add('guest-no-select');
+    document.addEventListener('contextmenu', blockGuestContextMenu);
+    document.addEventListener('copy', blockGuestCopy);
+  } else {
+    if(wm) wm.remove();
+    document.body.classList.remove('guest-no-select');
+    document.removeEventListener('contextmenu', blockGuestContextMenu);
+    document.removeEventListener('copy', blockGuestCopy);
+  }
+}
+
+// ---- Last synced / health pill (Home tab, under the toteboard) ----
+function renderSyncStatusLine(state){
+  const row = document.getElementById('syncStatusRow');
+  const dot = document.getElementById('syncStatusDot');
+  const line = document.getElementById('syncStatusLine');
+  if(!row || !line) return;
+  if(!state || !state.lastSavedAt){ row.style.display = 'none'; return; }
+  row.style.display = 'flex';
+  const ago = timeAgo(state.lastSavedAt);
+  const by = state.lastSavedBy || 'Admin';
+  line.textContent = (ago === 'just now') ? `Synced just now · saved by ${by}` : `Last saved by ${by} · ${ago}`;
+  const ageMin = (Date.now() - new Date(state.lastSavedAt).getTime()) / 60000;
+  if(dot) dot.className = 'sync-dot' + (ageMin < 60 ? '' : (ageMin < 24 * 60 ? ' amber' : ' red'));
+}
+
+// Deliberately NOT the full runFullHealthCheck() (that's ~15 network calls,
+// fine for an on-demand admin button but too heavy to run on every Home
+// tab load for every member). This is a cheap, data-only pass over the
+// already-loaded currentState — no extra Firebase reads.
+function computeQuickHealthSummary(state){
+  const fails = [];
+  const warns = [];
+  if(state && Array.isArray(state.members)){
+    const nameCounts = {};
+    state.members.forEach(m => { nameCounts[m.name] = (nameCounts[m.name] || 0) + 1; });
+    const dupes = Object.keys(nameCounts).filter(n => nameCounts[n] > 1);
+    if(dupes.length) fails.push(`Duplicate roster names: ${dupes.join(', ')}`);
+    const badDues = state.members.filter(m => isNaN(m.duesOwed) || isNaN(m.duesCommitment));
+    if(badDues.length) fails.push(`Broken dues fields on ${badDues.length} member(s)`);
+    const overOwed = state.members.filter(m => Number(m.duesOwed) > Number(m.duesCommitment));
+    if(overOwed.length) warns.push(`${overOwed.length} member(s) owe more than committed`);
+    const noLink = state.members.filter(m => !m.linkedUid);
+    if(noLink.length) warns.push(`${noLink.length} member(s) not linked to a Tipping account`);
+  }
+  if(state && state.group){
+    const fields = ['lottoOut', 'lottoRet', 'multiOut', 'multiRet', 'bonus', 'sgmWin'];
+    const bad = fields.filter(f => state.group[f] != null && (typeof state.group[f] !== 'number' || isNaN(state.group[f])));
+    if(bad.length) fails.push(`Non-numeric group financial field(s): ${bad.join(', ')}`);
+  }
+  if(state && state.lastSavedAt){
+    const ageDays = (Date.now() - state.lastSavedAt) / 86400000;
+    if(ageDays > 10) warns.push(`Data hasn't been saved in ${Math.round(ageDays)} day(s)`);
+  }
+  const status = fails.length > 0 ? 'red' : (warns.length > 0 ? 'amber' : 'green');
+  const label = fails.length > 0
+    ? `${fails.length} issue${fails.length > 1 ? 's' : ''}`
+    : (warns.length > 0 ? `${warns.length} warning${warns.length > 1 ? 's' : ''}` : 'All systems good');
+  return { status, label, fails, warns };
+}
+
+function renderHealthPill(state){
+  const pill = document.getElementById('healthPill');
+  if(!pill) return;
+  if(currentUserRole === 'readonly'){ pill.style.display = 'none'; return; } // guest doesn't need internal diagnostics surfaced
+  const summary = computeQuickHealthSummary(state);
+  const icon = { green: '🟢', amber: '🟡', red: '🔴' };
+  pill.style.display = 'inline-flex';
+  pill.className = 'health-pill ' + summary.status;
+  pill.textContent = `${icon[summary.status]} ${summary.label}`;
+  pill.onclick = () => {
+    const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    if(isAdmin){
+      setActiveTab('diag');
+      const btn = document.getElementById('runHealthCheckBtn');
+      if(btn) btn.click();
+    } else {
+      const details = [...summary.fails, ...summary.warns];
+      alert(details.length ? details.join('\n') : 'All systems good — no issues found.');
+    }
+  };
+}
+
 function renderAccountBar(){
   const el = document.getElementById('accountName');
   if(el) el.textContent = currentUserName || '';
-  updatePushToggleUI();
+  const isReadOnly = currentUserRole === 'readonly';
+  const guestBadge = document.getElementById('guestBadge');
+  if(guestBadge) guestBadge.style.display = isReadOnly ? 'block' : 'none';
+  // These three buttons only ever trigger writes (name changes, pick re-sync,
+  // push subscription) — authedFetch would block the write anyway, but
+  // hiding them for a guest avoids a dead-end tap-and-toast.
+  ['editNameBtn', 'resyncNameBtn', 'pushToggleBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if(btn) btn.style.display = isReadOnly ? 'none' : '';
+  });
+  if(!isReadOnly) updatePushToggleUI();
+  applyGuestProtections();
 }
 
 // ---------- Push notifications (top-level - called from renderAccountBar,
@@ -2212,7 +2397,42 @@ async function updatePushToggleUI(){
   }
 }
 
+// ---- Guest link (time-limited, no-password access) ----
+// Set these to match the read-only guest account created in Ledger → Admin
+// → Access. If you set your own password when creating that account,
+// change GUEST_LOGIN_PASSWORD to match — it must be identical here.
+const GUEST_LOGIN_EMAIL = 'guest@mlsynd.app';
+const GUEST_LOGIN_PASSWORD = 'cUvlvDH2HRhGo6_uXT6pj_bR';
+let guestLinkChecked = false;
+
+// Returns true if it's fine to continue with the normal auth flow, false if
+// it has already shown a gate screen (loading/expired) and the caller
+// should stop. Only acts once per page load — after that the guest is
+// either signed in (normal flow takes over) or was told the link expired.
+async function tryGuestLink(){
+  if(guestLinkChecked) return true;
+  guestLinkChecked = true;
+  const token = new URLSearchParams(location.search).get('guest');
+  if(!token) return true; // not a guest-link visit
+  if(authStorageGet()) return true; // already signed in on this device — don't clobber a real session
+  showAuthGate('guestLoading');
+  try{
+    const res = await fetch(`${FIREBASE_URL}/guestLinks/${encodeURIComponent(token)}.json`);
+    const record = await res.json();
+    if(!record || !record.expiresAt || Date.now() > record.expiresAt){
+      showAuthGate('guestExpired');
+      return false;
+    }
+    await authSignIn(GUEST_LOGIN_EMAIL, GUEST_LOGIN_PASSWORD, false);
+    return true;
+  }catch(e){
+    showAuthGate('guestExpired');
+    return false;
+  }
+}
+
 async function checkApprovalAndProceed(){
+  if(!(await tryGuestLink())) return;
   const auth = await getValidAuth();
   if(!auth){ showAuthGate('form'); return; }
   try{
@@ -2225,6 +2445,10 @@ async function checkApprovalAndProceed(){
       currentUserUid = auth.uid;
       currentUserEmail = auth.email || '';
       renderAccountBar();
+      // Re-check now that role is known — the very first checkForUpdate()
+      // call (at script load) fires before login, so a guest role wouldn't
+      // have been gated yet. Cheap no-store fetch, safe to call again.
+      if(typeof checkForUpdate === 'function') checkForUpdate();
       if(currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
         const diagBtn = document.getElementById('diagTabBtn');
         if(diagBtn) diagBtn.style.display = '';
@@ -2549,7 +2773,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-14.1";
+const APP_VERSION = "2026-08-18.1";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -2560,6 +2784,39 @@ function showUpdateBanner(){
   el.innerHTML = '<span>🔄 A new version is available</span><button type="button" style="background:var(--brass); border:none; border-radius:8px; padding:6px 14px; color:#0E1A16; font-size:12px; font-weight:700; cursor:pointer;">Reload</button>';
   el.querySelector('button').addEventListener('click', () => location.reload());
   document.body.appendChild(el);
+}
+
+// ---- "What's new" changelog banner ----
+// Separate from the reload prompt above: that one fires when THIS tab is
+// running stale code and needs a refresh. This one fires once per version,
+// on Home, purely to surface the changes list — only shown once the running
+// code (APP_VERSION) already matches what's deployed (data.version), so it
+// never describes changes the visitor hasn't actually got yet.
+const CHANGELOG_SEEN_KEY = 'mlsynd_last_seen_version';
+function maybeShowChangelogBanner(data){
+  if(!data || !data.version || !Array.isArray(data.changes) || data.changes.length === 0) return;
+  if(currentUserRole === 'readonly') return; // guest sessions don't need version history
+  let lastSeen = null;
+  try{ lastSeen = localStorage.getItem(CHANGELOG_SEEN_KEY); }catch(e){}
+  if(lastSeen === data.version) return;
+  renderChangelogBanner(data);
+}
+function renderChangelogBanner(data){
+  const wrap = document.getElementById('changelogBanner');
+  if(!wrap) return;
+  const dateStr = data.date ? new Date(data.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+  wrap.innerHTML = `
+    <div class="changelog-banner">
+      <div class="cl-title"><span>✨ What's new</span><span style="font-size:10px; color:var(--muted); text-transform:none; letter-spacing:0; font-weight:400;">${escapeHtml(dateStr)}</span></div>
+      <ul>${data.changes.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
+      <button type="button" id="changelogDismissBtn">Got it</button>
+    </div>`;
+  wrap.style.display = 'block';
+  document.getElementById('changelogDismissBtn').addEventListener('click', () => {
+    try{ localStorage.setItem(CHANGELOG_SEEN_KEY, data.version); }catch(e){}
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+  });
 }
 // ================= Casino / XP system =================
 // Design note: XP is play-money, earned automatically from real betting
@@ -5374,7 +5631,10 @@ async function checkForUpdate(){
   try{
     const res = await fetch('version.json?_=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
-    if(data.version && data.version !== APP_VERSION) showUpdateBanner();
+    if(data.version && data.version !== APP_VERSION){ showUpdateBanner(); return; }
+    // Deployed version matches what's running here — safe to show its
+    // changelog if this device hasn't acknowledged it yet.
+    maybeShowChangelogBanner(data);
   }catch(e){}
 }
 checkForUpdate();
@@ -6166,6 +6426,8 @@ function renderGroupMultiChart(state){
 }
 
 function render(state){
+  renderSyncStatusLine(state);
+  renderHealthPill(state);
   if(!state || !state.members || state.members.length === 0){
     document.getElementById('leaderboardArea').innerHTML = '';
     document.getElementById('owedArea').innerHTML = '';
@@ -8955,7 +9217,9 @@ function startApp(){
     // ladder entry, no "You" highlight, no Joker icon, nothing tied to
     // their account. Needs currentState loaded first, hence chained after
     // refresh() rather than fired alongside it.
-    resolveMyMemberIndex(currentUserName).catch(() => {});
+    // Guests aren't a roster member and shouldn't be prompted to "pick which
+    // name is you" — that flow (and its write) is for real squad members only.
+    if(currentUserRole !== 'readonly') resolveMyMemberIndex(currentUserName).catch(() => {});
   });
   startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded) — feeds Home/Board/Cash simultaneously, so this one always runs regardless of active tab
   refreshAfl();
