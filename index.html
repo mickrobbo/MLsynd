@@ -1322,12 +1322,11 @@
 .casino-pot-split-bar .cp-share{ background:linear-gradient(90deg, var(--brass-dim), var(--brass)); width:60%; }
 .casino-pot-split-bar .cp-jackpot{ background:linear-gradient(90deg, #E8A15C, #d97b3f); width:40%; }
 .casino-pot-split-legend{
-  display:flex; justify-content:space-between; font-size:10px; color:var(--muted);
-  font-family:'IBM Plex Mono', monospace; margin-bottom:4px;
+  display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted);
+  margin-bottom:4px;
 }
 .casino-pot-countdown{
-  text-align:center; margin-top:10px; font-size:11px; color:var(--muted);
-  font-family:'IBM Plex Mono', monospace; letter-spacing:.3px;
+  text-align:center; margin-top:10px; font-size:11.5px; color:var(--muted);
 }
 .casino-pot-countdown b{ color:var(--brass-light); font-weight:700; }
 .casino-pot-me-line{ font-size:11.5px; color:var(--muted); text-align:center; margin-bottom:4px; }
@@ -1357,6 +1356,29 @@
 .xp-log-row.xp-log-big-win .xp-log-who{ color:var(--brass); }
 .xp-log-row.xp-log-big-win .xp-log-amt{ text-shadow:0 0 10px rgba(199,162,72,.5); }
 .xp-log-big-win-badge{ font-size:10px; margin-right:3px; }
+
+/* ---- Pot panel: collapsible details ---- */
+.casino-pot-details-toggle{
+  display:block; width:100%; text-align:center; background:none; border:none; color:var(--brass);
+  font-size:11.5px; font-weight:700; cursor:pointer; padding:10px 0 0; letter-spacing:.5px;
+  font-family:'Barlow Condensed', sans-serif; text-transform:uppercase;
+}
+.casino-pot-details{ display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
+.casino-pot-details.open{ display:block; animation:potDetailsOpen .2s ease; }
+@keyframes potDetailsOpen{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
+
+/* ---- Members panel: Leaderboard / Floor tabs ---- */
+.casino-social-tabs{ display:flex; gap:8px; margin-bottom:12px; }
+.casino-social-tab{
+  flex:1; text-align:center; padding:8px; border-radius:8px; font-size:12.5px; font-weight:700;
+  font-family:'Barlow Condensed', sans-serif; letter-spacing:.5px; text-transform:uppercase;
+  background:rgba(0,0,0,.15); color:var(--muted); border:1px solid var(--line); cursor:pointer;
+  transition:background .15s, color .15s;
+}
+.casino-social-tab.active{
+  background:linear-gradient(180deg, var(--brass-light), var(--brass)); color:#0E1A16; border-color:var(--brass);
+  box-shadow:0 2px 10px rgba(199,162,72,.3);
+}
 
 /* ---- Jackpot draw / celebration ---- */
 .pot-celebration-sheet{ position:relative; background:none; border:none; box-shadow:none; padding:0 18px calc(20px + env(safe-area-inset-bottom, 0)); }
@@ -1736,38 +1758,11 @@
       <div class="hint" id="xpEarnHint">XP is play money for this tab only, separate from the real ledger.</div>
       <div class="casino-hero-actions">
         <button type="button" id="weeklyBonusBtn" class="casino-hero-action-btn" style="display:none;">🎁 Claim weekly bonus</button>
-        <button type="button" id="xpLeaderboardToggleBtn" class="casino-hero-action-btn">🏆 Leaderboard</button>
       </div>
       <div id="weeklyBonusStatus" class="status-msg error" style="margin-top:6px; text-align:center;"></div>
     </div>
 
-    <div class="panel" id="xpLeaderboardPanel" style="display:none;">
-      <h2 class="casino-panel-h2" style="font-size:14px;">🏆 XP Leaderboard</h2>
-      <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
-    </div>
-
-    <div class="panel" id="casinoPotPanel">
-      <h2 class="casino-panel-h2">🏆 Monthly Casino Pot</h2>
-      <div class="casino-pot-glow">
-        <div class="casino-pot-total" id="casinoPotTotal">0 XP</div>
-        <div class="casino-pot-sub">this month's pot so far</div>
-      </div>
-      <div class="casino-pot-split-legend"><span>60% SHARED</span><span>40% JACKPOT</span></div>
-      <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
-      <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
-      <div id="casinoPotMeWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);"></div>
-      <div style="text-align:center; margin-top:10px;">
-        <button type="button" class="pill-btn" id="casinoPotHistoryToggleBtn">📜 Past winners</button>
-        <button type="button" class="pill-btn" id="casinoPotRulesBtn">❔ How it works</button>
-      </div>
-      <div id="casinoPotHistoryArea" style="display:none; margin-top:10px;"><div class="empty">Loading…</div></div>
-      <div id="casinoPotAdminWrap" style="display:none; margin-top:12px; text-align:center; border-top:1px solid var(--line); padding-top:12px;">
-        <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close month &amp; distribute pot</button>
-        <div class="status-msg" id="casinoPotAdminStatus"></div>
-      </div>
-    </div>
-
-    <!-- Landing hub: lands here first, never straight into a table. -->
+    <!-- Landing hub: primary action, right after your XP — not buried under info panels. -->
     <div class="panel" id="casinoHubPanel" style="padding:14px 10px; text-align:center;">
       <div class="casino-hub-row">
         <div class="casino-hub-bubble" id="hubGamesBtn">
@@ -1793,11 +1788,48 @@
       </div>
     </div>
 
-    <div class="panel" id="casinoFloorPanel">
-      <h2 class="casino-panel-h2">🃏 Casino Floor</h2>
-      <div class="hint" style="text-align:center; margin:-4px 0 8px;">What everyone's been up to</div>
-      <div class="casino-floor-spotlight" id="casinoFloorSpotlight"></div>
-      <div id="casinoFloorArea" class="casino-floor-scroll"><div class="empty">Loading…</div></div>
+    <!-- Pot panel — collapsed to headline total by default; everything
+         else (split bar, contribution, eligibility, history, admin) lives
+         behind the Details toggle. -->
+    <div class="panel" id="casinoPotPanel">
+      <h2 class="casino-panel-h2">🏆 Monthly Casino Pot</h2>
+      <div class="casino-pot-glow">
+        <div class="casino-pot-total" id="casinoPotTotal">0 XP</div>
+        <div class="casino-pot-sub">this month's pot so far</div>
+      </div>
+      <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
+      <button type="button" class="casino-pot-details-toggle" id="potDetailsToggleBtn">▾ Details</button>
+      <div class="casino-pot-details" id="casinoPotDetailsWrap">
+        <div class="casino-pot-split-legend"><span>60% SHARED</span><span>40% JACKPOT</span></div>
+        <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
+        <div id="casinoPotMeWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);"></div>
+        <div style="text-align:center; margin-top:10px;">
+          <button type="button" class="pill-btn" id="casinoPotHistoryToggleBtn">📜 Past winners</button>
+          <button type="button" class="pill-btn" id="casinoPotRulesBtn">❔ How it works</button>
+        </div>
+        <div id="casinoPotHistoryArea" style="display:none; margin-top:10px;"><div class="empty">Loading…</div></div>
+        <div id="casinoPotAdminWrap" style="display:none; margin-top:12px; text-align:center; border-top:1px solid var(--line); padding-top:12px;">
+          <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close month &amp; distribute pot</button>
+          <div class="status-msg" id="casinoPotAdminStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Merged Leaderboard + Floor — one panel, two tabs, instead of two
+         separate panels doing overlapping jobs. -->
+    <div class="panel" id="casinoMembersPanel">
+      <h2 class="casino-panel-h2">👥 Members</h2>
+      <div class="casino-social-tabs">
+        <div class="casino-social-tab active" id="membersTabLeaderboard">🏆 Leaderboard</div>
+        <div class="casino-social-tab" id="membersTabFloor">🃏 Floor</div>
+      </div>
+      <div id="membersLeaderboardView">
+        <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
+      </div>
+      <div id="membersFloorView" style="display:none;">
+        <div class="casino-floor-spotlight" id="casinoFloorSpotlight"></div>
+        <div id="casinoFloorArea" class="casino-floor-scroll"><div class="empty">Loading…</div></div>
+      </div>
     </div>
 
     <!-- Rules hub view: list of every game, opens the existing rules modal per-game -->
@@ -3040,7 +3072,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.15";
+const APP_VERSION = "2026-08-18.19";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4881,17 +4913,37 @@ async function bjResolveHand(){
     let outcome, delta;
     if(playerTotal > 21){ outcome = 'Bust'; delta = -bet; }
     else if(playerBJ && !dealerBJ){ outcome = 'Blackjack! 3:2'; delta = Math.floor(bet * 1.5); isJackpot = true; }
+    // A dealer's NATURAL blackjack beats any non-blackjack hand outright —
+    // including a hard/soft 21 reached by hitting, which is otherwise the
+    // same numeric total. Without this check, that exact matchup fell
+    // through to the playerTotal === dealerTotal branch below and
+    // incorrectly resolved as a push instead of a loss.
+    else if(dealerBJ && !playerBJ){ outcome = 'Dealer blackjack \u2014 lose'; delta = -bet; }
     else if(dealerTotal > 21){ outcome = 'Dealer busts \u2014 win'; delta = bet; }
     else if(playerTotal > dealerTotal){ outcome = 'Win'; delta = bet; }
     else if(playerTotal === dealerTotal){ outcome = 'Push'; delta = 0; }
     else { outcome = 'Lose'; delta = -bet; }
     totalDelta += delta;
-    return bjIsSplit ? `Hand ${i + 1}: ${outcome} (${delta >= 0 ? '+' : ''}${delta})` : `${outcome} (${delta >= 0 ? '+' : ''}${delta} XP)`;
+    // Colour is driven by delta, not the outcome label text, so it can't
+    // drift out of sync with a new outcome string later — win green, loss
+    // red (same --loss token as a Bust), push the same blue already used
+    // for a Void result on the tipping ladder, for a consistent app-wide
+    // meaning rather than inventing a new colour just for this screen.
+    const color = delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'rgb(91,141,190)');
+    const label = bjIsSplit ? `Hand ${i + 1}: ${outcome} (${delta >= 0 ? '+' : ''}${delta})` : `${outcome} (${delta >= 0 ? '+' : ''}${delta} XP)`;
+    return { label, color };
   });
 
   const outcomeEl = document.getElementById('bjOutcomeMsg');
-  outcomeEl.textContent = bjIsSplit ? `${parts.join('  \u00b7  ')}  \u2014  Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP` : parts[0];
-  outcomeEl.style.color = isJackpot ? '' : (totalDelta > 0 ? 'var(--win)' : (totalDelta < 0 ? 'var(--loss)' : 'var(--muted)'));
+  if(bjIsSplit){
+    const totalColor = totalDelta > 0 ? 'var(--win)' : (totalDelta < 0 ? 'var(--loss)' : 'rgb(91,141,190)');
+    outcomeEl.innerHTML = parts.map(p => `<span style="color:${p.color};">${escapeHtml(p.label)}</span>`).join('  <span style="color:var(--muted);">\u00b7</span>  ')
+      + `  <span style="color:var(--muted);">\u2014</span>  <span style="color:${totalColor};">Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP</span>`;
+    outcomeEl.style.color = '';
+  } else {
+    outcomeEl.textContent = parts[0].label;
+    outcomeEl.style.color = isJackpot ? '' : parts[0].color;
+  }
   outcomeEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
   void outcomeEl.offsetWidth;
   outcomeEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
@@ -4942,19 +4994,22 @@ const CASINO_GAME_PANEL_IDS = {
 function showCasinoView(viewId){
   document.querySelectorAll('.casino-view').forEach(v => v.classList.toggle('active', v.id === viewId));
   document.getElementById('casinoHubPanel').style.display = viewId ? 'none' : 'block';
-  // Communal panels (pot + floor feed) belong to the lobby only; your own
+  // Communal panels (pot + members) belong to the lobby only; your own
   // activity log follows you into the games view specifically ("at the
   // table"), and neither shows on the Rules/XP-info/Badges sub-views since
   // those aren't activity contexts.
   const isHub = !viewId;
   const isGamesTable = viewId === 'casinoGamesView';
-  const floorPanel = document.getElementById('casinoFloorPanel');
+  const membersPanel = document.getElementById('casinoMembersPanel');
   const potPanel = document.getElementById('casinoPotPanel');
   const personalPanel = document.getElementById('casinoXpLogPanel');
-  if(floorPanel) floorPanel.style.display = isHub ? 'block' : 'none';
+  if(membersPanel) membersPanel.style.display = isHub ? 'block' : 'none';
   if(potPanel) potPanel.style.display = isHub ? 'block' : 'none';
   if(personalPanel) personalPanel.style.display = isGamesTable ? 'block' : 'none';
-  if(isHub) renderCasinoFloorFeed();
+  if(isHub){
+    renderXPLeaderboard();
+    renderCasinoFloorFeed();
+  }
   if(isGamesTable) renderXPLog();
 }
 document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
@@ -5079,18 +5134,23 @@ async function renderXPLeaderboard(){
     area.innerHTML = '<div class="empty">Couldn\'t load the leaderboard — try again.</div>';
   }
 }
-document.getElementById('xpLeaderboardToggleBtn').addEventListener('click', () => {
-  const panel = document.getElementById('xpLeaderboardPanel');
-  const btn = document.getElementById('xpLeaderboardToggleBtn');
-  const showing = panel.style.display !== 'none';
-  if(showing){
-    panel.style.display = 'none';
-    btn.textContent = '🏆 Leaderboard';
-  } else {
-    panel.style.display = 'block';
-    btn.textContent = '🃏 Back to table';
-    renderXPLeaderboard(); // always refetch on open — balances change often enough that a stale cached view isn't worth avoiding a handful of small reads
-  }
+document.getElementById('membersTabLeaderboard').addEventListener('click', () => {
+  document.getElementById('membersTabLeaderboard').classList.add('active');
+  document.getElementById('membersTabFloor').classList.remove('active');
+  document.getElementById('membersLeaderboardView').style.display = 'block';
+  document.getElementById('membersFloorView').style.display = 'none';
+});
+document.getElementById('membersTabFloor').addEventListener('click', () => {
+  document.getElementById('membersTabFloor').classList.add('active');
+  document.getElementById('membersTabLeaderboard').classList.remove('active');
+  document.getElementById('membersFloorView').style.display = 'block';
+  document.getElementById('membersLeaderboardView').style.display = 'none';
+});
+document.getElementById('potDetailsToggleBtn').addEventListener('click', () => {
+  const wrap = document.getElementById('casinoPotDetailsWrap');
+  const btn = document.getElementById('potDetailsToggleBtn');
+  const open = wrap.classList.toggle('open');
+  btn.textContent = open ? '▴ Hide details' : '▾ Details';
 });
 // ---- Tap-to-add chip rail (shared by every game's bet panel) ----
 // Generic: any element with class chip-rail wires its .table-chip buttons

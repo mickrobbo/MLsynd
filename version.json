@@ -1,14 +1,8 @@
 {
-  "version": "2026-08-18.15",
+  "version": "2026-08-18.19",
   "date": "2026-08-18",
   "changes": [
-    "New: Casino Pot panel shows your own contribution and share of the pot",
-    "New: eligibility indicator shows if you already qualify for this month's payout, or how many more plays you need",
-    "New: permanent Jackpot Winner badge for anyone who's won the pot",
-    "New: \"Biggest win this month\" spotlight on the Casino Floor feed",
-    "New: \"How it works\" rules page explaining the Casino Pot, in the same place as every other game's rules",
-    "New: a soft one-time nudge if you're down 500+ XP in a single session",
-    "New: a short chime plays when the jackpot reel lands",
-    "New: push notification to everyone when the pot is distributed each month"
+    "Restored: the tidy Casino lobby — Games/Rules/Badges after your XP, Monthly Casino Pot collapsed with a Details toggle, Leaderboard + Floor merged into one tabbed panel",
+    "Fixed: countdown timer, pot subtitle, split legend, and your contribution/eligibility text all now use the same font and size instead of the countdown being in a different (monospace) font from everything around it"
   ]
 }
