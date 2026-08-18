@@ -2909,7 +2909,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.7";
+const APP_VERSION = "2026-08-18.8";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3578,10 +3578,15 @@ async function trackCasinoPotContribution(uid, amount, reason){
 async function fetchCasinoPotMonth(monthKey){
   try{
     const res = await authedFetch(`/casinoPot/months/${monthKey}.json`);
+    if(!res.ok){
+      console.warn('Casino Pot: month read denied — HTTP', res.status, '(check /casinoPot Firebase rules are deployed)');
+      return { losses: {}, playCounts: {}, readFailed: true };
+    }
     const data = await res.json();
     return { losses: (data && data.losses) || {}, playCounts: (data && data.playCounts) || {} };
   }catch(e){
-    return { losses: {}, playCounts: {} };
+    console.warn('Casino Pot: month read failed —', e.message);
+    return { losses: {}, playCounts: {}, readFailed: true };
   }
 }
 
@@ -3593,18 +3598,20 @@ async function renderCasinoPotPanel(){
   const totalEl = document.getElementById('casinoPotTotal');
   if(!totalEl) return;
   const monthKey = casinoPotMonthKey();
-  const { losses } = await fetchCasinoPotMonth(monthKey);
+  const { losses, readFailed } = await fetchCasinoPotMonth(monthKey);
   const total = sumLosses(losses);
-  totalEl.textContent = `${total.toLocaleString()} XP`;
+  totalEl.textContent = readFailed ? '— XP' : `${total.toLocaleString()} XP`;
 
   const adminWrap = document.getElementById('casinoPotAdminWrap');
   const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   if(adminWrap) adminWrap.style.display = isAdmin ? 'block' : 'none';
   if(isAdmin){
     const hint = document.getElementById('casinoPotAdminHint');
-    if(hint) hint.textContent = total > 0
-      ? `Distributing now closes ${monthKey} early — normally this runs automatically once the calendar rolls into next month.`
-      : 'Nothing lost yet this month — nothing to distribute.';
+    if(hint) hint.textContent = readFailed
+      ? 'Could not read the pot — check the browser console for the exact error, or run the Diag check.'
+      : (total > 0
+        ? `Distributing now closes ${monthKey} early — normally this runs automatically once the calendar rolls into next month.`
+        : 'Nothing lost yet this month — nothing to distribute.');
   }
 }
 

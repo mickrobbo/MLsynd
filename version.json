@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-18.7",
+  "version": "2026-08-18.8",
   "date": "2026-08-18",
   "changes": [
     "New: guest link — share a 2-hour view-only link, no signup needed, with a fresh 500 XP Casino trial balance each time",
@@ -11,7 +11,7 @@
     "New: backup reminder after Save Week in the Ledger",
     "Fixed: guest watermark, \"What's new\" banner, and Casino Pot panel were all rendering unstyled instead of matching the app's look",
     "Fixed: Casino Pot total wasn't updating live as losses happened",
-    "Fixed: Casino Pot writes now show a clear reason in the console (and a new Diag check) if Firebase denies them",
+    "Fixed: Casino Pot now shows \"— XP\" instead of a misleading \"0 XP\" when the read is actually being blocked",
     "Fixed: a leftover guest session could silently take over a real login on the same device instead of showing the login screen"
   ]
 }
