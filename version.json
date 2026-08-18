@@ -1,8 +1,7 @@
 {
-  "version": "2026-08-18.19",
+  "version": "2026-08-18.20",
   "date": "2026-08-18",
   "changes": [
-    "Restored: the tidy Casino lobby — Games/Rules/Badges after your XP, Monthly Casino Pot collapsed with a Details toggle, Leaderboard + Floor merged into one tabbed panel",
-    "Fixed: countdown timer, pot subtitle, split legend, and your contribution/eligibility text all now use the same font and size instead of the countdown being in a different (monospace) font from everything around it"
+    "Changed: individual bet wins now earn 100 XP per $1 won (was 1 XP per $1)"
   ]
 }

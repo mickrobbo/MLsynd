@@ -3072,7 +3072,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.19";
+const APP_VERSION = "2026-08-18.20";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3124,7 +3124,7 @@ function renderChangelogBanner(data){
 // per-user write pattern (each signed-in client only ever writes its own
 // /xp/{uid} path) rather than any new security model — same trust level
 // already accepted elsewhere in this app for a friendly ~11-person group.
-const XP_RATES = { perTippingPoint: 150, perDollarIndividualWin: 1, perGroupLegWin: 150 };
+const XP_RATES = { perTippingPoint: 150, perDollarIndividualWin: 100, perGroupLegWin: 150 };
 const XP_SIGNUP_BONUS = 500;
 // A tipping-tier account can't see Board/Cash/Slips (no individual bets or
 // group multi legs to earn XP from), so a small recurring bonus plus their
