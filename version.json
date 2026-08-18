@@ -1,11 +1,13 @@
 {
-  "version": "2026-08-18.1",
+  "version": "2026-08-18.4",
   "date": "2026-08-18",
   "changes": [
+    "New: Monthly Casino XP Pot — 60% of everyone's losses shared back proportionally, 40% goes to a random jackpot, at the end of each month",
+    "New: live pot total and past-winners history on the Casino tab",
     "New: guest link — share a 2-hour view-only link, no signup needed",
-    "New: \"What's new\" banner (you're looking at it)",
     "New: last-saved indicator on Home shows who saved and when",
     "New: quick health-check traffic light on Home",
-    "New: backup reminder after Save Week in the Ledger"
+    "New: backup reminder after Save Week in the Ledger",
+    "Fixed: \"What's new\" banner and guest watermark were rendering unstyled instead of matching the app's look"
   ]
 }

@@ -1255,7 +1255,8 @@
   .auth-box button{ width:100%; margin-top:4px; }
   #authSubmitBtn{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1.5px; font-weight:700; text-transform:uppercase; padding:13px 16px; border-radius:8px; border:1px solid var(--brass); background:linear-gradient(165deg, #dab868, var(--brass) 60%); box-shadow:0 4px 14px rgba(199,162,72,.25); color:#151007; cursor:pointer; }
   #authSubmitBtn:disabled{ opacity:.4; cursor:default; }
-  #authSignOutBtn{ font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:11px 16px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; .guest-watermark{
+  #authSignOutBtn{ font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:1px; font-weight:700; text-transform:uppercase; padding:11px 16px; border-radius:6px; border:1px solid var(--line); background:transparent; color:var(--chalk); cursor:pointer; }
+.guest-watermark{
   position:fixed; inset:0; z-index:9999; pointer-events:none;
   display:flex; flex-wrap:wrap; align-content:flex-start; justify-content:center;
   overflow:hidden; opacity:.07;
@@ -1289,20 +1290,18 @@
 .health-pill.green{ color:var(--win); border-color:rgba(111,169,138,.4); }
 .health-pill.amber{ color:#E8A15C; border-color:rgba(232,161,92,.4); }
 .health-pill.red{ color:var(--loss); border-color:rgba(217,110,110,.4); }
-.changelog-banner{
-  background:var(--felt-2); border:1px solid var(--brass-dim); border-radius:10px;
-  padding:12px 14px; margin-bottom:12px; font-size:12.5px; color:var(--chalk);
+.changelog-banner{ font-size:12.5px; color:var(--chalk); }
+.changelog-banner ul{ margin:0 0 12px; padding-left:18px; color:var(--muted); }
+.changelog-banner li{ margin-bottom:4px; }
+.cl-date-pill{
+  font-family:'IBM Plex Mono', monospace; font-weight:400; text-transform:none; letter-spacing:0;
+  font-size:10px; color:var(--muted); background:rgba(0,0,0,.15); border:1px solid var(--line);
+  border-radius:999px; padding:3px 10px; white-space:nowrap;
 }
-.changelog-banner .cl-title{
-  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:14px;
-  letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light);
-  display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;
-}
-.changelog-banner ul{ margin:0 0 10px; padding-left:18px; color:var(--muted); }
-.changelog-banner li{ margin-bottom:3px; }
 .changelog-banner button{
-  background:var(--brass); border:none; border-radius:8px; padding:6px 16px;
+  background:var(--brass); border:none; border-radius:999px; padding:8px 20px;
   color:#0E1A16; font-size:12px; font-weight:700; cursor:pointer;
+  font-family:'Barlow Condensed', sans-serif; letter-spacing:1px; text-transform:uppercase;
 }
 </style>
 </head>
@@ -1563,6 +1562,21 @@
         <button type="button" id="xpLeaderboardToggleBtn" class="casino-hero-action-btn">🏆 Leaderboard</button>
       </div>
       <div id="weeklyBonusStatus" class="status-msg error" style="margin-top:6px; text-align:center;"></div>
+    </div>
+
+    <div class="panel" id="casinoPotPanel">
+      <h2 style="font-size:14px; text-align:center;">🏆 Monthly Casino Pot</h2>
+      <div class="casino-hero-xp" id="casinoPotTotal" style="font-size:26px;">0 XP</div>
+      <div class="hint" style="text-align:center; margin-top:2px;">60% shared by how much you've lost this month · 40% random jackpot</div>
+      <div style="text-align:center; margin-top:8px;">
+        <button type="button" class="pill-btn" id="casinoPotHistoryToggleBtn">📜 Past winners</button>
+      </div>
+      <div id="casinoPotHistoryArea" style="display:none; margin-top:10px;"><div class="empty">Loading…</div></div>
+      <div id="casinoPotAdminWrap" style="display:none; margin-top:12px; text-align:center; border-top:1px solid var(--line); padding-top:12px;">
+        <div class="hint" id="casinoPotAdminHint" style="margin-bottom:6px;"></div>
+        <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close month &amp; distribute pot</button>
+        <div class="status-msg" id="casinoPotAdminStatus"></div>
+      </div>
     </div>
 
     <div class="panel" id="xpLeaderboardPanel" style="display:none;">
@@ -2005,6 +2019,13 @@
   </div>
 </div>
 
+<div id="casinoPotCelebrationModal" class="profile-modal">
+  <div class="profile-sheet" style="text-align:center;">
+    <button type="button" class="profile-close" id="casinoPotCelebrationCloseBtn">✕</button>
+    <div id="casinoPotCelebrationBody"></div>
+  </div>
+</div>
+
 <div id="tippingRulesModal" class="profile-modal">
   <div class="profile-sheet" style="text-align:left;">
     <button type="button" class="profile-close" id="tippingRulesCloseBtn">✕</button>
@@ -2403,7 +2424,27 @@ async function updatePushToggleUI(){
 // change GUEST_LOGIN_PASSWORD to match — it must be identical here.
 const GUEST_LOGIN_EMAIL = 'guest@mlsynd.app';
 const GUEST_LOGIN_PASSWORD = 'cUvlvDH2HRhGo6_uXT6pj_bR';
+const GUEST_TRIAL_XP = 500;
 let guestLinkChecked = false;
+
+// Resets the shared guest account's Casino XP to a fresh trial amount every
+// time a guest link is opened — so whatever a previous visitor won/spent
+// doesn't carry over, and every new sponsor/guest gets the same clean
+// 500 XP to play with. Uses a raw fetch (not authedFetch) since this needs
+// to run for the readonly role, which authedFetch deliberately blocks
+// writes for everywhere else — this is the one intentional, system-
+// initiated exception, not a user-triggered write. Firebase rules already
+// allow it (auth.uid === $uid on /xp/{uid}, same as any normal member).
+async function resetGuestTrialXp(auth){
+  try{
+    await fetch(`${FIREBASE_URL}/xp/${auth.uid}/balance.json?auth=${auth.idToken}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(GUEST_TRIAL_XP)
+    });
+    await fetch(`${FIREBASE_URL}/xp/${auth.uid}/lifetimeEarned.json?auth=${auth.idToken}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(GUEST_TRIAL_XP)
+    });
+  }catch(e){}
+}
 
 // Returns true if it's fine to continue with the normal auth flow, false if
 // it has already shown a gate screen (loading/expired) and the caller
@@ -2423,7 +2464,8 @@ async function tryGuestLink(){
       showAuthGate('guestExpired');
       return false;
     }
-    await authSignIn(GUEST_LOGIN_EMAIL, GUEST_LOGIN_PASSWORD, false);
+    const auth = await authSignIn(GUEST_LOGIN_EMAIL, GUEST_LOGIN_PASSWORD, false);
+    await resetGuestTrialXp(auth);
     return true;
   }catch(e){
     showAuthGate('guestExpired');
@@ -2773,7 +2815,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.1";
+const APP_VERSION = "2026-08-18.4";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -2806,8 +2848,8 @@ function renderChangelogBanner(data){
   if(!wrap) return;
   const dateStr = data.date ? new Date(data.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
   wrap.innerHTML = `
-    <div class="changelog-banner">
-      <div class="cl-title"><span>✨ What's new</span><span style="font-size:10px; color:var(--muted); text-transform:none; letter-spacing:0; font-weight:400;">${escapeHtml(dateStr)}</span></div>
+    <div class="panel changelog-banner">
+      <h2>✨ What's new ${dateStr ? `<span class="cl-date-pill">${escapeHtml(dateStr)}</span>` : ''}</h2>
       <ul>${data.changes.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
       <button type="button" id="changelogDismissBtn">Got it</button>
     </div>`;
@@ -3343,6 +3385,13 @@ async function awardXP(amount, reason, opts){
         });
       }catch(e){}
     }
+    // Monthly Casino Pot — every casino win/loss (identified by reason text,
+    // since this function is already the one central choke point every
+    // casino game funnels through) feeds the shared pot. Losses fund it;
+    // any casino play (win or lose) counts toward the activity-eligibility
+    // threshold. Never allowed to block or fail the actual game outcome —
+    // its own try/catch inside trackCasinoPotContribution keeps it silent.
+    trackCasinoPotContribution(currentUserUid, amount, reason);
     if(!(opts && opts.silent)) updateXPBalanceDisplay(next);
   }catch(e){}
 }
@@ -3370,6 +3419,320 @@ function updateXPBalanceDisplay(bal){
   }
   requestAnimationFrame(tick);
 }
+
+// ================= Monthly Casino XP Pot =================
+// Every casino win/loss already funnels through awardXP() with a
+// descriptive `reason` string (e.g. "Blackjack loss", "Roulette win") —
+// that's the one place every game agrees on, so it's used here as the
+// classifier rather than touching each of the six game functions
+// individually. Losses fund the pot; any casino play (win or lose) counts
+// toward the 20-play activity-eligibility threshold.
+const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Slots|Video Poker|Spin the Wheel)/i;
+const CASINO_POT_ELIGIBLE_PLAYS = 20;
+const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
+
+function casinoPotMonthKey(d){
+  const now = d || new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Deliberately NOT a single shared object that every player reads-then-
+// overwrites (that's exactly the race-condition class this project has
+// been bitten by before — two concurrent casino sessions would clobber
+// each other's update). Instead each player only ever writes their own
+// uid leaf under the CURRENT real-world month's bucket, the same safe
+// per-user-path pattern already used for the rest of the XP system. The
+// displayed pot total is derived by summing those leaves, never stored
+// as its own counter — so there's nothing shared to race on.
+async function trackCasinoPotContribution(uid, amount, reason){
+  if(!CASINO_POT_REASON_PATTERN.test(reason || '')) return;
+  const monthKey = casinoPotMonthKey();
+  try{
+    const pcRes = await authedFetch(`/casinoPot/months/${monthKey}/playCounts/${uid}.json`);
+    const pc = (await pcRes.json()) || 0;
+    await authedFetch(`/casinoPot/months/${monthKey}/playCounts/${uid}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pc + 1)
+    });
+    if(amount < 0){
+      const lost = -amount;
+      const lossRes = await authedFetch(`/casinoPot/months/${monthKey}/losses/${uid}.json`);
+      const prevLoss = (await lossRes.json()) || 0;
+      await authedFetch(`/casinoPot/months/${monthKey}/losses/${uid}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(prevLoss + lost)
+      });
+    }
+  }catch(e){}
+}
+
+async function fetchCasinoPotMonth(monthKey){
+  try{
+    const res = await authedFetch(`/casinoPot/months/${monthKey}.json`);
+    const data = await res.json();
+    return { losses: (data && data.losses) || {}, playCounts: (data && data.playCounts) || {} };
+  }catch(e){
+    return { losses: {}, playCounts: {} };
+  }
+}
+
+function sumLosses(losses){
+  return Object.values(losses).reduce((s, v) => s + (Number(v) || 0), 0);
+}
+
+async function renderCasinoPotPanel(){
+  const totalEl = document.getElementById('casinoPotTotal');
+  if(!totalEl) return;
+  const monthKey = casinoPotMonthKey();
+  const { losses } = await fetchCasinoPotMonth(monthKey);
+  const total = sumLosses(losses);
+  totalEl.textContent = `${total.toLocaleString()} XP`;
+
+  const adminWrap = document.getElementById('casinoPotAdminWrap');
+  const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  if(adminWrap) adminWrap.style.display = isAdmin ? 'block' : 'none';
+  if(isAdmin){
+    const hint = document.getElementById('casinoPotAdminHint');
+    if(hint) hint.textContent = total > 0
+      ? `Distributing now closes ${monthKey} early — normally this runs automatically once the calendar rolls into next month.`
+      : 'Nothing lost yet this month — nothing to distribute.';
+  }
+}
+
+// Who counts as eligible for a given month's redistribution: played 20+
+// times that month, OR earned any real (non-casino) XP that month —
+// checked by scanning their log, since that's the only place "when" is
+// recorded per-transaction.
+async function isEligibleForPot(uid, monthKey, playCount){
+  if(playCount >= CASINO_POT_ELIGIBLE_PLAYS) return true;
+  try{
+    const res = await authedFetch(`/xp/${uid}/log.json`);
+    const log = (await res.json()) || {};
+    return Object.values(log).some(entry => {
+      if(!entry || !(entry.amount > 0)) return false;
+      if(CASINO_POT_REASON_PATTERN.test(entry.reason || '')) return false;
+      return casinoPotMonthKey(new Date(entry.ts)) === monthKey;
+    });
+  }catch(e){
+    return false;
+  }
+}
+
+async function creditPotXP(uid, amount, reason){
+  if(!(amount > 0)) return;
+  try{
+    const balRes = await authedFetch(`/xp/${uid}/balance.json`);
+    const bal = (await balRes.json()) || 0;
+    const next = bal + amount;
+    await authedFetch(`/xp/${uid}/balance.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+    });
+    await authedFetch(`/xp/${uid}/log.json`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
+    });
+    const ltRes = await authedFetch(`/xp/${uid}/lifetimeEarned.json`);
+    const lt = (await ltRes.json()) || 0;
+    await authedFetch(`/xp/${uid}/lifetimeEarned.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lt + amount)
+    });
+  }catch(e){}
+}
+
+// Finds any month bucket(s) under /casinoPot/months that aren't the
+// current real-world month — i.e. months that ended but were never
+// closed out. Normally at most one (last month), but if the admin hasn't
+// opened the app in a while there could be several; those get merged
+// into a single distribution rather than run one at a time, which is
+// also how "no one eligible → roll into next month" naturally falls out
+// (an unclosed month just sits here until it's merged into a later run).
+async function findStaleCasinoPotMonths(){
+  try{
+    const res = await authedFetch('/casinoPot/months.json');
+    const all = (await res.json()) || {};
+    const nowKey = casinoPotMonthKey();
+    return Object.keys(all).filter(k => k !== nowKey).sort();
+  }catch(e){
+    return [];
+  }
+}
+
+// Admin-only (enforced both by the UI that calls this and by Firebase
+// rules on /casinoPot/history + the parent /casinoPot/months/$month node).
+// monthKeys can be one month (manual early close) or several (merged
+// catch-up). Returns a result object for the celebration UI, or
+// { skipped: true } if there was nothing to distribute.
+async function distributeCasinoPot(monthKeys){
+  if(!monthKeys || monthKeys.length === 0) return { skipped: true };
+
+  const combinedLosses = {};
+  const combinedPlayCounts = {};
+  for(const monthKey of monthKeys){
+    const { losses, playCounts } = await fetchCasinoPotMonth(monthKey);
+    Object.entries(losses).forEach(([uid, v]) => { combinedLosses[uid] = (combinedLosses[uid] || 0) + (Number(v) || 0); });
+    Object.entries(playCounts).forEach(([uid, v]) => { combinedPlayCounts[uid] = (combinedPlayCounts[uid] || 0) + (Number(v) || 0); });
+  }
+  const totalPot = sumLosses(combinedLosses);
+  const label = monthKeys.length === 1 ? monthKeys[0] : `${monthKeys[0]}..${monthKeys[monthKeys.length - 1]}`;
+
+  const allUids = new Set([...Object.keys(combinedLosses), ...Object.keys(combinedPlayCounts)]);
+  const eligible = [];
+  for(const uid of allUids){
+    const ok = await isEligibleForPot(uid, label, combinedPlayCounts[uid] || 0);
+    if(ok) eligible.push(uid);
+  }
+
+  if(totalPot <= 0 || eligible.length === 0){
+    // Nothing to distribute (or no one qualifies) — leave the month
+    // bucket(s) exactly as they are. They'll be picked up and merged
+    // into whichever future run finally has an eligible winner, which is
+    // the "roll the pot into next month" behaviour.
+    return { skipped: true, rolled: true, totalPot };
+  }
+
+  const proportionalPool = Math.floor(totalPot * 0.6);
+  const jackpotPool = totalPot - proportionalPool; // remainder, not a second floor() — avoids losing a few XP to rounding
+
+  const eligibleWithLosses = eligible.filter(uid => (combinedLosses[uid] || 0) > 0);
+  const totalEligibleLosses = eligibleWithLosses.reduce((s, uid) => s + (combinedLosses[uid] || 0), 0);
+  const proportional = {};
+  if(totalEligibleLosses > 0){
+    eligibleWithLosses.forEach(uid => {
+      proportional[uid] = Math.floor(proportionalPool * (combinedLosses[uid] / totalEligibleLosses));
+    });
+  }
+  const jackpotWinner = eligible[Math.floor(Math.random() * eligible.length)];
+
+  for(const uid of Object.keys(proportional)){
+    await creditPotXP(uid, proportional[uid], `Monthly Casino Pot – Proportional (${label})`);
+  }
+  await creditPotXP(jackpotWinner, jackpotPool, `Monthly Casino Pot – Jackpot (${label})`);
+
+  const historyEntry = { month: label, totalPot, proportional, jackpotWinner, jackpotAmount: jackpotPool, distributedAt: Date.now() };
+  try{
+    await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(historyEntry)
+    });
+  }catch(e){}
+  for(const monthKey of monthKeys){
+    try{ await authedFetch(`/casinoPot/months/${monthKey}.json`, { method: 'DELETE' }); }catch(e){}
+  }
+  return historyEntry;
+}
+
+// Admin-only, called once per session right after login (see startApp) —
+// gated to admin specifically so only one client is ever the one deciding
+// to close out a month, avoiding two members' sessions racing to do it.
+let casinoPotAutoCheckDone = false;
+async function autoCheckCasinoPotRollover(){
+  if(casinoPotAutoCheckDone) return;
+  casinoPotAutoCheckDone = true;
+  const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  if(!isAdmin) return;
+  try{
+    const stale = await findStaleCasinoPotMonths();
+    if(stale.length > 0) await distributeCasinoPot(stale);
+  }catch(e){}
+}
+
+function nameForUid(uid){
+  if(currentState && Array.isArray(currentState.members)){
+    const m = currentState.members.find(mm => mm.linkedUid === uid);
+    if(m) return m.name;
+  }
+  return uid ? `${uid.slice(0, 6)}…` : 'Unknown';
+}
+
+async function renderCasinoPotHistory(){
+  const area = document.getElementById('casinoPotHistoryArea');
+  if(!area) return;
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const res = await authedFetch('/casinoPot/history.json');
+    const all = (await res.json()) || {};
+    const entries = Object.values(all).sort((a, b) => (b.distributedAt || 0) - (a.distributedAt || 0));
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No months distributed yet.</div>';
+      return;
+    }
+    area.innerHTML = entries.map(e => `
+      <div style="padding:8px 0; border-bottom:1px solid var(--line); font-size:12px;">
+        <b>${escapeHtml(e.month)}</b> — ${e.totalPot.toLocaleString()} XP pot<br>
+        <span style="color:var(--brass-light);">🎰 Jackpot:</span> ${escapeHtml(nameForUid(e.jackpotWinner))} won ${e.jackpotAmount.toLocaleString()} XP
+      </div>`).join('');
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load history.</div>';
+  }
+}
+
+// Shown once per newly-seen distributed month, to whichever member next
+// opens the Casino tab — there's no push infrastructure for this, so
+// "celebration for everyone" means everyone sees it the next time they
+// look, not a live simultaneous popup.
+async function maybeShowCasinoPotCelebration(){
+  if(currentUserRole === 'readonly') return;
+  try{
+    const res = await authedFetch('/casinoPot/history.json');
+    const all = (await res.json()) || {};
+    const entries = Object.values(all).sort((a, b) => (b.distributedAt || 0) - (a.distributedAt || 0));
+    if(entries.length === 0) return;
+    const latest = entries[0];
+    let lastSeen = null;
+    try{ lastSeen = localStorage.getItem(CASINO_POT_LAST_SEEN_KEY); }catch(e){}
+    if(lastSeen === latest.month) return;
+    const modal = document.getElementById('casinoPotCelebrationModal');
+    const body = document.getElementById('casinoPotCelebrationBody');
+    if(!modal || !body) return;
+    const isMe = latest.jackpotWinner === currentUserUid;
+    const myShare = latest.proportional && latest.proportional[currentUserUid];
+    body.innerHTML = `
+      <div style="font-size:34px; margin-bottom:6px;">🎉</div>
+      <h2 style="font-size:18px; margin:0 0 8px;">${escapeHtml(latest.month)} Casino Pot distributed</h2>
+      <div class="hint" style="margin-bottom:10px;">${latest.totalPot.toLocaleString()} XP was in the pot.</div>
+      <div style="font-size:14px; margin-bottom:6px;">🎰 Jackpot winner: <b>${escapeHtml(nameForUid(latest.jackpotWinner))}</b> — ${latest.jackpotAmount.toLocaleString()} XP${isMe ? ' — that\'s you!' : ''}</div>
+      ${myShare ? `<div style="font-size:13px; color:var(--win);">You also got a ${myShare.toLocaleString()} XP share for your losses that month.</div>` : ''}
+    `;
+    modal.classList.add('open');
+    try{ localStorage.setItem(CASINO_POT_LAST_SEEN_KEY, latest.month); }catch(e){}
+  }catch(e){}
+}
+document.getElementById('casinoPotCelebrationCloseBtn').addEventListener('click', () => {
+  document.getElementById('casinoPotCelebrationModal').classList.remove('open');
+});
+
+document.getElementById('casinoPotHistoryToggleBtn').addEventListener('click', () => {
+  const area = document.getElementById('casinoPotHistoryArea');
+  const showing = area.style.display !== 'none';
+  area.style.display = showing ? 'none' : 'block';
+  if(!showing) renderCasinoPotHistory();
+});
+
+document.getElementById('closeMonthPotBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('closeMonthPotBtn');
+  const status = document.getElementById('casinoPotAdminStatus');
+  if(!confirm('Close out the current month and distribute the pot now? This normally happens automatically once the month rolls over — only do this to force it early.')) return;
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Distributing…';
+  try{
+    const stale = await findStaleCasinoPotMonths();
+    const monthKeys = [...stale, casinoPotMonthKey()];
+    const result = await distributeCasinoPot(monthKeys);
+    if(result.skipped){
+      status.className = 'status-msg';
+      status.textContent = result.rolled ? 'Nobody was eligible yet — pot rolls forward untouched.' : 'Nothing to distribute.';
+    } else {
+      status.className = 'status-msg ok';
+      status.textContent = `Distributed ${result.totalPot.toLocaleString()} XP. Jackpot: ${nameForUid(result.jackpotWinner)}.`;
+      await renderCasinoPotPanel();
+      await maybeShowCasinoPotCelebration();
+    }
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Something went wrong: ' + e.message;
+  }finally{
+    btn.disabled = false;
+  }
+});
+// ================= /Monthly Casino XP Pot =================
 
 async function renderXPLog(){
   const area = document.getElementById('xpLogArea');
@@ -4088,6 +4451,8 @@ document.querySelector('[data-tab="casino"]').addEventListener('click', async ()
   renderXPLog();
   refreshWeeklyBonusButton();
   refreshCasinoHeroExtras();
+  renderCasinoPotPanel();
+  maybeShowCasinoPotCelebration();
 });
 // Rank + next-milestone progress on the hero card — the whole point is
 // giving someone a reason to glance at Casino without having to tap into
@@ -9221,6 +9586,11 @@ function startApp(){
     // name is you" — that flow (and its write) is for real squad members only.
     if(currentUserRole !== 'readonly') resolveMyMemberIndex(currentUserName).catch(() => {});
   });
+  // Admin-only, self-gated — checks once per session whether a past month's
+  // casino pot never got closed out, and distributes it automatically if
+  // so. See autoCheckCasinoPotRollover's own comment for why this is
+  // restricted to the admin client specifically.
+  autoCheckCasinoPotRollover();
   startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded) — feeds Home/Board/Cash simultaneously, so this one always runs regardless of active tab
   refreshAfl();
   startTabScopedPolling(refreshAfl, 20000, ['sport']); // Sport tab scores — only while Sport is actually showing
