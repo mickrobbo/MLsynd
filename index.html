@@ -1325,6 +1325,20 @@
   display:flex; justify-content:space-between; font-size:10px; color:var(--muted);
   font-family:'IBM Plex Mono', monospace; margin-bottom:4px;
 }
+.casino-pot-countdown{
+  text-align:center; margin-top:10px; font-size:11px; color:var(--muted);
+  font-family:'IBM Plex Mono', monospace; letter-spacing:.3px;
+}
+.casino-pot-countdown b{ color:var(--brass-light); font-weight:700; }
+.casino-panel-h2{ justify-content:center; text-align:center; }
+.xp-log-row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  padding:7px 0; border-bottom:1px solid var(--line); font-size:12px;
+}
+.xp-log-row .xp-log-who{ color:var(--brass-light); font-weight:600; flex-shrink:0; }
+.xp-log-row .xp-log-reason{ color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xp-log-row .xp-log-amt{ font-weight:700; flex-shrink:0; font-family:'IBM Plex Mono', monospace; }
+.casino-floor-toggle{ display:flex; justify-content:center; gap:8px; margin-bottom:10px; }
 
 /* ---- Jackpot draw / celebration ---- */
 .pot-celebration-sheet{ overflow:hidden; position:relative; }
@@ -1621,7 +1635,7 @@
 
   <div class="tab-panel" id="tab-casino">
     <div class="panel casino-hero" style="text-align:center;">
-      <h2>🎰 Casino</h2>
+      <h2 class="casino-panel-h2">🎰 Casino</h2>
       <div class="casino-hero-glow">
         <div class="hint" style="margin:0;">Your XP</div>
         <div id="xpBalanceDisplay" class="casino-hero-xp">—</div>
@@ -1640,13 +1654,14 @@
     </div>
 
     <div class="panel" id="casinoPotPanel">
-      <h2 style="font-size:14px; text-align:center; justify-content:center;">🏆 Monthly Casino Pot</h2>
+      <h2 class="casino-panel-h2">🏆 Monthly Casino Pot</h2>
       <div class="casino-pot-glow">
         <div class="casino-pot-total" id="casinoPotTotal">0 XP</div>
         <div class="casino-pot-sub">this month's pot so far</div>
       </div>
       <div class="casino-pot-split-legend"><span>60% SHARED</span><span>40% JACKPOT</span></div>
       <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
+      <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
       <div style="text-align:center; margin-top:10px;">
         <button type="button" class="pill-btn" id="casinoPotHistoryToggleBtn">📜 Past winners</button>
       </div>
@@ -1656,6 +1671,12 @@
         <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close month &amp; distribute pot</button>
         <div class="status-msg" id="casinoPotAdminStatus"></div>
       </div>
+    </div>
+
+    <div class="panel" id="casinoFloorPanel">
+      <h2 class="casino-panel-h2">🃏 Casino Floor</h2>
+      <div class="hint" style="text-align:center; margin:-4px 0 10px;">What everyone's been up to</div>
+      <div id="casinoFloorArea"><div class="empty">Loading…</div></div>
     </div>
 
     <div class="panel" id="xpLeaderboardPanel" style="display:none;">
@@ -2021,7 +2042,7 @@
     </div><!-- /#casinoGamesView -->
 
     <div class="panel" id="casinoXpLogPanel">
-      <h2 style="font-size:14px;">Recent XP activity</h2>
+      <h2 class="casino-panel-h2" style="font-size:14px;">👤 Your Recent Activity</h2>
       <div id="xpLogArea"><div class="empty">Loading…</div></div>
     </div>
   </div>
@@ -2909,7 +2930,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.9";
+const APP_VERSION = "2026-08-18.11";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3524,10 +3545,33 @@ function updateXPBalanceDisplay(bal){
 const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Slots|Video Poker|Spin the Wheel)/i;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
+const CASINO_POT_TIMEZONE = 'Australia/Melbourne'; // AEST/AEDT — the actual cutoff authority, not each device's local clock
 
+// Pinned to AEST/AEDT specifically (via Intl, so daylight saving is handled
+// automatically) rather than each player's own device timezone — someone
+// with their phone set to a different zone shouldn't be able to end up in
+// the "wrong" month's bucket right around the boundary.
 function casinoPotMonthKey(d){
-  const now = d || new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CASINO_POT_TIMEZONE, year: 'numeric', month: '2-digit' }).formatToParts(d || new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = parts.find(p => p.type === 'month').value;
+  return `${y}-${m}`;
+}
+
+// Midnight AEST on the 1st of next month is the real cutoff (equivalent to
+// 23:59:59 AEST on the last day of this one) — computed by asking what
+// month AEST is currently in, then finding the first moment that no longer
+// reports that same month key, via a coarse-to-fine search. Avoids hand-
+// rolling AEST/AEDT day-count and daylight-saving edge cases.
+function casinoPotCutoffDate(){
+  const nowKey = casinoPotMonthKey();
+  let lo = Date.now();
+  let hi = lo + 32 * 24 * 60 * 60 * 1000; // definitely into next month
+  for(let i = 0; i < 40; i++){ // binary search to the minute is plenty precise for a countdown
+    const mid = Math.floor((lo + hi) / 2);
+    if(casinoPotMonthKey(new Date(mid)) === nowKey) lo = mid; else hi = mid;
+  }
+  return new Date(hi);
 }
 
 // Deliberately NOT a single shared object that every player reads-then-
@@ -3601,9 +3645,33 @@ function sumLosses(losses){
   return Object.values(losses).reduce((s, v) => s + (Number(v) || 0), 0);
 }
 
+// "Xd Yh Zmin" rather than a raw hour count — a countdown reading "292h"
+// is technically correct but reads as absurd; this collapses to whichever
+// units are actually meaningful at the current remaining duration.
+function formatPotCountdown(ms){
+  if(ms <= 0) return 'closing now…';
+  const totalMinutes = Math.floor(ms / 60000);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const mins = totalMinutes % 60;
+  const parts = [];
+  if(days > 0) parts.push(`${days}d`);
+  if(days > 0 || hours > 0) parts.push(`${hours}h`);
+  parts.push(`${mins}min`);
+  return parts.join(' ');
+}
+function renderCasinoPotCountdown(){
+  const el = document.getElementById('casinoPotCountdown');
+  if(!el) return;
+  const diff = casinoPotCutoffDate().getTime() - Date.now();
+  el.innerHTML = `⏳ Locks in <b>${formatPotCountdown(diff)}</b> · redistributed 8am AEST on the 1st`;
+}
+setInterval(renderCasinoPotCountdown, 30000);
+
 async function renderCasinoPotPanel(){
   const totalEl = document.getElementById('casinoPotTotal');
   if(!totalEl) return;
+  renderCasinoPotCountdown();
   const monthKey = casinoPotMonthKey();
   const { losses, readFailed } = await fetchCasinoPotMonth(monthKey);
   const total = sumLosses(losses);
@@ -3617,7 +3685,7 @@ async function renderCasinoPotPanel(){
     if(hint) hint.textContent = readFailed
       ? 'Could not read the pot — check the browser console for the exact error, or run the Diag check.'
       : (total > 0
-        ? `Distributing now closes ${monthKey} early — normally this runs automatically once the calendar rolls into next month.`
+        ? `Distributing now closes ${monthKey} early — normally this runs automatically at 8am AEST on the 1st.`
         : 'Nothing lost yet this month — nothing to distribute.');
   }
 }
@@ -3956,13 +4024,62 @@ async function renderXPLog(){
       const amount = typeof e.amount === 'number' && !isNaN(e.amount) ? e.amount : 0;
       const reason = e.reason || '(unlabeled)';
       return `
-      <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
-        <span style="color:var(--muted);">${escapeHtml(reason)}</span>
-        <span style="font-weight:700; color:${amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${amount >= 0 ? '+' : ''}${amount}</span>
+      <div class="xp-log-row">
+        <span class="xp-log-reason">${escapeHtml(reason)}</span>
+        <span class="xp-log-amt" style="color:${amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${amount >= 0 ? '+' : ''}${amount}</span>
       </div>`;
     }).join('');
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load XP activity.</div>';
+  }
+}
+
+// Communal feed for the Casino lobby specifically — merges every linked
+// member's own XP log (each already an authorised read under the existing
+// /xp/{uid} rules) rather than needing any new shared data structure.
+// Pulled once per lobby view, not polled — fine for a feed, not built for
+// high-frequency refresh.
+async function renderCasinoFloorFeed(){
+  const area = document.getElementById('casinoFloorArea');
+  if(!area) return;
+  if(!currentState || !Array.isArray(currentState.members)){
+    area.innerHTML = '<div class="empty">Loading…</div>';
+    return;
+  }
+  const linked = currentState.members.filter(m => m.linkedUid);
+  if(linked.length === 0){
+    area.innerHTML = '<div class="empty">No one\'s linked an account yet.</div>';
+    return;
+  }
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const perMember = await Promise.all(linked.map(async m => {
+      try{
+        const res = await authedFetch(`/xp/${m.linkedUid}/log.json`);
+        if(!res.ok) return [];
+        const data = await res.json();
+        return (data && typeof data === 'object' ? Object.values(data) : [])
+          .filter(e => e && typeof e === 'object')
+          .map(e => ({ ...e, name: m.name }));
+      }catch(e){ return []; }
+    }));
+    const merged = perMember.flat().sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 25);
+    if(merged.length === 0){
+      area.innerHTML = '<div class="empty">No casino activity yet.</div>';
+      return;
+    }
+    area.innerHTML = merged.map(e => {
+      const amount = typeof e.amount === 'number' && !isNaN(e.amount) ? e.amount : 0;
+      const reason = e.reason || '(unlabeled)';
+      return `
+      <div class="xp-log-row">
+        <span class="xp-log-who">${escapeHtml(e.name)}</span>
+        <span class="xp-log-reason">${escapeHtml(reason)}</span>
+        <span class="xp-log-amt" style="color:${amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${amount >= 0 ? '+' : ''}${amount}</span>
+      </div>`;
+    }).join('');
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load casino floor activity.</div>';
   }
 }
 
@@ -4608,6 +4725,20 @@ const CASINO_GAME_PANEL_IDS = {
 function showCasinoView(viewId){
   document.querySelectorAll('.casino-view').forEach(v => v.classList.toggle('active', v.id === viewId));
   document.getElementById('casinoHubPanel').style.display = viewId ? 'none' : 'block';
+  // Communal panels (pot + floor feed) belong to the lobby only; your own
+  // activity log follows you into the games view specifically ("at the
+  // table"), and neither shows on the Rules/XP-info/Badges sub-views since
+  // those aren't activity contexts.
+  const isHub = !viewId;
+  const isGamesTable = viewId === 'casinoGamesView';
+  const floorPanel = document.getElementById('casinoFloorPanel');
+  const potPanel = document.getElementById('casinoPotPanel');
+  const personalPanel = document.getElementById('casinoXpLogPanel');
+  if(floorPanel) floorPanel.style.display = isHub ? 'block' : 'none';
+  if(potPanel) potPanel.style.display = isHub ? 'block' : 'none';
+  if(personalPanel) personalPanel.style.display = isGamesTable ? 'block' : 'none';
+  if(isHub) renderCasinoFloorFeed();
+  if(isGamesTable) renderXPLog();
 }
 document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
 document.getElementById('hubRulesBtn').addEventListener('click', () => showCasinoView('casinoRulesHubView'));
@@ -4635,10 +4766,9 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
 });
 
 document.querySelector('[data-tab="casino"]').addEventListener('click', async () => {
-  showCasinoView(null);
+  showCasinoView(null); // hub view — also triggers renderCasinoFloorFeed() internally
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
   refreshWeeklyBonusButton();
   refreshCasinoHeroExtras();
   renderCasinoPotPanel();

@@ -1,9 +1,10 @@
-// Runs hourly and checks whether it's currently the 1st of the month in
-// Australia/Melbourne time — only actually distributes on that one hit,
-// same self-gating pattern as check-lockouts-scheduled.js. Running hourly
-// rather than trying to hand-calculate a single UTC cron time avoids
-// daylight-saving drift ever pushing the "real" 1st onto the 30th/31st or
-// the 2nd from this function's point of view.
+// Runs hourly and only actually distributes when it's 8am on the 1st of
+// the month in Australia/Melbourne time — same self-gating pattern as
+// check-lockouts-scheduled.js. Checking the real AEST/AEDT wall-clock hour
+// via Intl (rather than hand-picking a single UTC cron time) means this
+// stays correct through daylight-saving changes automatically, and running
+// hourly rather than once means a missed/failed run just gets picked up
+// again next hour rather than waiting a full month.
 //
 // Deploy alongside your other scheduled functions. Needs the same
 // FIREBASE_DB_SECRET env var already set for check-lockouts-scheduled.js —
@@ -15,10 +16,13 @@ const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Slots|Video Poker|Spin the Wheel)/i;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const TIMEZONE = 'Australia/Melbourne'; // change if the syndicate isn't Melbourne-based
+const DISTRIBUTE_HOUR = 8; // 8am AEST/AEDT on the 1st
 
-function isFirstOfMonth(){
-  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: TIMEZONE, day: 'numeric' }).format(new Date());
-  return parts === '1';
+function isDistributionTime(){
+  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: TIMEZONE, day: 'numeric', hour: 'numeric', hourCycle: 'h23' }).formatToParts(new Date());
+  const day = parts.find(p => p.type === 'day').value;
+  const hour = parts.find(p => p.type === 'hour').value;
+  return day === '1' && Number(hour) === DISTRIBUTE_HOUR;
 }
 
 function monthKeyFor(date, timeZone){
@@ -146,11 +150,11 @@ async function distributePot(secret){
   return historyEntry;
 }
 
-export const config = { schedule: '0 * * * *' }; // hourly — self-gates on isFirstOfMonth() below
+export const config = { schedule: '0 * * * *' }; // hourly — self-gates on isDistributionTime() below
 
 export default async () => {
-  if(!isFirstOfMonth()){
-    return new Response('Not the 1st in ' + TIMEZONE + ' — skipping.', { status: 200 });
+  if(!isDistributionTime()){
+    return new Response(`Not ${DISTRIBUTE_HOUR}am on the 1st in ${TIMEZONE} — skipping.`, { status: 200 });
   }
   const secret = process.env.FIREBASE_DB_SECRET;
   if(!secret){
