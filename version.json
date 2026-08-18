@@ -1,13 +1,11 @@
 {
-  "version": "2026-08-18.4",
+  "version": "2026-08-18.5",
   "date": "2026-08-18",
   "changes": [
-    "New: Monthly Casino XP Pot — 60% of everyone's losses shared back proportionally, 40% goes to a random jackpot, at the end of each month",
-    "New: live pot total and past-winners history on the Casino tab",
-    "New: guest link — share a 2-hour view-only link, no signup needed",
-    "New: last-saved indicator on Home shows who saved and when",
-    "New: quick health-check traffic light on Home",
-    "New: backup reminder after Save Week in the Ledger",
-    "Fixed: \"What's new\" banner and guest watermark were rendering unstyled instead of matching the app's look"
+    "Fixed: Casino Pot total wasn't refreshing live as losses happened — only updated when you reopened the tab",
+    "Changed: jackpot draw is now pure equal-chance among everyone who played that month — no weighting by losses or plays",
+    "New: distribution now runs automatically on the 1st of each month via a scheduled job, not just when the admin next opens the app",
+    "New: animated slot-reel draw + confetti when the jackpot is revealed",
+    "New: Casino Pot panel redesigned to match the rest of the app's look"
   ]
 }

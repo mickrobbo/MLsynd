@@ -1303,6 +1303,81 @@
   color:#0E1A16; font-size:12px; font-weight:700; cursor:pointer;
   font-family:'Barlow Condensed', sans-serif; letter-spacing:1px; text-transform:uppercase;
 }
+
+/* ---- Monthly Casino Pot panel ---- */
+.casino-pot-glow{
+  position:relative; text-align:center; padding:6px 0 2px;
+}
+.casino-pot-total{
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:38px;
+  color:var(--brass); text-shadow:0 0 22px rgba(199,162,72,.5);
+  letter-spacing:.5px; line-height:1.1;
+}
+.casino-pot-sub{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+.casino-pot-split-bar{
+  display:flex; height:6px; border-radius:4px; overflow:hidden; margin:12px 0 4px;
+  background:rgba(0,0,0,.25);
+}
+.casino-pot-split-bar span{ display:block; height:100%; }
+.casino-pot-split-bar .cp-share{ background:linear-gradient(90deg, var(--brass-dim), var(--brass)); width:60%; }
+.casino-pot-split-bar .cp-jackpot{ background:linear-gradient(90deg, #E8A15C, #d97b3f); width:40%; }
+.casino-pot-split-legend{
+  display:flex; justify-content:space-between; font-size:10px; color:var(--muted);
+  font-family:'IBM Plex Mono', monospace; margin-bottom:4px;
+}
+
+/* ---- Jackpot draw / celebration ---- */
+.pot-celebration-sheet{ overflow:hidden; position:relative; }
+.pot-confetti-layer{
+  position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:2;
+}
+.pot-confetti-piece{
+  position:absolute; top:-12px; width:8px; height:14px; opacity:.9;
+  animation: potConfettiFall linear forwards;
+}
+@keyframes potConfettiFall{
+  0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+  100%{ transform:translateY(420px) rotate(540deg); opacity:0; }
+}
+.pot-reel-window{
+  position:relative; height:52px; overflow:hidden; margin:14px auto 6px; max-width:260px;
+  border:1px solid var(--brass-dim); border-radius:10px;
+  background:linear-gradient(165deg, var(--felt-3), var(--felt-2));
+  box-shadow:inset 0 0 18px rgba(0,0,0,.5);
+}
+.pot-reel-window::before, .pot-reel-window::after{
+  content:''; position:absolute; left:0; right:0; height:18px; z-index:2; pointer-events:none;
+}
+.pot-reel-window::before{ top:0; background:linear-gradient(180deg, var(--felt-2), transparent); }
+.pot-reel-window::after{ bottom:0; background:linear-gradient(0deg, var(--felt-2), transparent); }
+.pot-reel-track{
+  display:flex; flex-direction:column; align-items:center;
+  transition: transform 3.2s cubic-bezier(.1,.7,.15,1);
+}
+.pot-reel-track div{
+  height:52px; line-height:52px; font-family:'Barlow Condensed', sans-serif;
+  font-weight:700; font-size:20px; letter-spacing:.5px; color:var(--chalk);
+}
+.pot-reel-track div.pot-reel-winner{ color:var(--brass); text-shadow:0 0 14px rgba(199,162,72,.6); }
+.pot-winner-banner{
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px;
+  letter-spacing:2px; text-transform:uppercase; color:var(--brass); margin:14px 0 2px;
+  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.3s;
+}
+.pot-winner-name{
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:26px;
+  color:var(--chalk); margin-bottom:2px;
+  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.4s;
+}
+.pot-winner-amount{
+  font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:16px;
+  color:var(--win); margin-bottom:10px;
+  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.5s;
+}
+@keyframes potFadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+.pot-share-note{
+  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.6s;
+}
 </style>
 </head>
 <body>
@@ -1565,10 +1640,14 @@
     </div>
 
     <div class="panel" id="casinoPotPanel">
-      <h2 style="font-size:14px; text-align:center;">🏆 Monthly Casino Pot</h2>
-      <div class="casino-hero-xp" id="casinoPotTotal" style="font-size:26px;">0 XP</div>
-      <div class="hint" style="text-align:center; margin-top:2px;">60% shared by how much you've lost this month · 40% random jackpot</div>
-      <div style="text-align:center; margin-top:8px;">
+      <h2 style="font-size:14px; text-align:center; justify-content:center;">🏆 Monthly Casino Pot</h2>
+      <div class="casino-pot-glow">
+        <div class="casino-pot-total" id="casinoPotTotal">0 XP</div>
+        <div class="casino-pot-sub">this month's pot so far</div>
+      </div>
+      <div class="casino-pot-split-legend"><span>60% SHARED</span><span>40% JACKPOT</span></div>
+      <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
+      <div style="text-align:center; margin-top:10px;">
         <button type="button" class="pill-btn" id="casinoPotHistoryToggleBtn">📜 Past winners</button>
       </div>
       <div id="casinoPotHistoryArea" style="display:none; margin-top:10px;"><div class="empty">Loading…</div></div>
@@ -2020,7 +2099,8 @@
 </div>
 
 <div id="casinoPotCelebrationModal" class="profile-modal">
-  <div class="profile-sheet" style="text-align:center;">
+  <div class="profile-sheet pot-celebration-sheet" style="text-align:center;">
+    <div id="potConfettiLayer" class="pot-confetti-layer"></div>
     <button type="button" class="profile-close" id="casinoPotCelebrationCloseBtn">✕</button>
     <div id="casinoPotCelebrationBody"></div>
   </div>
@@ -2815,7 +2895,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.4";
+const APP_VERSION = "2026-08-18.5";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3462,6 +3542,10 @@ async function trackCasinoPotContribution(uid, amount, reason){
       });
     }
   }catch(e){}
+  // Live-update the on-screen total right after a loss lands, rather than
+  // only ever refreshing when the Casino tab is first opened — otherwise
+  // the number just sits stale while someone's actively playing.
+  try{ renderCasinoPotPanel(); }catch(e){}
 }
 
 async function fetchCasinoPotMonth(monthKey){
@@ -3599,14 +3683,20 @@ async function distributeCasinoPot(monthKeys){
       proportional[uid] = Math.floor(proportionalPool * (combinedLosses[uid] / totalEligibleLosses));
     });
   }
-  const jackpotWinner = eligible[Math.floor(Math.random() * eligible.length)];
+  // Jackpot pool is deliberately separate from the proportional-split
+  // eligibility above: anyone who played at all this month gets an equal
+  // shot, full stop — no weighting by how much they lost, how often they
+  // played, or anything else. That's everyone in combinedPlayCounts.
+  const jackpotCandidates = Object.keys(combinedPlayCounts).filter(uid => (combinedPlayCounts[uid] || 0) > 0);
+  const jackpotPoolCandidates = jackpotCandidates.length > 0 ? jackpotCandidates : eligible;
+  const jackpotWinner = jackpotPoolCandidates[Math.floor(Math.random() * jackpotPoolCandidates.length)];
 
   for(const uid of Object.keys(proportional)){
     await creditPotXP(uid, proportional[uid], `Monthly Casino Pot – Proportional (${label})`);
   }
   await creditPotXP(jackpotWinner, jackpotPool, `Monthly Casino Pot – Jackpot (${label})`);
 
-  const historyEntry = { month: label, totalPot, proportional, jackpotWinner, jackpotAmount: jackpotPool, distributedAt: Date.now() };
+  const historyEntry = { month: label, totalPot, proportional, jackpotWinner, jackpotAmount: jackpotPool, participants: jackpotPoolCandidates, distributedAt: Date.now() };
   try{
     await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(historyEntry)
@@ -3663,6 +3753,57 @@ async function renderCasinoPotHistory(){
   }
 }
 
+// ---- Jackpot draw animation (slot-reel + confetti) ----
+// The actual random draw already happened at distribution time (server-
+// side or admin client) — this dramatizes the reveal for whoever's
+// watching, always landing on the real stored jackpotWinner rather than
+// re-rolling anything.
+function shuffleArray(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function spawnPotConfetti(){
+  const layer = document.getElementById('potConfettiLayer');
+  if(!layer) return;
+  const colors = ['#CBB166', '#dab868', '#E8A15C', '#EFEAD8', '#6FA98A'];
+  for(let i = 0; i < 30; i++){
+    const el = document.createElement('div');
+    el.className = 'pot-confetti-piece';
+    el.style.left = (Math.random() * 100) + '%';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.animationDuration = (1.5 + Math.random() * 1.3) + 's';
+    el.style.animationDelay = (Math.random() * 0.5) + 's';
+    layer.appendChild(el);
+  }
+  setTimeout(() => { layer.innerHTML = ''; }, 3200);
+}
+function runPotReelAnimation(names, winnerName){
+  const track = document.getElementById('potReelTrack');
+  if(!track) return;
+  const pool = (names && names.length > 0) ? names : [winnerName];
+  let sequence = [];
+  for(let i = 0; i < 5; i++) sequence = sequence.concat(shuffleArray(pool.slice()));
+  sequence.push(winnerName); // guaranteed final item — this is what the reel lands on
+  const itemHeight = 52;
+  track.style.transition = 'none';
+  track.style.transform = 'translateY(0)';
+  track.innerHTML = sequence.map((n, i) =>
+    `<div${i === sequence.length - 1 ? ' class="pot-reel-winner"' : ''}>${escapeHtml(n)}</div>`
+  ).join('');
+  // Two RAFs: first lets the reset paint, second kicks off the transition
+  // — doing it in one frame means the browser can coalesce the reset and
+  // the move together and skip the spin entirely.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      track.style.transition = 'transform 3.2s cubic-bezier(.1,.7,.15,1)';
+      track.style.transform = `translateY(-${(sequence.length - 1) * itemHeight}px)`;
+    });
+  });
+}
+
 // Shown once per newly-seen distributed month, to whichever member next
 // opens the Casino tab — there's no push infrastructure for this, so
 // "celebration for everyone" means everyone sees it the next time they
@@ -3683,14 +3824,22 @@ async function maybeShowCasinoPotCelebration(){
     if(!modal || !body) return;
     const isMe = latest.jackpotWinner === currentUserUid;
     const myShare = latest.proportional && latest.proportional[currentUserUid];
+    const winnerName = nameForUid(latest.jackpotWinner);
+    const participantNames = (latest.participants || []).map(nameForUid);
+
     body.innerHTML = `
-      <div style="font-size:34px; margin-bottom:6px;">🎉</div>
-      <h2 style="font-size:18px; margin:0 0 8px;">${escapeHtml(latest.month)} Casino Pot distributed</h2>
-      <div class="hint" style="margin-bottom:10px;">${latest.totalPot.toLocaleString()} XP was in the pot.</div>
-      <div style="font-size:14px; margin-bottom:6px;">🎰 Jackpot winner: <b>${escapeHtml(nameForUid(latest.jackpotWinner))}</b> — ${latest.jackpotAmount.toLocaleString()} XP${isMe ? ' — that\'s you!' : ''}</div>
-      ${myShare ? `<div style="font-size:13px; color:var(--win);">You also got a ${myShare.toLocaleString()} XP share for your losses that month.</div>` : ''}
+      <div style="font-size:32px; margin-bottom:2px;">🎰</div>
+      <div class="hint" style="margin-bottom:2px;">${escapeHtml(latest.month)} Casino Pot — ${latest.totalPot.toLocaleString()} XP</div>
+      <div class="pot-reel-window"><div class="pot-reel-track" id="potReelTrack"></div></div>
+      <div class="pot-winner-banner">🏆 Jackpot winner</div>
+      <div class="pot-winner-name">${escapeHtml(winnerName)}${isMe ? ' 🎉' : ''}</div>
+      <div class="pot-winner-amount">+${latest.jackpotAmount.toLocaleString()} XP</div>
+      ${myShare ? `<div class="hint pot-share-note" style="color:var(--win);">You also picked up a ${myShare.toLocaleString()} XP share for your losses that month.</div>` : ''}
     `;
     modal.classList.add('open');
+    spawnPotConfetti();
+    runPotReelAnimation(participantNames, winnerName);
+    setTimeout(spawnPotConfetti, 3150); // second burst right as the reel lands
     try{ localStorage.setItem(CASINO_POT_LAST_SEEN_KEY, latest.month); }catch(e){}
   }catch(e){}
 }
