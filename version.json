@@ -1,9 +1,9 @@
 {
-  "version": "2026-08-18.11",
+  "version": "2026-08-18.12",
   "date": "2026-08-18",
   "changes": [
-    "New: Casino lobby now shows a communal \"Casino Floor\" feed of everyone's recent activity, not just your own",
-    "Changed: your personal XP history now shows at the games table specifically, instead of always on the lobby",
-    "Polish: casino panel headers now align consistently (the hero title was quietly left-aligned while everything else was centered)"
+    "Changed: Casino lobby order — Games/Rules/Earning XP/Badges now sit above the Casino Floor feed",
+    "Changed: Casino Floor is now a shorter scrollable panel instead of growing the whole page",
+    "New: Casino Floor shows up to 50 recent entries, with wins of 1000+ XP highlighted"
   ]
 }

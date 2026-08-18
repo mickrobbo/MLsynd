@@ -1339,6 +1339,16 @@
 .xp-log-row .xp-log-reason{ color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .xp-log-row .xp-log-amt{ font-weight:700; flex-shrink:0; font-family:'IBM Plex Mono', monospace; }
 .casino-floor-toggle{ display:flex; justify-content:center; gap:8px; margin-bottom:10px; }
+.casino-floor-scroll{
+  max-height:280px; overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+.xp-log-row.xp-log-big-win{
+  background:linear-gradient(90deg, rgba(199,162,72,.14), transparent);
+  border-radius:6px; margin:0 -6px; padding:7px 6px; border-bottom:1px solid rgba(199,162,72,.25);
+}
+.xp-log-row.xp-log-big-win .xp-log-who{ color:var(--brass); }
+.xp-log-row.xp-log-big-win .xp-log-amt{ text-shadow:0 0 10px rgba(199,162,72,.5); }
+.xp-log-big-win-badge{ font-size:10px; margin-right:3px; }
 
 /* ---- Jackpot draw / celebration ---- */
 .pot-celebration-sheet{ overflow:hidden; position:relative; }
@@ -1667,21 +1677,9 @@
       </div>
       <div id="casinoPotHistoryArea" style="display:none; margin-top:10px;"><div class="empty">Loading…</div></div>
       <div id="casinoPotAdminWrap" style="display:none; margin-top:12px; text-align:center; border-top:1px solid var(--line); padding-top:12px;">
-        <div class="hint" id="casinoPotAdminHint" style="margin-bottom:6px;"></div>
         <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close month &amp; distribute pot</button>
         <div class="status-msg" id="casinoPotAdminStatus"></div>
       </div>
-    </div>
-
-    <div class="panel" id="casinoFloorPanel">
-      <h2 class="casino-panel-h2">🃏 Casino Floor</h2>
-      <div class="hint" style="text-align:center; margin:-4px 0 10px;">What everyone's been up to</div>
-      <div id="casinoFloorArea"><div class="empty">Loading…</div></div>
-    </div>
-
-    <div class="panel" id="xpLeaderboardPanel" style="display:none;">
-      <h2 style="font-size:14px;">🏆 XP Leaderboard</h2>
-      <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
     </div>
 
     <!-- Landing hub: lands here first, never straight into a table. -->
@@ -1708,6 +1706,17 @@
           <span class="casino-hub-sub">Founding Player &amp; XP milestones</span>
         </div>
       </div>
+    </div>
+
+    <div class="panel" id="casinoFloorPanel">
+      <h2 class="casino-panel-h2">🃏 Casino Floor</h2>
+      <div class="hint" style="text-align:center; margin:-4px 0 10px;">What everyone's been up to</div>
+      <div id="casinoFloorArea" class="casino-floor-scroll"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="panel" id="xpLeaderboardPanel" style="display:none;">
+      <h2 style="font-size:14px;">🏆 XP Leaderboard</h2>
+      <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
     </div>
 
     <!-- Rules hub view: list of every game, opens the existing rules modal per-game -->
@@ -2930,7 +2939,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.11";
+const APP_VERSION = "2026-08-18.12";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3680,14 +3689,6 @@ async function renderCasinoPotPanel(){
   const adminWrap = document.getElementById('casinoPotAdminWrap');
   const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   if(adminWrap) adminWrap.style.display = isAdmin ? 'block' : 'none';
-  if(isAdmin){
-    const hint = document.getElementById('casinoPotAdminHint');
-    if(hint) hint.textContent = readFailed
-      ? 'Could not read the pot — check the browser console for the exact error, or run the Diag check.'
-      : (total > 0
-        ? `Distributing now closes ${monthKey} early — normally this runs automatically at 8am AEST on the 1st.`
-        : 'Nothing lost yet this month — nothing to distribute.');
-  }
 }
 
 // Who counts as eligible for a given month's redistribution: played 20+
@@ -3917,6 +3918,36 @@ function runPotReelAnimation(names, winnerName){
 // opens the Casino tab — there's no push infrastructure for this, so
 // "celebration for everyone" means everyone sees it the next time they
 // look, not a live simultaneous popup.
+// Shared by the real celebration and the admin preview below — renders
+// the modal body + kicks off the reel/confetti. `opts.preview` swaps in a
+// clear "PREVIEW" label and skips the "you also got a share" line (which
+// only makes sense for a real distribution tied to your own uid).
+function showPotDrawCelebration(data, opts){
+  const modal = document.getElementById('casinoPotCelebrationModal');
+  const body = document.getElementById('casinoPotCelebrationBody');
+  if(!modal || !body) return;
+  const preview = !!(opts && opts.preview);
+  const isMe = !preview && data.jackpotWinner === currentUserUid;
+  const myShare = !preview && data.proportional && data.proportional[currentUserUid];
+  const winnerName = nameForUid(data.jackpotWinner);
+  const participantNames = (data.participants || []).map(nameForUid);
+
+  body.innerHTML = `
+    ${preview ? '<div class="cl-date-pill" style="display:inline-block; margin-bottom:8px;">PREVIEW — no XP awarded</div>' : ''}
+    <div style="font-size:32px; margin-bottom:2px;">🎰</div>
+    <div class="hint" style="margin-bottom:2px;">${escapeHtml(data.month)} Casino Pot — ${data.totalPot.toLocaleString()} XP</div>
+    <div class="pot-reel-window"><div class="pot-reel-track" id="potReelTrack"></div></div>
+    <div class="pot-winner-banner">🏆 Jackpot winner</div>
+    <div class="pot-winner-name">${escapeHtml(winnerName)}${isMe ? ' 🎉' : ''}</div>
+    <div class="pot-winner-amount">+${data.jackpotAmount.toLocaleString()} XP</div>
+    ${myShare ? `<div class="hint pot-share-note" style="color:var(--win);">You also picked up a ${myShare.toLocaleString()} XP share for your losses that month.</div>` : ''}
+  `;
+  modal.classList.add('open');
+  spawnPotConfetti();
+  runPotReelAnimation(participantNames, winnerName);
+  setTimeout(spawnPotConfetti, 3150); // second burst right as the reel lands
+}
+
 async function maybeShowCasinoPotCelebration(){
   if(currentUserRole === 'readonly') return;
   try{
@@ -3928,27 +3959,7 @@ async function maybeShowCasinoPotCelebration(){
     let lastSeen = null;
     try{ lastSeen = localStorage.getItem(CASINO_POT_LAST_SEEN_KEY); }catch(e){}
     if(lastSeen === latest.month) return;
-    const modal = document.getElementById('casinoPotCelebrationModal');
-    const body = document.getElementById('casinoPotCelebrationBody');
-    if(!modal || !body) return;
-    const isMe = latest.jackpotWinner === currentUserUid;
-    const myShare = latest.proportional && latest.proportional[currentUserUid];
-    const winnerName = nameForUid(latest.jackpotWinner);
-    const participantNames = (latest.participants || []).map(nameForUid);
-
-    body.innerHTML = `
-      <div style="font-size:32px; margin-bottom:2px;">🎰</div>
-      <div class="hint" style="margin-bottom:2px;">${escapeHtml(latest.month)} Casino Pot — ${latest.totalPot.toLocaleString()} XP</div>
-      <div class="pot-reel-window"><div class="pot-reel-track" id="potReelTrack"></div></div>
-      <div class="pot-winner-banner">🏆 Jackpot winner</div>
-      <div class="pot-winner-name">${escapeHtml(winnerName)}${isMe ? ' 🎉' : ''}</div>
-      <div class="pot-winner-amount">+${latest.jackpotAmount.toLocaleString()} XP</div>
-      ${myShare ? `<div class="hint pot-share-note" style="color:var(--win);">You also picked up a ${myShare.toLocaleString()} XP share for your losses that month.</div>` : ''}
-    `;
-    modal.classList.add('open');
-    spawnPotConfetti();
-    runPotReelAnimation(participantNames, winnerName);
-    setTimeout(spawnPotConfetti, 3150); // second burst right as the reel lands
+    showPotDrawCelebration(latest);
     try{ localStorage.setItem(CASINO_POT_LAST_SEEN_KEY, latest.month); }catch(e){}
   }catch(e){}
 }
@@ -4063,17 +4074,19 @@ async function renderCasinoFloorFeed(){
           .map(e => ({ ...e, name: m.name }));
       }catch(e){ return []; }
     }));
-    const merged = perMember.flat().sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 25);
+    const merged = perMember.flat().sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
     if(merged.length === 0){
       area.innerHTML = '<div class="empty">No casino activity yet.</div>';
       return;
     }
+    const BIG_WIN_THRESHOLD = 1000;
     area.innerHTML = merged.map(e => {
       const amount = typeof e.amount === 'number' && !isNaN(e.amount) ? e.amount : 0;
       const reason = e.reason || '(unlabeled)';
+      const isBigWin = amount >= BIG_WIN_THRESHOLD;
       return `
-      <div class="xp-log-row">
-        <span class="xp-log-who">${escapeHtml(e.name)}</span>
+      <div class="xp-log-row${isBigWin ? ' xp-log-big-win' : ''}">
+        <span class="xp-log-who">${isBigWin ? '<span class="xp-log-big-win-badge">🔥</span>' : ''}${escapeHtml(e.name)}</span>
         <span class="xp-log-reason">${escapeHtml(reason)}</span>
         <span class="xp-log-amt" style="color:${amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${amount >= 0 ? '+' : ''}${amount}</span>
       </div>`;
