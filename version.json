@@ -1,11 +1,16 @@
 {
-  "version": "2026-08-18.5",
+  "version": "2026-08-18.6",
   "date": "2026-08-18",
   "changes": [
-    "Fixed: Casino Pot total wasn't refreshing live as losses happened — only updated when you reopened the tab",
-    "Changed: jackpot draw is now pure equal-chance among everyone who played that month — no weighting by losses or plays",
-    "New: distribution now runs automatically on the 1st of each month via a scheduled job, not just when the admin next opens the app",
+    "New: guest link — share a 2-hour view-only link, no signup needed, with a fresh 500 XP Casino trial balance each time",
+    "New: Monthly Casino XP Pot — 60% of everyone's losses shared back proportionally, 40% to a random jackpot, distributed automatically on the 1st of each month",
     "New: animated slot-reel draw + confetti when the jackpot is revealed",
-    "New: Casino Pot panel redesigned to match the rest of the app's look"
+    "New: last-saved indicator on Home shows who saved and when",
+    "New: quick health-check traffic light on Home and in the Ledger",
+    "New: \"What's new\" banner (you're looking at it)",
+    "New: backup reminder after Save Week in the Ledger",
+    "Fixed: guest watermark, \"What's new\" banner, and Casino Pot panel were all rendering unstyled instead of matching the app's look",
+    "Fixed: Casino Pot total wasn't updating live as losses happened",
+    "Fixed: Casino Pot writes now show a clear reason in the console (and a new Diag check) if Firebase denies them"
   ]
 }
