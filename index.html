@@ -1330,6 +1330,14 @@
   font-family:'IBM Plex Mono', monospace; letter-spacing:.3px;
 }
 .casino-pot-countdown b{ color:var(--brass-light); font-weight:700; }
+.casino-pot-me-line{ font-size:11.5px; color:var(--muted); text-align:center; margin-bottom:4px; }
+.casino-pot-me-line b{ color:var(--brass-light); }
+.casino-pot-me-line.eligible{ color:var(--win); }
+.casino-floor-spotlight{
+  display:flex; align-items:center; gap:6px; justify-content:center;
+  font-size:11.5px; color:var(--muted); margin:-2px 0 10px; text-align:center;
+}
+.casino-floor-spotlight b{ color:var(--brass-light); }
 .casino-panel-h2{ justify-content:center; text-align:center; }
 .xp-log-row{
   display:flex; align-items:baseline; justify-content:space-between; gap:10px;
@@ -1733,6 +1741,11 @@
       <div id="weeklyBonusStatus" class="status-msg error" style="margin-top:6px; text-align:center;"></div>
     </div>
 
+    <div class="panel" id="xpLeaderboardPanel" style="display:none;">
+      <h2 class="casino-panel-h2" style="font-size:14px;">🏆 XP Leaderboard</h2>
+      <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
+    </div>
+
     <div class="panel" id="casinoPotPanel">
       <h2 class="casino-panel-h2">🏆 Monthly Casino Pot</h2>
       <div class="casino-pot-glow">
@@ -1742,8 +1755,10 @@
       <div class="casino-pot-split-legend"><span>60% SHARED</span><span>40% JACKPOT</span></div>
       <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
       <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
+      <div id="casinoPotMeWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);"></div>
       <div style="text-align:center; margin-top:10px;">
         <button type="button" class="pill-btn" id="casinoPotHistoryToggleBtn">📜 Past winners</button>
+        <button type="button" class="pill-btn" id="casinoPotRulesBtn">❔ How it works</button>
       </div>
       <div id="casinoPotHistoryArea" style="display:none; margin-top:10px;"><div class="empty">Loading…</div></div>
       <div id="casinoPotAdminWrap" style="display:none; margin-top:12px; text-align:center; border-top:1px solid var(--line); padding-top:12px;">
@@ -1780,13 +1795,9 @@
 
     <div class="panel" id="casinoFloorPanel">
       <h2 class="casino-panel-h2">🃏 Casino Floor</h2>
-      <div class="hint" style="text-align:center; margin:-4px 0 10px;">What everyone's been up to</div>
+      <div class="hint" style="text-align:center; margin:-4px 0 8px;">What everyone's been up to</div>
+      <div class="casino-floor-spotlight" id="casinoFloorSpotlight"></div>
       <div id="casinoFloorArea" class="casino-floor-scroll"><div class="empty">Loading…</div></div>
-    </div>
-
-    <div class="panel" id="xpLeaderboardPanel" style="display:none;">
-      <h2 style="font-size:14px;">🏆 XP Leaderboard</h2>
-      <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
     </div>
 
     <!-- Rules hub view: list of every game, opens the existing rules modal per-game -->
@@ -3029,7 +3040,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.13";
+const APP_VERSION = "2026-08-18.15";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3476,10 +3487,11 @@ function casinoBadgeRowHtml(icon, name, desc, unlocked){
 // modal — one place that decides which casino badges are unlocked, so
 // there's no risk of the three showing different answers.
 async function getMyUnlockedCasinoBadgeIds(){
-  if(!currentUserUid) return { ids: [], lifetime: 0, founding: null };
-  const [lifetimeRes, foundingRes] = await Promise.all([
+  if(!currentUserUid) return { ids: [], lifetime: 0, founding: null, jackpotWins: 0 };
+  const [lifetimeRes, foundingRes, potHistoryRes] = await Promise.all([
     authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`),
-    authedFetch(`/xp/${currentUserUid}/foundingNumber.json`)
+    authedFetch(`/xp/${currentUserUid}/foundingNumber.json`),
+    authedFetch('/casinoPot/history.json')
   ]);
   const lifetime = (await lifetimeRes.json()) || 0;
   let founding = await foundingRes.json();
@@ -3487,23 +3499,35 @@ async function getMyUnlockedCasinoBadgeIds(){
   // assignFoundingNumberIfEligible() for why this can't just rely on the
   // brand-new-account trigger alone.
   if(!founding) founding = await assignFoundingNumberIfEligible();
+  let jackpotWins = 0;
+  try{
+    const history = (await potHistoryRes.json()) || {};
+    jackpotWins = Object.values(history).filter(e => e && e.jackpotWinner === currentUserUid).length;
+  }catch(e){}
   const ids = [];
   if(founding) ids.push('founding-player');
+  if(jackpotWins > 0) ids.push('jackpot-winner');
   XP_MILESTONE_BADGES.forEach(b => { if(lifetime >= b.threshold) ids.push(b.key); });
-  return { ids, lifetime, founding };
+  return { ids, lifetime, founding, jackpotWins };
 }
 async function renderCasinoBadgesView(){
   const body = document.getElementById('casinoBadgesBody');
   if(!body || !currentUserUid) return;
   body.innerHTML = '<div class="empty">Loading…</div>';
   try{
-    const { ids, lifetime, founding } = await getMyUnlockedCasinoBadgeIds();
+    const { ids, lifetime, founding, jackpotWins } = await getMyUnlockedCasinoBadgeIds();
     const rows = [];
     rows.push(casinoBadgeRowHtml(
       '🎰',
       founding ? `Founding Player #${founding}` : 'Founding Player',
       'One of the first 11 people to claim a spot — all 11 are gone for good once claimed.',
       ids.includes('founding-player')
+    ));
+    rows.push(casinoBadgeRowHtml(
+      '🏆',
+      jackpotWins > 1 ? `Jackpot Winner ×${jackpotWins}` : 'Jackpot Winner',
+      'Win the Monthly Casino Pot jackpot at least once.',
+      ids.includes('jackpot-winner')
     ));
     XP_MILESTONE_BADGES.forEach(b => {
       rows.push(casinoBadgeRowHtml(b.icon, b.name, `Earn ${b.threshold.toLocaleString()} lifetime XP.`, ids.includes(b.key)));
@@ -3644,6 +3668,12 @@ function updateXPBalanceDisplay(bal){
 const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Slots|Video Poker|Spin the Wheel)/i;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
+// Soft, once-per-session nudge if losses stack up in one sitting — purely
+// informational (this is play money, not real dues), shown once and never
+// repeated even if the session keeps going further into the red.
+let sessionLossTotal = 0;
+let sessionLossNudgeShown = false;
+const SESSION_LOSS_NUDGE_THRESHOLD = 500;
 const CASINO_POT_TIMEZONE = 'Australia/Melbourne'; // AEST/AEDT — the actual cutoff authority, not each device's local clock
 
 // Pinned to AEST/AEDT specifically (via Intl, so daylight saving is handled
@@ -3698,6 +3728,16 @@ async function trackCasinoPotContribution(uid, amount, reason){
 
     if(amount < 0){
       const lost = -amount;
+      // Client-side only, independent of whether the pot write below
+      // succeeds — this is purely a personal "heads up" nudge, not tied
+      // to shared pot data.
+      if(currentUserRole !== 'readonly'){
+        sessionLossTotal += lost;
+        if(!sessionLossNudgeShown && sessionLossTotal >= SESSION_LOSS_NUDGE_THRESHOLD){
+          sessionLossNudgeShown = true;
+          showToast(`You're down ${sessionLossTotal.toLocaleString()} XP this session — just play money, but worth a breather if you're chasing it.`);
+        }
+      }
       const lossRes = await authedFetch(`/casinoPot/months/${monthKey}/losses/${uid}.json`);
       if(!lossRes.ok){
         console.warn('Casino Pot: losses read denied — HTTP', lossRes.status);
@@ -3772,9 +3812,32 @@ async function renderCasinoPotPanel(){
   if(!totalEl) return;
   renderCasinoPotCountdown();
   const monthKey = casinoPotMonthKey();
-  const { losses, readFailed } = await fetchCasinoPotMonth(monthKey);
+  const { losses, playCounts, readFailed } = await fetchCasinoPotMonth(monthKey);
   const total = sumLosses(losses);
   totalEl.textContent = readFailed ? '— XP' : `${total.toLocaleString()} XP`;
+
+  const meWrap = document.getElementById('casinoPotMeWrap');
+  if(meWrap){
+    if(readFailed || currentUserRole === 'readonly' || !currentUserUid){
+      meWrap.style.display = 'none';
+    } else {
+      meWrap.style.display = 'block';
+      const myLoss = losses[currentUserUid] || 0;
+      const myPlays = (playCounts && playCounts[currentUserUid]) || 0;
+      const sharePct = total > 0 ? Math.round((myLoss / total) * 100) : 0;
+      const contribLine = myLoss > 0
+        ? `You've put in <b>${myLoss.toLocaleString()} XP</b> this month (${sharePct}% of the pot).`
+        : `You haven't lost anything into this month's pot yet.`;
+      const eligible = await isEligibleForPot(currentUserUid, monthKey, myPlays);
+      const eligLine = eligible
+        ? `✅ You're eligible for this month's payout.`
+        : `${CASINO_POT_ELIGIBLE_PLAYS - myPlays} more play${(CASINO_POT_ELIGIBLE_PLAYS - myPlays) === 1 ? '' : 's'} to qualify (or any real XP win this month also qualifies you).`;
+      meWrap.innerHTML = `
+        <div class="casino-pot-me-line">${contribLine}</div>
+        <div class="casino-pot-me-line ${eligible ? 'eligible' : ''}">${eligLine}</div>
+      `;
+    }
+  }
 
   const adminWrap = document.getElementById('casinoPotAdminWrap');
   const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -3983,6 +4046,33 @@ function spawnPotConfetti(){
   }
   setTimeout(() => { layer.innerHTML = ''; }, 3300);
 }
+// Synthesized win chime — no audio asset needed, just a short ascending
+// arpeggio via Web Audio oscillators. Wrapped in try/catch and a resume()
+// call since some browsers start an AudioContext suspended until a user
+// gesture; failing silently here is fine, it's pure flourish.
+let potAudioCtx = null;
+function playPotWinChime(){
+  try{
+    if(!potAudioCtx) potAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(potAudioCtx.state === 'suspended') potAudioCtx.resume();
+    const now = potAudioCtx.currentTime;
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6 — bright ascending arpeggio
+    notes.forEach((freq, i) => {
+      const osc = potAudioCtx.createOscillator();
+      const gain = potAudioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      const start = now + i * 0.09;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.16, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+      osc.connect(gain);
+      gain.connect(potAudioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+  }catch(e){}
+}
 function runPotReelAnimation(names, winnerName){
   const track = document.getElementById('potReelTrack');
   const win = document.getElementById('potReelWindow');
@@ -4007,7 +4097,10 @@ function runPotReelAnimation(names, winnerName){
       track.style.transform = `translateY(-${(sequence.length - 1) * itemHeight}px)`;
     });
   });
-  if(win) setTimeout(() => win.classList.add('pot-reel-landed'), 3200);
+  setTimeout(() => {
+    if(win) win.classList.add('pot-reel-landed');
+    playPotWinChime();
+  }, 3200);
 }
 
 // Shared by the real celebration and the admin preview below — renders
@@ -4068,6 +4161,7 @@ document.getElementById('casinoPotHistoryToggleBtn').addEventListener('click', (
   area.style.display = showing ? 'none' : 'block';
   if(!showing) renderCasinoPotHistory();
 });
+document.getElementById('casinoPotRulesBtn').addEventListener('click', () => openCasinoRules('casinopot'));
 
 document.getElementById('closeMonthPotBtn').addEventListener('click', async () => {
   const btn = document.getElementById('closeMonthPotBtn');
@@ -4147,6 +4241,7 @@ async function renderXPLog(){
 // high-frequency refresh.
 async function renderCasinoFloorFeed(){
   const area = document.getElementById('casinoFloorArea');
+  const spotlightEl = document.getElementById('casinoFloorSpotlight');
   if(!area) return;
   if(!currentState || !Array.isArray(currentState.members)){
     area.innerHTML = '<div class="empty">Loading…</div>';
@@ -4169,7 +4264,21 @@ async function renderCasinoFloorFeed(){
           .map(e => ({ ...e, name: m.name }));
       }catch(e){ return []; }
     }));
-    const merged = perMember.flat().sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
+    const flat = perMember.flat();
+
+    // Biggest win spotlight — scoped to the current calendar month
+    // specifically (the feed below is "most recent 50" which could dip
+    // into last month during a quiet spell; the spotlight shouldn't).
+    if(spotlightEl){
+      const monthKey = casinoPotMonthKey();
+      const monthWins = flat.filter(e => (e.amount > 0) && casinoPotMonthKey(new Date(e.ts || 0)) === monthKey);
+      const biggest = monthWins.reduce((best, e) => (!best || e.amount > best.amount) ? e : best, null);
+      spotlightEl.innerHTML = biggest
+        ? `🔥 Biggest win this month: <b>${escapeHtml(biggest.name)}</b> +${biggest.amount.toLocaleString()} (${escapeHtml(biggest.reason || '')})`
+        : '';
+    }
+
+    const merged = flat.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
     if(merged.length === 0){
       area.innerHTML = '<div class="empty">No casino activity yet.</div>';
       return;
@@ -5058,6 +5167,16 @@ const CASINO_RULES = {
     <p>Tap Hold under any card you want to keep, then hit Draw — every card you didn't hold is replaced once. Your final 5-card hand is scored against the paytable below.</p>
     <h3>Payouts (multiplier on your bet)</h3>
     <p>Royal Flush 250:1 &middot; Straight Flush 50:1 &middot; Four of a Kind 25:1 &middot; Full House 9:1 &middot; Flush 6:1 &middot; Straight 4:1 &middot; Three of a Kind 3:1 &middot; Two Pair 2:1 &middot; Tens or Better (a pair of 10/J/Q/K/A) 1:1. Anything weaker than a pair of Tens returns nothing.</p>
+  `},
+  casinopot: { title: '🏆 Monthly Casino Pot', body: `
+    <h3>Where it comes from</h3>
+    <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the month, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
+    <h3>How it's split</h3>
+    <p><b>60%</b> is shared out proportionally by how much each eligible member personally lost that month — lose more, get a bigger slice of that 60%. <b>40%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that month — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <h3>Eligibility</h3>
+    <p>You qualify for the 60% share if you played the tables <b>20 times or more</b> this month, <b>or</b> earned any real (non-casino) XP this month — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
+    <h3>Timing</h3>
+    <p>The month locks the moment the calendar rolls over (AEST), and the pot is redistributed automatically at <b>8am AEST on the 1st</b>. If nobody qualified in a given month, the pot simply rolls into the next one rather than disappearing.</p>
   `}
 };
 function openCasinoRules(key){
@@ -5080,7 +5199,8 @@ document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
 // the exact same modal used by each table's own "📜 Rules" button. ----
 const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
-  ['war', '⚔️ Casino War'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker']
+  ['war', '⚔️ Casino War'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
+  ['casinopot', '🏆 Monthly Casino Pot']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
   `<button type="button" data-rules-key="${key}">${label}</button>`).join('');

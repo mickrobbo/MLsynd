@@ -7,10 +7,13 @@
 // again next hour rather than waiting a full month.
 //
 // Deploy alongside your other scheduled functions. Needs the same
-// FIREBASE_DB_SECRET env var already set for check-lockouts-scheduled.js —
-// it's what lets this function write past Firebase's normal auth rules
-// with no real user session (this is a full-access legacy secret, so
-// treat it with the same care as any other production credential).
+// FIREBASE_DB_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, and
+// VAPID_SUBJECT env vars already set up for check-lockouts-scheduled.js —
+// same push-notification setup, reused here. Also needs 'web-push' as a
+// dependency in functions/package.json (already there for the existing
+// push feature).
+
+import webpush from 'web-push';
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Slots|Video Poker|Spin the Wheel)/i;
@@ -152,6 +155,53 @@ async function distributePot(secret){
 
 export const config = { schedule: '0 * * * *' }; // hourly — self-gates on isDistributionTime() below
 
+// Best-effort — a push failure should never make the function report
+// failure overall, since the actual XP distribution above already
+// succeeded and is the part that matters.
+async function sendPotPushNotifications(secret, result){
+  try{
+    const vapidPublic = process.env.VAPID_PUBLIC_KEY;
+    const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
+    const vapidSubject = process.env.VAPID_SUBJECT;
+    if(!vapidPublic || !vapidPrivate || !vapidSubject){
+      console.warn('Casino pot push skipped — VAPID env vars not set');
+      return;
+    }
+    webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
+
+    let winnerName = 'Someone';
+    try{
+      const userRec = await dbGet(`/users/${result.jackpotWinner}`, secret);
+      winnerName = (userRec && userRec.name) || winnerName;
+    }catch(e){}
+
+    const payload = JSON.stringify({
+      title: `🎰 ${result.month} Casino Pot distributed`,
+      body: `${result.totalPot.toLocaleString()} XP shared out — ${winnerName} won the ${result.jackpotAmount.toLocaleString()} XP jackpot!`,
+      url: '/'
+    });
+
+    const subs = (await dbGet('/pushSubscriptions', secret)) || {};
+    for(const uid of Object.keys(subs)){
+      const sub = subs[uid];
+      if(!sub || !sub.endpoint) continue;
+      try{
+        await webpush.sendNotification(sub, payload);
+      }catch(err){
+        // Same dead-subscription cleanup as the existing lockout-reminder
+        // push feature — a 404/410 means the browser unsubscribed.
+        if(err && (err.statusCode === 404 || err.statusCode === 410)){
+          try{ await dbDelete(`/pushSubscriptions/${uid}`, secret); }catch(e){}
+        } else {
+          console.warn('Casino pot push failed for', uid, err && err.message);
+        }
+      }
+    }
+  }catch(e){
+    console.error('Casino pot push notify failed:', e);
+  }
+}
+
 export default async () => {
   if(!isDistributionTime()){
     return new Response(`Not ${DISTRIBUTE_HOUR}am on the 1st in ${TIMEZONE} — skipping.`, { status: 200 });
@@ -164,6 +214,7 @@ export default async () => {
   try{
     const result = await distributePot(secret);
     console.log('Casino pot distribution result:', JSON.stringify(result));
+    if(!result.skipped) await sendPotPushNotifications(secret, result);
     return new Response(JSON.stringify(result), { status: 200 });
   }catch(e){
     console.error('Casino pot distribution failed:', e);
