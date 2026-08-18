@@ -1,9 +1,7 @@
 {
-  "version": "2026-08-18.12",
+  "version": "2026-08-18.13",
   "date": "2026-08-18",
   "changes": [
-    "Changed: Casino lobby order — Games/Rules/Earning XP/Badges now sit above the Casino Floor feed",
-    "Changed: Casino Floor is now a shorter scrollable panel instead of growing the whole page",
-    "New: Casino Floor shows up to 50 recent entries, with wins of 1000+ XP highlighted"
+    "Redesigned: the jackpot draw is now a proper slot-machine cabinet (gold housing, marquee lights, glowing reel) instead of a plain bordered box"
   ]
 }

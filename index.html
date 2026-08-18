@@ -1351,56 +1351,126 @@
 .xp-log-big-win-badge{ font-size:10px; margin-right:3px; }
 
 /* ---- Jackpot draw / celebration ---- */
-.pot-celebration-sheet{ overflow:hidden; position:relative; }
-.pot-confetti-layer{
-  position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:2;
+.pot-celebration-sheet{ position:relative; background:none; border:none; box-shadow:none; padding:0 18px calc(20px + env(safe-area-inset-bottom, 0)); }
+.pot-celebration-sheet .profile-close{ margin-bottom:8px; }
+
+/* ---- Cabinet (slot machine housing the reel) ---- */
+.pot-cabinet{
+  position:relative; margin:0 auto; max-width:320px;
+  border-radius:20px; padding:16px 16px 20px;
+  background:linear-gradient(160deg, var(--brass-light), var(--brass) 35%, #4a3a18 68%, var(--brass-light));
+  box-shadow:0 24px 60px rgba(0,0,0,.6), inset 0 2px 4px rgba(255,255,255,.3), inset 0 -6px 12px rgba(0,0,0,.5);
 }
-.pot-confetti-piece{
-  position:absolute; top:-12px; width:8px; height:14px; opacity:.9;
-  animation: potConfettiFall linear forwards;
+.pot-cabinet::before{
+  content:''; position:absolute; inset:6px; border-radius:14px; pointer-events:none;
+  background:repeating-linear-gradient(115deg, rgba(255,255,255,.04) 0px, rgba(255,255,255,.04) 1px, transparent 1px, transparent 4px);
+  opacity:.4;
 }
-@keyframes potConfettiFall{
-  0%{ transform:translateY(0) rotate(0deg); opacity:1; }
-  100%{ transform:translateY(420px) rotate(540deg); opacity:0; }
+.pot-cabinet-marquee{
+  display:flex; align-items:center; justify-content:center; gap:9px;
+  font-family:'Barlow Condensed', sans-serif; font-weight:600; font-size:12px;
+  letter-spacing:3px; text-transform:uppercase; color:#3a2c0c;
+  text-shadow:0 1px 0 rgba(255,255,255,.3); margin-bottom:10px; position:relative; z-index:1;
+}
+.pot-marquee-lights{ display:flex; gap:6px; }
+.pot-marquee-lights span{
+  width:4px; height:4px; border-radius:50%; background:#fff3c9;
+  box-shadow:0 0 4px 1px rgba(255,224,130,.75);
+  animation: potMarqueeBlink 1.8s ease-in-out infinite;
+}
+.pot-marquee-lights span:nth-child(2n){ animation-delay:.3s; }
+.pot-marquee-lights span:nth-child(3n){ animation-delay:.6s; }
+@keyframes potMarqueeBlink{ 0%,100%{ opacity:.9; } 50%{ opacity:.35; } }
+.pot-reel-housing{
+  position:relative; z-index:1; border-radius:13px; padding:16px 10px;
+  background:#0a1a12; box-shadow:inset 0 0 24px rgba(0,0,0,.85), inset 0 4px 8px rgba(0,0,0,.7);
+  display:flex; justify-content:center;
 }
 .pot-reel-window{
-  position:relative; height:52px; overflow:hidden; margin:14px auto 6px; max-width:260px;
-  border:1px solid var(--brass-dim); border-radius:10px;
-  background:linear-gradient(165deg, var(--felt-3), var(--felt-2));
-  box-shadow:inset 0 0 18px rgba(0,0,0,.5);
+  position:relative; height:74px; width:184px; overflow:hidden; border-radius:9px;
+  background:linear-gradient(180deg, #0d2318, #1a4229 50%, #0d2318);
+  box-shadow:inset 0 0 14px rgba(0,0,0,.8), inset 0 0 0 1px rgba(255,214,120,.18);
+  transition:box-shadow .3s ease;
+}
+.pot-reel-window.pot-reel-landed{ animation:potReelLandFlash .5s ease 3; }
+@keyframes potReelLandFlash{
+  0%,100%{ box-shadow:inset 0 0 14px rgba(0,0,0,.8), inset 0 0 0 1px rgba(255,214,120,.18); }
+  50%{ box-shadow:inset 0 0 14px rgba(0,0,0,.8), inset 0 0 0 2px var(--brass-light), 0 0 22px rgba(255,214,120,.75); }
 }
 .pot-reel-window::before, .pot-reel-window::after{
-  content:''; position:absolute; left:0; right:0; height:18px; z-index:2; pointer-events:none;
+  content:''; position:absolute; left:0; right:0; height:20px; z-index:2; pointer-events:none;
 }
-.pot-reel-window::before{ top:0; background:linear-gradient(180deg, var(--felt-2), transparent); }
-.pot-reel-window::after{ bottom:0; background:linear-gradient(0deg, var(--felt-2), transparent); }
+.pot-reel-window::before{ top:0; background:linear-gradient(180deg, #0d2318, transparent); }
+.pot-reel-window::after{ bottom:0; background:linear-gradient(0deg, #0d2318, transparent); }
+.pot-payline{
+  position:absolute; left:8px; right:8px; top:50%; height:1px; margin-top:-.5px;
+  background:linear-gradient(90deg, transparent, rgba(199,162,72,.35), transparent);
+  pointer-events:none;
+}
 .pot-reel-track{
   display:flex; flex-direction:column; align-items:center;
   transition: transform 3.2s cubic-bezier(.1,.7,.15,1);
 }
 .pot-reel-track div{
-  height:52px; line-height:52px; font-family:'Barlow Condensed', sans-serif;
-  font-weight:700; font-size:20px; letter-spacing:.5px; color:var(--chalk);
+  height:74px; line-height:74px; width:184px; text-align:center; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; padding:0 8px;
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:21px; letter-spacing:.5px;
+  color:var(--chalk); text-shadow:0 2px 3px rgba(0,0,0,.5);
 }
-.pot-reel-track div.pot-reel-winner{ color:var(--brass); text-shadow:0 0 14px rgba(199,162,72,.6); }
+.pot-reel-track div.pot-reel-winner{
+  color:var(--brass-light); text-shadow:0 0 16px rgba(255,224,130,.85), 0 2px 3px rgba(0,0,0,.5);
+}
+.pot-cabinet-foot{
+  display:flex; justify-content:space-between; align-items:center; margin-top:12px;
+  font-family:'IBM Plex Mono', monospace; font-size:10px; color:#3a2c0c; position:relative; z-index:1;
+}
+.pot-cabinet-lamp{
+  width:8px; height:8px; border-radius:50%; background:#ffdb7a; box-shadow:0 0 8px 2px rgba(255,219,122,.9);
+}
+.pot-cabinet-caption{
+  text-align:center; font-family:'IBM Plex Mono', monospace; font-size:9.5px;
+  letter-spacing:1px; text-transform:uppercase; color:#3a2c0c; opacity:.75; margin-top:9px; position:relative; z-index:1;
+}
+
+/* ---- Result card (below the cabinet) ---- */
+.pot-result-card{
+  width:min(320px, 100%); margin:16px auto 0; text-align:center; position:relative;
+  border-radius:16px; padding:22px 20px 26px;
+  background:linear-gradient(165deg, var(--felt-3), var(--felt-2));
+  border:1px solid var(--brass-dim); box-shadow:0 16px 40px rgba(0,0,0,.5); overflow:hidden;
+}
+.pot-confetti-layer{ position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:2; }
+.pot-confetti-piece{
+  position:absolute; top:-12px; height:14px; opacity:.9;
+  animation: potConfettiFall linear forwards;
+}
+@keyframes potConfettiFall{
+  0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+  100%{ transform:translateY(460px) rotate(560deg); opacity:0; }
+}
 .pot-winner-banner{
-  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px;
-  letter-spacing:2px; text-transform:uppercase; color:var(--brass); margin:14px 0 2px;
-  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.3s;
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:14px;
+  letter-spacing:3px; text-transform:uppercase; color:var(--brass); margin:12px 0 4px;
+  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.35s;
 }
 .pot-winner-name{
-  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:26px;
-  color:var(--chalk); margin-bottom:2px;
-  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.4s;
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:clamp(22px, 7vw, 28px); line-height:1.1;
+  background:linear-gradient(180deg, var(--brass-light), var(--brass));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.4)); margin-bottom:4px; word-break:break-word;
+  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.45s;
 }
 .pot-winner-amount{
-  font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:16px;
-  color:var(--win); margin-bottom:10px;
-  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.5s;
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:15px;
+  color:#0E1A16; background:linear-gradient(180deg, var(--brass-light), var(--brass));
+  padding:4px 15px; border-radius:999px; margin-top:2px; box-shadow:0 3px 10px rgba(199,162,72,.3);
+  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.55s;
 }
-@keyframes potFadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+@keyframes potFadeUp{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
 .pot-share-note{
-  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.6s;
+  margin-top:12px; font-size:12px; color:var(--win);
+  opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.65s;
 }
 </style>
 </head>
@@ -2130,9 +2200,29 @@
 
 <div id="casinoPotCelebrationModal" class="profile-modal">
   <div class="profile-sheet pot-celebration-sheet" style="text-align:center;">
-    <div id="potConfettiLayer" class="pot-confetti-layer"></div>
     <button type="button" class="profile-close" id="casinoPotCelebrationCloseBtn">✕</button>
-    <div id="casinoPotCelebrationBody"></div>
+    <div class="pot-cabinet">
+      <div class="pot-cabinet-marquee">
+        <div class="pot-marquee-lights"><span></span><span></span><span></span></div>
+        Jackpot
+        <div class="pot-marquee-lights"><span></span><span></span><span></span></div>
+      </div>
+      <div class="pot-reel-housing">
+        <div class="pot-reel-window" id="potReelWindow">
+          <div class="pot-payline"></div>
+          <div class="pot-reel-track" id="potReelTrack"></div>
+        </div>
+      </div>
+      <div class="pot-cabinet-foot">
+        <span>MLSYND CASINO</span>
+        <span class="pot-cabinet-lamp"></span>
+      </div>
+      <div class="pot-cabinet-caption">One spin · one winner</div>
+    </div>
+    <div class="pot-result-card">
+      <div id="potConfettiLayer" class="pot-confetti-layer"></div>
+      <div id="casinoPotCelebrationBody"></div>
+    </div>
   </div>
 </div>
 
@@ -2939,7 +3029,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.12";
+const APP_VERSION = "2026-08-18.13";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3878,26 +3968,31 @@ function shuffleArray(arr){
 function spawnPotConfetti(){
   const layer = document.getElementById('potConfettiLayer');
   if(!layer) return;
-  const colors = ['#CBB166', '#dab868', '#E8A15C', '#EFEAD8', '#6FA98A'];
-  for(let i = 0; i < 30; i++){
+  // A tighter, mostly-gold palette with only a whisper of cream/bronze
+  // reads as elegant rather than a busy multicolour burst.
+  const colors = ['#CBB166', '#CBB166', '#F5E8A8', '#7d6a34', '#EFEAD8'];
+  for(let i = 0; i < 22; i++){
     const el = document.createElement('div');
     el.className = 'pot-confetti-piece';
     el.style.left = (Math.random() * 100) + '%';
     el.style.background = colors[Math.floor(Math.random() * colors.length)];
-    el.style.animationDuration = (1.5 + Math.random() * 1.3) + 's';
+    el.style.width = (5 + Math.random() * 3) + 'px';
+    el.style.animationDuration = (1.6 + Math.random() * 1.3) + 's';
     el.style.animationDelay = (Math.random() * 0.5) + 's';
     layer.appendChild(el);
   }
-  setTimeout(() => { layer.innerHTML = ''; }, 3200);
+  setTimeout(() => { layer.innerHTML = ''; }, 3300);
 }
 function runPotReelAnimation(names, winnerName){
   const track = document.getElementById('potReelTrack');
+  const win = document.getElementById('potReelWindow');
   if(!track) return;
+  if(win) win.classList.remove('pot-reel-landed');
   const pool = (names && names.length > 0) ? names : [winnerName];
   let sequence = [];
   for(let i = 0; i < 5; i++) sequence = sequence.concat(shuffleArray(pool.slice()));
   sequence.push(winnerName); // guaranteed final item — this is what the reel lands on
-  const itemHeight = 52;
+  const itemHeight = 74; // must match .pot-reel-track div height in CSS
   track.style.transition = 'none';
   track.style.transform = 'translateY(0)';
   track.innerHTML = sequence.map((n, i) =>
@@ -3912,16 +4007,14 @@ function runPotReelAnimation(names, winnerName){
       track.style.transform = `translateY(-${(sequence.length - 1) * itemHeight}px)`;
     });
   });
+  if(win) setTimeout(() => win.classList.add('pot-reel-landed'), 3200);
 }
 
-// Shown once per newly-seen distributed month, to whichever member next
-// opens the Casino tab — there's no push infrastructure for this, so
-// "celebration for everyone" means everyone sees it the next time they
-// look, not a live simultaneous popup.
 // Shared by the real celebration and the admin preview below — renders
-// the modal body + kicks off the reel/confetti. `opts.preview` swaps in a
-// clear "PREVIEW" label and skips the "you also got a share" line (which
-// only makes sense for a real distribution tied to your own uid).
+// the result-card text (the cabinet + reel are static markup, not rebuilt
+// here) and kicks off the reel/confetti. `opts.preview` swaps in a clear
+// "PREVIEW" label and skips the "you also got a share" line (which only
+// makes sense for a real distribution tied to your own uid).
 function showPotDrawCelebration(data, opts){
   const modal = document.getElementById('casinoPotCelebrationModal');
   const body = document.getElementById('casinoPotCelebrationBody');
@@ -3934,13 +4027,11 @@ function showPotDrawCelebration(data, opts){
 
   body.innerHTML = `
     ${preview ? '<div class="cl-date-pill" style="display:inline-block; margin-bottom:8px;">PREVIEW — no XP awarded</div>' : ''}
-    <div style="font-size:32px; margin-bottom:2px;">🎰</div>
     <div class="hint" style="margin-bottom:2px;">${escapeHtml(data.month)} Casino Pot — ${data.totalPot.toLocaleString()} XP</div>
-    <div class="pot-reel-window"><div class="pot-reel-track" id="potReelTrack"></div></div>
     <div class="pot-winner-banner">🏆 Jackpot winner</div>
     <div class="pot-winner-name">${escapeHtml(winnerName)}${isMe ? ' 🎉' : ''}</div>
-    <div class="pot-winner-amount">+${data.jackpotAmount.toLocaleString()} XP</div>
-    ${myShare ? `<div class="hint pot-share-note" style="color:var(--win);">You also picked up a ${myShare.toLocaleString()} XP share for your losses that month.</div>` : ''}
+    <div class="pot-winner-amount">✨ +${data.jackpotAmount.toLocaleString()} XP</div>
+    ${myShare ? `<div class="pot-share-note">You also picked up a ${myShare.toLocaleString()} XP share for your losses that month.</div>` : ''}
   `;
   modal.classList.add('open');
   spawnPotConfetti();
@@ -3949,6 +4040,10 @@ function showPotDrawCelebration(data, opts){
 }
 
 async function maybeShowCasinoPotCelebration(){
+  // Shown once per newly-seen distributed month, to whichever member next
+  // opens the Casino tab — there's no push infrastructure for this, so
+  // "celebration for everyone" means everyone sees it the next time they
+  // look, not a live simultaneous popup.
   if(currentUserRole === 'readonly') return;
   try{
     const res = await authedFetch('/casinoPot/history.json');
