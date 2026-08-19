@@ -1270,22 +1270,26 @@
   -webkit-user-select:none; -moz-user-select:none; user-select:none;
   -webkit-touch-callout:none;
 }
-.sync-status-row{
-  display:flex; align-items:center; gap:6px; margin-top:10px; padding-top:10px;
-  border-top:1px solid var(--line); font-size:11px; color:var(--muted);
+.app-footer{
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  margin:18px 0 4px; padding:10px 4px 4px; opacity:.55;
+  border-top:1px solid var(--line); font-size:10px; color:var(--muted);
   font-family:'IBM Plex Mono', monospace; flex-wrap:wrap;
 }
 .sync-dot{
-  display:inline-block; width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  display:inline-block; width:6px; height:6px; border-radius:50%; flex-shrink:0;
   background:var(--win);
 }
 .sync-dot.amber{ background:#E8A15C; }
 .sync-dot.red{ background:var(--loss); }
 .health-pill{
-  margin-left:auto; display:inline-flex; align-items:center; gap:4px;
+  display:inline-flex; align-items:center; gap:4px;
   padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700;
   letter-spacing:.3px; text-transform:uppercase; cursor:pointer;
   border:1px solid var(--line); background:rgba(0,0,0,.15);
+}
+.health-pill.app-footer-health{
+  padding:1px 7px; font-size:9px; margin-left:2px; background:none; border:none;
 }
 .health-pill.green{ color:var(--win); border-color:rgba(111,169,138,.4); }
 .health-pill.amber{ color:#E8A15C; border-color:rgba(232,161,92,.4); }
@@ -1356,6 +1360,83 @@
 .xp-log-row.xp-log-big-win .xp-log-who{ color:var(--brass); }
 .xp-log-row.xp-log-big-win .xp-log-amt{ text-shadow:0 0 10px rgba(199,162,72,.5); }
 .xp-log-big-win-badge{ font-size:10px; margin-right:3px; }
+.xp-log-clickable{ cursor:pointer; }
+.xp-log-clickable:active{ opacity:.75; }
+
+/* ---- Big Win snapshot modal ---- */
+.big-win-sheet{ position:relative; overflow:hidden; padding:30px 22px; }
+.big-win-sheet::before{ content:''; position:absolute; inset:0; background:radial-gradient(circle at 50% -10%, rgba(255,214,120,.18), transparent 60%); pointer-events:none; }
+.win-badge{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:13px; letter-spacing:2.5px; text-transform:uppercase; color:var(--brass); margin-bottom:8px; position:relative; }
+.win-amount{
+  font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:44px;
+  background:linear-gradient(180deg, var(--brass-light), var(--brass)); -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 2px 8px rgba(0,0,0,.4)); margin-bottom:6px; position:relative;
+}
+.win-meta{ font-size:12.5px; color:var(--muted); margin-bottom:2px; position:relative; }
+.win-meta b{ color:var(--chalk); }
+.win-close-btn{
+  margin-top:18px; background:linear-gradient(180deg, var(--brass-light), var(--brass)); border:none; border-radius:999px;
+  padding:9px 22px; color:#0E1A16; font-weight:700; font-family:'Barlow Condensed', sans-serif; letter-spacing:1px;
+  text-transform:uppercase; cursor:pointer; position:relative;
+}
+.weekly-reminder-item{ display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--line); align-items:flex-start; }
+.weekly-reminder-item:last-child{ border-bottom:none; }
+.weekly-reminder-icon{ font-size:17px; flex-shrink:0; line-height:1.3; }
+.weekly-reminder-text{ flex:1; font-size:12.5px; line-height:1.4; }
+.weekly-reminder-text b{ color:var(--brass-light); }
+
+/* ---- Syndy floating button ---- */
+.syndy-fab{
+  position:fixed; right:14px; bottom:calc(72px + env(safe-area-inset-bottom, 0px)); z-index:500;
+  width:56px; height:56px; border-radius:50%; border:none; padding:0; cursor:pointer;
+  background:radial-gradient(circle at 35% 30%, var(--brass-light), var(--brass) 60%, var(--brass-dim));
+  box-shadow:0 6px 18px rgba(0,0,0,.5), 0 0 0 3px rgba(203,177,102,.25);
+  display:flex; align-items:center; justify-content:center;
+}
+.syndy-fab:active{ transform:scale(.94); }
+.syndy-fab img{ width:42px; height:42px; border-radius:50%; }
+.syndy-fab-badge{
+  position:absolute; top:-1px; right:-1px; width:14px; height:14px; border-radius:50%;
+  background:var(--loss); border:2px solid var(--ink); box-shadow:0 0 6px rgba(193,96,74,.8);
+}
+
+/* ---- Syndy chat panel ---- */
+.syndy-chat-sheet{ padding:0; display:flex; flex-direction:column; height:min(72vh, 560px); overflow:hidden; position:relative; }
+.syndy-chat-header{
+  display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(255,214,120,.08), transparent); flex-shrink:0;
+}
+.syndy-chat-header img{ width:34px; height:34px; border-radius:50%; }
+.syndy-chat-who{ flex:1; }
+.syndy-chat-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px; color:var(--brass-light); letter-spacing:.3px; }
+.syndy-chat-status{ font-size:10px; color:var(--win); }
+.syndy-chat-status::before{ content:'●'; margin-right:4px; font-size:8px; }
+.syndy-chat-close{ color:var(--muted); font-size:18px; cursor:pointer; padding:4px; }
+.syndy-chat-body{
+  flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch;
+  position:relative;
+  background-image:url('syndy-chat-bg.png');
+  background-repeat:no-repeat; background-position:center 60%; background-size:220px auto;
+}
+.syndy-chat-body::before{
+  content:''; position:absolute; inset:0; background:var(--felt-2); opacity:.92; pointer-events:none; z-index:0;
+}
+.syndy-chat-body > *{ position:relative; z-index:1; }
+.syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; }
+.syndy-msg.syndy{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; }
+.syndy-msg.user{ align-self:flex-end; background:linear-gradient(165deg, var(--brass-light), var(--brass)); color:#0E1A16; font-weight:600; border-bottom-right-radius:4px; }
+.syndy-msg.error{ align-self:center; color:var(--loss); font-size:11.5px; background:none; border:none; }
+.syndy-msg.typing{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; color:var(--muted); font-style:italic; }
+.syndy-chat-input-row{ display:flex; gap:8px; padding:10px; border-top:1px solid var(--line); flex-shrink:0; }
+.syndy-chat-input-row input{
+  flex:1; background:var(--felt); border:1px solid var(--line); border-radius:999px; padding:10px 14px;
+  color:var(--chalk); font-size:13px;
+}
+.syndy-chat-send{
+  width:38px; height:38px; border-radius:50%; border:none; background:linear-gradient(165deg, var(--brass-light), var(--brass));
+  display:flex; align-items:center; justify-content:center; color:#0E1A16; font-weight:700; cursor:pointer; flex-shrink:0;
+}
+.syndy-chat-send:disabled{ opacity:.5; }
 
 /* ---- Pot panel: collapsible details ---- */
 .casino-pot-details-toggle{
@@ -1560,6 +1641,13 @@
 
   <div class="tab-panel active" id="tab-balance">
     <div id="changelogBanner" style="display:none;"></div>
+    <div id="weeklyReminderPanel" class="panel" style="display:none;">
+      <h2>🔔 This week's outstanding items</h2>
+      <div id="weeklyReminderList"></div>
+      <div style="text-align:center; margin-top:10px;">
+        <button type="button" class="pill-btn" id="weeklyReminderClearBtn">Clear all</button>
+      </div>
+    </div>
     <div class="panel">
       <h2>Rolling balance</h2>
       <div class="balance-grid">
@@ -1569,11 +1657,6 @@
         <div class="toteboard-cell"><span class="lbl">Bonus pot</span><span class="val" id="balPot">$0</span></div>
         <div class="toteboard-cell" id="balPlOverallCell"><span class="lbl">P/L overall</span><span class="val" id="balPlOverall">$0</span></div>
         <div class="toteboard-cell" id="balPlWeeklyCell"><span class="lbl">P/L weekly</span><span class="val" id="balPlWeekly">$0</span></div>
-      </div>
-      <div class="sync-status-row" id="syncStatusRow" style="display:none;">
-        <span class="sync-dot" id="syncStatusDot"></span>
-        <span id="syncStatusLine"></span>
-        <span class="health-pill" id="healthPill" style="display:none;"></span>
       </div>
     </div>
 
@@ -1603,6 +1686,14 @@
     <div class="panel panel-quiet" id="onThisDayPanel">
       <h2>📅 On This Day In Sport</h2>
       <div id="onThisDayArea"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- Subtle app footer — de-emphasised sync status + health, deliberately
+         quiet compared to the panels above rather than a bold status row. -->
+    <div class="app-footer" id="syncStatusRow" style="display:none;">
+      <span class="sync-dot" id="syncStatusDot"></span>
+      <span id="syncStatusLine"></span>
+      <span class="health-pill app-footer-health" id="healthPill" style="display:none;"></span>
     </div>
   </div>
 
@@ -2181,6 +2272,12 @@
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
     </div>
     <div class="panel">
+      <h2>📡 API Call Tracker</h2>
+      <div class="hint">Tracks calls made from this device/browser only (localStorage) — not a shared count across all members, since instrumenting the actual Netlify functions server-side would need touching each one's own source directly.</div>
+      <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
+      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Reset stats</button>
+    </div>
+    <div class="panel">
       <h2>🔔 Test Push Notification</h2>
       <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
       <button type="button" id="testPushBtn">Send test notification</button>
@@ -2214,6 +2311,34 @@
   <button class="tab-btn" data-tab="diag" id="diagTabBtn" style="display:none;"><span class="icon">🔧</span>Diag</button>
 </nav>
 
+<!-- Syndy floating button — fixed above the tab bar, visible on every tab.
+     Hidden entirely for readonly guests (see JS below) since Syndy is for
+     approved members only, same rule enforced again server-side in the
+     Netlify function so a guest can't just re-show the button via devtools
+     and get a real response anyway. -->
+<button type="button" id="syndyFabBtn" class="syndy-fab" title="Ask Syndy" style="display:none;">
+  <img src="syndy-icon.png" alt="Syndy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🤖',style:'font-size:26px;'}))">
+  <span class="syndy-fab-badge" id="syndyFabBadge" style="display:none;"></span>
+</button>
+
+<div id="syndyChatModal" class="profile-modal">
+  <div class="profile-sheet syndy-chat-sheet">
+    <div class="syndy-chat-header">
+      <img src="syndy-icon.png" alt="Syndy" onerror="this.style.display='none';">
+      <div class="syndy-chat-who">
+        <div class="syndy-chat-name">Syndy</div>
+        <div class="syndy-chat-status">Online</div>
+      </div>
+      <div class="syndy-chat-close" id="syndyChatCloseBtn">✕</div>
+    </div>
+    <div class="syndy-chat-body" id="syndyChatBody"></div>
+    <div class="syndy-chat-input-row">
+      <input type="text" id="syndyChatInput" placeholder="Ask Syndy anything…" autocomplete="off">
+      <button type="button" class="syndy-chat-send" id="syndyChatSendBtn">➤</button>
+    </div>
+  </div>
+</div>
+
 <div id="imgModal" class="img-modal">
   <img id="imgModalImg" src="" alt="Bet slip">
 </div>
@@ -2238,6 +2363,17 @@
       <div style="font-size:11px; color:var(--muted); margin-top:6px;">Only asked once — remembered from here on.</div>
     </div>
     <div id="linkMemberList" style="display:flex; flex-direction:column; gap:8px; margin-top:14px;"></div>
+  </div>
+</div>
+
+<div id="bigWinModal" class="profile-modal">
+  <div class="profile-sheet big-win-sheet" style="text-align:center;">
+    <button type="button" class="profile-close" id="bigWinCloseBtn">✕</button>
+    <div class="win-badge">🔥 Big Win</div>
+    <div class="win-amount" id="bigWinAmount">+0 XP</div>
+    <div class="win-meta" id="bigWinWho"></div>
+    <div class="win-meta" id="bigWinWhen"></div>
+    <button type="button" class="win-close-btn" id="bigWinNiceOneBtn">Nice one</button>
   </div>
 </div>
 
@@ -2324,6 +2460,67 @@ window.addEventListener('unhandledrejection', (e) => {
   console.error(e.reason);
 });
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
+
+// ---- API call tracker (Diag tab) ----
+// Deliberately client-side only, per-device (localStorage) — there's no
+// shared counter this could write to without touching every Netlify
+// function's own source, which isn't available here to instrument safely.
+// This tracks calls THIS device has made, not true global usage across
+// all members. Every place that calls an external API function gets one
+// extra trackApiCall(name) line right before the existing fetch — nothing
+// about the actual request/response handling is touched.
+const API_CALL_STATS_KEY = 'mlsynd_api_call_stats';
+let apiCallStats = {};
+try{ apiCallStats = JSON.parse(localStorage.getItem(API_CALL_STATS_KEY) || '{}'); }catch(e){ apiCallStats = {}; }
+function trackApiCall(name){
+  if(!name) return;
+  const entry = apiCallStats[name] || { count: 0, lastCalledAt: null };
+  entry.count++;
+  entry.lastCalledAt = Date.now();
+  apiCallStats[name] = entry;
+  try{ localStorage.setItem(API_CALL_STATS_KEY, JSON.stringify(apiCallStats)); }catch(e){}
+  // Diag tab may already be open and looking at this — keep it live rather
+  // than only updating on next tab switch.
+  if(document.getElementById('tab-diag') && document.getElementById('tab-diag').classList.contains('active')){
+    renderApiCallTracker();
+  }
+}
+function renderApiCallTracker(){
+  const area = document.getElementById('apiCallTrackerArea');
+  if(!area) return;
+  const names = Object.keys(apiCallStats);
+  if(names.length === 0){
+    area.innerHTML = '<div class="empty">No API calls tracked yet this device — they\'ll show up as the app fetches live data.</div>';
+    return;
+  }
+  const sorted = names.sort((a, b) => apiCallStats[b].count - apiCallStats[a].count);
+  area.innerHTML = `
+    <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+      <thead>
+        <tr style="text-align:left; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.3px;">
+          <th style="padding:4px 6px 6px 0;">Function</th>
+          <th style="padding:4px 6px 6px 0; text-align:right;">Calls</th>
+          <th style="padding:4px 0 6px 6px; text-align:right;">Last called</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted.map(name => `
+          <tr style="border-top:1px solid var(--line);">
+            <td style="padding:6px 6px 6px 0; font-family:'IBM Plex Mono', monospace;">${escapeHtml(name)}</td>
+            <td style="padding:6px 6px 6px 0; text-align:right; color:var(--brass-light); font-weight:700;">${apiCallStats[name].count}</td>
+            <td style="padding:6px 0 6px 6px; text-align:right; color:var(--muted); font-size:11px;">${apiCallStats[name].lastCalledAt ? timeAgo(apiCallStats[name].lastCalledAt) : '—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+document.getElementById('resetApiCallStatsBtn').addEventListener('click', () => {
+  if(!confirm('Reset all tracked API call counts on this device?')) return;
+  apiCallStats = {};
+  try{ localStorage.setItem(API_CALL_STATS_KEY, '{}'); }catch(e){}
+  renderApiCallTracker();
+});
 const DATA_PATH = '/state.json';
 
 // ================= Auth =================
@@ -2592,7 +2789,7 @@ function renderHealthPill(state){
   const summary = computeQuickHealthSummary(state);
   const icon = { green: '🟢', amber: '🟡', red: '🔴' };
   pill.style.display = 'inline-flex';
-  pill.className = 'health-pill ' + summary.status;
+  pill.className = 'health-pill app-footer-health ' + summary.status;
   pill.textContent = `${icon[summary.status]} ${summary.label}`;
   pill.onclick = () => {
     const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -2622,6 +2819,8 @@ function renderAccountBar(){
   });
   if(!isReadOnly) updatePushToggleUI();
   applyGuestProtections();
+  const fab = document.getElementById('syndyFabBtn');
+  if(fab) fab.style.display = isReadOnly ? 'none' : 'flex'; // Syndy is for real members — same rule enforced again server-side
 }
 
 // ---------- Push notifications (top-level - called from renderAccountBar,
@@ -3072,7 +3271,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-18.20";
+const APP_VERSION = "2026-08-20.6";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4271,6 +4470,10 @@ async function renderXPLog(){
 // /xp/{uid} rules) rather than needing any new shared data structure.
 // Pulled once per lobby view, not polled — fine for a feed, not built for
 // high-frequency refresh.
+// Holds the currently-rendered feed entries so the big-win click handler
+// (delegated on casinoFloorArea, added once below) can look one up by
+// index rather than re-fetching or parsing it back out of the DOM.
+let casinoFloorMergedEntries = [];
 async function renderCasinoFloorFeed(){
   const area = document.getElementById('casinoFloorArea');
   const spotlightEl = document.getElementById('casinoFloorSpotlight');
@@ -4316,12 +4519,15 @@ async function renderCasinoFloorFeed(){
       return;
     }
     const BIG_WIN_THRESHOLD = 1000;
-    area.innerHTML = merged.map(e => {
+    // Stored so the click handler (delegated, see below) can look up the
+    // full entry by index without re-parsing anything out of the DOM.
+    casinoFloorMergedEntries = merged;
+    area.innerHTML = merged.map((e, i) => {
       const amount = typeof e.amount === 'number' && !isNaN(e.amount) ? e.amount : 0;
       const reason = e.reason || '(unlabeled)';
       const isBigWin = amount >= BIG_WIN_THRESHOLD;
       return `
-      <div class="xp-log-row${isBigWin ? ' xp-log-big-win' : ''}">
+      <div class="xp-log-row${isBigWin ? ' xp-log-big-win xp-log-clickable' : ''}"${isBigWin ? ` data-win-idx="${i}"` : ''}>
         <span class="xp-log-who">${isBigWin ? '<span class="xp-log-big-win-badge">🔥</span>' : ''}${escapeHtml(e.name)}</span>
         <span class="xp-log-reason">${escapeHtml(reason)}</span>
         <span class="xp-log-amt" style="color:${amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${amount >= 0 ? '+' : ''}${amount}</span>
@@ -4331,6 +4537,29 @@ async function renderCasinoFloorFeed(){
     area.innerHTML = '<div class="empty">Couldn\'t load casino floor activity.</div>';
   }
 }
+
+// Delegated once — new rows get re-created on every render, so a listener
+// bound directly to each row would need re-attaching every time. Binding
+// on the (stable) parent container avoids that entirely.
+document.getElementById('casinoFloorArea').addEventListener('click', (e) => {
+  const row = e.target.closest('[data-win-idx]');
+  if(!row) return;
+  const entry = casinoFloorMergedEntries[Number(row.dataset.winIdx)];
+  if(entry) showBigWinModal(entry);
+});
+function showBigWinModal(entry){
+  const amount = typeof entry.amount === 'number' ? entry.amount : 0;
+  document.getElementById('bigWinAmount').textContent = `+${amount.toLocaleString()} XP`;
+  document.getElementById('bigWinWho').innerHTML = `<b>${escapeHtml(entry.name || 'Unknown')}</b> — ${escapeHtml(entry.reason || '')}`;
+  const when = entry.ts ? new Date(entry.ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  document.getElementById('bigWinWhen').textContent = when;
+  document.getElementById('bigWinModal').classList.add('open');
+}
+document.getElementById('bigWinCloseBtn').addEventListener('click', () => document.getElementById('bigWinModal').classList.remove('open'));
+document.getElementById('bigWinNiceOneBtn').addEventListener('click', () => document.getElementById('bigWinModal').classList.remove('open'));
+document.getElementById('bigWinModal').addEventListener('click', (e) => {
+  if(e.target.id === 'bigWinModal') document.getElementById('bigWinModal').classList.remove('open');
+});
 
 // ---- Tipping points → XP ----
 // Deliberately a self-contained, isolated recomputation rather than hooking
@@ -7398,6 +7627,187 @@ function renderGroupMultiChart(state){
   area.innerHTML = `<div class="multi-summary-banner${losers.length === 0 ? ' clean' : ''}">${summary}</div>` + html;
 }
 
+// ---- Weekly outstanding-items reminder (Thursday 8am AEST) ----
+// Checked once per session (called from startApp, not from the 15s poll
+// loop) since this involves real fetches — fixture data plus a read per
+// upcoming game's picks. Dismissal is remembered per ISO week (AEST) in
+// localStorage, so clearing it doesn't just come back on the next refresh
+// but does reappear once a genuinely new week rolls around.
+const WEEKLY_REMINDER_DISMISS_KEY = 'mlsynd_reminder_dismissed_week';
+function currentIsoWeekKeyAEST(){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const y = +parts.find(p => p.type === 'year').value, m = +parts.find(p => p.type === 'month').value, d = +parts.find(p => p.type === 'day').value;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dayNum = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round(((date - firstThursday) / 86400000 - 3 + ((firstThursday.getUTCDay() + 6) % 7)) / 7);
+  return `${date.getUTCFullYear()}-W${week}`;
+}
+async function computeWeeklyOutstandingItems(){
+  const result = { tipsOutstanding: [], betsOutstanding: 0, multiOutstanding: false };
+  // Tips: find the next round that hasn't started yet, and see which linked
+  // members haven't picked ANY game in it — "make sure all tips are in".
+  try{
+    const games = await fetchTippingFixtures();
+    const upcoming = games.filter(g => !gameHasStarted(g));
+    if(upcoming.length > 0){
+      const targetRound = Math.min(...upcoming.map(g => g.round));
+      const roundGames = upcoming.filter(g => g.round === targetRound).slice(0, 12); // sane cap on reads
+      const pickSets = await Promise.all(roundGames.map(async g => {
+        try{
+          const res = await authedFetch(`/tipping/picks/${g.id}.json`);
+          if(!res.ok) return {};
+          return (await res.json()) || {};
+        }catch(e){ return {}; }
+      }));
+      const pickedUids = new Set();
+      pickSets.forEach(picks => Object.keys(picks).forEach(uid => pickedUids.add(uid)));
+      if(currentState && Array.isArray(currentState.members)){
+        result.tipsOutstanding = currentState.members
+          .filter(m => m.linkedUid && !pickedUids.has(m.linkedUid))
+          .map(m => m.name);
+      }
+    }
+  }catch(e){}
+  // Individual bets: entries logged for this week with no Win/Loss result yet.
+  try{
+    const bets = (currentState && currentState.weeklyIndividualBets) || [];
+    result.betsOutstanding = bets.filter(b => b && b.result !== 'Win' && b.result !== 'Loss').length;
+  }catch(e){}
+  // Group multi: nothing entered yet this week at all.
+  try{
+    const cleared = !!(currentState && currentState.groupMultiCleared);
+    const draft = (currentState && currentState.groupEntryDraft) || {};
+    const hasAnyResult = Object.values(draft).some(e => e && e.result);
+    result.multiOutstanding = cleared || !hasAnyResult;
+  }catch(e){}
+  return result;
+}
+async function renderWeeklyReminderPanel(){
+  if(currentUserRole === 'readonly') return; // guest sessions don't need internal admin-style nudges
+  const panel = document.getElementById('weeklyReminderPanel');
+  if(!panel) return;
+  const weekKey = currentIsoWeekKeyAEST();
+  let dismissedWeek = null;
+  try{ dismissedWeek = localStorage.getItem(WEEKLY_REMINDER_DISMISS_KEY); }catch(e){}
+  if(dismissedWeek === weekKey){ panel.style.display = 'none'; updateSyndyBadge(false); return; }
+
+  let items;
+  try{ items = await computeWeeklyOutstandingItems(); }catch(e){ return; }
+  const rows = [];
+  if(items.tipsOutstanding.length > 0){
+    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🏈</span><span class="weekly-reminder-text"><b>${items.tipsOutstanding.length} member${items.tipsOutstanding.length === 1 ? '' : 's'}</b> haven't submitted tips yet this round (${escapeHtml(items.tipsOutstanding.join(', '))})</span></div>`);
+  }
+  if(items.betsOutstanding > 0){
+    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎲</span><span class="weekly-reminder-text"><b>${items.betsOutstanding} individual bet${items.betsOutstanding === 1 ? '' : 's'}</b> still ${items.betsOutstanding === 1 ? "doesn't" : "don't"} have a result entered</span></div>`);
+  }
+  if(items.multiOutstanding){
+    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎟️</span><span class="weekly-reminder-text">This week's <b>group multi</b> hasn't been started yet</span></div>`);
+  }
+  if(rows.length === 0){ panel.style.display = 'none'; updateSyndyBadge(false); return; }
+  document.getElementById('weeklyReminderList').innerHTML = rows.join('');
+  panel.style.display = 'block';
+  panel.dataset.weekKey = weekKey;
+  updateSyndyBadge(true); // same outstanding-items signal drives both the Home card and the Syndy button badge
+}
+document.getElementById('weeklyReminderClearBtn').addEventListener('click', () => {
+  const panel = document.getElementById('weeklyReminderPanel');
+  try{ localStorage.setItem(WEEKLY_REMINDER_DISMISS_KEY, panel.dataset.weekKey || currentIsoWeekKeyAEST()); }catch(e){}
+  panel.style.display = 'none';
+  updateSyndyBadge(false);
+});
+
+// ---- Syndy AI chat ----
+// Conversation lives in memory only for this tab session (not persisted
+// to Firebase or localStorage) — keeps things simple and avoids needing
+// new rules/storage for chat history. The actual system prompt lives
+// server-side in the Netlify function, never sent to or stored by the
+// client.
+let syndyMessages = [];
+let syndySending = false;
+
+function updateSyndyBadge(show){
+  const badge = document.getElementById('syndyFabBadge');
+  if(badge) badge.style.display = show ? 'block' : 'none';
+}
+
+function syndyAppendMessage(role, text){
+  const body = document.getElementById('syndyChatBody');
+  const el = document.createElement('div');
+  el.className = `syndy-msg ${role}`;
+  el.textContent = text;
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
+  return el;
+}
+
+document.getElementById('syndyFabBtn').addEventListener('click', () => {
+  document.getElementById('syndyChatModal').classList.add('open');
+  if(syndyMessages.length === 0){
+    syndyAppendMessage('syndy', "G'day legend. What's on — footy, racing, or you after a multi built off real form?");
+  }
+  document.getElementById('syndyChatInput').focus();
+});
+document.getElementById('syndyChatCloseBtn').addEventListener('click', () => {
+  document.getElementById('syndyChatModal').classList.remove('open');
+});
+document.getElementById('syndyChatModal').addEventListener('click', (e) => {
+  if(e.target.id === 'syndyChatModal') document.getElementById('syndyChatModal').classList.remove('open');
+});
+
+async function sendSyndyMessage(){
+  if(syndySending) return;
+  const input = document.getElementById('syndyChatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  syndyAppendMessage('user', text);
+  syndyMessages.push({ role: 'user', content: text });
+
+  syndySending = true;
+  document.getElementById('syndyChatSendBtn').disabled = true;
+  const typingEl = syndyAppendMessage('typing', 'Syndy is thinking…');
+
+  try{
+    const auth = await getValidAuth();
+    if(!auth){
+      typingEl.remove();
+      syndyAppendMessage('error', "Session's expired — sign back in and give it another crack.");
+      return;
+    }
+    trackApiCall('syndy-chat');
+    const res = await fetch('/.netlify/functions/syndy-chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: auth.idToken, messages: syndyMessages })
+    });
+    const data = await res.json();
+    typingEl.remove();
+    if(!res.ok || !data.reply){
+      syndyAppendMessage('error', data.error || "Syndy's gone quiet for a sec — try again shortly.");
+      return;
+    }
+    syndyAppendMessage('syndy', data.reply);
+    syndyMessages.push({ role: 'assistant', content: data.reply });
+    if(data.bonusAwarded){
+      // Syndy's own reply already announces this in-character (that's the
+      // point) — this just keeps the visible XP number honest if the
+      // Casino hero happens to already be on screen underneath the chat.
+      try{ updateXPBalanceDisplay(await getXPBalance()); }catch(e){}
+    }
+  }catch(e){
+    typingEl.remove();
+    syndyAppendMessage('error', "Couldn't reach Syndy — check your connection and try again.");
+  }finally{
+    syndySending = false;
+    document.getElementById('syndyChatSendBtn').disabled = false;
+  }
+}
+document.getElementById('syndyChatSendBtn').addEventListener('click', sendSyndyMessage);
+document.getElementById('syndyChatInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') sendSyndyMessage();
+});
+
 function render(state){
   renderSyncStatusLine(state);
   renderHealthPill(state);
@@ -7624,6 +8034,7 @@ async function refreshOnThisDayIfNeeded(){
     return;
   }
   try{
+    trackApiCall('on-this-day');
     const res = await fetch('/.netlify/functions/on-this-day', { cache: 'no-store' });
     const data = await res.json();
     const toCache = { ...data, cachedFor: todayKey, fetchedAt: Date.now() };
@@ -7707,6 +8118,7 @@ document.getElementById('testPushBtn').addEventListener('click', async () => {
       btn.disabled = false;
       return;
     }
+    trackApiCall('send-push');
     const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-push', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -7825,6 +8237,7 @@ async function refreshAfl(){
   }
 
   try{
+    trackApiCall('puntersedge-sports-odds');
     const oddsPromise = fetch(`/.netlify/functions/puntersedge-sports-odds?sport=${encodeURIComponent(sport)}`, { cache: 'no-store' }).catch(() => null);
     const normTeam = normTeamName;
     let entries;
@@ -7870,6 +8283,7 @@ async function refreshAfl(){
       }));
     } else {
       const endpoint = `/.netlify/functions/espn-scores?sport=${encodeURIComponent(sport)}`;
+      trackApiCall('espn-scores');
       const [res, oddsRes] = await Promise.all([fetch(endpoint, { cache: 'no-store' }), oddsPromise]);
       if(!res.ok) throw new Error('bad response');
       const data = await res.json();
@@ -7957,6 +8371,7 @@ async function renderF1Championship(){
   area.innerHTML = '<div class="panel"><div class="empty">Loading…</div></div>';
   try{
     if(!f1DataCache){
+      trackApiCall('f1-championship');
       const res = await fetch('/.netlify/functions/f1-championship', { cache: 'no-store' });
       if(!res.ok) throw new Error('bad response');
       f1DataCache = await res.json();
@@ -8042,6 +8457,7 @@ async function renderMotoGP(){
   area.innerHTML = '<div class="panel"><div class="empty">Loading…</div></div>';
   try{
     if(!motoGpDataCache){
+      trackApiCall('motogp');
       const res = await fetch('/.netlify/functions/motogp', { cache: 'no-store' });
       if(!res.ok) throw new Error('bad response');
       motoGpDataCache = await res.json();
@@ -8104,6 +8520,7 @@ async function renderIndividualSportLeaderboard(sport){
   const area = document.getElementById('aflArea');
   area.innerHTML = '<div class="panel"><div class="empty">Loading…</div></div>';
   try{
+    trackApiCall('espn-individual');
     const res = await fetch(`/.netlify/functions/espn-individual?sport=${encodeURIComponent(sport)}`, { cache: 'no-store' });
     if(!res.ok) throw new Error('bad response');
     const data = await res.json();
@@ -8132,6 +8549,7 @@ async function renderSportLadder(sport){
   area.innerHTML = '<div class="panel"><div class="empty">Loading ladder…</div></div>';
   try{
     const endpoint = sport === 'afl' ? '/.netlify/functions/afl-ladder' : `/.netlify/functions/espn-standings?sport=${encodeURIComponent(sport)}`;
+    trackApiCall(sport === 'afl' ? 'afl-ladder' : 'espn-standings');
     const res = await fetch(endpoint, { cache: 'no-store' });
     if(!res.ok) throw new Error('bad response');
     const data = await res.json();
@@ -8236,6 +8654,7 @@ async function refreshRacing(){
   const area = document.getElementById('racingArea');
   try{
     const dateParam = racingSelectedDate ? `?date=${racingSelectedDate}` : '';
+    trackApiCall('racing-meetings');
     const res = await fetch(window.location.origin + '/.netlify/functions/racing-meetings' + dateParam);
     if(!res.ok) throw new Error(`status ${res.status}`);
     const data = await res.json();
@@ -8272,6 +8691,7 @@ async function refreshRacing(){
 
 let punterspricesData = null;
 function fetchPuntersEdgePrices(){
+  trackApiCall('puntersedge-prices');
   return fetch('/.netlify/functions/puntersedge-prices', { cache: 'no-store' })
     .then(res => res.ok ? res.json() : { races: [] })
     .then(data => { punterspricesData = data.races || []; return punterspricesData; })
@@ -8425,6 +8845,7 @@ document.getElementById('racingArea').addEventListener('click', async (e) => {
   const track = row.dataset.track;
   const date = row.dataset.date;
   try{
+    trackApiCall('racing-race-form');
     const [formRes] = await Promise.all([
       fetch(`/.netlify/functions/racing-race-form?track=${encodeURIComponent(track)}&race=${encodeURIComponent(race)}&date=${encodeURIComponent(date)}`, { cache: 'no-store' }),
       fetchPuntersEdgePrices()
@@ -8461,6 +8882,7 @@ let tippingFixturesCacheTime = 0;
 
 async function fetchTippingFixtures(){
   if(tippingFixturesCache && (Date.now() - tippingFixturesCacheTime) < 45000) return tippingFixturesCache;
+  trackApiCall('afl-fixtures');
   const res = await fetch('/.netlify/functions/afl-fixtures', { cache: 'no-store' });
   const data = await res.json();
   tippingFixturesCache = data.games || [];
@@ -8707,6 +9129,7 @@ let tippingOddsCacheTime = 0;
 async function fetchTippingOdds(){
   if(tippingOddsCache && (Date.now() - tippingOddsCacheTime) < 60000) return tippingOddsCache;
   try{
+    trackApiCall('puntersedge-sports-odds');
     const res = await fetch('/.netlify/functions/puntersedge-sports-odds?sport=afl', { cache: 'no-store' });
     const data = await res.json();
     tippingOddsCache = data.supported ? (data.events || []) : [];
@@ -9769,6 +10192,7 @@ function renderHealthCheckResults(results){
 }
 
 function renderDiagTab(){
+  renderApiCallTracker();
   const area = document.getElementById('diagTabArea');
   if(!area) return;
   area.innerHTML = '<div class="empty">Loading…</div>';
@@ -10174,6 +10598,7 @@ async function refreshNews(){
   const category = document.getElementById('newsCategorySelect').value;
   const NEWS_SOURCE_LABEL = { afl: 'AFL.com.au', nrl: 'Sydney Morning Herald', nba: 'ESPN', racing: 'Google News', golf: 'ESPN', f1: 'ESPN', efl: 'Google News', motogp: 'Google News' };
   try{
+    trackApiCall('news');
     const res = await fetch(`/.netlify/functions/news?category=${encodeURIComponent(category)}`, { cache: 'no-store' });
     if(!res.ok) throw new Error('bad response');
     const data = await res.json();
@@ -10225,6 +10650,7 @@ function startApp(){
   // so. See autoCheckCasinoPotRollover's own comment for why this is
   // restricted to the admin client specifically.
   autoCheckCasinoPotRollover();
+  renderWeeklyReminderPanel(); // once per session — see its own comment for why
   startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded) — feeds Home/Board/Cash simultaneously, so this one always runs regardless of active tab
   refreshAfl();
   startTabScopedPolling(refreshAfl, 20000, ['sport']); // Sport tab scores — only while Sport is actually showing

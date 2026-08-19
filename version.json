@@ -1,7 +1,15 @@
 {
-  "version": "2026-08-18.20",
-  "date": "2026-08-18",
+  "version": "2026-08-20.6",
+  "date": "2026-08-20",
   "changes": [
-    "Changed: individual bet wins now earn 100 XP per $1 won (was 1 XP per $1)"
+    "Changed: \"Last saved by\" and the system health indicator moved into a quiet footer at the bottom of Home",
+    "New: casino wins of 1000+ XP are now clickable on the Casino Floor feed, opening a premium snapshot modal",
+    "New: a weekly \"outstanding items\" reminder on Home — missing tips, individual bets without a result, and an unstarted group multi — clearable, reappears once a new week starts",
+    "New: a Thursday 8am AEST push notification reminding members to check the app",
+    "New: Syndy AI assistant — floating gold-coin button on every tab, opens a chat panel, badge lights up when there are outstanding items",
+    "New: subtle branded Syndy coin watermark in the chat panel background",
+    "New: API Call Tracker in Diag — shows call counts and last-called time for every external API the app uses",
+    "New: a one-off 500 XP bonus for trying Syndy for the first time — Syndy tells you about it herself in her first reply",
+    "New: Syndy now pulls real live AFL/NRL odds from PuntersEdge when you ask about odds, favourites, prices, or multis"
   ]
 }
