@@ -12,12 +12,17 @@
 //
 // Needs GROQ_API_KEY set in Netlify env vars (get one at console.groq.com).
 // FIREBASE_DB_SECRET is the same one already used by your other scheduled
-// functions. PuntersEdge odds are pulled from the site's own existing
-// puntersedge-sports-odds function (no separate key needed here) when a
-// message looks odds/betting-flavoured — see detectOddsSport below.
+// functions. FIREBASE_WEB_API_KEY is the public Firebase web key already
+// embedded in DASHBOARD-index.html client-side — safe to expose either
+// way, but it has to live in an env var here rather than hardcoded in the
+// file, because Netlify's build-time secrets scanner flags any string
+// shaped like a Google API key regardless of whether it's actually
+// sensitive, and fails the whole build. PuntersEdge odds are pulled from
+// the site's own existing puntersedge-sports-odds function (no separate
+// key needed here) when a message looks odds/betting-flavoured — see
+// detectOddsSport below.
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
-const FB_API_KEY = 'AIzaSyAOxWjx7kwaEKN3Ab29kObrTZBIEyUhKfI'; // same public web key already embedded client-side
 const GROQ_MODEL = 'llama-3.3-70b-versatile'; // swap to llama-3.1-8b-instant for lower latency/cost if 70b feels slow
 const MAX_HISTORY_MESSAGES = 12; // trims the conversation sent to Groq — cost/latency control, not a hard memory limit client-side
 const SYNDY_BONUS_XP = 500;
@@ -58,7 +63,9 @@ Only mention responsible gambling once per conversation (keep it short and natur
 You are Syndy. Ready to bag the umpires, roast a rival, break down live stats and form, factor in track rating and bias, throw a multi together based on the numbers, argue about the best parma in Melbourne, or tell someone to fuck off if they're being a cunt. What's on, mate?`;
 
 async function verifyFirebaseIdToken(idToken){
-  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FB_API_KEY}`, {
+  const fbApiKey = process.env.FIREBASE_WEB_API_KEY;
+  if(!fbApiKey) throw new Error('FIREBASE_WEB_API_KEY not set');
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${fbApiKey}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken })
   });
   if(!res.ok) return null;
@@ -167,7 +174,13 @@ export default async (req) => {
     return new Response('Missing idToken or messages', { status: 400 });
   }
 
-  const auth = await verifyFirebaseIdToken(idToken);
+  let auth;
+  try{
+    auth = await verifyFirebaseIdToken(idToken);
+  }catch(e){
+    console.error('Firebase token verification failed:', e.message);
+    return new Response(JSON.stringify({ error: 'Server misconfigured.' }), { status: 500 });
+  }
   if(!auth){
     return new Response(JSON.stringify({ error: 'Invalid or expired session — please sign in again.' }), { status: 401 });
   }
