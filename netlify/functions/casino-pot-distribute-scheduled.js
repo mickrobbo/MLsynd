@@ -11,12 +11,15 @@
 // already set up for check-lockouts-scheduled.js — same push-notification
 // setup, reused here. Also needs 'web-push' as a dependency in
 // functions/package.json (already there for the existing push feature),
-// and FIREBASE_SERVICE_ACCOUNT_JSON — the full contents of your Firebase
-// Admin SDK service account file, pasted as one env var. Admin-level
-// Realtime Database access here goes through a signed JWT exchanged for a
-// short-lived Google OAuth2 access token (see getFirebaseAccessToken) —
-// same role a legacy database secret used to play, but this project's
-// Firebase console doesn't expose that mechanism.
+// and FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY — just those two
+// fields from your Firebase Admin SDK service account file, not the whole
+// JSON (AWS Lambda caps total env var size at 4KB across every function,
+// so the unused fields in the full file are dead weight worth trimming).
+// Admin-level Realtime Database access here goes through a signed JWT
+// exchanged for a short-lived Google OAuth2 access token (see
+// getFirebaseAccessToken) — same role a legacy database secret used to
+// play, but this project's Firebase console doesn't expose that
+// mechanism.
 
 import webpush from 'web-push';
 import crypto from 'crypto';
@@ -28,13 +31,16 @@ const TIMEZONE = 'Australia/Melbourne'; // change if the syndicate isn't Melbour
 const DISTRIBUTE_HOUR = 8; // 8am AEST/AEDT on the 1st
 
 async function getFirebaseAccessToken(){
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if(!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON not set');
-  const svc = JSON.parse(raw);
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+  if(!clientEmail) throw new Error('FIREBASE_CLIENT_EMAIL not set');
+  if(!rawKey) throw new Error('FIREBASE_PRIVATE_KEY not set');
+  const privateKey = rawKey.replace(/\\n/g, '\n');
+
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const claim = {
-    iss: svc.client_email,
+    iss: clientEmail,
     scope: 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
@@ -45,7 +51,7 @@ async function getFirebaseAccessToken(){
   const signer = crypto.createSign('RSA-SHA256');
   signer.update(unsigned);
   signer.end();
-  const signature = signer.sign(svc.private_key, 'base64url');
+  const signature = signer.sign(privateKey, 'base64url');
   const jwt = `${unsigned}.${signature}`;
 
   const res = await fetch('https://oauth2.googleapis.com/token', {

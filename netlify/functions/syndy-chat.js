@@ -18,14 +18,20 @@
 // like a Google API key regardless of whether it's actually sensitive,
 // and fails the whole build.
 //
-// FIREBASE_SERVICE_ACCOUNT_JSON is the full contents of your Firebase
-// Admin SDK service account file (Project Settings → Service Accounts →
-// Generate new private key), pasted as-is into one env var. This project's
-// Firebase console doesn't expose the older "database secret" mechanism,
-// so admin-level access here goes through a signed JWT exchanged for a
-// short-lived Google OAuth2 access token instead — see
-// getFirebaseAccessToken below. That token is what actually reads/writes
-// past the RTDB rules, same role the old database secret used to play.
+// FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY are the only two fields
+// actually needed from your Firebase Admin SDK service account file
+// (Project Settings → Service Accounts → Generate new private key) —
+// stored as two separate env vars rather than the whole JSON, since AWS
+// Lambda (which every Netlify Function runs on) caps total environment
+// variable size at 4KB combined across ALL variables for a function, and
+// the unused fields in the full JSON (project_id, client_id, three URI
+// fields, universe_domain) were dead weight pushing things over that
+// limit. This project's Firebase console doesn't expose the older
+// "database secret" mechanism, so admin-level access here goes through a
+// signed JWT exchanged for a short-lived Google OAuth2 access token
+// instead — see getFirebaseAccessToken below. That token is what actually
+// reads/writes past the RTDB rules, same role the old database secret
+// used to play.
 //
 // PuntersEdge odds are pulled from the site's own existing
 // puntersedge-sports-odds function (no separate key needed here) when a
@@ -44,13 +50,20 @@ import crypto from 'crypto';
 // per chat message. Tokens are valid for an hour; this just doesn't try
 // to reuse one.
 async function getFirebaseAccessToken(){
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if(!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON not set');
-  const svc = JSON.parse(raw);
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const rawKey = process.env.FIREBASE_PRIVATE_KEY;
+  if(!clientEmail) throw new Error('FIREBASE_CLIENT_EMAIL not set');
+  if(!rawKey) throw new Error('FIREBASE_PRIVATE_KEY not set');
+  // Pasting a multi-line PEM into a single env var sometimes turns real
+  // newlines into literal backslash-n pairs (depends how it was copied) —
+  // normalising here means it works either way rather than being fussy
+  // about exactly how it was pasted.
+  const privateKey = rawKey.replace(/\\n/g, '\n');
+
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const claim = {
-    iss: svc.client_email,
+    iss: clientEmail,
     scope: 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
@@ -61,7 +74,7 @@ async function getFirebaseAccessToken(){
   const signer = crypto.createSign('RSA-SHA256');
   signer.update(unsigned);
   signer.end();
-  const signature = signer.sign(svc.private_key, 'base64url');
+  const signature = signer.sign(privateKey, 'base64url');
   const jwt = `${unsigned}.${signature}`;
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
