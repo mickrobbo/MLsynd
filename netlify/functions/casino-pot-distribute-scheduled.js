@@ -70,7 +70,7 @@ async function getFirebaseAccessToken(){
     signature = signer.sign(privateKey, 'base64url');
   }catch(e){
     const hasMarkers = privateKey.includes('-----BEGIN') && privateKey.includes('-----END');
-    throw new Error(`Private key sign failed (${e.message}) — normalized key: ${privateKey.length} chars, PEM markers found: ${hasMarkers}, line count: ${privateKey.split('\n').length}`);
+    throw new Error(`Private key sign failed (${e.message}) — raw env var: ${rawKey.length} chars, normalized key: ${privateKey.length} chars, PEM markers found: ${hasMarkers}, line count: ${privateKey.split('\n').length}`);
   }
   const jwt = `${unsigned}.${signature}`;
 
