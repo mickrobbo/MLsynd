@@ -12,26 +12,25 @@ const LEAGUE_PATHS = {
   epl: "soccer/eng.1",
 };
 
-exports.handler = async function (event) {
-  const sport = ((event.queryStringParameters || {}).sport || "").toLowerCase();
+export default async function (request) {
+  const url = new URL(request.url);
+  const sport = (url.searchParams.get("sport") || "").toLowerCase();
   const path = LEAGUE_PATHS[sport];
 
   if (!path) {
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ games: [] }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ games: [] }),
-    };
+    });
   }
 
   try {
     const resp = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard`);
 
     if (!resp.ok) {
-      return {
-        statusCode: resp.status,
-        body: JSON.stringify({ error: `ESPN returned ${resp.status}` }),
-      };
+      return new Response(JSON.stringify({ error: `ESPN returned ${resp.status}` }), {
+        status: resp.status,
+      });
     }
 
     const data = await resp.json();
@@ -57,15 +56,13 @@ exports.handler = async function (event) {
       };
     });
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ games }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ games }),
-    };
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+}
