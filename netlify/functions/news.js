@@ -40,7 +40,7 @@ function isNrlRelevant(article) {
 }
 
 function extractTag(block, tag) {
-  const m = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, "i"));
+  const m = block.match(new RegExp(`<\( {tag}[^>]*>([\\s\\S]*?)<\\/ \){tag}>`, "i"));
   return m ? m[1].trim() : null;
 }
 
@@ -92,16 +92,16 @@ function parseRssItems(xml, limit) {
   return items;
 }
 
-exports.handler = async function (event) {
-  const category = ((event.queryStringParameters || {}).category || "").toLowerCase();
+export default async function (request) {
+  const url = new URL(request.url);
+  const category = (url.searchParams.get("category") || "").toLowerCase();
   const feedUrl = CATEGORY_FEEDS[category];
 
   if (!feedUrl) {
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ category, articles: [] }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, articles: [] }),
-    };
+    });
   }
 
   try {
@@ -110,10 +110,9 @@ exports.handler = async function (event) {
     });
 
     if (!resp.ok) {
-      return {
-        statusCode: resp.status,
-        body: JSON.stringify({ error: `Feed returned ${resp.status}` }),
-      };
+      return new Response(JSON.stringify({ error: `Feed returned ${resp.status}` }), {
+        status: resp.status,
+      });
     }
 
     const xml = await resp.text();
@@ -129,15 +128,13 @@ exports.handler = async function (event) {
       .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
       .slice(0, 8);
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ category, articles }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, articles }),
-    };
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+}
