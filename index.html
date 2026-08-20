@@ -396,6 +396,11 @@
   .casino-hub-icon{ font-size:26px; line-height:1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
   .casino-hub-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); }
   .casino-hub-sub{ font-size:9.5px; color:var(--muted); text-align:center; line-height:1.3; }
+  .casino-hub-badge{
+    position:absolute; top:8px; right:8px; min-width:18px; height:18px; padding:0 5px;
+    border-radius:999px; background:var(--loss); color:#fff; font-size:10px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 0 6px rgba(193,96,74,.7);
+  }
   .casino-view{ display:none; }
   .casino-view.active{ display:block; }
   #casinoRulesHubList, #xpInfoModalBody .xp-source-row{
@@ -407,6 +412,17 @@
     border-radius:10px; padding:12px 14px; margin-bottom:8px; font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer;
   }
   #casinoRulesHubList button:active{ border-color:var(--brass); }
+
+  /* ---- Head-to-head challenges ---- */
+  .challenge-row{
+    display:flex; flex-direction:column; gap:8px; padding:10px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  .challenge-row:last-child{ border-bottom:none; }
+  .challenge-row-main{ font-size:12.5px; color:var(--chalk); }
+  .challenge-row-main b{ color:var(--brass-light); }
+  .challenge-row-actions{ display:flex; gap:8px; }
+  .challenge-row-actions .pill-btn{ flex:1; text-align:center; }
 
   /* ---- Casino badges ---- */
   .casino-badge-row{
@@ -1341,6 +1357,18 @@
   font-size:11.5px; color:var(--muted); margin:-2px 0 10px; text-align:center;
 }
 .casino-floor-spotlight b{ color:var(--brass-light); }
+.casino-ticker{
+  display:flex; align-items:center; gap:8px; padding:9px 14px; margin-bottom:10px;
+  background:linear-gradient(90deg, rgba(203,177,102,.10), rgba(203,177,102,.02));
+  border:1px solid var(--brass-dim); border-radius:10px; overflow:hidden;
+}
+.casino-ticker-dot{
+  width:7px; height:7px; border-radius:50%; background:var(--loss); flex-shrink:0;
+  box-shadow:0 0 6px rgba(193,96,74,.7); animation:tickerPulse 1.6s ease-in-out infinite;
+}
+@keyframes tickerPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+.casino-ticker-text{ font-size:12px; color:var(--chalk); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.casino-ticker-text b{ color:var(--brass-light); }
 .casino-panel-h2{ justify-content:center; text-align:center; }
 .xp-log-row{
   display:flex; align-items:baseline; justify-content:space-between; gap:10px;
@@ -1876,6 +1904,13 @@
       <div id="weeklyBonusStatus" class="status-msg error" style="margin-top:6px; text-align:center;"></div>
     </div>
 
+    <!-- Live-feeling activity ticker — polls every ~8s while Casino is open
+         (this app doesn't use Firebase's real-time SDK anywhere, so this
+         is frequent polling that feels live, not literally instant push).
+         Only shows genuinely big moments, not every XP tick, so it stays
+         a "someone's on a run" signal rather than noise. -->
+    <div id="casinoTicker" class="casino-ticker" style="display:none;"></div>
+
     <!-- Landing hub: primary action, right after your XP — not buried under info panels. -->
     <div class="panel" id="casinoHubPanel" style="padding:14px 10px; text-align:center;">
       <div class="casino-hub-row">
@@ -1898,6 +1933,12 @@
           <span class="casino-hub-icon">🏅</span>
           <span class="casino-hub-label">Badges</span>
           <span class="casino-hub-sub">Founding Player &amp; XP milestones</span>
+        </div>
+        <div class="casino-hub-bubble" id="hubChallengesBtn" style="position:relative;">
+          <span class="casino-hub-icon">⚔️</span>
+          <span class="casino-hub-label">Challenges</span>
+          <span class="casino-hub-sub">Head-to-head, your stake</span>
+          <span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span>
         </div>
       </div>
     </div>
@@ -1962,6 +2003,60 @@
         <button type="button" class="pill-btn" id="badgesBackBtn">← Back</button>
       </div>
       <div id="casinoBadgesBody"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- Head-to-head challenges — stake is escrowed the moment a challenge
+         is sent (deducted immediately, not just at resolution), same for
+         the recipient the moment they accept, so neither side can back out
+         after committing. Both players play their own Blackjack hand
+         independently (asynchronous, not a live shared table — this app
+         has no real-time sync layer) and it resolves automatically once
+         both have played. -->
+    <div class="panel casino-view" id="casinoChallengesView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">⚔️ Challenges</h2>
+        <button type="button" class="pill-btn" id="challengesBackBtn">← Back</button>
+      </div>
+      <div class="hint" style="margin-bottom:10px;">Head-to-head Blackjack. Your stake is locked in the moment you send or accept a challenge — both players play their own hand, closest to 21 without busting wins the pot. Unanswered challenges auto-expire after 24h and your stake comes straight back.</div>
+      <button type="button" id="newChallengeBtn" style="width:100%; margin-bottom:12px;">⚔️ New Challenge</button>
+      <div id="newChallengeForm" style="display:none; margin-bottom:12px; padding:12px; background:var(--felt); border:1px solid var(--line); border-radius:10px;">
+        <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Challenge who?</label>
+        <select id="challengeOpponentSelect" style="width:100%; margin-bottom:10px;"></select>
+        <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Stake (XP)</label>
+        <input type="number" id="challengeStakeInput" min="1" step="1" placeholder="e.g. 200" style="width:100%; margin-bottom:10px;">
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="sendChallengeBtn" style="flex:1;">Send Challenge</button>
+          <button type="button" id="cancelNewChallengeBtn" class="btn-secondary" style="flex:1;">Cancel</button>
+        </div>
+        <div class="status-msg" id="newChallengeStatus" style="margin-top:6px;"></div>
+      </div>
+      <div id="challengesListArea"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- Head-to-head hand — standard hit/stand only (no split/double/
+         insurance) deliberately, to keep the very first version of
+         real-stakes player-vs-player play simple and easy to trust. -->
+    <div class="panel casino-view" id="casinoChallengeHandView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">⚔️ Your Hand</h2>
+        <button type="button" class="pill-btn" id="challengeHandBackBtn">← Back</button>
+      </div>
+      <div id="challengeHandStakeInfo" class="hint" style="text-align:center; margin-bottom:10px;"></div>
+      <div class="bj-table">
+        <div class="table-box" data-label="Dealer">
+          <div id="chDealerCards" class="bj-hand-row"></div>
+          <div id="chDealerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
+        </div>
+        <div class="table-box" data-label="You" style="margin-top:22px;">
+          <div id="chPlayerCards" class="bj-hand-row"></div>
+          <div id="chPlayerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
+        </div>
+      </div>
+      <div id="chResultMsg" class="hint" style="text-align:center; margin:10px 0; min-height:16px;"></div>
+      <div style="display:flex; gap:8px;" id="chActionRow">
+        <button type="button" id="chHitBtn" style="flex:1;">Hit</button>
+        <button type="button" id="chStandBtn" style="flex:1;">Stand</button>
+      </div>
     </div>
 
     <!-- Earning XP view -->
@@ -3416,7 +3511,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.18";
+const APP_VERSION = "2026-08-20.20";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3914,6 +4009,440 @@ async function renderCasinoBadgesView(){
     body.innerHTML = '<div class="empty">Could not load badges — try again.</div>';
   }
 }
+
+// =====================================================================
+// HEAD-TO-HEAD CHALLENGES — real XP stakes between two members, no house
+// involved. /challenges/{id}: { fromUid, fromName, toUid, toName, stakeXp,
+// status, createdAt, expiresAt, fromPlayed, fromOutcome, fromTotal,
+// toPlayed, toOutcome, toTotal, winnerUid, resolvedAt, fromClaimed, toClaimed }
+//
+// Critical design constraint: Firebase rules only let a client write to
+// ITS OWN /xp/{uid}/balance (auth.uid === $uid), never someone else's —
+// same as every other XP path in this app, no special-casing added here.
+// That means resolving a challenge can NOT be "the second player to
+// finish pushes XP into the winner's balance" — if the winner is the
+// OTHER player, that write would be rejected outright. Instead:
+//   1. Whoever finishes second computes the outcome and writes a neutral
+//      `status: 'resolved', winnerUid` onto the shared challenge record
+//      (any approved member can write to /challenges — no balance touched).
+//   2. Each player SELF-CREDITS their own result the next time their own
+//      client checks (settleMyChallenges — called on every Challenges
+//      view render, and right after playing a hand). Winner credits
+//      themselves the full pot; a push refunds each their own stake back;
+//      the loser has nothing to claim (their stake was already deducted
+//      at escrow time).
+// Practically: if the winner already finished and is just waiting, their
+// actual credit lands the next time they open Challenges (or next poll),
+// not the literal instant the opponent finishes — consistent with this
+// app having no real-time push layer anywhere else either.
+//
+// Escrow: stake is deducted from a player's OWN balance the moment THEY
+// create or accept — never at resolution time — so nobody can wager XP
+// they don't have, and nobody can back out after committing.
+// =====================================================================
+
+const CHALLENGE_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+async function creditMyChallengeXP(amount, reason){
+  if(!currentUserUid || !amount) return;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/balance.json`);
+    const current = (await res.json()) || 0;
+    const next = current + amount;
+    await authedFetch(`/xp/${currentUserUid}/balance.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+    });
+    await authedFetch(`/xp/${currentUserUid}/log.json`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
+    });
+    if(amount > 0){
+      try{
+        const ltRes = await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`);
+        const ltCurrent = (await ltRes.json()) || 0;
+        await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ltCurrent + amount)
+        });
+      }catch(e){}
+    }
+    // Deliberately NOT routed through trackCasinoPotContribution — a
+    // challenge stake moves between two members, it isn't a loss to the
+    // house, so it shouldn't feed the monthly Casino Pot the way a real
+    // Blackjack/Roulette/etc. loss does.
+    updateXPBalanceDisplay(next);
+  }catch(e){}
+}
+
+async function fetchAllChallenges(){
+  try{
+    const res = await authedFetch('/challenges.json');
+    if(!res.ok) return {};
+    return (await res.json()) || {};
+  }catch(e){ return {}; }
+}
+
+// Lazily expires stale pending challenges — no scheduled function for
+// this, same "checked whenever someone actually looks" pattern already
+// used elsewhere in this app (e.g. the changelog banner, cache versions).
+async function autoExpireStaleChallenges(challenges){
+  const now = Date.now();
+  const writes = [];
+  Object.entries(challenges).forEach(([id, c]) => {
+    if(c && c.status === 'pending' && c.expiresAt && now > c.expiresAt){
+      c.status = 'expired'; // mutate the in-memory copy too, so the same render pass reflects it immediately
+      writes.push(authedFetch(`/challenges/${id}/status.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify('expired')
+      }));
+    }
+  });
+  if(writes.length > 0) await Promise.all(writes).catch(() => {});
+}
+
+// The self-claim step described in the big comment above. Safe to call
+// often and repeatedly — it's a no-op for anything already claimed.
+async function settleMyChallenges(challenges){
+  if(!currentUserUid) return;
+  const entries = Object.entries(challenges).filter(([id, c]) => c && (c.fromUid === currentUserUid || c.toUid === currentUserUid));
+  for(const [id, c] of entries){
+    const isFrom = c.fromUid === currentUserUid;
+    const myClaimedField = isFrom ? 'fromClaimed' : 'toClaimed';
+    if(c[myClaimedField]) continue;
+
+    if(isFrom && (c.status === 'declined' || c.status === 'expired' || c.status === 'cancelled')){
+      await creditMyChallengeXP(c.stakeXp, `Challenge refund vs ${c.toName}`);
+      await authedFetch(`/challenges/${id}/${myClaimedField}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
+      });
+      c[myClaimedField] = true;
+    } else if(c.status === 'resolved'){
+      if(c.winnerUid === currentUserUid){
+        await creditMyChallengeXP(c.stakeXp * 2, `Challenge win vs ${isFrom ? c.toName : c.fromName}`);
+      } else if(c.winnerUid == null){
+        await creditMyChallengeXP(c.stakeXp, `Challenge push vs ${isFrom ? c.toName : c.fromName} — stake returned`);
+      }
+      // Loser: nothing to credit, their stake was already spent at escrow
+      // time — just mark claimed so this stops being re-checked.
+      await authedFetch(`/challenges/${id}/${myClaimedField}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
+      });
+      c[myClaimedField] = true;
+    }
+  }
+}
+
+function challengeOutcomeVsDealer(playerTotal, dealerTotal, playerBusted, dealerBusted){
+  if(playerBusted) return 'lose';
+  if(dealerBusted) return 'win';
+  if(playerTotal > dealerTotal) return 'win';
+  if(playerTotal < dealerTotal) return 'lose';
+  return 'push';
+}
+// Compares both players' independent results against their own dealer
+// hand — closer to 21 without busting wins; if both won or both lost
+// against their own dealer, the higher final total breaks the tie;
+// genuinely equal is a real push (stake back to both).
+function compareChallengeResults(c){
+  const fromBeat = c.fromOutcome === 'win';
+  const toBeat = c.toOutcome === 'win';
+  if(fromBeat && !toBeat) return c.fromUid;
+  if(toBeat && !fromBeat) return c.toUid;
+  if(fromBeat && toBeat){
+    if(c.fromTotal > c.toTotal) return c.fromUid;
+    if(c.toTotal > c.fromTotal) return c.toUid;
+    return null; // push
+  }
+  return null; // both lost to their own dealer — push
+}
+
+async function resolveChallengeIfBothPlayed(id, c){
+  if(c.status !== 'accepted' || !c.fromPlayed || !c.toPlayed) return;
+  const winnerUid = compareChallengeResults(c);
+  await authedFetch(`/challenges/${id}.json`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'resolved', winnerUid, resolvedAt: Date.now() })
+  });
+}
+
+async function renderChallengesList(){
+  const area = document.getElementById('challengesListArea');
+  if(!area || !currentUserUid) return;
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const challenges = await fetchAllChallenges();
+    await autoExpireStaleChallenges(challenges);
+    await settleMyChallenges(challenges);
+    const mine = Object.entries(challenges).filter(([id, c]) => c && (c.fromUid === currentUserUid || c.toUid === currentUserUid));
+
+    const incoming = mine.filter(([id, c]) => c.status === 'pending' && c.toUid === currentUserUid);
+    const outgoing = mine.filter(([id, c]) => c.status === 'pending' && c.fromUid === currentUserUid);
+    const myTurn = mine.filter(([id, c]) => {
+      if(c.status !== 'accepted') return false;
+      const isFrom = c.fromUid === currentUserUid;
+      return isFrom ? !c.fromPlayed : !c.toPlayed;
+    });
+    const waitingOnThem = mine.filter(([id, c]) => {
+      if(c.status !== 'accepted') return false;
+      const isFrom = c.fromUid === currentUserUid;
+      return isFrom ? c.fromPlayed : c.toPlayed;
+    });
+    const recent = mine
+      .filter(([id, c]) => ['resolved', 'declined', 'expired', 'cancelled'].includes(c.status))
+      .sort((a, b) => (b[1].resolvedAt || b[1].createdAt || 0) - (a[1].resolvedAt || a[1].createdAt || 0))
+      .slice(0, 10);
+
+    let html = '';
+    const section = (title, rows) => rows.length > 0 ? `<div class="hint" style="margin:14px 0 6px; text-transform:uppercase; letter-spacing:.5px; font-size:10.5px;">${title}</div>${rows.join('')}` : '';
+
+    html += section('Needs your response', incoming.map(([id, c]) => `
+      <div class="challenge-row">
+        <div class="challenge-row-main"><b>${escapeHtml(c.fromName)}</b> challenged you — ${c.stakeXp.toLocaleString()} XP, Blackjack</div>
+        <div class="challenge-row-actions">
+          <button type="button" class="pill-btn challenge-accept-btn" data-id="${id}">Accept</button>
+          <button type="button" class="pill-btn challenge-decline-btn" data-id="${id}">Decline</button>
+        </div>
+      </div>
+    `));
+
+    html += section('Waiting on them', outgoing.map(([id, c]) => `
+      <div class="challenge-row">
+        <div class="challenge-row-main">You challenged <b>${escapeHtml(c.toName)}</b> — ${c.stakeXp.toLocaleString()} XP, expires ${timeAgo(c.expiresAt).replace('ago', '')}</div>
+        <div class="challenge-row-actions">
+          <button type="button" class="pill-btn challenge-cancel-btn" data-id="${id}">Cancel</button>
+        </div>
+      </div>
+    `));
+
+    html += section('Your move', myTurn.map(([id, c]) => {
+      const opponent = c.fromUid === currentUserUid ? c.toName : c.fromName;
+      return `<div class="challenge-row">
+        <div class="challenge-row-main">vs <b>${escapeHtml(opponent)}</b> — ${c.stakeXp.toLocaleString()} XP</div>
+        <div class="challenge-row-actions">
+          <button type="button" class="pill-btn challenge-play-btn" data-id="${id}">Play your hand</button>
+        </div>
+      </div>`;
+    }));
+
+    html += section('Waiting on opponent', waitingOnThem.map(([id, c]) => {
+      const opponent = c.fromUid === currentUserUid ? c.toName : c.fromName;
+      return `<div class="challenge-row"><div class="challenge-row-main">vs <b>${escapeHtml(opponent)}</b> — ${c.stakeXp.toLocaleString()} XP, you're in, waiting on them</div></div>`;
+    }));
+
+    html += section('Recent', recent.map(([id, c]) => {
+      const isFrom = c.fromUid === currentUserUid;
+      const opponent = isFrom ? c.toName : c.fromName;
+      let resultText;
+      if(c.status === 'resolved'){
+        if(c.winnerUid === currentUserUid) resultText = `<span style="color:var(--win);">Won ${(c.stakeXp * 2).toLocaleString()} XP</span>`;
+        else if(c.winnerUid == null) resultText = `<span style="color:var(--muted);">Push — stake returned</span>`;
+        else resultText = `<span style="color:var(--loss);">Lost ${c.stakeXp.toLocaleString()} XP</span>`;
+      } else if(c.status === 'declined') resultText = isFrom ? 'They declined' : 'You declined';
+      else if(c.status === 'expired') resultText = 'Expired, unanswered';
+      else if(c.status === 'cancelled') resultText = 'Cancelled';
+      return `<div class="challenge-row"><div class="challenge-row-main">vs <b>${escapeHtml(opponent)}</b> — ${resultText}</div></div>`;
+    }));
+
+    area.innerHTML = html || '<div class="empty">No challenges yet — send one from the button above.</div>';
+
+    area.querySelectorAll('.challenge-accept-btn').forEach(btn => btn.addEventListener('click', () => respondToChallenge(btn.dataset.id, true)));
+    area.querySelectorAll('.challenge-decline-btn').forEach(btn => btn.addEventListener('click', () => respondToChallenge(btn.dataset.id, false)));
+    area.querySelectorAll('.challenge-cancel-btn').forEach(btn => btn.addEventListener('click', () => cancelChallenge(btn.dataset.id)));
+    area.querySelectorAll('.challenge-play-btn').forEach(btn => btn.addEventListener('click', () => startChallengeHand(btn.dataset.id)));
+
+    const badge = document.getElementById('challengesHubBadge');
+    if(badge){
+      const needsAttention = incoming.length + myTurn.length;
+      badge.textContent = needsAttention;
+      badge.style.display = needsAttention > 0 ? 'flex' : 'none';
+    }
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load challenges — try again.</div>';
+  }
+}
+
+async function refreshChallengesBadgeOnly(){
+  if(!currentUserUid) return;
+  try{
+    const challenges = await fetchAllChallenges();
+    const mine = Object.entries(challenges).filter(([id, c]) => c && (c.fromUid === currentUserUid || c.toUid === currentUserUid));
+    const incoming = mine.filter(([id, c]) => c.status === 'pending' && c.toUid === currentUserUid).length;
+    const myTurn = mine.filter(([id, c]) => {
+      if(c.status !== 'accepted') return false;
+      const isFrom = c.fromUid === currentUserUid;
+      return isFrom ? !c.fromPlayed : !c.toPlayed;
+    }).length;
+    const badge = document.getElementById('challengesHubBadge');
+    if(badge){
+      const needsAttention = incoming + myTurn;
+      badge.textContent = needsAttention;
+      badge.style.display = needsAttention > 0 ? 'flex' : 'none';
+    }
+  }catch(e){}
+}
+
+document.getElementById('hubChallengesBtn').addEventListener('click', () => {
+  renderChallengesList();
+  showCasinoView('casinoChallengesView');
+});
+document.getElementById('challengesBackBtn').addEventListener('click', () => showCasinoView(null));
+
+document.getElementById('newChallengeBtn').addEventListener('click', () => {
+  const form = document.getElementById('newChallengeForm');
+  const select = document.getElementById('challengeOpponentSelect');
+  const linked = (currentState && currentState.members || []).filter(m => m.linkedUid && m.linkedUid !== currentUserUid);
+  select.innerHTML = linked.map(m => `<option value="${m.linkedUid}" data-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`).join('');
+  document.getElementById('challengeStakeInput').value = '';
+  document.getElementById('newChallengeStatus').textContent = '';
+  form.style.display = linked.length > 0 ? 'block' : 'none';
+  if(linked.length === 0) showToast('No other linked members to challenge yet');
+});
+document.getElementById('cancelNewChallengeBtn').addEventListener('click', () => {
+  document.getElementById('newChallengeForm').style.display = 'none';
+});
+document.getElementById('sendChallengeBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('newChallengeStatus');
+  const select = document.getElementById('challengeOpponentSelect');
+  const stakeInput = document.getElementById('challengeStakeInput');
+  const stake = Math.floor(Number(stakeInput.value));
+  const toUid = select.value;
+  const toName = select.options[select.selectedIndex] ? select.options[select.selectedIndex].dataset.name : '';
+  if(!toUid){ statusEl.textContent = 'Pick someone to challenge.'; return; }
+  if(!(stake > 0)){ statusEl.textContent = 'Enter a stake above 0.'; return; }
+  statusEl.textContent = 'Checking your balance…';
+  const myBal = await getXPBalance();
+  if(myBal == null || myBal < stake){
+    statusEl.textContent = `You only have ${(myBal || 0).toLocaleString()} XP — can't stake ${stake.toLocaleString()}.`;
+    return;
+  }
+  statusEl.textContent = 'Sending…';
+  try{
+    await creditMyChallengeXP(-stake, `Challenge sent to ${toName}`);
+    const now = Date.now();
+    await authedFetch('/challenges.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fromUid: currentUserUid, fromName: currentUserName,
+        toUid, toName,
+        stakeXp: stake,
+        status: 'pending',
+        createdAt: now, expiresAt: now + CHALLENGE_EXPIRY_MS,
+        fromPlayed: false, toPlayed: false,
+        fromClaimed: false, toClaimed: false
+      })
+    });
+    document.getElementById('newChallengeForm').style.display = 'none';
+    showToast(`⚔️ Challenge sent to ${toName}`);
+    renderChallengesList();
+  }catch(e){
+    statusEl.textContent = "Couldn't send — try again.";
+  }
+});
+
+async function respondToChallenge(id, accept){
+  if(!accept){
+    await authedFetch(`/challenges/${id}/status.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify('declined')
+    });
+    showToast('Challenge declined');
+    renderChallengesList();
+    return;
+  }
+  try{
+    const res = await authedFetch(`/challenges/${id}.json`);
+    const c = await res.json();
+    if(!c || c.status !== 'pending') { renderChallengesList(); return; }
+    const myBal = await getXPBalance();
+    if(myBal == null || myBal < c.stakeXp){
+      showToast(`Not enough XP to accept — need ${c.stakeXp.toLocaleString()}`);
+      return;
+    }
+    await creditMyChallengeXP(-c.stakeXp, `Challenge accepted vs ${c.fromName}`);
+    await authedFetch(`/challenges/${id}/status.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify('accepted')
+    });
+    showToast('⚔️ Challenge accepted — play your hand when ready');
+    renderChallengesList();
+  }catch(e){
+    showToast("Couldn't accept — try again");
+  }
+}
+async function cancelChallenge(id){
+  await authedFetch(`/challenges/${id}/status.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify('cancelled')
+  });
+  renderChallengesList();
+}
+
+// ---- Challenge hand — standard hit/stand only, no split/double/insurance ----
+let chChallengeId = null;
+let chIsFrom = null;
+let chDeck = null, chPlayerHand = null, chDealerHand = null, chDone = false;
+
+async function startChallengeHand(id){
+  chChallengeId = id;
+  const res = await authedFetch(`/challenges/${id}.json`);
+  const c = await res.json();
+  if(!c){ showToast('Challenge not found'); return; }
+  chIsFrom = c.fromUid === currentUserUid;
+  document.getElementById('challengeHandStakeInfo').textContent = `${c.stakeXp.toLocaleString()} XP on the line vs ${chIsFrom ? c.toName : c.fromName}`;
+  document.getElementById('chResultMsg').textContent = '';
+  document.getElementById('chActionRow').style.display = 'flex';
+  chDeck = bjFreshDeck();
+  chPlayerHand = [chDeck.pop(), chDeck.pop()];
+  chDealerHand = [chDeck.pop(), chDeck.pop()];
+  chDone = false;
+  chRenderTable();
+  showCasinoView('casinoChallengeHandView');
+}
+function chRenderTable(){
+  document.getElementById('chPlayerCards').innerHTML = bjRenderCards(chPlayerHand, false);
+  document.getElementById('chPlayerTotal').textContent = `Total: ${bjHandTotal(chPlayerHand)}`;
+  document.getElementById('chDealerCards').innerHTML = bjRenderCards(chDone ? chDealerHand : [chDealerHand[0]], false);
+  document.getElementById('chDealerTotal').textContent = chDone ? `Total: ${bjHandTotal(chDealerHand)}` : '';
+}
+document.getElementById('chHitBtn').addEventListener('click', () => {
+  if(chDone) return;
+  chPlayerHand.push(chDeck.pop());
+  const total = bjHandTotal(chPlayerHand);
+  chRenderTable();
+  if(total > 21) chFinishHand();
+});
+document.getElementById('chStandBtn').addEventListener('click', () => {
+  if(chDone) return;
+  chFinishHand();
+});
+async function chFinishHand(){
+  chDone = true;
+  while(bjHandTotal(chDealerHand) < 17){ chDealerHand.push(chDeck.pop()); }
+  chRenderTable();
+  const playerTotal = bjHandTotal(chPlayerHand);
+  const dealerTotal = bjHandTotal(chDealerHand);
+  const playerBusted = playerTotal > 21;
+  const dealerBusted = dealerTotal > 21;
+  const outcome = challengeOutcomeVsDealer(playerTotal, dealerTotal, playerBusted, dealerBusted);
+  const msgEl = document.getElementById('chResultMsg');
+  msgEl.textContent = outcome === 'win' ? '✅ You beat the dealer!' : outcome === 'lose' ? '❌ Dealer got you.' : '➖ Push against the dealer.';
+  document.getElementById('chActionRow').style.display = 'none';
+
+  const field = chIsFrom ? { fromPlayed: true, fromOutcome: outcome, fromTotal: playerBusted ? 0 : playerTotal }
+                          : { toPlayed: true, toOutcome: outcome, toTotal: playerBusted ? 0 : playerTotal };
+  try{
+    await authedFetch(`/challenges/${chChallengeId}.json`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(field)
+    });
+    const res = await authedFetch(`/challenges/${chChallengeId}.json`);
+    const c = await res.json();
+    if(c) await resolveChallengeIfBothPlayed(chChallengeId, c);
+    // Settles immediately if I happen to be the one finishing second (and
+    // won) — if I finished first, my own credit lands next time I open
+    // Challenges, per the design note at the top of this section.
+    const challenges = await fetchAllChallenges();
+    await settleMyChallenges(challenges);
+  }catch(e){}
+}
+document.getElementById('challengeHandBackBtn').addEventListener('click', () => {
+  renderChallengesList();
+  showCasinoView('casinoChallengesView');
+});
 
 async function ensureXPInitialized(){
   if(!currentUserUid) return;
@@ -4644,6 +5173,69 @@ async function renderXPLog(){
 // (delegated on casinoFloorArea, added once below) can look one up by
 // index rather than re-fetching or parsing it back out of the DOM.
 let casinoFloorMergedEntries = [];
+// ---- Casino activity ticker ----
+// Polled every 8s while the Casino tab is showing (startTabScopedPolling,
+// same pattern as everything else that only matters when its tab is
+// visible). Only shows genuinely notable wins (>=300 XP), so it reads as
+// "someone's on a run" rather than a flood of every small XP tick.
+// Fetches just the last few entries per member via the ts index — same
+// bounded-query approach used to fix the Floor feed's full-history
+// problem, never re-downloads full logs.
+const CASINO_TICKER_THRESHOLD_XP = 300;
+let casinoTickerSeenKeys = new Set();
+let casinoTickerSeeded = false; // first poll only seeds "already seen" silently — otherwise every past win in the group would flash by the instant you open Casino, framed as if it just happened
+let casinoTickerQueue = [];
+let casinoTickerShowing = false;
+async function pollCasinoTicker(){
+  refreshChallengesBadgeOnly(); // piggybacks on the same 8s tab-scoped interval — no separate poller needed for this
+  if(!currentState || !Array.isArray(currentState.members)) return;
+  const linked = currentState.members.filter(m => m.linkedUid);
+  if(linked.length === 0) return;
+  try{
+    const orderBy = encodeURIComponent('"ts"');
+    const perMember = await Promise.all(linked.map(async m => {
+      try{
+        const res = await authedFetch(`/xp/${m.linkedUid}/log.json?orderBy=${orderBy}&limitToLast=5`);
+        if(!res.ok) return [];
+        const data = await res.json();
+        if(!data || typeof data !== 'object') return [];
+        return Object.entries(data).map(([key, e]) => ({ key, name: m.name, ...e }));
+      }catch(e){ return []; }
+    }));
+    const flat = perMember.flat().filter(e => e && typeof e.amount === 'number');
+
+    if(!casinoTickerSeeded){
+      flat.forEach(e => casinoTickerSeenKeys.add(e.key));
+      casinoTickerSeeded = true;
+      return; // don't display anything from before the ticker started watching
+    }
+
+    const fresh = flat.filter(e => !casinoTickerSeenKeys.has(e.key) && e.amount >= CASINO_TICKER_THRESHOLD_XP);
+    fresh.forEach(e => casinoTickerSeenKeys.add(e.key));
+    // Newest first, and don't let one poll flood the queue if several
+    // people won big in the same 8-second window.
+    fresh.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    casinoTickerQueue.push(...fresh.slice(0, 5));
+    if(!casinoTickerShowing) advanceCasinoTicker();
+  }catch(e){}
+}
+function advanceCasinoTicker(){
+  const el = document.getElementById('casinoTicker');
+  if(!el) return;
+  const next = casinoTickerQueue.shift();
+  if(!next){
+    casinoTickerShowing = false;
+    el.style.display = 'none';
+    return;
+  }
+  casinoTickerShowing = true;
+  const reason = next.reason || 'Casino';
+  el.innerHTML = `<span class="casino-ticker-dot"></span><span class="casino-ticker-text">🔴 <b>${escapeHtml(next.name)}</b> just won <b>${next.amount.toLocaleString()} XP</b> on ${escapeHtml(reason)}</span>`;
+  el.style.display = 'flex';
+  setTimeout(advanceCasinoTicker, 4200);
+}
+
+
 async function renderCasinoFloorFeed(){
   const area = document.getElementById('casinoFloorArea');
   const spotlightEl = document.getElementById('casinoFloorSpotlight');
@@ -5467,6 +6059,7 @@ document.querySelector('[data-tab="casino"]').addEventListener('click', async ()
   updateXPBalanceDisplay(await balPromise);
   await hubPromise;
   refreshCasinoHeroExtras();
+  refreshChallengesBadgeOnly();
 });
 // Rank + next-milestone progress on the hero card — the whole point is
 // giving someone a reason to glance at Casino without having to tap into
@@ -10977,6 +11570,7 @@ function startApp(){
   startTabScopedPolling(refreshNews, 300000, ['sport']); // headlines don't need to be checked often — every 5 min, only while Sport is showing
   refreshBoardJokerData();
   startTabScopedPolling(refreshBoardJokerData, 240000, ['board', 'tipping']); // Joker icons render on BOTH the Board leaderboard and Tipping's own Ladder sub-view — every 4 min, only while one of those is showing
+  startTabScopedPolling(pollCasinoTicker, 8000, ['casino']); // "live room" ticker — frequent polling that feels live (this app doesn't use Firebase's real-time SDK), only while Casino is actually open
   ensureXPInitialized().then(() => checkAndAwardTippingXP());
   startSmartPolling(checkAndAwardTippingXP, 300000); // catches newly-finished rounds without needing the Casino tab opened — deliberately NOT tab-scoped, this has to keep running in the background
 }
