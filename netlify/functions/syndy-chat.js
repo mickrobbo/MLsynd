@@ -286,6 +286,19 @@ export default async (req) => {
     return new Response('Missing idToken or messages', { status: 400 });
   }
 
+  // Kicked off immediately, in parallel with the whole auth chain below —
+  // this fetch doesn't depend on anything the auth chain produces, so
+  // there's no reason to make the user wait for it sequentially after.
+  // Every "multi" message was hitting this (it's one of the odds-intent
+  // keywords), so this alone was adding a full extra network round-trip
+  // to every multi request before Groq was even called.
+  const trimmedHistoryForIntent = messages
+    .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+    .slice(-MAX_HISTORY_MESSAGES);
+  const latestUserTextForIntent = [...trimmedHistoryForIntent].reverse().find(m => m.role === 'user');
+  const oddsSport = latestUserTextForIntent ? detectOddsSport(latestUserTextForIntent.content) : null;
+  const oddsPromise = oddsSport ? fetchPuntersEdgeOdds(oddsSport, new URL(req.url).origin) : Promise.resolve(null);
+
   let auth;
   try{
     auth = await verifyFirebaseIdToken(idToken);
@@ -330,14 +343,12 @@ export default async (req) => {
     ...trimmedHistory
   ];
 
-  const latestUserText = [...trimmedHistory].reverse().find(m => m.role === 'user');
-  const oddsSport = latestUserText ? detectOddsSport(latestUserText.content) : null;
-  if(oddsSport){
-    const origin = new URL(req.url).origin;
-    const oddsData = await fetchPuntersEdgeOdds(oddsSport, origin);
-    if(oddsData){
-      groqMessages.push({ role: 'system', content: formatOddsForPrompt(oddsSport, oddsData) });
-    }
+  // By now the auth chain above has taken long enough that this has
+  // usually already resolved — awaiting it here is normally near-instant
+  // rather than a fresh wait.
+  const oddsData = await oddsPromise;
+  if(oddsData){
+    groqMessages.push({ role: 'system', content: formatOddsForPrompt(oddsSport, oddsData) });
   }
 
   // A one-off instruction for this reply only — not baked into the system
@@ -358,7 +369,7 @@ export default async (req) => {
         model: GROQ_MODEL,
         messages: groqMessages,
         temperature: 0.8,
-        max_tokens: 400
+        max_tokens: 700 // 400 was cutting off multi-leg replies mid-list — Syndy's own prompt already keeps most answers short, this just gives room when a multi breakdown genuinely needs it
       })
     });
     if(!groqRes.ok){
