@@ -415,14 +415,48 @@
 
   /* ---- Head-to-head challenges ---- */
   .challenge-row{
-    display:flex; flex-direction:column; gap:8px; padding:10px 4px;
+    display:flex; flex-direction:column; gap:8px; padding:12px 4px;
     border-bottom:1px solid var(--line);
   }
   .challenge-row:last-child{ border-bottom:none; }
-  .challenge-row-main{ font-size:12.5px; color:var(--chalk); }
+  .challenge-row-main{ font-size:12.5px; color:var(--chalk); display:flex; align-items:center; gap:8px; }
   .challenge-row-main b{ color:var(--brass-light); }
+  .challenge-stake-chip{
+    display:inline-flex; align-items:center; gap:3px; padding:2px 9px; border-radius:999px;
+    background:rgba(203,177,102,.14); border:1px solid var(--brass-dim); color:var(--brass-light);
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; font-weight:700; white-space:nowrap; margin-left:auto;
+  }
   .challenge-row-actions{ display:flex; gap:8px; }
-  .challenge-row-actions .pill-btn{ flex:1; text-align:center; }
+  .challenge-row-actions .pill-btn{ flex:1; text-align:center; justify-content:center; }
+  .challenge-result-chip{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:12px; }
+
+  /* New Challenge form — a proper premium card, not a plain grey box, with
+     custom-styled select/input/buttons matching the rest of the app
+     instead of falling back to raw browser form-control chrome. */
+  #newChallengeForm{
+    background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--brass-dim);
+    border-radius:14px; padding:16px 14px; box-shadow:inset 0 0 20px rgba(0,0,0,.3), 0 8px 18px rgba(0,0,0,.3);
+    position:relative; overflow:hidden;
+  }
+  #newChallengeForm::before{
+    content:''; position:absolute; top:0; left:14px; right:14px; height:2px; border-radius:2px;
+    background: linear-gradient(90deg, transparent, var(--brass) 50%, transparent); opacity:.7;
+  }
+  .form-field-label{
+    font-family:'Barlow Condensed', sans-serif; font-size:11px; font-weight:700; letter-spacing:1px;
+    text-transform:uppercase; color:var(--brass); display:block; margin-bottom:6px;
+  }
+  .form-select, .form-input{
+    width:100%; background:var(--ink); color:var(--chalk); border:1px solid var(--line);
+    border-radius:9px; padding:11px 12px; font-family:'IBM Plex Sans', sans-serif; font-size:13.5px;
+    margin-bottom:14px; appearance:none; -webkit-appearance:none;
+  }
+  .form-select{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23CBB166'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 14px center; padding-right:32px;
+  }
+  .form-select:focus, .form-input:focus{ outline:none; border-color:var(--brass); box-shadow:0 0 0 2px rgba(203,177,102,.2); }
+  .form-input::placeholder{ color:var(--muted); }
 
   /* ---- Casino badges ---- */
   .casino-badge-row{
@@ -2018,17 +2052,17 @@
         <button type="button" class="pill-btn" id="challengesBackBtn">← Back</button>
       </div>
       <div class="hint" style="margin-bottom:10px;">Head-to-head Blackjack. Your stake is locked in the moment you send or accept a challenge — both players play their own hand, closest to 21 without busting wins the pot. Unanswered challenges auto-expire after 24h and your stake comes straight back.</div>
-      <button type="button" id="newChallengeBtn" style="width:100%; margin-bottom:12px;">⚔️ New Challenge</button>
-      <div id="newChallengeForm" style="display:none; margin-bottom:12px; padding:12px; background:var(--felt); border:1px solid var(--line); border-radius:10px;">
-        <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Challenge who?</label>
-        <select id="challengeOpponentSelect" style="width:100%; margin-bottom:10px;"></select>
-        <label style="font-size:11px; color:var(--muted); display:block; margin-bottom:4px;">Stake (XP)</label>
-        <input type="number" id="challengeStakeInput" min="1" step="1" placeholder="e.g. 200" style="width:100%; margin-bottom:10px;">
+      <button type="button" class="pill-btn pill-btn-primary" id="newChallengeBtn" style="width:100%; margin-bottom:12px;">⚔️ New Challenge</button>
+      <div id="newChallengeForm" style="display:none; margin-bottom:12px;">
+        <label class="form-field-label">Challenge who?</label>
+        <select id="challengeOpponentSelect" class="form-select"></select>
+        <label class="form-field-label">Stake (XP)</label>
+        <input type="number" id="challengeStakeInput" class="form-input" min="1" step="1" placeholder="e.g. 200">
         <div style="display:flex; gap:8px;">
-          <button type="button" id="sendChallengeBtn" style="flex:1;">Send Challenge</button>
-          <button type="button" id="cancelNewChallengeBtn" class="btn-secondary" style="flex:1;">Cancel</button>
+          <button type="button" class="pill-btn pill-btn-primary" id="sendChallengeBtn" style="flex:1;">Send Challenge</button>
+          <button type="button" class="pill-btn" id="cancelNewChallengeBtn" style="flex:1;">Cancel</button>
         </div>
-        <div class="status-msg" id="newChallengeStatus" style="margin-top:6px;"></div>
+        <div class="status-msg" id="newChallengeStatus" style="margin-top:8px;"></div>
       </div>
       <div id="challengesListArea"><div class="empty">Loading…</div></div>
     </div>
@@ -3511,7 +3545,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.20";
+const APP_VERSION = "2026-08-20.21";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4191,13 +4225,13 @@ async function renderChallengesList(){
       .slice(0, 10);
 
     let html = '';
-    const section = (title, rows) => rows.length > 0 ? `<div class="hint" style="margin:14px 0 6px; text-transform:uppercase; letter-spacing:.5px; font-size:10.5px;">${title}</div>${rows.join('')}` : '';
+    const section = (title, rows) => rows.length > 0 ? `<div class="hint" style="margin:14px 0 6px; text-transform:uppercase; letter-spacing:.5px; font-size:10.5px; text-align:left;">${title}</div>${rows.join('')}` : '';
 
     html += section('Needs your response', incoming.map(([id, c]) => `
       <div class="challenge-row">
-        <div class="challenge-row-main"><b>${escapeHtml(c.fromName)}</b> challenged you — ${c.stakeXp.toLocaleString()} XP, Blackjack</div>
+        <div class="challenge-row-main"><span>⚔️ <b>${escapeHtml(c.fromName)}</b> challenged you</span><span class="challenge-stake-chip">${c.stakeXp.toLocaleString()} XP</span></div>
         <div class="challenge-row-actions">
-          <button type="button" class="pill-btn challenge-accept-btn" data-id="${id}">Accept</button>
+          <button type="button" class="pill-btn pill-btn-primary challenge-accept-btn" data-id="${id}">Accept</button>
           <button type="button" class="pill-btn challenge-decline-btn" data-id="${id}">Decline</button>
         </div>
       </div>
@@ -4205,7 +4239,7 @@ async function renderChallengesList(){
 
     html += section('Waiting on them', outgoing.map(([id, c]) => `
       <div class="challenge-row">
-        <div class="challenge-row-main">You challenged <b>${escapeHtml(c.toName)}</b> — ${c.stakeXp.toLocaleString()} XP, expires ${timeAgo(c.expiresAt).replace('ago', '')}</div>
+        <div class="challenge-row-main"><span>You challenged <b>${escapeHtml(c.toName)}</b> — expires ${timeAgo(c.expiresAt).replace('ago', '')}</span><span class="challenge-stake-chip">${c.stakeXp.toLocaleString()} XP</span></div>
         <div class="challenge-row-actions">
           <button type="button" class="pill-btn challenge-cancel-btn" data-id="${id}">Cancel</button>
         </div>
@@ -4215,16 +4249,16 @@ async function renderChallengesList(){
     html += section('Your move', myTurn.map(([id, c]) => {
       const opponent = c.fromUid === currentUserUid ? c.toName : c.fromName;
       return `<div class="challenge-row">
-        <div class="challenge-row-main">vs <b>${escapeHtml(opponent)}</b> — ${c.stakeXp.toLocaleString()} XP</div>
+        <div class="challenge-row-main"><span>vs <b>${escapeHtml(opponent)}</b></span><span class="challenge-stake-chip">${c.stakeXp.toLocaleString()} XP</span></div>
         <div class="challenge-row-actions">
-          <button type="button" class="pill-btn challenge-play-btn" data-id="${id}">Play your hand</button>
+          <button type="button" class="pill-btn pill-btn-primary challenge-play-btn" data-id="${id}">🃏 Play your hand</button>
         </div>
       </div>`;
     }));
 
     html += section('Waiting on opponent', waitingOnThem.map(([id, c]) => {
       const opponent = c.fromUid === currentUserUid ? c.toName : c.fromName;
-      return `<div class="challenge-row"><div class="challenge-row-main">vs <b>${escapeHtml(opponent)}</b> — ${c.stakeXp.toLocaleString()} XP, you're in, waiting on them</div></div>`;
+      return `<div class="challenge-row"><div class="challenge-row-main"><span>vs <b>${escapeHtml(opponent)}</b> — you're in, waiting on them</span><span class="challenge-stake-chip">${c.stakeXp.toLocaleString()} XP</span></div></div>`;
     }));
 
     html += section('Recent', recent.map(([id, c]) => {
@@ -4232,9 +4266,9 @@ async function renderChallengesList(){
       const opponent = isFrom ? c.toName : c.fromName;
       let resultText;
       if(c.status === 'resolved'){
-        if(c.winnerUid === currentUserUid) resultText = `<span style="color:var(--win);">Won ${(c.stakeXp * 2).toLocaleString()} XP</span>`;
-        else if(c.winnerUid == null) resultText = `<span style="color:var(--muted);">Push — stake returned</span>`;
-        else resultText = `<span style="color:var(--loss);">Lost ${c.stakeXp.toLocaleString()} XP</span>`;
+        if(c.winnerUid === currentUserUid) resultText = `<span class="challenge-result-chip" style="color:var(--win);">+${(c.stakeXp * 2).toLocaleString()} XP</span>`;
+        else if(c.winnerUid == null) resultText = `<span class="challenge-result-chip" style="color:var(--muted);">Push</span>`;
+        else resultText = `<span class="challenge-result-chip" style="color:var(--loss);">-${c.stakeXp.toLocaleString()} XP</span>`;
       } else if(c.status === 'declined') resultText = isFrom ? 'They declined' : 'You declined';
       else if(c.status === 'expired') resultText = 'Expired, unanswered';
       else if(c.status === 'cancelled') resultText = 'Cancelled';

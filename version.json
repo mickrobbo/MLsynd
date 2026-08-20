@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-20.20",
+  "version": "2026-08-20.21",
   "date": "2026-08-20",
   "changes": [
-    "New: Head-to-head Blackjack challenges — challenge anyone for any stake, both play independently, closest to 21 without busting wins the pot. Stake locks in the moment you send or accept it, unanswered challenges auto-expire in 24h with your stake back"
+    "Fixed: Challenges panel was using unstyled default browser form controls — now matches the rest of the app's premium dark/brass styling"
   ]
 }
