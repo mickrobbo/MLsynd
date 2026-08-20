@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-20.15",
+  "version": "2026-08-20.16",
   "date": "2026-08-20",
   "changes": [
-    "Changed: \"Save all picks\" moved to the bottom of the Tipping games list, so you don't have to scroll back to the top once you've picked every game"
+    "Fixed: repeated \"Guest view — read-only\" bubbles stacking up and visibly darkening the screen — now shows once and refreshes instead of piling up",
+    "Fixed: On This Day showing stale \"nothing found\" on some devices — cached results from before the rebuild are now discarded"
   ]
 }

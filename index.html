@@ -3416,7 +3416,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.15";
+const APP_VERSION = "2026-08-20.16";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7035,11 +7035,27 @@ function showToast(msg){
     host.id = 'toastHost';
     document.body.appendChild(host);
   }
+  // De-duped by message text — a guest session can trigger the same
+  // blocked-write toast several times in quick succession from background
+  // polling, and each one has its own dark drop-shadow; stacking a dozen
+  // of them didn't just look like repeated bubbles, it visibly darkened
+  // the whole screen underneath. One visible toast per distinct message,
+  // with its timer restarted, is the fix — not just cosmetic.
+  const existing = [...host.children].find(el => el.dataset.msg === msg);
+  if(existing){
+    clearTimeout(existing._removeTimer);
+    existing._removeTimer = setTimeout(() => existing.remove(), 2600);
+    existing.style.animation = 'none';
+    void existing.offsetWidth; // restart the CSS animation
+    existing.style.animation = '';
+    return;
+  }
   const t = document.createElement('div');
   t.className = 'toast';
   t.textContent = msg;
+  t.dataset.msg = msg;
   host.appendChild(t);
-  setTimeout(() => t.remove(), 2600);
+  t._removeTimer = setTimeout(() => t.remove(), 2600);
 }
 function computeDerived(m){
   const winPct = (m.wins + m.losses) > 0 ? m.wins / (m.wins + m.losses) : 0;
@@ -8258,7 +8274,7 @@ function renderOnThisDay(data){
   }
   area.innerHTML = `<div class="otd-year">${escapeHtml(String(data.year))}</div><div class="otd-text">${escapeHtml(data.text)}</div>`;
 }
-const OTD_CACHE_VERSION = 'v2'; // bump this whenever on-this-day logic changes, so old cached facts (from before the fix) don't linger until midnight
+const OTD_CACHE_VERSION = 'v3'; // bumped when on-this-day.js was rebuilt on a new data source — old v2 cached "nothing found" results were stale and needed discarding, not left to linger until midnight
 async function refreshOnThisDayIfNeeded(){
   const todayKey = new Date().toDateString() + '|' + OTD_CACHE_VERSION;
   let cached = null;
