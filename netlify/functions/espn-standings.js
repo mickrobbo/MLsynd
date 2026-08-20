@@ -13,26 +13,25 @@ const LEAGUE_PATHS = {
   efl: "soccer/eng.2",
 };
 
-exports.handler = async function (event) {
-  const sport = ((event.queryStringParameters || {}).sport || "").toLowerCase();
+export default async function (request) {
+  const url = new URL(request.url);
+  const sport = (url.searchParams.get("sport") || "").toLowerCase();
   const path = LEAGUE_PATHS[sport];
 
   if (!path) {
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ ladder: [] }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ladder: [] }),
-    };
+    });
   }
 
   try {
     const resp = await fetch(`https://site.api.espn.com/apis/v2/sports/${path}/standings`);
 
     if (!resp.ok) {
-      return {
-        statusCode: resp.status,
-        body: JSON.stringify({ error: `ESPN returned ${resp.status}` }),
-      };
+      return new Response(JSON.stringify({ error: `ESPN returned ${resp.status}` }), {
+        status: resp.status,
+      });
     }
 
     const data = await resp.json();
@@ -62,15 +61,13 @@ exports.handler = async function (event) {
       });
     });
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ ladder }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ladder }),
-    };
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+}
