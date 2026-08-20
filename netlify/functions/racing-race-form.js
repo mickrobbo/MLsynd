@@ -1,13 +1,13 @@
 // Fetches runner-level form data for one specific race, called on demand when the
 // user taps into a race (not auto-fetched for every race, to conserve the free quota).
 
-function escapeHtmlLite(str){
+function escapeHtmlLite(str) {
   return String(str == null ? '' : str);
 }
 
 // Matches today's race condition text (e.g. "Good 4", "Heavy 10") to one of
 // FormFav's condition buckets (good/soft/heavy/firm/synthetic).
-function matchConditionStats(conditions, conditionLabel){
+function matchConditionStats(conditions, conditionLabel) {
   if (!conditions || !conditionLabel) return null;
   const label = conditionLabel.toLowerCase();
   const key = ['good', 'soft', 'heavy', 'firm', 'synthetic'].find(k => label.includes(k));
@@ -16,11 +16,11 @@ function matchConditionStats(conditions, conditionLabel){
 
 // Builds a short, factual sentence from real career stats — no predictions or tips,
 // just a plain-English summary of numbers FormFav already gave us.
-function buildWriteup({ form, overall, track, distance, conditionStats, conditionLabel }){
+function buildWriteup({ form, overall, track, distance, conditionStats, conditionLabel }) {
   const parts = [];
 
   if (overall && overall.starts) {
-    parts.push(`${overall.wins || 0} win${overall.wins === 1 ? '' : 's'} from ${overall.starts} start${overall.starts === 1 ? '' : 's'}` +
+    parts.push(`\( {overall.wins || 0} win \){overall.wins === 1 ? '' : 's'} from \( {overall.starts} start \){overall.starts === 1 ? '' : 's'}` +
       (overall.winPercent != null ? ` (${Math.round(overall.winPercent * 100)}% win rate)` : ''));
   }
 
@@ -47,22 +47,30 @@ function buildWriteup({ form, overall, track, distance, conditionStats, conditio
   return joined.charAt(0).toUpperCase() + joined.slice(1) + '.';
 }
 
-exports.handler = async (event) => {
+export default async function (request) {
   const apiKey = process.env.FORMFAV_API_KEY;
   if (!apiKey) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'FORMFAV_API_KEY not configured.' }) };
+    return new Response(JSON.stringify({ error: 'FORMFAV_API_KEY not configured.' }), {
+      status: 500,
+    });
   }
 
-  const { track, race, date } = event.queryStringParameters || {};
+  const url = new URL(request.url);
+  const track = url.searchParams.get("track");
+  const race = url.searchParams.get("race");
+  const date = url.searchParams.get("date");
+
   if (!track || !race) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'track and race query params are required.' }) };
+    return new Response(JSON.stringify({ error: 'track and race query params are required.' }), {
+      status: 400,
+    });
   }
   const raceDate = date || new Date().toISOString().slice(0, 10);
 
-  const url = `https://api.formfav.com/v1/form?track=${encodeURIComponent(track)}&race=${encodeURIComponent(race)}&date=${raceDate}`;
+  const apiUrl = `https://api.formfav.com/v1/form?track=\( {encodeURIComponent(track)}&race= \){encodeURIComponent(race)}&date=${raceDate}`;
 
   try {
-    const res = await fetch(url, { headers: { 'X-API-Key': apiKey } });
+    const res = await fetch(apiUrl, { headers: { 'X-API-Key': apiKey } });
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`FormFav responded ${res.status}: ${text}`);
@@ -72,7 +80,7 @@ exports.handler = async (event) => {
     const runners = (data.runners || []).map(r => {
       const stats = r.stats || {};
       const overall = stats.overall || {};
-      const track = stats.track || {};
+      const trackStats = stats.track || {};
       const distance = stats.distance || {};
       const conditionStats = matchConditionStats(stats.conditions, data.condition);
 
@@ -92,7 +100,7 @@ exports.handler = async (event) => {
         places: overall.places,
         winPercent: overall.winPercent,
         placePercent: overall.placePercent,
-        writeup: buildWriteup({ name: r.name, form: r.form, overall, track, distance, conditionStats, conditionLabel: data.condition })
+        writeup: buildWriteup({ form: r.form, overall, track: trackStats, distance, conditionStats, conditionLabel: data.condition })
       };
     });
 
@@ -104,22 +112,23 @@ exports.handler = async (event) => {
       ? eligible.reduce((best, r) => (r.winPercent > (best.winPercent || 0) ? r : best), eligible[0])
       : null;
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({
+      track: data.track,
+      raceNumber: data.raceNumber,
+      raceName: data.raceName,
+      raceClass: data.raceClass,
+      distance: data.distance,
+      condition: data.condition,
+      startTime: data.startTime,
+      runners,
+      bestWinRateRunner: bestWinRate ? bestWinRate.name : null
+    }), {
+      status: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        track: data.track,
-        raceNumber: data.raceNumber,
-        raceName: data.raceName,
-        raceClass: data.raceClass,
-        distance: data.distance,
-        condition: data.condition,
-        startTime: data.startTime,
-        runners,
-        bestWinRateRunner: bestWinRate ? bestWinRate.name : null
-      })
-    };
+    });
   } catch (err) {
-    return { statusCode: 502, body: JSON.stringify({ error: err.message }) };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 502,
+    });
   }
-};
+} 
