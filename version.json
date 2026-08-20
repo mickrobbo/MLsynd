@@ -1,15 +1,9 @@
 {
-  "version": "2026-08-20.8",
+  "version": "2026-08-20.9",
   "date": "2026-08-20",
   "changes": [
-    "Changed: \"Last saved by\" and the system health indicator moved into a quiet footer at the bottom of Home",
-    "New: casino wins of 1000+ XP are clickable on the Casino Floor feed, opening a premium snapshot modal",
-    "New: a weekly \"outstanding items\" reminder on Home — missing tips, individual bets, and an unstarted group multi — with a Thursday 8am AEST push notification",
-    "New: Syndy AI assistant — floating gold-coin button, chat panel with branded background, badge lights up when there's something outstanding",
-    "New: a one-off 500 XP bonus for trying Syndy the first time, and Syndy now pulls real live AFL/NRL odds from PuntersEdge when relevant",
-    "Changed: Syndy is Full/Dashboard members only",
-    "New: API Call Tracker in Diag, showing usage of every external API the app calls",
-    "Changed: individual bet \"placed\" checkbox moved to the Ledger — real shared data instead of a per-device guess",
-    "Fixed: Firebase admin access migrated to your service account credentials, and several deploy/build issues along the way"
+    "Fixed: Syndy's replies now render properly (bold, numbered lists) instead of showing raw markdown asterisks",
+    "Fixed: multi replies were getting cut off mid-list — reply length limit raised",
+    "Changed: PuntersEdge odds now fetch in parallel with sign-in checks instead of after them, cutting response time for multi requests"
   ]
 }

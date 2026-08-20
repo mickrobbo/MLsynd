@@ -1436,7 +1436,12 @@
 }
 .syndy-chat-body > *{ position:relative; z-index:1; }
 .syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; }
-.syndy-msg.syndy{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; }
+.syndy-msg.syndy{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; white-space:normal; }
+.syndy-msg.syndy div{ margin-bottom:6px; }
+.syndy-msg.syndy div:last-child{ margin-bottom:0; }
+.syndy-msg.syndy b{ color:var(--brass-light); }
+.syndy-msg-list{ margin:2px 0 8px; padding-left:20px; }
+.syndy-msg-list li{ margin-bottom:3px; }
 .syndy-msg.user{ align-self:flex-end; background:linear-gradient(165deg, var(--brass-light), var(--brass)); color:#0E1A16; font-weight:600; border-bottom-right-radius:4px; }
 .syndy-msg.error{ align-self:center; color:var(--loss); font-size:11.5px; background:none; border:none; }
 .syndy-msg.typing{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; color:var(--muted); font-style:italic; }
@@ -3277,7 +3282,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.8";
+const APP_VERSION = "2026-08-20.9";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7760,11 +7765,49 @@ function updateSyndyBadge(show){
   if(badge) badge.style.display = show ? 'block' : 'none';
 }
 
+// A minimal, deliberately narrow markdown renderer — just **bold**,
+// numbered/bulleted lists, and line breaks, which is all Syndy's replies
+// actually use. Escapes everything first (never trusts model output as
+// raw HTML), then only re-introduces tags for the specific patterns
+// matched below — full markdown libraries are overkill for this and add
+// a dependency for four formatting rules.
+function renderSyndyMarkdown(text){
+  const escaped = escapeHtml(text);
+  const lines = escaped.split('\n');
+  let html = '';
+  let inList = false;
+  let listTag = 'ul';
+  for(const rawLine of lines){
+    const line = rawLine.trim();
+    const numbered = line.match(/^(\d+)\.\s+(.*)/);
+    const bulleted = line.match(/^[-*]\s+(.*)/);
+    if(numbered || bulleted){
+      const tag = numbered ? 'ol' : 'ul';
+      if(!inList || listTag !== tag){
+        if(inList) html += `</${listTag}>`;
+        html += `<${tag} class="syndy-msg-list">`;
+        inList = true;
+        listTag = tag;
+      }
+      html += `<li>${(numbered ? numbered[2] : bulleted[1])}</li>`;
+    } else {
+      if(inList){ html += `</${listTag}>`; inList = false; }
+      if(line) html += `<div>${line}</div>`;
+    }
+  }
+  if(inList) html += `</${listTag}>`;
+  // Bold after list/line structure is built, so ** inside a list item still works
+  return html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+}
 function syndyAppendMessage(role, text){
   const body = document.getElementById('syndyChatBody');
   const el = document.createElement('div');
   el.className = `syndy-msg ${role}`;
-  el.textContent = text;
+  if(role === 'syndy'){
+    el.innerHTML = renderSyndyMarkdown(text);
+  } else {
+    el.textContent = text; // your own message and error messages never contain markdown to render
+  }
   body.appendChild(el);
   body.scrollTop = body.scrollHeight;
   return el;
