@@ -1,11 +1,8 @@
 {
-  "version": "2026-08-20.11",
+  "version": "2026-08-20.12",
   "date": "2026-08-20",
   "changes": [
-    "Fixed: Syndy was inventing specific AFL ladder positions, records, and player details — she now pulls the real live ladder data and is told never to invent specifics she doesn't actually have",
-    "Fixed: a rare Syndy reply-generation glitch that produced endless repeated characters — detected and cut off automatically if it happens, plus a setting change to make it less likely",
-    "New: Syndy gives real in-depth analysis when asked about past/historical events, instead of her usual short replies",
-    "Fixed: the Syndy chat box no longer needs horizontal scrolling",
-    "Fixed: rebuilt On This Day using a different, verified data source — the previous one was returning empty results"
+    "Fixed: Syndy's \"no tables\" rule now applies to every reply, not just multi-leg bets — was leaking through on member/ladder comparisons",
+    "New: the chat now actually renders real tables properly if one ever slips through, instead of showing broken raw text"
   ]
 }

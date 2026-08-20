@@ -1443,6 +1443,10 @@
 .syndy-msg.syndy b{ color:var(--brass-light); }
 .syndy-msg-list{ margin:2px 0 8px; padding-left:20px; }
 .syndy-msg-list li{ margin-bottom:3px; }
+.syndy-msg-table-wrap{ overflow-x:auto; margin:4px 0 8px; max-width:100%; }
+.syndy-msg-table{ border-collapse:collapse; font-size:11.5px; white-space:nowrap; }
+.syndy-msg-table th, .syndy-msg-table td{ padding:5px 8px; border-bottom:1px solid var(--line); text-align:left; }
+.syndy-msg-table th{ color:var(--brass-light); font-weight:700; border-bottom:1px solid var(--brass-dim); }
 .syndy-msg.user{ align-self:flex-end; background:linear-gradient(165deg, var(--brass-light), var(--brass)); color:#0E1A16; font-weight:600; border-bottom-right-radius:4px; }
 .syndy-msg.error{ align-self:center; color:var(--loss); font-size:11.5px; background:none; border:none; }
 .syndy-msg.typing{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; color:var(--muted); font-style:italic; }
@@ -3283,7 +3287,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.11";
+const APP_VERSION = "2026-08-20.12";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7778,26 +7782,60 @@ function renderSyndyMarkdown(text){
   let html = '';
   let inList = false;
   let listTag = 'ul';
-  for(const rawLine of lines){
-    const line = rawLine.trim();
+  const closeList = () => { if(inList){ html += `</${listTag}>`; inList = false; } };
+  const isTableRow = (l) => /^\|.*\|$/.test(l.trim());
+  const isTableSeparator = (l) => /^\|[\s:|-]+\|$/.test(l.trim());
+  const splitRow = (l) => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+
+  let i = 0;
+  while(i < lines.length){
+    const raw = lines[i];
+    const line = raw.trim();
+
+    // Real table support as a safety net — Syndy is told never to use
+    // tables, but LLM instruction-following isn't 100% reliable, so if one
+    // slips through it renders as an actual table instead of broken raw
+    // pipe/dash text. Standard markdown shape only: header row, then a
+    // ---|---|--- separator row, then body rows.
+    if(isTableRow(line) && i + 1 < lines.length && isTableSeparator(lines[i + 1])){
+      closeList();
+      const header = splitRow(line);
+      html += '<div class="syndy-msg-table-wrap"><table class="syndy-msg-table"><thead><tr>' +
+        header.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+      i += 2; // skip header + separator
+      while(i < lines.length && isTableRow(lines[i].trim())){
+        const row = splitRow(lines[i].trim());
+        html += '<tr>' + row.map(c => `<td>${c}</td>`).join('') + '</tr>';
+        i++;
+      }
+      html += '</tbody></table></div>';
+      continue;
+    }
+
+    // Skip stray code-fence markers (```), if the model wraps content in
+    // one for no good reason — render what's inside normally rather than
+    // showing literal backticks.
+    if(/^```/.test(line)){ i++; continue; }
+
     const numbered = line.match(/^(\d+)\.\s+(.*)/);
     const bulleted = line.match(/^[-*]\s+(.*)/);
     if(numbered || bulleted){
       const tag = numbered ? 'ol' : 'ul';
       if(!inList || listTag !== tag){
-        if(inList) html += `</${listTag}>`;
+        closeList();
         html += `<${tag} class="syndy-msg-list">`;
         inList = true;
         listTag = tag;
       }
       html += `<li>${(numbered ? numbered[2] : bulleted[1])}</li>`;
     } else {
-      if(inList){ html += `</${listTag}>`; inList = false; }
+      closeList();
       if(line) html += `<div>${line}</div>`;
     }
+    i++;
   }
-  if(inList) html += `</${listTag}>`;
-  // Bold after list/line structure is built, so ** inside a list item still works
+  closeList();
+  // Bold after list/line/table structure is built, so ** inside any of them still works
   return html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 }
 function syndyAppendMessage(role, text){
