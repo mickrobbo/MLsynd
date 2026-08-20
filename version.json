@@ -1,8 +1,7 @@
 {
-  "version": "2026-08-20.12",
+  "version": "2026-08-20.13",
   "date": "2026-08-20",
   "changes": [
-    "Fixed: Syndy's \"no tables\" rule now applies to every reply, not just multi-leg bets — was leaking through on member/ladder comparisons",
-    "New: the chat now actually renders real tables properly if one ever slips through, instead of showing broken raw text"
+    "New: Syndy usage panel in Diag — real total Perplexity calls across all members (all-time, this month, last call), not just this device"
   ]
 }
