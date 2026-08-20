@@ -1384,6 +1384,19 @@
 .weekly-reminder-icon{ font-size:17px; flex-shrink:0; line-height:1.3; }
 .weekly-reminder-text{ flex:1; font-size:12.5px; line-height:1.4; }
 .weekly-reminder-text b{ color:var(--brass-light); }
+.weekly-reminder-check-row{
+  display:flex; align-items:center; gap:7px; padding:5px 0 5px 22px; font-size:12px; cursor:pointer;
+}
+.weekly-reminder-check-row input{ accent-color:var(--brass); width:14px; height:14px; flex-shrink:0; }
+.weekly-reminder-check-row.acked{ color:var(--muted); text-decoration:line-through; }
+.api-tracker-row{
+  display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  padding:7px 0; border-bottom:1px solid var(--line); flex-wrap:wrap;
+}
+.api-tracker-row:last-child{ border-bottom:none; }
+.api-tracker-name{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--chalk); word-break:break-word; }
+.api-tracker-meta{ font-size:11px; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+.api-tracker-meta b{ color:var(--brass-light); }
 
 /* ---- Syndy floating button ---- */
 .syndy-fab{
@@ -2494,26 +2507,15 @@ function renderApiCallTracker(){
     return;
   }
   const sorted = names.sort((a, b) => apiCallStats[b].count - apiCallStats[a].count);
-  area.innerHTML = `
-    <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
-      <thead>
-        <tr style="text-align:left; color:var(--muted); font-size:10.5px; text-transform:uppercase; letter-spacing:.3px;">
-          <th style="padding:4px 6px 6px 0;">Function</th>
-          <th style="padding:4px 6px 6px 0; text-align:right;">Calls</th>
-          <th style="padding:4px 0 6px 6px; text-align:right;">Last called</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${sorted.map(name => `
-          <tr style="border-top:1px solid var(--line);">
-            <td style="padding:6px 6px 6px 0; font-family:'IBM Plex Mono', monospace;">${escapeHtml(name)}</td>
-            <td style="padding:6px 6px 6px 0; text-align:right; color:var(--brass-light); font-weight:700;">${apiCallStats[name].count}</td>
-            <td style="padding:6px 0 6px 6px; text-align:right; color:var(--muted); font-size:11px;">${apiCallStats[name].lastCalledAt ? timeAgo(apiCallStats[name].lastCalledAt) : '—'}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+  // Stacked rows instead of a 3-column table — long function names
+  // (puntersedge-sports-odds, etc.) forced horizontal scrolling in a
+  // fixed-width table on a phone screen; this wraps naturally instead.
+  area.innerHTML = sorted.map(name => `
+    <div class="api-tracker-row">
+      <span class="api-tracker-name">${escapeHtml(name)}</span>
+      <span class="api-tracker-meta"><b>${apiCallStats[name].count}</b> call${apiCallStats[name].count === 1 ? '' : 's'} · ${apiCallStats[name].lastCalledAt ? timeAgo(apiCallStats[name].lastCalledAt) : '—'}</span>
+    </div>
+  `).join('');
 }
 document.getElementById('resetApiCallStatsBtn').addEventListener('click', () => {
   if(!confirm('Reset all tracked API call counts on this device?')) return;
@@ -2820,7 +2822,11 @@ function renderAccountBar(){
   if(!isReadOnly) updatePushToggleUI();
   applyGuestProtections();
   const fab = document.getElementById('syndyFabBtn');
-  if(fab) fab.style.display = isReadOnly ? 'none' : 'flex'; // Syndy is for real members — same rule enforced again server-side
+  // Syndy is Full/Dashboard members only — same rule enforced again
+  // server-side, this is just so tipping-only members and guests don't
+  // see a button that would just 403 anyway.
+  const canUseSyndy = currentUserRole !== 'readonly' && currentUserRole !== 'tipping';
+  if(fab) fab.style.display = canUseSyndy ? 'flex' : 'none';
 }
 
 // ---------- Push notifications (top-level - called from renderAccountBar,
@@ -3271,7 +3277,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.6";
+const APP_VERSION = "2026-08-20.7";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7645,7 +7651,7 @@ function currentIsoWeekKeyAEST(){
   return `${date.getUTCFullYear()}-W${week}`;
 }
 async function computeWeeklyOutstandingItems(){
-  const result = { tipsOutstanding: [], betsOutstanding: 0, multiOutstanding: false };
+  const result = { tipsOutstanding: [], betsOutstandingList: [], multiOutstanding: false };
   // Tips: find the next round that hasn't started yet, and see which linked
   // members haven't picked ANY game in it — "make sure all tips are in".
   try{
@@ -7670,10 +7676,16 @@ async function computeWeeklyOutstandingItems(){
       }
     }
   }catch(e){}
-  // Individual bets: entries logged for this week with no Win/Loss result yet.
+  // Individual bets: entries logged for this week with no Win/Loss result
+  // yet — named, not just counted, with a stable index (position in the
+  // full array, not the filtered one) so a per-item "I've placed mine"
+  // checkbox stays pointing at the right bet even if others around it
+  // pick up a result first.
   try{
     const bets = (currentState && currentState.weeklyIndividualBets) || [];
-    result.betsOutstanding = bets.filter(b => b && b.result !== 'Win' && b.result !== 'Loss').length;
+    result.betsOutstandingList = bets
+      .map((b, i) => ({ name: b && b.name, idx: i }))
+      .filter((b, i) => b.name && bets[i] && bets[i].result !== 'Win' && bets[i].result !== 'Loss');
   }catch(e){}
   // Group multi: nothing entered yet this week at all.
   try{
@@ -7683,6 +7695,10 @@ async function computeWeeklyOutstandingItems(){
     result.multiOutstanding = cleared || !hasAnyResult;
   }catch(e){}
   return result;
+}
+function betAckStorageKey(weekKey){ return `mlsynd_bet_ack_${weekKey}`; }
+function getBetAcks(weekKey){
+  try{ return JSON.parse(localStorage.getItem(betAckStorageKey(weekKey)) || '{}'); }catch(e){ return {}; }
 }
 async function renderWeeklyReminderPanel(){
   if(currentUserRole === 'readonly') return; // guest sessions don't need internal admin-style nudges
@@ -7695,22 +7711,58 @@ async function renderWeeklyReminderPanel(){
 
   let items;
   try{ items = await computeWeeklyOutstandingItems(); }catch(e){ return; }
+  const acks = getBetAcks(weekKey);
+  const betsStillOutstanding = items.betsOutstandingList.filter(b => !acks[b.idx]);
+
   const rows = [];
   if(items.tipsOutstanding.length > 0){
     rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🏈</span><span class="weekly-reminder-text"><b>${items.tipsOutstanding.length} member${items.tipsOutstanding.length === 1 ? '' : 's'}</b> haven't submitted tips yet this round (${escapeHtml(items.tipsOutstanding.join(', '))})</span></div>`);
   }
-  if(items.betsOutstanding > 0){
-    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎲</span><span class="weekly-reminder-text"><b>${items.betsOutstanding} individual bet${items.betsOutstanding === 1 ? '' : 's'}</b> still ${items.betsOutstanding === 1 ? "doesn't" : "don't"} have a result entered</span></div>`);
+  if(items.betsOutstandingList.length > 0){
+    // Ticking one off is a personal, this-device-only acknowledgment
+    // ("I know this one's actually been placed") — it doesn't touch the
+    // real bet record, only whether this panel keeps nagging about it.
+    const betCheckboxes = items.betsOutstandingList.map(b => `
+      <label class="weekly-reminder-check-row${acks[b.idx] ? ' acked' : ''}">
+        <input type="checkbox" data-bet-ack-idx="${b.idx}" ${acks[b.idx] ? 'checked' : ''}>
+        <span>${escapeHtml(b.name)}</span>
+      </label>
+    `).join('');
+    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎲</span><div class="weekly-reminder-text"><b id="betsOutstandingCount">${betsStillOutstanding.length}</b> individual bet${betsStillOutstanding.length === 1 ? '' : 's'} still don't have a result — tick off any you know have already been placed:${betCheckboxes}</div></div>`);
   }
   if(items.multiOutstanding){
     rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎟️</span><span class="weekly-reminder-text">This week's <b>group multi</b> hasn't been started yet</span></div>`);
   }
-  if(rows.length === 0){ panel.style.display = 'none'; updateSyndyBadge(false); return; }
+  const anyRealOutstanding = items.tipsOutstanding.length > 0 || betsStillOutstanding.length > 0 || items.multiOutstanding;
+  if(rows.length === 0){
+    panel.style.display = 'none';
+    updateSyndyBadge(false);
+    return;
+  }
   document.getElementById('weeklyReminderList').innerHTML = rows.join('');
   panel.style.display = 'block';
   panel.dataset.weekKey = weekKey;
-  updateSyndyBadge(true); // same outstanding-items signal drives both the Home card and the Syndy button badge
+  updateSyndyBadge(anyRealOutstanding); // badge/nag only for what's genuinely still outstanding, not fully-acked items still shown in the checklist
 }
+document.getElementById('weeklyReminderList').addEventListener('change', (e) => {
+  const cb = e.target.closest('[data-bet-ack-idx]');
+  if(!cb) return;
+  const panel = document.getElementById('weeklyReminderPanel');
+  const weekKey = panel.dataset.weekKey || currentIsoWeekKeyAEST();
+  const acks = getBetAcks(weekKey);
+  const idx = cb.dataset.betAckIdx;
+  if(cb.checked) acks[idx] = true; else delete acks[idx];
+  try{ localStorage.setItem(betAckStorageKey(weekKey), JSON.stringify(acks)); }catch(err){}
+  cb.closest('.weekly-reminder-check-row').classList.toggle('acked', cb.checked);
+  const countEl = document.getElementById('betsOutstandingCount');
+  if(countEl){
+    const remaining = document.querySelectorAll('#weeklyReminderList [data-bet-ack-idx]:not(:checked)').length;
+    countEl.textContent = remaining;
+  }
+  // Re-check whether the whole panel (and Syndy badge) should still be
+  // showing now that this item may have just been fully cleared.
+  renderWeeklyReminderPanel();
+});
 document.getElementById('weeklyReminderClearBtn').addEventListener('click', () => {
   const panel = document.getElementById('weeklyReminderPanel');
   try{ localStorage.setItem(WEEKLY_REMINDER_DISMISS_KEY, panel.dataset.weekKey || currentIsoWeekKeyAEST()); }catch(e){}
