@@ -58,11 +58,15 @@ async function getFirebaseAccessToken(){
   // newlines into literal backslash-n pairs (depends how it was copied) —
   // normalising here means it works either way rather than being fussy
   // about exactly how it was pasted.
-  const privateKey = rawKey
+let privateKey = rawKey
   .replace(/\\n/g, '\n')
   .replace(/"/g, '')
   .trim();
 
+// Make sure it has proper PEM headers
+if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+  privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
+}
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const claim = {
