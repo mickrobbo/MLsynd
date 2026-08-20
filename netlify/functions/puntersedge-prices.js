@@ -2,14 +2,13 @@
 // Fetches live AU racing prices from PuntersEdge and returns a cleaned,
 // AU-only, best-price-first payload for the dashboard's Racing tab.
 
-exports.handler = async function (event) {
+export default async function () {
   const apiKey = process.env.PUNTERSEDGE_API_KEY;
 
   if (!apiKey) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "PUNTERSEDGE_API_KEY not configured." }),
-    };
+    return new Response(JSON.stringify({ error: "PUNTERSEDGE_API_KEY not configured." }), {
+      status: 500,
+    });
   }
 
   try {
@@ -23,24 +22,22 @@ exports.handler = async function (event) {
     const rawText = await resp.text();
 
     if (!resp.ok) {
-      return {
-        statusCode: resp.status,
-        body: JSON.stringify({
-          error: "Upstream PuntersEdge error",
-          upstreamStatus: resp.status,
-          upstreamBody: rawText.slice(0, 500),
-        }),
-      };
+      return new Response(JSON.stringify({
+        error: "Upstream PuntersEdge error",
+        upstreamStatus: resp.status,
+        upstreamBody: rawText.slice(0, 500),
+      }), {
+        status: resp.status,
+      });
     }
 
     let data;
     try {
       data = JSON.parse(rawText);
     } catch (e) {
-      return {
-        statusCode: 502,
-        body: JSON.stringify({ error: "Failed to parse upstream JSON" }),
-      };
+      return new Response(JSON.stringify({ error: "Failed to parse upstream JSON" }), {
+        status: 502,
+      });
     }
 
     const races = Array.isArray(data) ? data : data.races || [];
@@ -94,15 +91,13 @@ exports.handler = async function (event) {
       };
     });
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ races: cleaned, count: cleaned.length }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ races: cleaned, count: cleaned.length }),
-    };
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+}
