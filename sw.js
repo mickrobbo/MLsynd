@@ -14,7 +14,7 @@
 // (icons, banner, logos) stay cache-first since they rarely change and
 // benefit from being fast/offline-available.
 
-const CACHE_VERSION = "mlsynd-v1";
+const CACHE_VERSION = "mlsynd-v2";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 const STATIC_ASSET_PATTERN = /\.(png|jpg|jpeg|gif|webp|svg|ico|woff2?)(\?.*)?$/i;
