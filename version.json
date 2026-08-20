@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-20.6",
+  "version": "2026-08-20.7",
   "date": "2026-08-20",
   "changes": [
     "Changed: \"Last saved by\" and the system health indicator moved into a quiet footer at the bottom of Home",
