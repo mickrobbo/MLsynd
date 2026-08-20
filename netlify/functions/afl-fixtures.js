@@ -1,10 +1,11 @@
-// netlify/functions/afl-fixtures.js
+    // netlify/functions/afl-fixtures.js
 // Pulls the full AFL season fixture list from Squiggle (all rounds, teams,
 // venues, kickoff times, and results where games are complete). Used by the
 // Tipping tab to show upcoming games to pick and past games to score.
 
-exports.handler = async function (event) {
-  const year = (event.queryStringParameters && event.queryStringParameters.year) || new Date().getFullYear();
+export default async function (request) {
+  const url = new URL(request.url);
+  const year = url.searchParams.get("year") || new Date().getFullYear();
 
   try {
     const resp = await fetch(`https://api.squiggle.com.au/?q=games;year=${encodeURIComponent(year)}`, {
@@ -12,10 +13,9 @@ exports.handler = async function (event) {
     });
 
     if (!resp.ok) {
-      return {
-        statusCode: resp.status,
-        body: JSON.stringify({ error: `Squiggle returned ${resp.status}` }),
-      };
+      return new Response(JSON.stringify({ error: `Squiggle returned ${resp.status}` }), {
+        status: resp.status,
+      });
     }
 
     const data = await resp.json();
@@ -34,15 +34,16 @@ exports.handler = async function (event) {
       margin: g.margin,
     }));
 
-    return {
-      statusCode: 200,
-      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
-      body: JSON.stringify({ year: Number(year), games }),
-    };
+    return new Response(JSON.stringify({ year: Number(year), games }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+}
