@@ -1,8 +1,9 @@
 // netlify/functions/afl-ladder.js
 // Pulls the current AFL ladder (standings) from Squiggle.
 
-exports.handler = async function (event) {
-  const year = (event.queryStringParameters && event.queryStringParameters.year) || new Date().getFullYear();
+export default async function (request) {
+  const url = new URL(request.url);
+  const year = url.searchParams.get("year") || new Date().getFullYear();
 
   try {
     const resp = await fetch(`https://api.squiggle.com.au/?q=standings;year=${encodeURIComponent(year)}`, {
@@ -10,10 +11,9 @@ exports.handler = async function (event) {
     });
 
     if (!resp.ok) {
-      return {
-        statusCode: resp.status,
-        body: JSON.stringify({ error: `Squiggle returned ${resp.status}` }),
-      };
+      return new Response(JSON.stringify({ error: `Squiggle returned ${resp.status}` }), {
+        status: resp.status,
+      });
     }
 
     const data = await resp.json();
@@ -32,15 +32,13 @@ exports.handler = async function (event) {
       }))
       .sort((a, b) => (a.rank || 99) - (b.rank || 99));
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ ladder }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ladder }),
-    };
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+}
