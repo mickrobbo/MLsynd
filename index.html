@@ -3416,7 +3416,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.16";
+const APP_VERSION = "2026-08-20.17";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4227,6 +4227,31 @@ async function renderCasinoPotPanel(){
 async function isEligibleForPot(uid, monthKey, playCount){
   if(playCount >= CASINO_POT_ELIGIBLE_PLAYS) return true;
   try{
+    // Query only this month's slice of the log via its existing ts index
+    // (already set in firebase-rules.json), instead of downloading the
+    // member's ENTIRE XP history just to check one month — that log only
+    // grows across a season, so this was getting slower every week and
+    // was a real contributor to Casino feeling slow to open. Only safe to
+    // range-query when checking the CURRENT month specifically — need a
+    // reference timestamp inside the target month to binary-search its
+    // real AEST/AEDT-aware boundaries, same proven technique
+    // casinoPotCutoffDate already uses. Past months or the multi-month
+    // rollover's combined label ("2026-06..2026-08") fall back to the
+    // full-log scan below, unchanged.
+    if(monthKey === casinoPotMonthKey()){
+      const endMs = casinoPotCutoffDate().getTime();
+      let lo = endMs - 32 * 24 * 60 * 60 * 1000; // definitely into the previous month
+      let hi = endMs;
+      for(let i = 0; i < 40; i++){
+        const mid = Math.floor((lo + hi) / 2);
+        if(casinoPotMonthKey(new Date(mid)) === monthKey) hi = mid; else lo = mid;
+      }
+      const startMs = hi;
+      const orderBy = encodeURIComponent('"ts"');
+      const res = await authedFetch(`/xp/${uid}/log.json?orderBy=${orderBy}&startAt=${startMs}&endAt=${endMs}`);
+      const log = (await res.json()) || {};
+      return Object.values(log).some(entry => entry && entry.amount > 0 && !CASINO_POT_REASON_PATTERN.test(entry.reason || ''));
+    }
     const res = await authedFetch(`/xp/${uid}/log.json`);
     const log = (await res.json()) || {};
     return Object.values(log).some(entry => {
@@ -4636,7 +4661,20 @@ async function renderCasinoFloorFeed(){
   try{
     const perMember = await Promise.all(linked.map(async m => {
       try{
-        const res = await authedFetch(`/xp/${m.linkedUid}/log.json`);
+        // Queries just the most recent slice per member via the ts index
+        // (confirmed live in firebase-rules.json) instead of downloading
+        // each member's ENTIRE XP history — for 11 members with a season's
+        // worth of dues/tipping/casino entries, that was pulling thousands
+        // of records just to show the 50 most recent. Falls back to the
+        // full unfiltered fetch if the index query is ever rejected (a
+        // rules rollback, same class of issue the guestLinks rule hit
+        // earlier this session) — degrades to the old slow-but-working
+        // behaviour rather than breaking the feed outright.
+        const orderBy = encodeURIComponent('"ts"');
+        let res = await authedFetch(`/xp/${m.linkedUid}/log.json?orderBy=${orderBy}&limitToLast=60`);
+        if(!res.ok){
+          res = await authedFetch(`/xp/${m.linkedUid}/log.json`);
+        }
         if(!res.ok) return [];
         const data = await res.json();
         return (data && typeof data === 'object' ? Object.values(data) : [])
@@ -5365,7 +5403,12 @@ const CASINO_GAME_PANEL_IDS = {
   blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
   war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin'
 };
-function showCasinoView(viewId){
+// Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
+// computing "my rank" doesn't re-fetch every linked member's balance a
+// second time right after the leaderboard just did exactly that — was
+// doubling the XP-balance read count on every single Casino tab open.
+let lastLeaderboardBalances = null;
+async function showCasinoView(viewId){
   document.querySelectorAll('.casino-view').forEach(v => v.classList.toggle('active', v.id === viewId));
   document.getElementById('casinoHubPanel').style.display = viewId ? 'none' : 'block';
   // Communal panels (pot + members) belong to the lobby only; your own
@@ -5381,7 +5424,7 @@ function showCasinoView(viewId){
   if(potPanel) potPanel.style.display = isHub ? 'block' : 'none';
   if(personalPanel) personalPanel.style.display = isGamesTable ? 'block' : 'none';
   if(isHub){
-    renderXPLeaderboard();
+    await renderXPLeaderboard();
     renderCasinoFloorFeed();
   }
   if(isGamesTable) renderXPLog();
@@ -5412,13 +5455,18 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
 });
 
 document.querySelector('[data-tab="casino"]').addEventListener('click', async () => {
-  showCasinoView(null); // hub view — also triggers renderCasinoFloorFeed() internally
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  // Kicked off together, not sequentially — showCasinoView's internal
+  // leaderboard fetch, the balance fetch, and the pot panel all run in
+  // parallel. refreshCasinoHeroExtras is the only thing that actually
+  // needs the leaderboard data ready, so it's the only one held back.
+  const hubPromise = showCasinoView(null);
+  const balPromise = getXPBalance();
   refreshWeeklyBonusButton();
-  refreshCasinoHeroExtras();
   renderCasinoPotPanel();
   maybeShowCasinoPotCelebration();
+  updateXPBalanceDisplay(await balPromise);
+  await hubPromise;
+  refreshCasinoHeroExtras();
 });
 // Rank + next-milestone progress on the hero card — the whole point is
 // giving someone a reason to glance at Casino without having to tap into
@@ -5452,18 +5500,26 @@ async function refreshCasinoHeroExtras(){
     }
   }catch(e){}
 
-  // Rank on the leaderboard
+  // Rank on the leaderboard — reuses renderXPLeaderboard's already-fetched,
+  // already-sorted balances (populated moments earlier in the same tab-open
+  // sequence) instead of independently re-fetching every linked member's
+  // balance a second time. Falls back to a fresh fetch only if that data
+  // genuinely isn't available yet (e.g. this ever gets called from
+  // somewhere the leaderboard hasn't rendered first).
   try{
     if(!currentState || !currentState.members) return;
     const linked = currentState.members.filter(m => m.linkedUid);
     if(linked.length === 0) return;
-    const balances = await Promise.all(linked.map(async m => {
-      try{
-        const r = await authedFetch(`/xp/${m.linkedUid}/balance.json`);
-        return { uid: m.linkedUid, balance: (await r.json()) || 0 };
-      }catch(e){ return { uid: m.linkedUid, balance: 0 }; }
-    }));
-    balances.sort((a, b) => b.balance - a.balance);
+    let balances = lastLeaderboardBalances;
+    if(!balances){
+      balances = await Promise.all(linked.map(async m => {
+        try{
+          const r = await authedFetch(`/xp/${m.linkedUid}/balance.json`);
+          return { uid: m.linkedUid, balance: (await r.json()) || 0 };
+        }catch(e){ return { uid: m.linkedUid, balance: 0 }; }
+      }));
+      balances.sort((a, b) => (b.balance || 0) - (a.balance || 0));
+    }
     const myIndex = balances.findIndex(b => b.uid === currentUserUid);
     const rankEl = document.getElementById('casinoHeroRank');
     if(myIndex !== -1 && rankEl){
@@ -5491,6 +5547,7 @@ async function renderXPLeaderboard(){
       }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null }; }
     }));
     rows.sort((a,b) => (b.balance || 0) - (a.balance || 0));
+    lastLeaderboardBalances = rows; // reused by refreshCasinoHeroExtras — avoids a duplicate full-roster fetch for "my rank"
     const medals = ['🥇','🥈','🥉'];
     const topTint = ['rgba(255,214,120,.14)', 'rgba(210,210,220,.10)', 'rgba(198,140,90,.12)'];
     const topGlow = ['0 0 12px rgba(255,214,120,.35)', '0 0 10px rgba(220,220,230,.25)', '0 0 10px rgba(198,140,90,.3)'];
