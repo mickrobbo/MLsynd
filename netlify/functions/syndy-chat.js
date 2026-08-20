@@ -1,71 +1,51 @@
 // Syndy chat proxy. Client sends { idToken, messages: [{role, content}, ...] }
-// (messages = conversation so far, most recent last, NOT including a
-// system prompt — that's added here, server-side, so it's never exposed
-// to the client and can't be tampered with).
+// (messages = conversation so far, most recent last — no system prompt from
+// the client; that's added here server-side so it can't be tampered with).
 //
 // Auth: verifies the Firebase ID token via Identity Toolkit's
-// accounts:lookup (this actually validates the token's signature/expiry
-// server-side — Google does the verification, not this function), then
-// confirms that uid has status: 'approved' in /users, same access rule
-// as everywhere else in the app. Rejects anything else with 401/403
-// before ever calling the LLM — Syndy is for logged-in members only.
+// accounts:lookup (Google validates the token server-side, not this
+// function), then confirms /users/{uid} has status: 'approved' and role
+// is Full/Dashboard (not readonly/tipping) before ever calling the LLM.
 //
-// Needs PERPLEXITY_API_KEY set in Netlify env vars (get one at
-// perplexity.ai — API Portal → API Keys). Switched from Groq's
-// groq/compound to Perplexity's Sonar after repeated real-world
-// accuracy failures with compound: it treats web search as an agentic,
-// optional decision the model makes per-query, and was confirmed
-// fabricating entire detailed scandals (specific names, dollar figures,
-// dates) even with search available, plus flatly refusing player-prop
-// questions it had just been told to research. Sonar performs a REAL web
-// search on every single call — not optional, not agentically decided —
-// which is the actual structural fix, not just a prompt tweak. Same
-// OpenAI-compatible request/response shape as before, so the rest of
-// this file barely changed.
+// Needs PERPLEXITY_API_KEY (perplexity.ai → API Portal → API Keys). Uses
+// Perplexity's Agent API (POST /v1/agent, preset: 'fast') for real,
+// guaranteed web search on every call — not an agentic "the model decides
+// whether to search" setup, which is what caused Syndy to fabricate
+// entire detailed stories with confident specifics in an earlier build.
 //
 // FIREBASE_WEB_API_KEY is the public Firebase web key already embedded in
-// DASHBOARD-index.html client-side — safe to expose either way, but it
-// has to live in an env var here rather than hardcoded in the file,
-// because Netlify's build-time secrets scanner flags any string shaped
-// like a Google API key regardless of whether it's actually sensitive,
-// and fails the whole build.
+// DASHBOARD-index.html client-side — kept as an env var (not hardcoded
+// here) purely because Netlify's secrets scanner flags any Google-API-key
+// shaped string regardless of sensitivity and fails the build otherwise.
 //
-// FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY are the only two fields
-// actually needed from your Firebase Admin SDK service account file
-// (Project Settings → Service Accounts → Generate new private key) —
-// stored as two separate env vars rather than the whole JSON, since AWS
-// Lambda (which every Netlify Function runs on) caps total environment
-// variable size at 4KB combined across ALL variables for a function, and
-// the unused fields in the full JSON (project_id, client_id, three URI
-// fields, universe_domain) were dead weight pushing things over that
-// limit. This project's Firebase console doesn't expose the older
-// "database secret" mechanism, so admin-level access here goes through a
-// signed JWT exchanged for a short-lived Google OAuth2 access token
-// instead — see getFirebaseAccessToken below. That token is what actually
-// reads/writes past the RTDB rules, same role the old database secret
-// used to play.
+// FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY are the two fields
+// actually used from a Firebase Admin SDK service account file (Project
+// Settings → Service Accounts → Generate new private key). Stored
+// separately rather than the whole JSON to stay under AWS Lambda's 4KB
+// total env-var cap across all functions. Exchanged for a short-lived
+// Google OAuth2 access token per request (see getFirebaseAccessToken) —
+// that token is what actually reads/writes Realtime Database past the
+// rules, playing the role a legacy database secret would have.
 //
-// PuntersEdge odds are pulled from the site's own existing
-// puntersedge-sports-odds function (no separate key needed here) when a
-// message looks odds/betting-flavoured — see detectOddsSport below.
+// PuntersEdge odds and the AFL ladder are pulled from this site's own
+// existing functions (no separate keys needed) when a message looks
+// odds/ladder-flavoured. MLSynd syndicate standings come straight from
+// /state/members. All three are optional context injected alongside the
+// user's message — see the bottom of the file.
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
-const PERPLEXITY_MODEL = 'sonar'; // cheapest Sonar tier ($1/$1 per million tokens, ~half a cent per call per Perplexity's own estimate) — real web search on every call is included at this tier, not an add-on. Upgrade to 'sonar-pro' (richer multi-source synthesis, more citations, $3/$15 per million) if quality ever needs it — same request shape either way.
+const PERPLEXITY_PRESET = 'fast'; // Perplexity's documented sonar→fast mapping (also: sonar-pro→low, sonar-reasoning-pro→medium, sonar-deep-research→high)
 const MAX_HISTORY_MESSAGES = 12; // trims the conversation sent to the API — cost/latency control, not a hard memory limit client-side
 const SYNDY_BONUS_XP = 500;
 
 import crypto from 'crypto';
 
-// A simple "\n" replace, or even a chain of them, still isn't reliable —
-// copy-pasting a multi-line PEM through Netlify's env var UI can collapse
-// real newlines, add stray spaces, or otherwise scramble the strict line
-// structure OpenSSL expects, even when the underlying key data is
-// completely intact. This rebuilds the PEM from scratch instead of
-// patching whitespace: pull out just the base64 payload between the
-// BEGIN/END markers, strip every character that isn't valid base64
-// (regardless of how it got mangled), then re-wrap it at the standard
-// 64-char line length. That survives essentially any copy-paste damage,
-// since it never trusts the existing whitespace/newlines at all.
+// Rebuilds the PEM from scratch instead of patching whitespace: pulls out
+// just the base64 payload between the BEGIN/END markers, strips every
+// character that isn't valid base64 (however it got mangled by copy-paste
+// through Netlify's env var UI), then re-wraps at the standard 64-char
+// line length. Survives essentially any formatting damage since it never
+// trusts existing whitespace/newlines.
 function normalizePemKey(raw){
   let key = (raw || '').trim();
   if((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))){
@@ -73,18 +53,17 @@ function normalizePemKey(raw){
   }
   key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const match = key.match(/-----BEGIN (RSA )?PRIVATE KEY-----([\s\S]*?)-----END (RSA )?PRIVATE KEY-----/);
-  if(!match) return key; // couldn't find PEM markers at all — let it fail downstream with the real error rather than guessing further
+  if(!match) return key; // no PEM markers found — fail downstream with the real error rather than guessing further
   const label = match[1] ? 'RSA PRIVATE KEY' : 'PRIVATE KEY';
-  const body = match[2].replace(/[^A-Za-z0-9+/=]/g, ''); // strip every non-base64 character, including any surviving whitespace
+  const body = match[2].replace(/[^A-Za-z0-9+/=]/g, '');
   const lines = body.match(/.{1,64}/g) || [];
   return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----\n`;
 }
 
-// Fetched fresh once per request rather than cached across invocations —
-// simpler and safer than trying to persist a token across Netlify's
-// stateless function instances, at the cost of one extra HTTP round-trip
-// per chat message. Tokens are valid for an hour; this just doesn't try
-// to reuse one.
+// Fetched fresh per request rather than cached across invocations —
+// simpler than persisting a token across Netlify's stateless instances,
+// at the cost of one extra round-trip per message. Tokens last an hour;
+// this doesn't try to reuse one.
 async function getFirebaseAccessToken(){
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const rawKey = process.env.FIREBASE_PRIVATE_KEY;
@@ -242,15 +221,10 @@ async function claimSyndyBonusIfEligible(uid, accessToken){
   }
 }
 
-// ---- Real AFL ladder data ----
-// Syndy was confidently inventing specific ladder positions, win-loss
-// records, player names, and injury news when asked "how's team X going"
-// — all fabricated, presented with total confidence. This pulls the exact
-// same afl-ladder.js data the Dashboard's own Sport tab already uses, so
-// ladder position/record/percentage claims are grounded in something
-// real. Player-level detail (rosters, individual stats, injuries) still
-// isn't available from anywhere in this app — the system prompt tells her
-// to say so rather than invent it.
+// Real AFL ladder — grounds ladder position/record/percentage claims in
+// the same afl-ladder.js data the Sport tab already uses. Player-level
+// detail (rosters, individual stats, injuries) isn't available from any
+// feed in this app — the system prompt tells Syndy to say so, or search.
 const LADDER_INTENT_WORDS = ['ladder', 'standing', 'how are', "how's", 'how is', 'going this year', 'this season', 'form', 'record', 'top of the table', 'bottom of the table', 'finals chase'];
 function detectLadderIntent(text){
   const t = text.toLowerCase();
@@ -276,16 +250,12 @@ function formatLadderForPrompt(ladder){
   return `Real current AFL ladder (this is the actual live standings, not a guess):\n${lines.join('\n')}\n\nUse this exact data for any ladder position, win-loss record, or percentage claim — never state a specific position/record that isn't shown here. For anything else about these teams (players, injuries, recent match detail), use your web search rather than guessing.`;
 }
 
-// ---- PuntersEdge odds context ----
-// Only fetched when the latest message actually looks odds/betting-
-// flavoured — not on every single message, to keep the extra fetch (and
-// the tokens it adds to the API call) proportional to when it's useful.
-// Response shape confirmed from a real call to puntersedge-sports-odds:
-// { supported, sport, events: [{ home_team, away_team, commence_time,
-//   home_best_price, home_best_bookmaker, away_best_price, away_best_bookmaker }] }
-// — decimal H2H best-price odds, no line/totals markets. If a sport
-// comes back supported:false, that's the API's own signal to skip it,
-// not something to guess around.
+// PuntersEdge odds — only fetched when the message looks odds/betting-
+// flavoured, to keep the extra fetch proportional to when it's useful.
+// Real shape: { supported, sport, events: [{ home_team, away_team,
+// commence_time, home_best_price, home_best_bookmaker, away_best_price,
+// away_best_bookmaker }] } — decimal H2H best price only, no line/totals
+// markets. supported:false is the API's own signal to skip, not guessed.
 const ODDS_INTENT_WORDS = ['odds', 'multi', 'bet', 'price', 'favourite', 'favorite', 'chances', 'value', 'tip', 'line', 'markets', 'h2h', 'head to head', 'who wins', "who's going to win", 'best price'];
 function detectOddsSport(text){
   const t = text.toLowerCase();
@@ -305,14 +275,12 @@ async function fetchPuntersEdgeOdds(sport, origin){
   }
 }
 
-// ---- Real MLSynd platform data (standings, dues, records) ----
-// Fetched on every message, not intent-gated — the group is only ~11
-// people, so the token cost is trivial, and gating on keywords would miss
-// plenty of genuine questions ("how's Billy going this year?") that don't
-// contain an obvious trigger word. Field names match exactly what
-// DASHBOARD-index.html and LEDGER-index.html already read/write on
-// state.members — this isn't new data, it's the same numbers already
-// visible to every member in the app, just handed to Syndy too.
+// MLSynd platform standings — fetched every message (group is only ~11
+// people, token cost is trivial) rather than intent-gated, since gating
+// on keywords would miss plenty of genuine questions ("how's Billy going
+// this year?"). Same field names DASHBOARD-index.html and LEDGER-index.html
+// already read/write on state.members — not new data, just handed to
+// Syndy too.
 async function fetchPlatformSummary(accessToken){
   try{
     const res = await fetch(`${FIREBASE_URL}/state/members.json?access_token=${accessToken}`);
@@ -340,6 +308,38 @@ function formatOddsForPrompt(sport, data){
   return `Live ${sport.toUpperCase()} head-to-head odds ONLY, decimal, best price currently available across tracked bookmakers:\n${lines.join('\n')}\n\nUse this real data when discussing straight win/loss odds, favourites, or a match-winner-only multi for these games — don't claim you lack live odds while this is in front of you. This is head-to-head data ONLY — if the request involves goal scorers, disposals, lines, or totals, that's not covered here; say so rather than quietly answering with just the win/loss picks above. Still weight form/stats over price per your usual approach.`;
 }
 
+// ---- Total Perplexity usage tracking (shared across all members) ----
+// This is deliberately separate from the Dashboard's per-device API Call
+// Tracker (that one lives in localStorage, scoped to one browser). This
+// one is real shared data — a Firebase counter incremented server-side
+// every time this function actually calls Perplexity — so it reflects
+// total usage across the whole group, readable from the Diag tab by
+// anyone. Read-then-write, not atomic, but message volume here is low
+// enough that a lost increment under concurrent messages is a non-issue.
+async function incrementPerplexityUsage(accessToken){
+  try{
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+    const monthKey = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+
+    const totalRes = await fetch(`${FIREBASE_URL}/apiUsage/perplexity/totalCalls.json?access_token=${accessToken}`);
+    const total = totalRes.ok ? ((await totalRes.json()) || 0) : 0;
+    await fetch(`${FIREBASE_URL}/apiUsage/perplexity/totalCalls.json?access_token=${accessToken}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(total + 1)
+    });
+
+    const monthRes = await fetch(`${FIREBASE_URL}/apiUsage/perplexity/byMonth/${monthKey}.json?access_token=${accessToken}`);
+    const monthCount = monthRes.ok ? ((await monthRes.json()) || 0) : 0;
+    await fetch(`${FIREBASE_URL}/apiUsage/perplexity/byMonth/${monthKey}.json?access_token=${accessToken}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(monthCount + 1)
+    });
+    await fetch(`${FIREBASE_URL}/apiUsage/perplexity/lastCallAt.json?access_token=${accessToken}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
+    });
+  }catch(e){
+    console.error('Perplexity usage tracking failed:', e);
+  }
+}
+
 export default async (req) => {
   if(req.method !== 'POST'){
     return new Response('Method not allowed', { status: 405 });
@@ -354,12 +354,9 @@ export default async (req) => {
     return new Response('Missing idToken or messages', { status: 400 });
   }
 
-  // Kicked off immediately, in parallel with the whole auth chain below —
-  // this fetch doesn't depend on anything the auth chain produces, so
-  // there's no reason to make the user wait for it sequentially after.
-  // Every "multi" message was hitting this (it's one of the odds-intent
-  // keywords), so this alone was adding a full extra network round-trip
-  // to every multi request before the LLM was even called.
+  // Kicked off immediately, in parallel with the auth chain below — odds
+  // and ladder fetches don't depend on anything auth produces, and "multi"
+  // alone is an odds-intent keyword, so most messages hit this.
   const trimmedHistoryForIntent = messages
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
     .slice(-MAX_HISTORY_MESSAGES);
@@ -393,9 +390,8 @@ export default async (req) => {
     return new Response(JSON.stringify({ error: `Syndy is for approved members only. (${memberCheck.reason})` }), { status: 403 });
   }
 
-  // Kicked off now (not awaited yet) — runs while the bonus check and
-  // everything else below happens, using the same accessToken already in
-  // hand rather than adding a further sequential wait.
+  // Kicked off now, awaited later — runs alongside the bonus check and
+  // everything else below rather than adding a further sequential wait.
   const platformSummaryPromise = fetchPlatformSummary(accessToken);
 
   const perplexityKey = process.env.PERPLEXITY_API_KEY;
@@ -446,23 +442,37 @@ export default async (req) => {
     });
   }
 
-  const perplexityMessages = [
-    { role: 'system', content: SYNDY_SYSTEM_PROMPT },
-    ...extraContext,
-    ...trimmedHistory
-  ];
+  // Agent API's `input` array only documents role: 'user'/'assistant'
+  // items (unlike a chat-completions messages array, which accepts
+  // 'system' freely) — so instead of guessing whether 'system' is
+  // silently accepted or dropped, extra context gets prepended onto the
+  // current user message's own content. Persona/rules live in
+  // `instructions`, which Perplexity re-reads every turn regardless.
+  const perplexityInput = trimmedHistory.map((m, i) => {
+    const isLastUserTurn = i === trimmedHistory.length - 1 && m.role === 'user';
+    if(isLastUserTurn && extraContext.length > 0){
+      const contextBlock = extraContext.map(c => c.content).join('\n\n');
+      return { role: m.role, content: `${contextBlock}\n\n---\n\n${m.content}` };
+    }
+    return { role: m.role, content: m.content };
+  });
 
   try{
-    const perplexityRes = await fetch('https://api.perplexity.ai/chat/completions', {
+    const perplexityRes = await fetch('https://api.perplexity.ai/v1/agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${perplexityKey}` },
       body: JSON.stringify({
-        model: PERPLEXITY_MODEL,
-        messages: perplexityMessages,
-        temperature: 0.8,
-        max_tokens: 1200 // real room for a full multi-leg breakdown with per-leg reasoning
+        preset: PERPLEXITY_PRESET,
+        instructions: SYNDY_SYSTEM_PROMPT,
+        input: perplexityInput,
+        max_output_tokens: 1200 // real room for a full multi-leg breakdown with per-leg reasoning
       })
     });
+    // Counted here — right after any real response comes back from
+    // Perplexity, success or their own error — since this represents an
+    // actual API round-trip regardless of what it returned. A request that
+    // never reached them (missing key, network failure) doesn't count.
+    await incrementPerplexityUsage(accessToken);
     if(!perplexityRes.ok){
       const errText = await perplexityRes.text();
       console.error('Perplexity API error:', perplexityRes.status, errText);
@@ -473,7 +483,8 @@ export default async (req) => {
       return new Response(JSON.stringify({ error: `Syndy's gone quiet for a sec. (Perplexity HTTP ${perplexityRes.status}: ${errText.slice(0, 200)})` }), { status: 502 });
     }
     const data = await perplexityRes.json();
-    let reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    const messageItem = Array.isArray(data.output) ? data.output.find(o => o && o.type === 'message') : null;
+    let reply = messageItem && Array.isArray(messageItem.content) && messageItem.content[0] && messageItem.content[0].text;
     if(!reply){
       return new Response(JSON.stringify({ error: "Didn't quite catch that — give it another go." }), { status: 502 });
     }
