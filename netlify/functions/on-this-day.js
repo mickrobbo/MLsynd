@@ -62,17 +62,20 @@ const NO_CACHE_HEADERS = {
   "Cache-Control": "no-store, no-cache, must-revalidate",
 };
 
-exports.handler = async function () {
+export default async function () {
   const { month, day } = getAESTDateParts();
 
   try {
     const resp = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${month}/${day}`,
+      `https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/\( {month}/ \){day}`,
       { headers: { "User-Agent": "MLSynd On This Day (contact: mlsynd00@gmail.com)" } }
     );
 
     if (!resp.ok) {
-      return { statusCode: resp.status, headers: NO_CACHE_HEADERS, body: JSON.stringify({ error: `Wikipedia returned ${resp.status}` }) };
+      return new Response(JSON.stringify({ error: `Wikipedia returned ${resp.status}` }), {
+        status: resp.status,
+        headers: NO_CACHE_HEADERS,
+      });
     }
 
     const data = await resp.json();
@@ -89,24 +92,25 @@ exports.handler = async function () {
     });
 
     if (!best) {
-      return {
-        statusCode: 200,
+      return new Response(JSON.stringify({ found: false, date: `\( {month}/ \){day}` }), {
+        status: 200,
         headers: NO_CACHE_HEADERS,
-        body: JSON.stringify({ found: false, date: `${month}/${day}` }),
-      };
+      });
     }
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({
+      found: true,
+      date: `\( {month}/ \){day}`,
+      year: best.year,
+      text: best.text,
+    }), {
+      status: 200,
       headers: NO_CACHE_HEADERS,
-      body: JSON.stringify({
-        found: true,
-        date: `${month}/${day}`,
-        year: best.year,
-        text: best.text,
-      }),
-    };
+    });
   } catch (err) {
-    return { statusCode: 500, headers: NO_CACHE_HEADERS, body: JSON.stringify({ error: err.message }) };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: NO_CACHE_HEADERS,
+    });
   }
-};
+}
