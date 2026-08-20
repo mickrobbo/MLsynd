@@ -2302,8 +2302,34 @@
     </div>
     <div class="panel">
       <h2>🔮 Syndy Usage (all members)</h2>
-      <div class="hint">Real shared total — incremented server-side every time syndy-chat.js actually calls Perplexity, from any member's device. Unlike the tracker above, this is the genuine group-wide count.</div>
+      <div class="hint">Real shared total — incremented server-side every time syndy-chat.js actually calls Perplexity, from any member's device. Cost figures are the exact per-call amount Perplexity's own response reports, not an estimate.</div>
       <div id="syndyUsageArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>💰 Estimated Monthly Running Costs</h2>
+      <div class="hint">Perplexity spend above is real tracked data. Netlify, domain, and anything else below is manually entered — there's no billing API wired up for those, so these numbers are only as accurate as what's typed in. For gauging total cost / splitting with the group, not a live invoice.</div>
+      <div id="runningCostsArea" style="margin-top:10px;"></div>
+      <div id="runningCostsAdmin" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:11px; color:var(--muted);">Starting Perplexity trial credit (USD)
+            <input type="number" id="rcPerplexityCredit" step="0.01" style="width:100%; margin-top:3px;">
+          </label>
+          <label style="font-size:11px; color:var(--muted);">Netlify (USD/month)
+            <input type="number" id="rcNetlify" step="0.01" style="width:100%; margin-top:3px;">
+          </label>
+          <label style="font-size:11px; color:var(--muted);">Domain (USD/month, annual ÷ 12 is fine)
+            <input type="number" id="rcDomain" step="0.01" style="width:100%; margin-top:3px;">
+          </label>
+          <label style="font-size:11px; color:var(--muted);">Other (USD/month)
+            <input type="number" id="rcOther" step="0.01" style="width:100%; margin-top:3px;">
+          </label>
+          <label style="font-size:11px; color:var(--muted);">Notes (what "Other" covers, etc.)
+            <textarea id="rcNotes" rows="2" style="width:100%; margin-top:3px; resize:vertical;"></textarea>
+          </label>
+          <button type="button" id="saveRunningCostsBtn" class="btn-secondary">Save</button>
+          <div class="status-msg" id="runningCostsStatus"></div>
+        </div>
+      </div>
     </div>
     <div class="panel">
       <h2>🔔 Test Push Notification</h2>
@@ -2542,29 +2568,100 @@ async function renderSyndyUsage(){
   const area = document.getElementById('syndyUsageArea');
   if(!area) return;
   try{
-    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
-    const monthKey = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
-    const [totalRes, monthRes, lastRes] = await Promise.all([
+    const monthKey = currentAestMonthKey();
+    const [totalRes, monthRes, lastRes, totalCostRes, monthCostRes] = await Promise.all([
       authedFetch('/apiUsage/perplexity/totalCalls.json'),
       authedFetch(`/apiUsage/perplexity/byMonth/${monthKey}.json`),
-      authedFetch('/apiUsage/perplexity/lastCallAt.json')
+      authedFetch('/apiUsage/perplexity/lastCallAt.json'),
+      authedFetch('/apiUsage/perplexity/totalCostUsd.json'),
+      authedFetch(`/apiUsage/perplexity/byMonthCostUsd/${monthKey}.json`)
     ]);
     const total = totalRes.ok ? ((await totalRes.json()) || 0) : 0;
     const thisMonth = monthRes.ok ? ((await monthRes.json()) || 0) : 0;
     const lastCallAt = lastRes.ok ? await lastRes.json() : null;
+    const totalCost = totalCostRes.ok ? ((await totalCostRes.json()) || 0) : 0;
+    const monthCost = monthCostRes.ok ? ((await monthCostRes.json()) || 0) : 0;
     if(total === 0){
       area.innerHTML = '<div class="empty">No Syndy calls tracked yet — they\'ll show up here once someone chats with her.</div>';
       return;
     }
     area.innerHTML = `
-      <div class="api-tracker-row"><span class="api-tracker-name">Total (all time)</span><span class="api-tracker-meta"><b>${total}</b> call${total === 1 ? '' : 's'}</span></div>
-      <div class="api-tracker-row"><span class="api-tracker-name">This month</span><span class="api-tracker-meta"><b>${thisMonth}</b> call${thisMonth === 1 ? '' : 's'}</span></div>
+      <div class="api-tracker-row"><span class="api-tracker-name">Total (all time)</span><span class="api-tracker-meta"><b>${total}</b> call${total === 1 ? '' : 's'} · $${totalCost.toFixed(3)}</span></div>
+      <div class="api-tracker-row"><span class="api-tracker-name">This month</span><span class="api-tracker-meta"><b>${thisMonth}</b> call${thisMonth === 1 ? '' : 's'} · $${monthCost.toFixed(3)}</span></div>
       <div class="api-tracker-row"><span class="api-tracker-name">Last call</span><span class="api-tracker-meta">${lastCallAt ? timeAgo(lastCallAt) : '—'}</span></div>
     `;
+    window._syndyTotalCostUsd = totalCost; // read by renderRunningCosts, avoids a duplicate fetch
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load Syndy usage right now.</div>';
   }
 }
+function currentAestMonthKey(){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+}
+async function renderRunningCosts(){
+  const area = document.getElementById('runningCostsArea');
+  const adminWrap = document.getElementById('runningCostsAdmin');
+  if(!area) return;
+  const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  if(adminWrap) adminWrap.style.display = isAdmin ? 'block' : 'none';
+  try{
+    const res = await authedFetch('/apiUsage/otherCosts.json');
+    const stored = res.ok ? (await res.json()) : null;
+    const s = stored || {};
+    const netlify = Number(s.netlify) || 0;
+    const domain = Number(s.domain) || 0;
+    const other = Number(s.other) || 0;
+    const startingCredit = Number(s.startingPerplexityCreditUsd) || 0;
+    const perplexityTotal = window._syndyTotalCostUsd || 0;
+    const monthlyOtherTotal = netlify + domain + other;
+    const remainingCredit = startingCredit - perplexityTotal;
+
+    let html = '';
+    if(monthlyOtherTotal > 0){
+      html += `<div class="api-tracker-row"><span class="api-tracker-name">Netlify</span><span class="api-tracker-meta">$${netlify.toFixed(2)}/mo</span></div>`;
+      html += `<div class="api-tracker-row"><span class="api-tracker-name">Domain</span><span class="api-tracker-meta">$${domain.toFixed(2)}/mo</span></div>`;
+      html += `<div class="api-tracker-row"><span class="api-tracker-name">Other</span><span class="api-tracker-meta">$${other.toFixed(2)}/mo</span></div>`;
+      if(s.notes) html += `<div class="hint" style="margin-top:4px;">${escapeHtml(s.notes)}</div>`;
+    } else {
+      html += '<div class="empty">No other costs entered yet.</div>';
+    }
+    if(startingCredit > 0){
+      html += `<div class="api-tracker-row" style="border-top:1px solid var(--brass-dim); margin-top:6px; padding-top:8px;"><span class="api-tracker-name">Perplexity trial credit remaining</span><span class="api-tracker-meta"><b>$${remainingCredit.toFixed(2)}</b> of $${startingCredit.toFixed(2)}</span></div>`;
+    }
+    html += `<div class="api-tracker-row" style="border-top:1px solid var(--brass-dim); margin-top:6px; padding-top:8px;"><span class="api-tracker-name">Estimated total (fixed costs, monthly)</span><span class="api-tracker-meta"><b>$${monthlyOtherTotal.toFixed(2)}/mo</b></span></div>`;
+    area.innerHTML = html;
+
+    if(isAdmin){
+      document.getElementById('rcPerplexityCredit').value = s.startingPerplexityCreditUsd ?? '';
+      document.getElementById('rcNetlify').value = s.netlify ?? '';
+      document.getElementById('rcDomain').value = s.domain ?? '';
+      document.getElementById('rcOther').value = s.other ?? '';
+      document.getElementById('rcNotes').value = s.notes ?? '';
+    }
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load running costs right now.</div>';
+  }
+}
+document.getElementById('saveRunningCostsBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('runningCostsStatus');
+  statusEl.textContent = 'Saving…';
+  const payload = {
+    startingPerplexityCreditUsd: parseFloat(document.getElementById('rcPerplexityCredit').value) || 0,
+    netlify: parseFloat(document.getElementById('rcNetlify').value) || 0,
+    domain: parseFloat(document.getElementById('rcDomain').value) || 0,
+    other: parseFloat(document.getElementById('rcOther').value) || 0,
+    notes: document.getElementById('rcNotes').value || ''
+  };
+  try{
+    const res = await authedFetch('/apiUsage/otherCosts.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if(!res.ok) throw new Error('save failed');
+    statusEl.textContent = 'Saved.';
+    renderRunningCosts();
+  }catch(e){
+    statusEl.textContent = "Couldn't save — try again.";
+  }
+});
 const DATA_PATH = '/state.json';
 
 // ================= Auth =================
@@ -3319,7 +3416,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.13";
+const APP_VERSION = "2026-08-20.15";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9457,7 +9554,7 @@ async function renderTippingRound(games, currentRound){
       <div id="tippingJokerStatusSlot"></div>
       <div class="status-msg" id="tipSaveAllStatus" style="margin-top:8px;"></div>
     </div>`;
-    gamesArea.innerHTML = reminderHtml + saveButtonHtml + html;
+    gamesArea.innerHTML = reminderHtml + html + saveButtonHtml;
     renderJokerPanel(games, round, auth);
   } else {
     gamesArea.innerHTML = reminderHtml + html;
@@ -10335,7 +10432,7 @@ function renderHealthCheckResults(results){
 
 function renderDiagTab(){
   renderApiCallTracker();
-  renderSyndyUsage();
+  renderSyndyUsage().then(renderRunningCosts); // running costs reads window._syndyTotalCostUsd, set by renderSyndyUsage — sequenced, not parallel, to avoid reading it before it's set
   const area = document.getElementById('diagTabArea');
   if(!area) return;
   area.innerHTML = '<div class="empty">Loading…</div>';

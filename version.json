@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-20.13",
+  "version": "2026-08-20.15",
   "date": "2026-08-20",
   "changes": [
-    "New: Syndy usage panel in Diag — real total Perplexity calls across all members (all-time, this month, last call), not just this device"
+    "Changed: \"Save all picks\" moved to the bottom of the Tipping games list, so you don't have to scroll back to the top once you've picked every game"
   ]
 }
