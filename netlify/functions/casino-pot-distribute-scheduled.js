@@ -30,12 +30,26 @@ const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const TIMEZONE = 'Australia/Melbourne'; // change if the syndicate isn't Melbourne-based
 const DISTRIBUTE_HOUR = 8; // 8am AEST/AEDT on the 1st
 
+function normalizePemKey(raw){
+  let key = (raw || '').trim();
+  if((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))){
+    key = key.slice(1, -1).trim();
+  }
+  key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const match = key.match(/-----BEGIN (RSA )?PRIVATE KEY-----([\s\S]*?)-----END (RSA )?PRIVATE KEY-----/);
+  if(!match) return key;
+  const label = match[1] ? 'RSA PRIVATE KEY' : 'PRIVATE KEY';
+  const body = match[2].replace(/[^A-Za-z0-9+/=]/g, '');
+  const lines = body.match(/.{1,64}/g) || [];
+  return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----\n`;
+}
+
 async function getFirebaseAccessToken(){
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const rawKey = process.env.FIREBASE_PRIVATE_KEY;
   if(!clientEmail) throw new Error('FIREBASE_CLIENT_EMAIL not set');
   if(!rawKey) throw new Error('FIREBASE_PRIVATE_KEY not set');
-  const privateKey = rawKey.replace(/\\n/g, '\n');
+  const privateKey = normalizePemKey(rawKey);
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
@@ -51,7 +65,13 @@ async function getFirebaseAccessToken(){
   const signer = crypto.createSign('RSA-SHA256');
   signer.update(unsigned);
   signer.end();
-  const signature = signer.sign(privateKey, 'base64url');
+  let signature;
+  try{
+    signature = signer.sign(privateKey, 'base64url');
+  }catch(e){
+    const hasMarkers = privateKey.includes('-----BEGIN') && privateKey.includes('-----END');
+    throw new Error(`Private key sign failed (${e.message}) — normalized key: ${privateKey.length} chars, PEM markers found: ${hasMarkers}, line count: ${privateKey.split('\n').length}`);
+  }
   const jwt = `${unsigned}.${signature}`;
 
   const res = await fetch('https://oauth2.googleapis.com/token', {

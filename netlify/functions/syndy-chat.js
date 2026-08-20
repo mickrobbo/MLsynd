@@ -44,6 +44,30 @@ const SYNDY_BONUS_XP = 500;
 
 import crypto from 'crypto';
 
+// A simple "\n" replace, or even a chain of them, still isn't reliable —
+// copy-pasting a multi-line PEM through Netlify's env var UI can collapse
+// real newlines, add stray spaces, or otherwise scramble the strict line
+// structure OpenSSL expects, even when the underlying key data is
+// completely intact. This rebuilds the PEM from scratch instead of
+// patching whitespace: pull out just the base64 payload between the
+// BEGIN/END markers, strip every character that isn't valid base64
+// (regardless of how it got mangled), then re-wrap it at the standard
+// 64-char line length. That survives essentially any copy-paste damage,
+// since it never trusts the existing whitespace/newlines at all.
+function normalizePemKey(raw){
+  let key = (raw || '').trim();
+  if((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))){
+    key = key.slice(1, -1).trim();
+  }
+  key = key.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const match = key.match(/-----BEGIN (RSA )?PRIVATE KEY-----([\s\S]*?)-----END (RSA )?PRIVATE KEY-----/);
+  if(!match) return key; // couldn't find PEM markers at all — let it fail downstream with the real error rather than guessing further
+  const label = match[1] ? 'RSA PRIVATE KEY' : 'PRIVATE KEY';
+  const body = match[2].replace(/[^A-Za-z0-9+/=]/g, ''); // strip every non-base64 character, including any surviving whitespace
+  const lines = body.match(/.{1,64}/g) || [];
+  return `-----BEGIN ${label}-----\n${lines.join('\n')}\n-----END ${label}-----\n`;
+}
+
 // Fetched fresh once per request rather than cached across invocations —
 // simpler and safer than trying to persist a token across Netlify's
 // stateless function instances, at the cost of one extra HTTP round-trip
@@ -54,19 +78,8 @@ async function getFirebaseAccessToken(){
   const rawKey = process.env.FIREBASE_PRIVATE_KEY;
   if(!clientEmail) throw new Error('FIREBASE_CLIENT_EMAIL not set');
   if(!rawKey) throw new Error('FIREBASE_PRIVATE_KEY not set');
-  // Pasting a multi-line PEM into a single env var sometimes turns real
-  // newlines into literal backslash-n pairs (depends how it was copied) —
-  // normalising here means it works either way rather than being fussy
-  // about exactly how it was pasted.
-let privateKey = rawKey
-  .replace(/\\n/g, '\n')
-  .replace(/"/g, '')
-  .trim();
+  const privateKey = normalizePemKey(rawKey);
 
-// Make sure it has proper PEM headers
-if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-  privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
-}
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const claim = {
@@ -81,7 +94,17 @@ if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
   const signer = crypto.createSign('RSA-SHA256');
   signer.update(unsigned);
   signer.end();
-  const signature = signer.sign(privateKey, 'base64url');
+  let signature;
+  try{
+    signature = signer.sign(privateKey, 'base64url');
+  }catch(e){
+    // Never include the key itself in an error — only enough shape
+    // information to tell whether normalizePemKey actually found valid
+    // markers and produced a plausible-length key, without exposing any
+    // of the actual key material.
+    const hasMarkers = privateKey.includes('-----BEGIN') && privateKey.includes('-----END');
+    throw new Error(`Private key sign failed (${e.message}) — normalized key: ${privateKey.length} chars, PEM markers found: ${hasMarkers}, line count: ${privateKey.split('\n').length}`);
+  }
   const jwt = `${unsigned}.${signature}`;
 
   const res = await fetch('https://oauth2.googleapis.com/token', {
