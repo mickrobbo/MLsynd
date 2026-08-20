@@ -74,16 +74,31 @@ async function verifyFirebaseIdToken(idToken){
   return user ? { uid: user.localId, email: user.email } : null;
 }
 
+// Returns { ok, user, reason } rather than just null — a bare "for
+// approved members only" message with no detail is exactly the kind of
+// thing that's cost real debugging time elsewhere in this project before;
+// surfacing the actual cause here (bad secret, missing record, wrong
+// status, etc.) means the next failure is diagnosable from the error text
+// alone instead of guessing blind again.
 async function getApprovedMemberInfo(uid, secret){
   try{
     const res = await fetch(`${FIREBASE_URL}/users/${uid}.json?auth=${secret}`);
-    if(!res.ok) return null;
+    if(!res.ok){
+      return { ok: false, reason: `Firebase read failed — HTTP ${res.status} (check FIREBASE_DB_SECRET is correct)` };
+    }
     const user = await res.json();
-    if(!user || user.status !== 'approved') return null;
-    if(user.role === 'readonly') return null; // the shared guest-link account is approved too, but Syndy is for real members only
-    return user;
+    if(!user){
+      return { ok: false, reason: `No /users/${uid} record found` };
+    }
+    if(user.status !== 'approved'){
+      return { ok: false, reason: `status is "${user.status}", not "approved"` };
+    }
+    if(user.role === 'readonly'){
+      return { ok: false, reason: 'role is readonly (guest account)' };
+    }
+    return { ok: true, user };
   }catch(e){
-    return null;
+    return { ok: false, reason: 'Exception: ' + e.message };
   }
 }
 
@@ -190,9 +205,10 @@ export default async (req) => {
     console.error('FIREBASE_DB_SECRET not set');
     return new Response(JSON.stringify({ error: 'Server misconfigured.' }), { status: 500 });
   }
-  const approved = await getApprovedMemberInfo(auth.uid, dbSecret);
-  if(!approved){
-    return new Response(JSON.stringify({ error: 'Syndy is for approved members only.' }), { status: 403 });
+  const memberCheck = await getApprovedMemberInfo(auth.uid, dbSecret);
+  if(!memberCheck.ok){
+    console.error('Syndy access denied for uid', auth.uid, '—', memberCheck.reason);
+    return new Response(JSON.stringify({ error: `Syndy is for approved members only. (${memberCheck.reason})` }), { status: 403 });
   }
 
   const groqKey = process.env.GROQ_API_KEY;
