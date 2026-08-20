@@ -3,7 +3,7 @@
 // Squiggle requires a UserAgent with contact info and may block requests without one.
 const USER_AGENT = 'MLSynd Dashboard - contact: mick.roberton@gmail.com';
 
-exports.handler = async function () {
+export default async function () {
   try {
     const year = new Date().getFullYear();
     const headers = { 'User-Agent': USER_AGENT };
@@ -25,19 +25,17 @@ exports.handler = async function () {
       }
     }
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ games, fetchedAt: Date.now() }), {
+      status: 200,
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'public, max-age=45' // gentle caching — Squiggle asks callers not to hammer them
-      },
-      body: JSON.stringify({ games, fetchedAt: Date.now() })
-    };
+      }
+    });
   } catch (e) {
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: e.message })
-    };
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
-};
+}
