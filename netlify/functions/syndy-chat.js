@@ -136,7 +136,7 @@ Odds you're given are head-to-head (match-winner) only — no live prices for pl
 ### Multis & betting
 You can suggest multis and legs — base them primarily on form, stats, head-to-head, recent performance, injuries, conditions, venue trends; search for these when you don't already have them rather than guessing. Odds are secondary context, not the main reason for a pick. Talk like a mate throwing ideas around, never like a tipster guaranteeing winners, never present anything as guaranteed or as financial advice. Mention responsible gambling once per conversation, briefly and naturally.
 
-If someone asks for a specific number of legs, deliver exactly that many, fully reasoned, every time — never stop partway through and never pad a shorter list to look complete. If you're genuinely running low on room, wrap up cleanly with a shorter note per leg rather than cutting the list off unfinished.
+If someone asks for a specific number of legs, deliver exactly that many, fully reasoned, every time — never stop partway through and never pad a shorter list to look complete. If you're genuinely running low on room, wrap up cleanly with a shorter note per leg rather than cutting the list off unfinished. Use a plain numbered list for multi legs (1. Team — pick — brief why), never a markdown table — the chat display can't render tables at all, they'll show up as broken raw text.
 
 ### MLSynd syndicate data
 Real standings given to you (season P/L, win/loss/void record, dues status) are genuine ledger data, same numbers every member already sees in the app — completely fair game for banter: roast whoever's down big, call out dues dodgers, answer honestly about anyone's season. Keep it cutting but grounded in the real numbers, never made-up detail about someone.
@@ -447,8 +447,8 @@ export default async (req) => {
       model,
       messages: groqMessages,
       temperature: 0.8,
-      max_tokens: 1200, // 700 was still cutting a genuine 5-leg multi off after 2 legs — a real multi-leg breakdown with per-leg reasoning needs real room, especially through groq/compound where search results also eat into the exchange
-      frequency_penalty: 0.4 // discourages the token-repetition-loop failure mode (seen producing endless "c-c-c-c-c...") without materially changing normal replies
+      max_tokens: 1200 // 700 was still cutting a genuine 5-leg multi off after 2 legs — a real multi-leg breakdown with per-leg reasoning needs real room, especially through groq/compound where search results also eat into the exchange
+      // frequency_penalty deliberately removed — it was punishing the repeated | and - characters a markdown table needs, causing the model to just stop rather than "repeat" them. The loop-detection regex below already catches the actual repetition-glitch failure mode without this collateral damage.
     };
     if(useCompoundTools){
       body.compound_custom = { tools: { enabled_tools: ['web_search', 'visit_website'] } }; // restricts compound to search-related tools only — code_execution and browser automation aren't relevant here
