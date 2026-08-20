@@ -38,7 +38,7 @@
 // message looks odds/betting-flavoured — see detectOddsSport below.
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
-const GROQ_MODEL = 'llama-3.3-70b-versatile'; // swap to llama-3.1-8b-instant for lower latency/cost if 70b feels slow
+const GROQ_MODEL = 'openai/gpt-oss-120b'; // Groq deprecated llama-3.3-70b-versatile (and llama-3.1-8b-instant) on 2026-06-17 — this is their own recommended replacement for it. Swap to openai/gpt-oss-20b for lower latency/cost if 120b feels slow.
 const MAX_HISTORY_MESSAGES = 12; // trims the conversation sent to Groq — cost/latency control, not a hard memory limit client-side
 const SYNDY_BONUS_XP = 500;
 
