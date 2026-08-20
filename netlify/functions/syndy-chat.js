@@ -58,7 +58,10 @@ async function getFirebaseAccessToken(){
   // newlines into literal backslash-n pairs (depends how it was copied) —
   // normalising here means it works either way rather than being fussy
   // about exactly how it was pasted.
-  const privateKey = rawKey.replace(/\\n/g, '\n');
+  const privateKey = rawKey
+  .replace(/\\n/g, '\n')
+  .replace(/"/g, '')
+  .trim();
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
