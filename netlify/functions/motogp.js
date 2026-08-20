@@ -23,22 +23,25 @@ async function getJson(url) {
   return res.json();
 }
 
-exports.handler = async function () {
+export default async function () {
   try {
     const seasons = await getJson(`${BASE}/results/seasons`);
     const current = seasons.find((s) => s.current) || seasons[0];
     if (!current) {
-      return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ standings: [], podium: null }) };
+      return new Response(JSON.stringify({ standings: [], podium: null }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }
     const seasonUuid = current.id;
 
-    const categories = await getJson(`${BASE}/results/categories?seasonUuid=${seasonUuid}`);
+    const categories = await getJson(`\( {BASE}/results/categories?seasonUuid= \){seasonUuid}`);
     const motogpCategory = categories.find((c) => c.name && c.name.replace(/[™\s]/g, "").toLowerCase() === "motogp") || categories[0];
     const categoryUuid = motogpCategory ? motogpCategory.id : null;
 
     let standings = [];
     if (categoryUuid) {
-      const standingsData = await getJson(`${BASE}/results/standings?seasonUuid=${seasonUuid}&categoryUuid=${categoryUuid}`);
+      const standingsData = await getJson(`\( {BASE}/results/standings?seasonUuid= \){seasonUuid}&categoryUuid=${categoryUuid}`);
       standings = (standingsData.classification || []).map((r) => ({
         position: r.position,
         name: r.rider ? r.rider.full_name : "",
@@ -52,14 +55,14 @@ exports.handler = async function () {
     let podium = null;
     let eventName = null;
     if (categoryUuid) {
-      const events = await getJson(`${BASE}/results/events?seasonUuid=${seasonUuid}&isFinished=true`);
+      const events = await getJson(`\( {BASE}/results/events?seasonUuid= \){seasonUuid}&isFinished=true`);
       if (events.length > 0) {
         const lastEvent = events[events.length - 1];
         eventName = lastEvent.name || lastEvent.sponsored_name || null;
-        const sessions = await getJson(`${BASE}/results/sessions?eventUuid=${lastEvent.id}&categoryUuid=${categoryUuid}`);
+        const sessions = await getJson(`\( {BASE}/results/sessions?eventUuid= \){lastEvent.id}&categoryUuid=${categoryUuid}`);
         const raceSession = sessions.find((s) => s.type === "RAC");
         if (raceSession) {
-          const classification = await getJson(`${BASE}/results/session/${raceSession.id}/classification`);
+          const classification = await getJson(`\( {BASE}/results/session/ \){raceSession.id}/classification`);
           podium = (classification.classification || [])
             .filter((r) => r.position <= 3)
             .sort((a, b) => a.position - b.position)
@@ -72,17 +75,18 @@ exports.handler = async function () {
       }
     }
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({
+      season: current.year,
+      standings,
+      eventName,
+      podium,
+    }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        season: current.year,
-        standings,
-        eventName,
-        podium,
-      }),
-    };
+    });
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+                                          }
