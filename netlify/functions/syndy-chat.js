@@ -34,7 +34,7 @@
 // user's message — see the bottom of the file.
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
-const PERPLEXITY_PRESET = 'fast'; // Perplexity's documented sonar→fast mapping (also: sonar-pro→low, sonar-reasoning-pro→medium, sonar-deep-research→high)
+const PERPLEXITY_PRESET = 'low'; // mapped from sonar-pro — richer multi-source synthesis than 'fast' (sonar). A genuine multi-market multi (goal scorers + lines + totals + disposals, each needing real research) needs real search depth, not a quick single-fact lookup. Costs more per call, worth it for what's being asked.
 const MAX_HISTORY_MESSAGES = 12; // trims the conversation sent to the API — cost/latency control, not a hard memory limit client-side
 const SYNDY_BONUS_XP = 500;
 
@@ -131,6 +131,8 @@ Odds you're given are head-to-head (match-winner) only — no live prices for pl
 You can suggest multis and legs — base them primarily on form, stats, head-to-head, recent performance, injuries, conditions, venue trends; search for these when you don't already have them rather than guessing. Odds are secondary context, not the main reason for a pick. Talk like a mate throwing ideas around, never like a tipster guaranteeing winners, never present anything as guaranteed or as financial advice. Mention responsible gambling once per conversation, briefly and naturally.
 
 If someone asks for a specific number of legs, deliver exactly that many, fully reasoned, every time — never stop partway through and never pad a shorter list to look complete. If you're genuinely running low on room, wrap up cleanly with a shorter note per leg rather than cutting the list off unfinished.
+
+If there are fewer real games available than legs requested (e.g. one game on, five legs asked for), that's completely fine and expected — legs don't have to be one-per-game. Pull multiple legs from DIFFERENT MARKETS within the same game or games: match winner, a player's anytime goalscorer line, a disposal count line, a total points line, a handicap/line bet. For each of those markets, actually run a real search — recent disposal/goalkicking averages for the specific player, current lines being offered by Australian bookmakers (Sportsbet, TAB, Ladbrokes, Neds, PointsBet, BetRight), team news, weather at the venue — and build a real, specific pick from what you find, exactly as confidently as you would for a straight win/loss leg. Treat "search the market" as a normal, expected step for every non-H2H leg, not an exception.
 
 ### MLSynd syndicate data
 Real standings given to you (season P/L, win/loss/void record, dues status) are genuine ledger data, same numbers every member already sees in the app — completely fair game for banter: roast whoever's down big, call out dues dodgers, answer honestly about anyone's season. Keep it cutting but grounded in the real numbers, never made-up detail about someone.
@@ -301,11 +303,16 @@ async function fetchPlatformSummary(accessToken){
   }
 }
 function formatOddsForPrompt(sport, data){
+  const now = Date.now();
+  const nowStr = new Date(now).toLocaleString('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'short', hour: '2-digit', minute: '2-digit' });
   const lines = data.events.slice(0, 10).map(e => {
+    const kickoffMs = new Date(e.commence_time).getTime();
     const when = new Date(e.commence_time).toLocaleString('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'short', hour: '2-digit', minute: '2-digit' });
-    return `${e.home_team} vs ${e.away_team} (${when} AEST) — ${e.home_team} $${e.home_best_price} (${e.home_best_bookmaker}), ${e.away_team} $${e.away_best_price} (${e.away_best_bookmaker})`;
+    const minsSinceStart = Math.round((now - kickoffMs) / 60000);
+    const status = kickoffMs > now ? `upcoming, kicks off ${when} AEST` : `⚠️ ALREADY STARTED ${minsSinceStart} min ago (${when} AEST kickoff) — this is live, not a pre-game fixture`;
+    return `${e.home_team} vs ${e.away_team} — ${status} — H2H: ${e.home_team} $${e.home_best_price} (${e.home_best_bookmaker}), ${e.away_team} $${e.away_best_price} (${e.away_best_bookmaker})`;
   });
-  return `Live ${sport.toUpperCase()} head-to-head odds ONLY, decimal, best price currently available across tracked bookmakers:\n${lines.join('\n')}\n\nUse this real data when discussing straight win/loss odds, favourites, or a match-winner-only multi for these games — don't claim you lack live odds while this is in front of you. This is head-to-head data ONLY — if the request involves goal scorers, disposals, lines, or totals, that's not covered here; say so rather than quietly answering with just the win/loss picks above. Still weight form/stats over price per your usual approach.`;
+  return `Current time: ${nowStr} AEST. There ${data.events.length === 1 ? `is exactly 1 real ${sport.toUpperCase()} game` : `are ${data.events.length} real ${sport.toUpperCase()} games`} scheduled — this IS the complete list, don't ask which game or assume there are more:\n${lines.join('\n')}\n\nOdds shown are head-to-head (match-winner) ONLY, decimal, best price across tracked bookmakers — real data, use it directly. For goal scorers, disposals, lines, or totals on these specific games, actually search the web for them (see your instructions) rather than saying you only have H2H data and stopping there.`;
 }
 
 // ---- Total Perplexity usage tracking (shared across all members) ----
@@ -465,7 +472,7 @@ export default async (req) => {
         preset: PERPLEXITY_PRESET,
         instructions: SYNDY_SYSTEM_PROMPT,
         input: perplexityInput,
-        max_output_tokens: 1200 // real room for a full multi-leg breakdown with per-leg reasoning
+        max_output_tokens: 1800 // 1200 was fine for straight H2H multis but tight for a genuinely researched multi-market breakdown (goal scorer + line + total + disposals, each with real reasoning)
       })
     });
     // Counted here — right after any real response comes back from
