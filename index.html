@@ -2301,6 +2301,11 @@
       <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Reset stats</button>
     </div>
     <div class="panel">
+      <h2>🔮 Syndy Usage (all members)</h2>
+      <div class="hint">Real shared total — incremented server-side every time syndy-chat.js actually calls Perplexity, from any member's device. Unlike the tracker above, this is the genuine group-wide count.</div>
+      <div id="syndyUsageArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
       <h2>🔔 Test Push Notification</h2>
       <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
       <button type="button" id="testPushBtn">Send test notification</button>
@@ -2533,6 +2538,33 @@ document.getElementById('resetApiCallStatsBtn').addEventListener('click', () => 
   try{ localStorage.setItem(API_CALL_STATS_KEY, '{}'); }catch(e){}
   renderApiCallTracker();
 });
+async function renderSyndyUsage(){
+  const area = document.getElementById('syndyUsageArea');
+  if(!area) return;
+  try{
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+    const monthKey = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+    const [totalRes, monthRes, lastRes] = await Promise.all([
+      authedFetch('/apiUsage/perplexity/totalCalls.json'),
+      authedFetch(`/apiUsage/perplexity/byMonth/${monthKey}.json`),
+      authedFetch('/apiUsage/perplexity/lastCallAt.json')
+    ]);
+    const total = totalRes.ok ? ((await totalRes.json()) || 0) : 0;
+    const thisMonth = monthRes.ok ? ((await monthRes.json()) || 0) : 0;
+    const lastCallAt = lastRes.ok ? await lastRes.json() : null;
+    if(total === 0){
+      area.innerHTML = '<div class="empty">No Syndy calls tracked yet — they\'ll show up here once someone chats with her.</div>';
+      return;
+    }
+    area.innerHTML = `
+      <div class="api-tracker-row"><span class="api-tracker-name">Total (all time)</span><span class="api-tracker-meta"><b>${total}</b> call${total === 1 ? '' : 's'}</span></div>
+      <div class="api-tracker-row"><span class="api-tracker-name">This month</span><span class="api-tracker-meta"><b>${thisMonth}</b> call${thisMonth === 1 ? '' : 's'}</span></div>
+      <div class="api-tracker-row"><span class="api-tracker-name">Last call</span><span class="api-tracker-meta">${lastCallAt ? timeAgo(lastCallAt) : '—'}</span></div>
+    `;
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load Syndy usage right now.</div>';
+  }
+}
 const DATA_PATH = '/state.json';
 
 // ================= Auth =================
@@ -3287,7 +3319,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.12";
+const APP_VERSION = "2026-08-20.13";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10303,6 +10335,7 @@ function renderHealthCheckResults(results){
 
 function renderDiagTab(){
   renderApiCallTracker();
+  renderSyndyUsage();
   const area = document.getElementById('diagTabArea');
   if(!area) return;
   area.innerHTML = '<div class="empty">Loading…</div>';
