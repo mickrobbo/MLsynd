@@ -1435,7 +1435,8 @@
   content:''; position:absolute; inset:0; background:var(--felt-2); opacity:.92; pointer-events:none; z-index:0;
 }
 .syndy-chat-body > *{ position:relative; z-index:1; }
-.syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; }
+.syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; }
+.syndy-chat-body{ overflow-x:hidden; }
 .syndy-msg.syndy{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; white-space:normal; }
 .syndy-msg.syndy div{ margin-bottom:6px; }
 .syndy-msg.syndy div:last-child{ margin-bottom:0; }
@@ -3282,7 +3283,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.9";
+const APP_VERSION = "2026-08-20.11";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10728,7 +10729,7 @@ function startApp(){
   refreshRacing();
   startTabScopedPolling(refreshRacing, 300000, ['sport']); // meetings/races don't change often — every 5 min is plenty, and only while Sport is showing
   refreshTipping();
-  startTabScopedPolling(refreshTipping, 60000, ['tipping']); // picks reveal as games kick off — check every minute, only while Tipping is showing
+  startTabScopedPolling(refreshTipping, 180000, ['tipping']); // picks reveal as games kick off — was every 60s, which was rebuilding the whole picks UI from server data mid-tap for anyone still deciding, wiping their unsubmitted picks. 3 min gives real headroom without meaningfully delaying the "picks reveal at kickoff" behaviour this exists for.
   setTimeout(refreshTippingLadderOnly, 2500); // staggered — this reads one row per finished game this season and was competing with the round's own game cards for bandwidth on first load
   startTabScopedPolling(refreshTippingLadderOnly, 240000, ['tipping']); // ladder is read-heavy (1 DB read per finished game this season) — every 4 min is plenty, was riding the 60s cycle before
   refreshNews();

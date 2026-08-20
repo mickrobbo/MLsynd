@@ -1,9 +1,11 @@
 {
-  "version": "2026-08-20.9",
+  "version": "2026-08-20.11",
   "date": "2026-08-20",
   "changes": [
-    "Fixed: Syndy's replies now render properly (bold, numbered lists) instead of showing raw markdown asterisks",
-    "Fixed: multi replies were getting cut off mid-list — reply length limit raised",
-    "Changed: PuntersEdge odds now fetch in parallel with sign-in checks instead of after them, cutting response time for multi requests"
+    "Fixed: Syndy was inventing specific AFL ladder positions, records, and player details — she now pulls the real live ladder data and is told never to invent specifics she doesn't actually have",
+    "Fixed: a rare Syndy reply-generation glitch that produced endless repeated characters — detected and cut off automatically if it happens, plus a setting change to make it less likely",
+    "New: Syndy gives real in-depth analysis when asked about past/historical events, instead of her usual short replies",
+    "Fixed: the Syndy chat box no longer needs horizontal scrolling",
+    "Fixed: rebuilt On This Day using a different, verified data source — the previous one was returning empty results"
   ]
 }
