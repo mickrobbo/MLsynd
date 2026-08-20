@@ -46,10 +46,15 @@ async function getFirebaseAccessToken(){
   const rawKey = process.env.FIREBASE_PRIVATE_KEY;
   if(!clientEmail) throw new Error('FIREBASE_CLIENT_EMAIL not set');
   if(!rawKey) throw new Error('FIREBASE_PRIVATE_KEY not set');
-  const privateKey = rawKey
+  let privateKey = rawKey
   .replace(/\\n/g, '\n')
   .replace(/"/g, '')
   .trim();
+
+// Make sure it has proper PEM headers
+if (!privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+  privateKey = `-----BEGIN PRIVATE KEY-----\n${privateKey}\n-----END PRIVATE KEY-----`;
+}
 
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
