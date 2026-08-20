@@ -364,7 +364,11 @@ export default async (req) => {
     if(!groqRes.ok){
       const errText = await groqRes.text();
       console.error('Groq API error:', groqRes.status, errText);
-      return new Response(JSON.stringify({ error: "Syndy's gone quiet for a sec — try again shortly." }), { status: 502 });
+      // Surfaced to the chat itself (not just server logs) so the actual
+      // cause is visible without needing to dig through Netlify function
+      // logs — same reasoning as every other diagnostic error in this
+      // project: a generic message just means guessing blind next time.
+      return new Response(JSON.stringify({ error: `Syndy's gone quiet for a sec. (Groq HTTP ${groqRes.status}: ${errText.slice(0, 200)})` }), { status: 502 });
     }
     const data = await groqRes.json();
     const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
