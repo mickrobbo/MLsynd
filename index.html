@@ -3277,7 +3277,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.7";
+const APP_VERSION = "2026-08-20.8";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7677,14 +7677,14 @@ async function computeWeeklyOutstandingItems(){
     }
   }catch(e){}
   // Individual bets: entries logged for this week with no Win/Loss result
-  // yet — named, not just counted, with a stable index (position in the
-  // full array, not the filtered one) so a per-item "I've placed mine"
-  // checkbox stays pointing at the right bet even if others around it
-  // pick up a result first.
+  // yet — named, not just counted, each carrying whether the admin has
+  // marked it "placed" from the Ledger (shared, real data — not a local
+  // per-device guess) so the count of what's genuinely still outstanding
+  // excludes ones already accounted for.
   try{
     const bets = (currentState && currentState.weeklyIndividualBets) || [];
     result.betsOutstandingList = bets
-      .map((b, i) => ({ name: b && b.name, idx: i }))
+      .map((b, i) => ({ name: b && b.name, idx: i, placed: !!(b && b.placed) }))
       .filter((b, i) => b.name && bets[i] && bets[i].result !== 'Win' && bets[i].result !== 'Loss');
   }catch(e){}
   // Group multi: nothing entered yet this week at all.
@@ -7695,10 +7695,6 @@ async function computeWeeklyOutstandingItems(){
     result.multiOutstanding = cleared || !hasAnyResult;
   }catch(e){}
   return result;
-}
-function betAckStorageKey(weekKey){ return `mlsynd_bet_ack_${weekKey}`; }
-function getBetAcks(weekKey){
-  try{ return JSON.parse(localStorage.getItem(betAckStorageKey(weekKey)) || '{}'); }catch(e){ return {}; }
 }
 async function renderWeeklyReminderPanel(){
   if(currentUserRole === 'readonly') return; // guest sessions don't need internal admin-style nudges
@@ -7711,24 +7707,23 @@ async function renderWeeklyReminderPanel(){
 
   let items;
   try{ items = await computeWeeklyOutstandingItems(); }catch(e){ return; }
-  const acks = getBetAcks(weekKey);
-  const betsStillOutstanding = items.betsOutstandingList.filter(b => !acks[b.idx]);
+  const betsStillOutstanding = items.betsOutstandingList.filter(b => !b.placed);
 
   const rows = [];
   if(items.tipsOutstanding.length > 0){
     rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🏈</span><span class="weekly-reminder-text"><b>${items.tipsOutstanding.length} member${items.tipsOutstanding.length === 1 ? '' : 's'}</b> haven't submitted tips yet this round (${escapeHtml(items.tipsOutstanding.join(', '))})</span></div>`);
   }
   if(items.betsOutstandingList.length > 0){
-    // Ticking one off is a personal, this-device-only acknowledgment
-    // ("I know this one's actually been placed") — it doesn't touch the
-    // real bet record, only whether this panel keeps nagging about it.
-    const betCheckboxes = items.betsOutstandingList.map(b => `
-      <label class="weekly-reminder-check-row${acks[b.idx] ? ' acked' : ''}">
-        <input type="checkbox" data-bet-ack-idx="${b.idx}" ${acks[b.idx] ? 'checked' : ''}>
+    // Read-only — "placed" is set from the Ledger now (shared, real data),
+    // not a per-device local guess, so the Dashboard just displays it
+    // rather than offering its own separate checkbox to toggle.
+    const betRows = items.betsOutstandingList.map(b => `
+      <div class="weekly-reminder-check-row${b.placed ? ' acked' : ''}">
+        <span>${b.placed ? '✅' : '⬜'}</span>
         <span>${escapeHtml(b.name)}</span>
-      </label>
+      </div>
     `).join('');
-    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎲</span><div class="weekly-reminder-text"><b id="betsOutstandingCount">${betsStillOutstanding.length}</b> individual bet${betsStillOutstanding.length === 1 ? '' : 's'} still don't have a result — tick off any you know have already been placed:${betCheckboxes}</div></div>`);
+    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎲</span><div class="weekly-reminder-text"><b>${betsStillOutstanding.length}</b> individual bet${betsStillOutstanding.length === 1 ? '' : 's'} still don't have a result (✅ = already placed, per the Ledger):${betRows}</div></div>`);
   }
   if(items.multiOutstanding){
     rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎟️</span><span class="weekly-reminder-text">This week's <b>group multi</b> hasn't been started yet</span></div>`);
@@ -7742,27 +7737,8 @@ async function renderWeeklyReminderPanel(){
   document.getElementById('weeklyReminderList').innerHTML = rows.join('');
   panel.style.display = 'block';
   panel.dataset.weekKey = weekKey;
-  updateSyndyBadge(anyRealOutstanding); // badge/nag only for what's genuinely still outstanding, not fully-acked items still shown in the checklist
+  updateSyndyBadge(anyRealOutstanding); // badge/nag only for what's genuinely still outstanding, not already-placed items still shown in the checklist
 }
-document.getElementById('weeklyReminderList').addEventListener('change', (e) => {
-  const cb = e.target.closest('[data-bet-ack-idx]');
-  if(!cb) return;
-  const panel = document.getElementById('weeklyReminderPanel');
-  const weekKey = panel.dataset.weekKey || currentIsoWeekKeyAEST();
-  const acks = getBetAcks(weekKey);
-  const idx = cb.dataset.betAckIdx;
-  if(cb.checked) acks[idx] = true; else delete acks[idx];
-  try{ localStorage.setItem(betAckStorageKey(weekKey), JSON.stringify(acks)); }catch(err){}
-  cb.closest('.weekly-reminder-check-row').classList.toggle('acked', cb.checked);
-  const countEl = document.getElementById('betsOutstandingCount');
-  if(countEl){
-    const remaining = document.querySelectorAll('#weeklyReminderList [data-bet-ack-idx]:not(:checked)').length;
-    countEl.textContent = remaining;
-  }
-  // Re-check whether the whole panel (and Syndy badge) should still be
-  // showing now that this item may have just been fully cleared.
-  renderWeeklyReminderPanel();
-});
 document.getElementById('weeklyReminderClearBtn').addEventListener('click', () => {
   const panel = document.getElementById('weeklyReminderPanel');
   try{ localStorage.setItem(WEEKLY_REMINDER_DISMISS_KEY, panel.dataset.weekKey || currentIsoWeekKeyAEST()); }catch(e){}

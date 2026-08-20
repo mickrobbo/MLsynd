@@ -1,15 +1,15 @@
 {
-  "version": "2026-08-20.7",
+  "version": "2026-08-20.8",
   "date": "2026-08-20",
   "changes": [
     "Changed: \"Last saved by\" and the system health indicator moved into a quiet footer at the bottom of Home",
-    "New: casino wins of 1000+ XP are now clickable on the Casino Floor feed, opening a premium snapshot modal",
-    "New: a weekly \"outstanding items\" reminder on Home — missing tips, individual bets without a result, and an unstarted group multi — clearable, reappears once a new week starts",
-    "New: a Thursday 8am AEST push notification reminding members to check the app",
-    "New: Syndy AI assistant — floating gold-coin button on every tab, opens a chat panel, badge lights up when there are outstanding items",
-    "New: subtle branded Syndy coin watermark in the chat panel background",
-    "New: API Call Tracker in Diag — shows call counts and last-called time for every external API the app uses",
-    "New: a one-off 500 XP bonus for trying Syndy for the first time — Syndy tells you about it herself in her first reply",
-    "New: Syndy now pulls real live AFL/NRL odds from PuntersEdge when you ask about odds, favourites, prices, or multis"
+    "New: casino wins of 1000+ XP are clickable on the Casino Floor feed, opening a premium snapshot modal",
+    "New: a weekly \"outstanding items\" reminder on Home — missing tips, individual bets, and an unstarted group multi — with a Thursday 8am AEST push notification",
+    "New: Syndy AI assistant — floating gold-coin button, chat panel with branded background, badge lights up when there's something outstanding",
+    "New: a one-off 500 XP bonus for trying Syndy the first time, and Syndy now pulls real live AFL/NRL odds from PuntersEdge when relevant",
+    "Changed: Syndy is Full/Dashboard members only",
+    "New: API Call Tracker in Diag, showing usage of every external API the app calls",
+    "Changed: individual bet \"placed\" checkbox moved to the Ledger — real shared data instead of a per-device guess",
+    "Fixed: Firebase admin access migrated to your service account credentials, and several deploy/build issues along the way"
   ]
 }
