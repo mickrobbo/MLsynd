@@ -2,17 +2,17 @@
 // Fetches best-price sports odds from PuntersEdge for AFL/NRL/NBA/EPL and
 // matches each event's selections back to its home/away team.
 
-exports.handler = async function (event) {
+export default async function (request) {
   const apiKey = process.env.PUNTERSEDGE_API_KEY;
 
   if (!apiKey) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "PUNTERSEDGE_API_KEY not configured." }),
-    };
+    return new Response(JSON.stringify({ error: "PUNTERSEDGE_API_KEY not configured." }), {
+      status: 500,
+    });
   }
 
-  const sportParam = ((event.queryStringParameters || {}).sport || "").toLowerCase();
+  const url = new URL(request.url);
+  const sportParam = (url.searchParams.get("sport") || "").toLowerCase();
 
   // Map our app's internal sport keys to PuntersEdge's sport keys.
   // NFL / MLB / NHL / tennis aren't covered by PuntersEdge's sports odds API.
@@ -25,11 +25,10 @@ exports.handler = async function (event) {
 
   const peSportKey = sportKeyMap[sportParam];
   if (!peSportKey) {
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ supported: false, sport: sportParam, events: [] }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ supported: false, sport: sportParam, events: [] }),
-    };
+    });
   }
 
   function normTeam(s) {
@@ -52,24 +51,22 @@ exports.handler = async function (event) {
     const rawText = await resp.text();
 
     if (!resp.ok) {
-      return {
-        statusCode: resp.status,
-        body: JSON.stringify({
-          error: "Upstream PuntersEdge error",
-          upstreamStatus: resp.status,
-          upstreamBody: rawText.slice(0, 500),
-        }),
-      };
+      return new Response(JSON.stringify({
+        error: "Upstream PuntersEdge error",
+        upstreamStatus: resp.status,
+        upstreamBody: rawText.slice(0, 500),
+      }), {
+        status: resp.status,
+      });
     }
 
     let data;
     try {
       data = JSON.parse(rawText);
     } catch (e) {
-      return {
-        statusCode: 502,
-        body: JSON.stringify({ error: "Failed to parse upstream JSON" }),
-      };
+      return new Response(JSON.stringify({ error: "Failed to parse upstream JSON" }), {
+        status: 502,
+      });
     }
 
     const rawEvents = Array.isArray(data) ? data : data.events || [];
@@ -97,15 +94,13 @@ exports.handler = async function (event) {
       };
     });
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ supported: true, sport: sportParam, events }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ supported: true, sport: sportParam, events }),
-    };
+    });
   } catch (err) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+}
