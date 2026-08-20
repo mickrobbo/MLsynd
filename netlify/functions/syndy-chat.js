@@ -8,9 +8,21 @@
 // server-side — Google does the verification, not this function), then
 // confirms that uid has status: 'approved' in /users, same access rule
 // as everywhere else in the app. Rejects anything else with 401/403
-// before ever calling Groq — Syndy is for logged-in members only.
+// before ever calling the LLM — Syndy is for logged-in members only.
 //
-// Needs GROQ_API_KEY set in Netlify env vars (get one at console.groq.com).
+// Needs PERPLEXITY_API_KEY set in Netlify env vars (get one at
+// perplexity.ai — API Portal → API Keys). Switched from Groq's
+// groq/compound to Perplexity's Sonar after repeated real-world
+// accuracy failures with compound: it treats web search as an agentic,
+// optional decision the model makes per-query, and was confirmed
+// fabricating entire detailed scandals (specific names, dollar figures,
+// dates) even with search available, plus flatly refusing player-prop
+// questions it had just been told to research. Sonar performs a REAL web
+// search on every single call — not optional, not agentically decided —
+// which is the actual structural fix, not just a prompt tweak. Same
+// OpenAI-compatible request/response shape as before, so the rest of
+// this file barely changed.
+//
 // FIREBASE_WEB_API_KEY is the public Firebase web key already embedded in
 // DASHBOARD-index.html client-side — safe to expose either way, but it
 // has to live in an env var here rather than hardcoded in the file,
@@ -38,8 +50,8 @@
 // message looks odds/betting-flavoured — see detectOddsSport below.
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
-const GROQ_MODEL = 'groq/compound'; // has REAL, native web search built in (powered by Tavily, decided automatically per-query) — this is what lets Syndy check current facts instead of relying only on training data or the structured feeds below. Groq reports ~4.9s average latency for this vs much faster for a plain model — if that feels too slow in practice, groq/compound-mini trades some depth for real speed while keeping the same built-in search.
-const MAX_HISTORY_MESSAGES = 12; // trims the conversation sent to Groq — cost/latency control, not a hard memory limit client-side
+const PERPLEXITY_MODEL = 'sonar'; // cheapest Sonar tier ($1/$1 per million tokens, ~half a cent per call per Perplexity's own estimate) — real web search on every call is included at this tier, not an add-on. Upgrade to 'sonar-pro' (richer multi-source synthesis, more citations, $3/$15 per million) if quality ever needs it — same request shape either way.
+const MAX_HISTORY_MESSAGES = 12; // trims the conversation sent to the API — cost/latency control, not a hard memory limit client-side
 const SYNDY_BONUS_XP = 500;
 
 import crypto from 'crypto';
@@ -267,7 +279,7 @@ function formatLadderForPrompt(ladder){
 // ---- PuntersEdge odds context ----
 // Only fetched when the latest message actually looks odds/betting-
 // flavoured — not on every single message, to keep the extra fetch (and
-// the tokens it adds to the Groq call) proportional to when it's useful.
+// the tokens it adds to the API call) proportional to when it's useful.
 // Response shape confirmed from a real call to puntersedge-sports-odds:
 // { supported, sport, events: [{ home_team, away_team, commence_time,
 //   home_best_price, home_best_bookmaker, away_best_price, away_best_bookmaker }] }
@@ -347,7 +359,7 @@ export default async (req) => {
   // there's no reason to make the user wait for it sequentially after.
   // Every "multi" message was hitting this (it's one of the odds-intent
   // keywords), so this alone was adding a full extra network round-trip
-  // to every multi request before Groq was even called.
+  // to every multi request before the LLM was even called.
   const trimmedHistoryForIntent = messages
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
     .slice(-MAX_HISTORY_MESSAGES);
@@ -386,27 +398,24 @@ export default async (req) => {
   // hand rather than adding a further sequential wait.
   const platformSummaryPromise = fetchPlatformSummary(accessToken);
 
-  const groqKey = process.env.GROQ_API_KEY;
-  if(!groqKey){
-    console.error('GROQ_API_KEY not set');
-    return new Response(JSON.stringify({ error: 'Syndy is not configured yet — ask the admin to set GROQ_API_KEY.' }), { status: 500 });
+  const perplexityKey = process.env.PERPLEXITY_API_KEY;
+  if(!perplexityKey){
+    console.error('PERPLEXITY_API_KEY not set');
+    return new Response(JSON.stringify({ error: 'Syndy is not configured yet — ask the admin to set PERPLEXITY_API_KEY.' }), { status: 500 });
   }
 
   const bonusAwarded = await claimSyndyBonusIfEligible(auth.uid, accessToken);
 
   // Trim to the last N messages and make sure every entry has a sane shape
-  // before it goes anywhere near Groq — a malformed client message
+  // before it goes anywhere near the API — a malformed client message
   // shouldn't be able to break the request.
   const trimmedHistory = messages
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
     .slice(-MAX_HISTORY_MESSAGES);
 
-  // Gather every extra context block BEFORE assembling the final message
-  // array, not appended after — groq/compound requires the conversation's
-  // LAST message to have role 'user' (the previous plain models tolerated
-  // a trailing system message; compound doesn't). All context goes
-  // between the main system prompt and the actual conversation history,
-  // so the real user message always ends up last.
+  // All extra context sits between the main system prompt and the actual
+  // conversation history, keeping the real user message last — good
+  // practice regardless of provider, and costs nothing to keep.
   const extraContext = [];
 
   const oddsData = await oddsPromise;
@@ -437,60 +446,40 @@ export default async (req) => {
     });
   }
 
-  const groqMessages = [
+  const perplexityMessages = [
     { role: 'system', content: SYNDY_SYSTEM_PROMPT },
     ...extraContext,
     ...trimmedHistory
   ];
 
-  const FALLBACK_MODEL = 'openai/gpt-oss-120b'; // no web search, but reliable — used if groq/compound rejects the request shape/size, so a hiccup there never means a dead end for the member
-
-  async function callGroq(model, useCompoundTools){
-    const body = {
-      model,
-      messages: groqMessages,
-      temperature: 0.8,
-      max_tokens: 1200 // 700 was still cutting a genuine 5-leg multi off after 2 legs — a real multi-leg breakdown with per-leg reasoning needs real room, especially through groq/compound where search results also eat into the exchange
-      // frequency_penalty deliberately removed — it was punishing the repeated | and - characters a markdown table needs, causing the model to just stop rather than "repeat" them. The loop-detection regex below already catches the actual repetition-glitch failure mode without this collateral damage.
-    };
-    if(useCompoundTools){
-      body.compound_custom = { tools: { enabled_tools: ['web_search', 'visit_website'] } }; // restricts compound to search-related tools only — code_execution and browser automation aren't relevant here
-    }
-    return fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${groqKey}` },
-      body: JSON.stringify(body)
-    });
-  }
-
   try{
-    let groqRes = await callGroq(GROQ_MODEL, true);
-    let usedFallback = false;
-    if(!groqRes.ok && GROQ_MODEL !== FALLBACK_MODEL){
-      const firstErrText = await groqRes.text();
-      console.warn('groq/compound request failed, retrying with fallback model:', groqRes.status, firstErrText);
-      groqRes = await callGroq(FALLBACK_MODEL, false);
-      usedFallback = true;
-    }
-    if(!groqRes.ok){
-      const errText = await groqRes.text();
-      console.error('Groq API error:', groqRes.status, errText);
+    const perplexityRes = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${perplexityKey}` },
+      body: JSON.stringify({
+        model: PERPLEXITY_MODEL,
+        messages: perplexityMessages,
+        temperature: 0.8,
+        max_tokens: 1200 // real room for a full multi-leg breakdown with per-leg reasoning
+      })
+    });
+    if(!perplexityRes.ok){
+      const errText = await perplexityRes.text();
+      console.error('Perplexity API error:', perplexityRes.status, errText);
       // Surfaced to the chat itself (not just server logs) so the actual
       // cause is visible without needing to dig through Netlify function
       // logs — same reasoning as every other diagnostic error in this
       // project: a generic message just means guessing blind next time.
-      return new Response(JSON.stringify({ error: `Syndy's gone quiet for a sec. (Groq HTTP ${groqRes.status}: ${errText.slice(0, 200)})` }), { status: 502 });
+      return new Response(JSON.stringify({ error: `Syndy's gone quiet for a sec. (Perplexity HTTP ${perplexityRes.status}: ${errText.slice(0, 200)})` }), { status: 502 });
     }
-    const data = await groqRes.json();
+    const data = await perplexityRes.json();
     let reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if(!reply){
       return new Response(JSON.stringify({ error: "Didn't quite catch that — give it another go." }), { status: 502 });
     }
-    // Safety net on top of frequency_penalty — if the same short
-    // character/token run still repeats 8+ times in a row (the exact
-    // "c-c-c-c-c..." failure mode seen), cut the reply off right before
-    // the loop starts rather than showing the garbage tail. A clean,
-    // possibly-shorter reply beats a technically-complete broken one.
+    // Cheap safety net kept regardless of provider — if the same short
+    // character/token run repeats 8+ times in a row, cut the reply off
+    // right before the loop starts rather than showing a garbage tail.
     const loopMatch = reply.match(/(.{1,6}?)\1{7,}/);
     if(loopMatch){
       reply = reply.slice(0, loopMatch.index).trim();
