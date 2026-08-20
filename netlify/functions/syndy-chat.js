@@ -419,27 +419,27 @@ export default async (req) => {
     .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
     .slice(-MAX_HISTORY_MESSAGES);
 
-  const groqMessages = [
-    { role: 'system', content: SYNDY_SYSTEM_PROMPT },
-    ...trimmedHistory
-  ];
+  // Gather every extra context block BEFORE assembling the final message
+  // array, not appended after — groq/compound requires the conversation's
+  // LAST message to have role 'user' (the previous plain models tolerated
+  // a trailing system message; compound doesn't). All context goes
+  // between the main system prompt and the actual conversation history,
+  // so the real user message always ends up last.
+  const extraContext = [];
 
-  // By now the auth chain above has taken long enough that this has
-  // usually already resolved — awaiting it here is normally near-instant
-  // rather than a fresh wait.
   const oddsData = await oddsPromise;
   if(oddsData){
-    groqMessages.push({ role: 'system', content: formatOddsForPrompt(oddsSport, oddsData) });
+    extraContext.push({ role: 'system', content: formatOddsForPrompt(oddsSport, oddsData) });
   }
 
   const ladderData = await ladderPromise;
   if(ladderData){
-    groqMessages.push({ role: 'system', content: formatLadderForPrompt(ladderData) });
+    extraContext.push({ role: 'system', content: formatLadderForPrompt(ladderData) });
   }
 
   const platformSummary = await platformSummaryPromise;
   if(platformSummary){
-    groqMessages.push({
+    extraContext.push({
       role: 'system',
       content: `Real MLSynd syndicate data — current season standings, records, and dues status for the group (not a guess, pull straight from the ledger; use it for banter, roasting, "who's the worst punter", answering questions about anyone's form or record, or pointing out who owes money):\n${platformSummary}`
     });
@@ -449,11 +449,17 @@ export default async (req) => {
   // prompt itself, so it never repeats on later messages once the bonus
   // has already been mentioned.
   if(bonusAwarded){
-    groqMessages.push({
+    extraContext.push({
       role: 'system',
       content: `Before anything else, tell this member — in your own Syndy voice, banter and all — that they've just scored a one-off 500 XP Casino bonus for trying you out for the first time. Keep it short, then answer whatever they actually asked.`
     });
   }
+
+  const groqMessages = [
+    { role: 'system', content: SYNDY_SYSTEM_PROMPT },
+    ...extraContext,
+    ...trimmedHistory
+  ];
 
   try{
     const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
