@@ -1429,10 +1429,10 @@
   flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch;
   position:relative;
   background-image:url('syndy-chat-bg.png');
-  background-repeat:no-repeat; background-position:center 60%; background-size:220px auto;
+  background-repeat:no-repeat; background-position:center 58%; background-size:300px auto;
 }
 .syndy-chat-body::before{
-  content:''; position:absolute; inset:0; background:var(--felt-2); opacity:.92; pointer-events:none; z-index:0;
+  content:''; position:absolute; inset:0; background:var(--felt-2); opacity:.78; pointer-events:none; z-index:0;
 }
 .syndy-chat-body > *{ position:relative; z-index:1; }
 .syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; }
@@ -3416,7 +3416,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.17";
+const APP_VERSION = "2026-08-20.18";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

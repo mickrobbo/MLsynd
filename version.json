@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-20.17",
+  "version": "2026-08-20.18",
   "date": "2026-08-20",
   "changes": [
-    "Fixed: Casino tab was downloading every linked member's entire XP history to build the Floor feed, and fetching all members' balances twice (once for the leaderboard, once again for your rank) — both now query only what's needed"
+    "Fixed: Syndy chat background — removed the visible box around the coin logo, now a true circular blend into the felt with a soft gold glow, and made more visible"
   ]
 }
