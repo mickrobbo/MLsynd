@@ -5,7 +5,7 @@
 // down at the end of 2024. Same team, same backwards-compatible schema.
 // Verified against live responses before building this (2026-08-07).
 
-exports.handler = async function () {
+export default async function () {
   try {
     const [standingsRes, constructorRes, resultsRes] = await Promise.all([
       fetch("https://api.jolpi.ca/ergast/f1/current/driverstandings.json"),
@@ -14,10 +14,9 @@ exports.handler = async function () {
     ]);
 
     if (!standingsRes.ok || !constructorRes.ok || !resultsRes.ok) {
-      return {
-        statusCode: 502,
-        body: JSON.stringify({ error: "Jolpica returned an error" }),
-      };
+      return new Response(JSON.stringify({ error: "Jolpica returned an error" }), {
+        status: 502,
+      });
     }
 
     const standingsData = await standingsRes.json();
@@ -63,17 +62,18 @@ exports.handler = async function () {
       }))
       .sort((a, b) => b.round - a.round); // most recent race first
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({
+      season: standingsData.MRData.StandingsTable.season || null,
+      standings,
+      teamStandings,
+      podiums,
+    }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        season: standingsData.MRData.StandingsTable.season || null,
-        standings,
-        teamStandings,
-        podiums,
-      }),
-    };
+    });
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+                                                         }
