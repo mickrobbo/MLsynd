@@ -316,17 +316,20 @@ function formatOddsForPrompt(sport, data){
 }
 
 // ---- Total Perplexity usage tracking (shared across all members) ----
-// This is deliberately separate from the Dashboard's per-device API Call
-// Tracker (that one lives in localStorage, scoped to one browser). This
-// one is real shared data — a Firebase counter incremented server-side
-// every time this function actually calls Perplexity — so it reflects
-// total usage across the whole group, readable from the Diag tab by
-// anyone. Read-then-write, not atomic, but message volume here is low
-// enough that a lost increment under concurrent messages is a non-issue.
-async function incrementPerplexityUsage(accessToken){
+// Deliberately separate from the Dashboard's per-device API Call Tracker
+// (that one lives in localStorage, scoped to one browser). This is real
+// shared data — a Firebase counter incremented server-side every time
+// this function actually calls Perplexity, readable from the Diag tab by
+// anyone. Cost is the REAL per-call amount Perplexity's own response
+// reports (usage.cost.total_cost, confirmed in their official API
+// reference and pricing docs) — not an estimate, the exact calculated
+// cost of that specific request. Read-then-write, not atomic, but
+// message volume here is low enough that a lost increment is a non-issue.
+async function trackPerplexityUsage(accessToken, costUsd){
   try{
     const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
     const monthKey = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+    const cost = typeof costUsd === 'number' && !isNaN(costUsd) ? costUsd : 0;
 
     const totalRes = await fetch(`${FIREBASE_URL}/apiUsage/perplexity/totalCalls.json?access_token=${accessToken}`);
     const total = totalRes.ok ? ((await totalRes.json()) || 0) : 0;
@@ -339,6 +342,21 @@ async function incrementPerplexityUsage(accessToken){
     await fetch(`${FIREBASE_URL}/apiUsage/perplexity/byMonth/${monthKey}.json?access_token=${accessToken}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(monthCount + 1)
     });
+
+    if(cost > 0){
+      const totalCostRes = await fetch(`${FIREBASE_URL}/apiUsage/perplexity/totalCostUsd.json?access_token=${accessToken}`);
+      const totalCost = totalCostRes.ok ? ((await totalCostRes.json()) || 0) : 0;
+      await fetch(`${FIREBASE_URL}/apiUsage/perplexity/totalCostUsd.json?access_token=${accessToken}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(totalCost + cost)
+      });
+
+      const monthCostRes = await fetch(`${FIREBASE_URL}/apiUsage/perplexity/byMonthCostUsd/${monthKey}.json?access_token=${accessToken}`);
+      const monthCost = monthCostRes.ok ? ((await monthCostRes.json()) || 0) : 0;
+      await fetch(`${FIREBASE_URL}/apiUsage/perplexity/byMonthCostUsd/${monthKey}.json?access_token=${accessToken}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(monthCost + cost)
+      });
+    }
+
     await fetch(`${FIREBASE_URL}/apiUsage/perplexity/lastCallAt.json?access_token=${accessToken}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
     });
@@ -475,13 +493,19 @@ export default async (req) => {
         max_output_tokens: 1800 // 1200 was fine for straight H2H multis but tight for a genuinely researched multi-market breakdown (goal scorer + line + total + disposals, each with real reasoning)
       })
     });
-    // Counted here — right after any real response comes back from
+    // Parsed once, used for both usage tracking and (if successful) the
+    // actual reply — cost only exists on a successful response body, but
+    // tracking the call itself happens either way.
+    let data = null;
+    try{ data = await perplexityRes.json(); }catch(e){ /* error responses aren't always JSON */ }
+    const costUsd = data && data.usage && data.usage.cost && typeof data.usage.cost.total_cost === 'number' ? data.usage.cost.total_cost : 0;
+    // Tracked here — right after any real response comes back from
     // Perplexity, success or their own error — since this represents an
     // actual API round-trip regardless of what it returned. A request that
     // never reached them (missing key, network failure) doesn't count.
-    await incrementPerplexityUsage(accessToken);
+    await trackPerplexityUsage(accessToken, costUsd);
     if(!perplexityRes.ok){
-      const errText = await perplexityRes.text();
+      const errText = data ? JSON.stringify(data) : await perplexityRes.text().catch(() => '');
       console.error('Perplexity API error:', perplexityRes.status, errText);
       // Surfaced to the chat itself (not just server logs) so the actual
       // cause is visible without needing to dig through Netlify function
@@ -489,8 +513,7 @@ export default async (req) => {
       // project: a generic message just means guessing blind next time.
       return new Response(JSON.stringify({ error: `Syndy's gone quiet for a sec. (Perplexity HTTP ${perplexityRes.status}: ${errText.slice(0, 200)})` }), { status: 502 });
     }
-    const data = await perplexityRes.json();
-    const messageItem = Array.isArray(data.output) ? data.output.find(o => o && o.type === 'message') : null;
+    const messageItem = data && Array.isArray(data.output) ? data.output.find(o => o && o.type === 'message') : null;
     let reply = messageItem && Array.isArray(messageItem.content) && messageItem.content[0] && messageItem.content[0].text;
     if(!reply){
       return new Response(JSON.stringify({ error: "Didn't quite catch that — give it another go." }), { status: 502 });
