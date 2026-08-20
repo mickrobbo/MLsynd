@@ -19,32 +19,33 @@ const LEAGUE_PATHS = {
   liv: "golf/liv",
 };
 
-exports.handler = async function (event) {
-  const sport = ((event.queryStringParameters || {}).sport || "").toLowerCase();
+export default async function (request) {
+  const url = new URL(request.url);
+  const sport = (url.searchParams.get("sport") || "").toLowerCase();
   const path = LEAGUE_PATHS[sport];
 
   if (!path) {
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({ results: [] }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ results: [] }),
-    };
+    });
   }
 
   try {
     const resp = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard`);
     if (!resp.ok) {
-      return { statusCode: resp.status, body: JSON.stringify({ error: `ESPN returned ${resp.status}` }) };
+      return new Response(JSON.stringify({ error: `ESPN returned ${resp.status}` }), {
+        status: resp.status,
+      });
     }
 
     const data = await resp.json();
     const events = data.events || [];
     if (events.length === 0) {
-      return {
-        statusCode: 200,
+      return new Response(JSON.stringify({ eventName: null, results: [] }), {
+        status: 200,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventName: null, results: [] }),
-      };
+      });
     }
 
     // Don't just trust events[0] — ESPN's ordering isn't reliably "current
@@ -70,17 +71,18 @@ exports.handler = async function (event) {
       }))
       .sort((a, b) => a.rank - b.rank);
 
-    return {
-      statusCode: 200,
+    return new Response(JSON.stringify({
+      eventName: ev.name || ev.shortName || null,
+      sessionLabel: null,
+      completed: !!(comp && comp.status && comp.status.type && comp.status.type.completed),
+      results,
+    }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        eventName: ev.name || ev.shortName || null,
-        sessionLabel: null,
-        completed: !!(comp && comp.status && comp.status.type && comp.status.type.completed),
-        results,
-      }),
-    };
+    });
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+    });
   }
-};
+}
