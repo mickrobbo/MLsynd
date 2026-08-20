@@ -13,11 +13,18 @@
 // (computeWeeklyOutstandingItems in DASHBOARD-index.html) when someone
 // opens it.
 //
-// Needs the same FIREBASE_DB_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY,
-// and VAPID_SUBJECT env vars already set up for your other push features,
-// and 'web-push' as a dependency in functions/package.json (already there).
+// Needs the same VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, and VAPID_SUBJECT
+// env vars already set up for your other push features, 'web-push' as a
+// dependency in functions/package.json (already there), and
+// FIREBASE_SERVICE_ACCOUNT_JSON — the full contents of your Firebase
+// Admin SDK service account file, pasted as one env var. Admin-level
+// Realtime Database access here goes through a signed JWT exchanged for a
+// short-lived Google OAuth2 access token (see getFirebaseAccessToken) —
+// same role a legacy database secret used to play, but this project's
+// Firebase console doesn't expose that mechanism.
 
 import webpush from 'web-push';
+import crypto from 'crypto';
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 const TIMEZONE = 'Australia/Melbourne';
@@ -31,17 +38,51 @@ function isReminderTime(){
   return weekday === TARGET_WEEKDAY && Number(hour) === TARGET_HOUR;
 }
 
-async function dbGet(path, secret){
-  const res = await fetch(`${FIREBASE_URL}${path}.json?auth=${secret}`);
+async function getFirebaseAccessToken(){
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if(!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON not set');
+  const svc = JSON.parse(raw);
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const claim = {
+    iss: svc.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600
+  };
+  const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const unsigned = `${b64url(header)}.${b64url(claim)}`;
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(unsigned);
+  signer.end();
+  const signature = signer.sign(svc.private_key, 'base64url');
+  const jwt = `${unsigned}.${signature}`;
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt })
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throw new Error(`OAuth token exchange failed — HTTP ${res.status}: ${errText}`);
+  }
+  const data = await res.json();
+  return data.access_token;
+}
+
+async function dbGet(path, accessToken){
+  const res = await fetch(`${FIREBASE_URL}${path}.json?access_token=${accessToken}`);
   if(!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
   return res.json();
 }
-async function dbDelete(path, secret){
-  const res = await fetch(`${FIREBASE_URL}${path}.json?auth=${secret}`, { method: 'DELETE' });
+async function dbDelete(path, accessToken){
+  const res = await fetch(`${FIREBASE_URL}${path}.json?access_token=${accessToken}`, { method: 'DELETE' });
   if(!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`);
 }
 
-async function sendWeeklyReminderPush(secret){
+async function sendWeeklyReminderPush(accessToken){
   const vapidPublic = process.env.VAPID_PUBLIC_KEY;
   const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
   const vapidSubject = process.env.VAPID_SUBJECT;
@@ -57,7 +98,7 @@ async function sendWeeklyReminderPush(secret){
     url: '/'
   });
 
-  const subs = (await dbGet('/pushSubscriptions', secret)) || {};
+  const subs = (await dbGet('/pushSubscriptions', accessToken)) || {};
   let sent = 0;
   for(const uid of Object.keys(subs)){
     const sub = subs[uid];
@@ -67,7 +108,7 @@ async function sendWeeklyReminderPush(secret){
       sent++;
     }catch(err){
       if(err && (err.statusCode === 404 || err.statusCode === 410)){
-        try{ await dbDelete(`/pushSubscriptions/${uid}`, secret); }catch(e){}
+        try{ await dbDelete(`/pushSubscriptions/${uid}`, accessToken); }catch(e){}
       } else {
         console.warn('Weekly reminder push failed for', uid, err && err.message);
       }
@@ -82,13 +123,15 @@ export default async () => {
   if(!isReminderTime()){
     return new Response(`Not ${TARGET_HOUR}am ${TARGET_WEEKDAY} in ${TIMEZONE} — skipping.`, { status: 200 });
   }
-  const secret = process.env.FIREBASE_DB_SECRET;
-  if(!secret){
-    console.error('FIREBASE_DB_SECRET not set');
-    return new Response('Missing FIREBASE_DB_SECRET', { status: 500 });
+  let accessToken;
+  try{
+    accessToken = await getFirebaseAccessToken();
+  }catch(e){
+    console.error('Firebase service account auth failed:', e.message);
+    return new Response('Server misconfigured: ' + e.message, { status: 500 });
   }
   try{
-    const result = await sendWeeklyReminderPush(secret);
+    const result = await sendWeeklyReminderPush(accessToken);
     console.log('Weekly reminder push result:', JSON.stringify(result));
     return new Response(JSON.stringify(result), { status: 200 });
   }catch(e){

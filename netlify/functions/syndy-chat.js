@@ -11,21 +11,71 @@
 // before ever calling Groq — Syndy is for logged-in members only.
 //
 // Needs GROQ_API_KEY set in Netlify env vars (get one at console.groq.com).
-// FIREBASE_DB_SECRET is the same one already used by your other scheduled
-// functions. FIREBASE_WEB_API_KEY is the public Firebase web key already
-// embedded in DASHBOARD-index.html client-side — safe to expose either
-// way, but it has to live in an env var here rather than hardcoded in the
-// file, because Netlify's build-time secrets scanner flags any string
-// shaped like a Google API key regardless of whether it's actually
-// sensitive, and fails the whole build. PuntersEdge odds are pulled from
-// the site's own existing puntersedge-sports-odds function (no separate
-// key needed here) when a message looks odds/betting-flavoured — see
-// detectOddsSport below.
+// FIREBASE_WEB_API_KEY is the public Firebase web key already embedded in
+// DASHBOARD-index.html client-side — safe to expose either way, but it
+// has to live in an env var here rather than hardcoded in the file,
+// because Netlify's build-time secrets scanner flags any string shaped
+// like a Google API key regardless of whether it's actually sensitive,
+// and fails the whole build.
+//
+// FIREBASE_SERVICE_ACCOUNT_JSON is the full contents of your Firebase
+// Admin SDK service account file (Project Settings → Service Accounts →
+// Generate new private key), pasted as-is into one env var. This project's
+// Firebase console doesn't expose the older "database secret" mechanism,
+// so admin-level access here goes through a signed JWT exchanged for a
+// short-lived Google OAuth2 access token instead — see
+// getFirebaseAccessToken below. That token is what actually reads/writes
+// past the RTDB rules, same role the old database secret used to play.
+//
+// PuntersEdge odds are pulled from the site's own existing
+// puntersedge-sports-odds function (no separate key needed here) when a
+// message looks odds/betting-flavoured — see detectOddsSport below.
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 const GROQ_MODEL = 'llama-3.3-70b-versatile'; // swap to llama-3.1-8b-instant for lower latency/cost if 70b feels slow
 const MAX_HISTORY_MESSAGES = 12; // trims the conversation sent to Groq — cost/latency control, not a hard memory limit client-side
 const SYNDY_BONUS_XP = 500;
+
+import crypto from 'crypto';
+
+// Fetched fresh once per request rather than cached across invocations —
+// simpler and safer than trying to persist a token across Netlify's
+// stateless function instances, at the cost of one extra HTTP round-trip
+// per chat message. Tokens are valid for an hour; this just doesn't try
+// to reuse one.
+async function getFirebaseAccessToken(){
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if(!raw) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON not set');
+  const svc = JSON.parse(raw);
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const claim = {
+    iss: svc.client_email,
+    scope: 'https://www.googleapis.com/auth/firebase.database https://www.googleapis.com/auth/userinfo.email',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600
+  };
+  const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const unsigned = `${b64url(header)}.${b64url(claim)}`;
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(unsigned);
+  signer.end();
+  const signature = signer.sign(svc.private_key, 'base64url');
+  const jwt = `${unsigned}.${signature}`;
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt })
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throw new Error(`OAuth token exchange failed — HTTP ${res.status}: ${errText}`);
+  }
+  const data = await res.json();
+  return data.access_token;
+}
 
 const SYNDY_SYSTEM_PROMPT = `You are Syndy — a sharp, quick-witted, no-bullshit AI companion based in Melbourne, Australia (AEST). You speak like a proper footy-loving, racing-mad, pub-frequenting mate: warm when it's warranted, full of banter, and completely unafraid to swear and carry on when someone is being rude or talking shit. You give as good as you get — and then some. Never break character. Never apologise for swearing or banter unless the user specifically asks you to tone it down. Stay Syndy at all times.
 
@@ -80,11 +130,11 @@ async function verifyFirebaseIdToken(idToken){
 // surfacing the actual cause here (bad secret, missing record, wrong
 // status, etc.) means the next failure is diagnosable from the error text
 // alone instead of guessing blind again.
-async function getApprovedMemberInfo(uid, secret){
+async function getApprovedMemberInfo(uid, accessToken){
   try{
-    const res = await fetch(`${FIREBASE_URL}/users/${uid}.json?auth=${secret}`);
+    const res = await fetch(`${FIREBASE_URL}/users/${uid}.json?access_token=${accessToken}`);
     if(!res.ok){
-      return { ok: false, reason: `Firebase read failed — HTTP ${res.status} (check FIREBASE_DB_SECRET is correct)` };
+      return { ok: false, reason: `Firebase read failed — HTTP ${res.status} (check the service account has Realtime Database access)` };
     }
     const user = await res.json();
     if(!user){
@@ -93,8 +143,12 @@ async function getApprovedMemberInfo(uid, secret){
     if(user.status !== 'approved'){
       return { ok: false, reason: `status is "${user.status}", not "approved"` };
     }
-    if(user.role === 'readonly'){
-      return { ok: false, reason: 'role is readonly (guest account)' };
+    // Syndy is Full/Dashboard members only — role is undefined/null for
+    // legacy accounts (that means "full", same convention used throughout
+    // the app), so only explicitly reject tipping/readonly rather than
+    // requiring role to be positively set.
+    if(user.role === 'readonly' || user.role === 'tipping'){
+      return { ok: false, reason: `role is "${user.role}" — Syndy is Full/Dashboard members only` };
     }
     return { ok: true, user };
   }catch(e){
@@ -107,29 +161,29 @@ async function getApprovedMemberInfo(uid, secret){
 // requests from the same brand-new user somehow overlapped, at the cost
 // of a vanishingly rare edge case where the flag sets but the credit
 // fails; that's a much smaller problem than double-crediting.
-async function claimSyndyBonusIfEligible(uid, secret){
+async function claimSyndyBonusIfEligible(uid, accessToken){
   try{
-    const flagRes = await fetch(`${FIREBASE_URL}/users/${uid}/syndyBonusClaimed.json?auth=${secret}`);
+    const flagRes = await fetch(`${FIREBASE_URL}/users/${uid}/syndyBonusClaimed.json?access_token=${accessToken}`);
     const alreadyClaimed = flagRes.ok ? await flagRes.json() : true; // fail closed — if we can't tell, don't award
     if(alreadyClaimed) return false;
 
-    await fetch(`${FIREBASE_URL}/users/${uid}/syndyBonusClaimed.json?auth=${secret}`, {
+    await fetch(`${FIREBASE_URL}/users/${uid}/syndyBonusClaimed.json?access_token=${accessToken}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
     });
 
-    const balRes = await fetch(`${FIREBASE_URL}/xp/${uid}/balance.json?auth=${secret}`);
+    const balRes = await fetch(`${FIREBASE_URL}/xp/${uid}/balance.json?access_token=${accessToken}`);
     const bal = balRes.ok ? ((await balRes.json()) || 0) : 0;
     const next = bal + SYNDY_BONUS_XP;
-    await fetch(`${FIREBASE_URL}/xp/${uid}/balance.json?auth=${secret}`, {
+    await fetch(`${FIREBASE_URL}/xp/${uid}/balance.json?access_token=${accessToken}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
     });
-    await fetch(`${FIREBASE_URL}/xp/${uid}/log.json?auth=${secret}`, {
+    await fetch(`${FIREBASE_URL}/xp/${uid}/log.json?access_token=${accessToken}`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: SYNDY_BONUS_XP, reason: 'Syndy chat bonus', balanceAfter: next, ts: Date.now() })
     });
-    const ltRes = await fetch(`${FIREBASE_URL}/xp/${uid}/lifetimeEarned.json?auth=${secret}`);
+    const ltRes = await fetch(`${FIREBASE_URL}/xp/${uid}/lifetimeEarned.json?access_token=${accessToken}`);
     const lt = ltRes.ok ? ((await ltRes.json()) || 0) : 0;
-    await fetch(`${FIREBASE_URL}/xp/${uid}/lifetimeEarned.json?auth=${secret}`, {
+    await fetch(`${FIREBASE_URL}/xp/${uid}/lifetimeEarned.json?access_token=${accessToken}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lt + SYNDY_BONUS_XP)
     });
     return true;
@@ -200,12 +254,14 @@ export default async (req) => {
     return new Response(JSON.stringify({ error: 'Invalid or expired session — please sign in again.' }), { status: 401 });
   }
 
-  const dbSecret = process.env.FIREBASE_DB_SECRET;
-  if(!dbSecret){
-    console.error('FIREBASE_DB_SECRET not set');
-    return new Response(JSON.stringify({ error: 'Server misconfigured.' }), { status: 500 });
+  let accessToken;
+  try{
+    accessToken = await getFirebaseAccessToken();
+  }catch(e){
+    console.error('Firebase service account auth failed:', e.message);
+    return new Response(JSON.stringify({ error: `Server misconfigured. (${e.message})` }), { status: 500 });
   }
-  const memberCheck = await getApprovedMemberInfo(auth.uid, dbSecret);
+  const memberCheck = await getApprovedMemberInfo(auth.uid, accessToken);
   if(!memberCheck.ok){
     console.error('Syndy access denied for uid', auth.uid, '—', memberCheck.reason);
     return new Response(JSON.stringify({ error: `Syndy is for approved members only. (${memberCheck.reason})` }), { status: 403 });
@@ -217,7 +273,7 @@ export default async (req) => {
     return new Response(JSON.stringify({ error: 'Syndy is not configured yet — ask the admin to set GROQ_API_KEY.' }), { status: 500 });
   }
 
-  const bonusAwarded = await claimSyndyBonusIfEligible(auth.uid, dbSecret);
+  const bonusAwarded = await claimSyndyBonusIfEligible(auth.uid, accessToken);
 
   // Trim to the last N messages and make sure every entry has a sane shape
   // before it goes anywhere near Groq — a malformed client message
