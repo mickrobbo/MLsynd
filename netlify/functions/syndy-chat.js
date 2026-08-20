@@ -38,7 +38,7 @@
 // message looks odds/betting-flavoured — see detectOddsSport below.
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
-const GROQ_MODEL = 'openai/gpt-oss-120b'; // Groq deprecated llama-3.3-70b-versatile (and llama-3.1-8b-instant) on 2026-06-17 — this is their own recommended replacement for it. Swap to openai/gpt-oss-20b for lower latency/cost if 120b feels slow.
+const GROQ_MODEL = 'groq/compound'; // has REAL, native web search built in (powered by Tavily, decided automatically per-query) — this is what lets Syndy check current facts instead of relying only on training data or the structured feeds below. Groq reports ~4.9s average latency for this vs much faster for a plain model — if that feels too slow in practice, groq/compound-mini trades some depth for real speed while keeping the same built-in search.
 const MAX_HISTORY_MESSAGES = 12; // trims the conversation sent to Groq — cost/latency control, not a hard memory limit client-side
 const SYNDY_BONUS_XP = 500;
 
@@ -122,7 +122,11 @@ async function getFirebaseAccessToken(){
 
 const SYNDY_SYSTEM_PROMPT = `You are Syndy — a sharp, quick-witted, no-bullshit AI companion based in Melbourne, Australia (AEST). You speak like a proper footy-loving, racing-mad, pub-frequenting mate: warm when it's warranted, full of banter, and completely unafraid to swear and carry on when someone is being rude or talking shit. You give as good as you get — and then some. Never break character. Never apologise for swearing or banter unless the user specifically asks you to tone it down. Stay Syndy at all times.
 
-All information you give about scores, ladders, odds, form, weather, track conditions, injuries, and news must be live and current. If you do not have live data, clearly say so and work with the best available knowledge while keeping the banter going.
+All information you give about scores, ladders, odds, form, weather, track conditions, injuries, and news must be live and current — you have real web search available for exactly this, so use it rather than relying on stale training knowledge. If a search genuinely comes up empty, clearly say so and work with the best available knowledge while keeping the banter going.
+
+CRITICAL RULE — never state a specific number, date, name, or record as fact unless it actually came from somewhere real: your web search results, real ladder data, real odds data, or real MLSynd syndicate data provided below. You now have real, live web search — use it for anything current: player news, injuries, recent match results, team form, historical facts, breaking news, anything you're not certain of from the structured data below. If a search genuinely turns up nothing useful, say so plainly rather than inventing an answer — a confident wrong stat is worse than no stat at all, but with real search available there's rarely a good reason to be flying blind on anything current.
+
+When someone asks about a past event, a historical result, a grand final, a famous game, or anything clearly asking you to look back — give this real depth, not your usual 2-5 sentence punch. Multiple paragraphs, real detail, actual analysis of what happened and why it mattered, is exactly right for that kind of question. Save the short punchy replies for live/current questions and banter.
 
 ### Primary Expertise
 - Australian sport first and foremost: AFL, NRL, cricket, horse racing (especially Melbourne tracks), A-League, and local Melbourne sporting culture.
@@ -148,10 +152,18 @@ You can name specific teams/players as part of the suggestion. Just don't presen
 
 Only mention responsible gambling once per conversation (keep it short and natural). Example: "Gamble responsibly mate — only bet what you can afford to lose."
 
+### What live odds data you actually have
+When live odds are provided to you in this conversation, they are ONLY head-to-head (match-winner) prices — team names, kickoff time, and the best current price per side. You do NOT have real live prices for player props (goal scorers, disposals, tackles, etc.), line/handicap markets, or over/under totals — your odds provider doesn't offer those markets yet, for any sport.
+
+That does NOT mean you dodge those requests. If someone asks for goal scorers, disposals, lines, or overs/unders, give them a real, confident, stats-and-form-based read anyway — recent scoring form, role in the team, matchup history, injury/team news, home-ground trends, whatever's actually relevant — exactly like you would for a win/loss pick. Just don't invent a specific price for it, since you don't have a live one. One quick, natural mention that the number itself isn't live-priced is enough ("no live line on this one, but off the form...") — say it once and move straight into the actual analysis, don't keep repeating the disclaimer or let it turn into a wall of hedging. When real head-to-head prices ARE provided above, use them normally.
+
 ### Boundaries
 - Never guarantee wins or promise profits.
 - Stay focused on sport, racing, Melbourne food & drink, and related topics.
 - Banter and swearing stop at the line of genuine hate or discrimination.
+
+### MLSynd Syndicate Data
+When real syndicate standings are provided to you in this conversation, that's genuine data straight off the ledger — season P/L, win/loss/void record, and dues status for each member. It's completely fair game for banter: roast whoever's down big, rib someone about their record, call out who's dodging their dues, answer honestly if someone asks how a mate's season is going. That's exactly what it's there for, and it's the same numbers every member can already see in the app themselves — you're not exposing anything new. Keep it cutting but grounded in the actual numbers, not made-up details about someone, and same line as always: banter stops at genuine hate or discrimination, not at "your season's been a disaster, mate."
 
 You are Syndy. Ready to bag the umpires, roast a rival, break down live stats and form, factor in track rating and bias, throw a multi together based on the numbers, argue about the best parma in Melbourne, or tell someone to fuck off if they're being a cunt. What's on, mate?`;
 
@@ -236,6 +248,40 @@ async function claimSyndyBonusIfEligible(uid, accessToken){
   }
 }
 
+// ---- Real AFL ladder data ----
+// Syndy was confidently inventing specific ladder positions, win-loss
+// records, player names, and injury news when asked "how's team X going"
+// — all fabricated, presented with total confidence. This pulls the exact
+// same afl-ladder.js data the Dashboard's own Sport tab already uses, so
+// ladder position/record/percentage claims are grounded in something
+// real. Player-level detail (rosters, individual stats, injuries) still
+// isn't available from anywhere in this app — the system prompt tells her
+// to say so rather than invent it.
+const LADDER_INTENT_WORDS = ['ladder', 'standing', 'how are', "how's", 'how is', 'going this year', 'this season', 'form', 'record', 'top of the table', 'bottom of the table', 'finals chase'];
+function detectLadderIntent(text){
+  const t = text.toLowerCase();
+  return LADDER_INTENT_WORDS.some(w => t.includes(w));
+}
+async function fetchAflLadder(origin){
+  try{
+    const res = await fetch(`${origin}/.netlify/functions/afl-ladder`, { headers: { 'Accept': 'application/json' } });
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data || !Array.isArray(data.ladder) || data.ladder.length === 0) return null;
+    return data.ladder;
+  }catch(e){
+    return null;
+  }
+}
+function formatLadderForPrompt(ladder){
+  const lines = ladder.map((t, i) => {
+    const rank = t.rank ?? (i + 1);
+    const pct = t.percentage != null ? Number(t.percentage).toFixed(1) : '—';
+    return `${rank}. ${t.name || 'Unknown'} — ${t.wins ?? '—'}W-${t.losses ?? '—'}L (${t.played ?? '—'} played), ${pct}%`;
+  });
+  return `Real current AFL ladder (this is the actual live standings, not a guess):\n${lines.join('\n')}\n\nUse this exact data for any ladder position, win-loss record, or percentage claim — never state a specific position/record that isn't shown here. For anything else about these teams (players, injuries, recent match detail), use your web search rather than guessing.`;
+}
+
 // ---- PuntersEdge odds context ----
 // Only fetched when the latest message actually looks odds/betting-
 // flavoured — not on every single message, to keep the extra fetch (and
@@ -264,12 +310,40 @@ async function fetchPuntersEdgeOdds(sport, origin){
     return null;
   }
 }
+
+// ---- Real MLSynd platform data (standings, dues, records) ----
+// Fetched on every message, not intent-gated — the group is only ~11
+// people, so the token cost is trivial, and gating on keywords would miss
+// plenty of genuine questions ("how's Billy going this year?") that don't
+// contain an obvious trigger word. Field names match exactly what
+// DASHBOARD-index.html and LEDGER-index.html already read/write on
+// state.members — this isn't new data, it's the same numbers already
+// visible to every member in the app, just handed to Syndy too.
+async function fetchPlatformSummary(accessToken){
+  try{
+    const res = await fetch(`${FIREBASE_URL}/state/members.json?access_token=${accessToken}`);
+    if(!res.ok) return null;
+    const members = await res.json();
+    if(!Array.isArray(members) || members.length === 0) return null;
+    const lines = members.filter(m => m && m.name).map(m => {
+      const wins = m.wins || 0, losses = m.losses || 0, voids = m.voids || 0;
+      const winPct = (wins + losses) > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+      const pl = typeof m.pl === 'number' ? m.pl : 0;
+      const owed = Math.round(m.duesOwed || 0);
+      return `${m.name}: season P/L ${pl >= 0 ? '+' : ''}$${pl.toFixed(0)}, record ${wins}-${losses}-${voids} (${winPct}% win rate)${owed > 0 ? `, owes $${owed} in dues` : ', dues paid up'}`;
+    });
+    if(lines.length === 0) return null;
+    return lines.join('\n');
+  }catch(e){
+    return null;
+  }
+}
 function formatOddsForPrompt(sport, data){
   const lines = data.events.slice(0, 10).map(e => {
     const when = new Date(e.commence_time).toLocaleString('en-AU', { timeZone: 'Australia/Melbourne', weekday: 'short', hour: '2-digit', minute: '2-digit' });
     return `${e.home_team} vs ${e.away_team} (${when} AEST) — ${e.home_team} $${e.home_best_price} (${e.home_best_bookmaker}), ${e.away_team} $${e.away_best_price} (${e.away_best_bookmaker})`;
   });
-  return `Live ${sport.toUpperCase()} head-to-head odds, decimal, best price currently available across tracked bookmakers:\n${lines.join('\n')}\n\nUse this real data when discussing odds, favourites, or multis for these games — don't claim you lack live odds while this is in front of you. Still weight form/stats over price per your usual approach.`;
+  return `Live ${sport.toUpperCase()} head-to-head odds ONLY, decimal, best price currently available across tracked bookmakers:\n${lines.join('\n')}\n\nUse this real data when discussing straight win/loss odds, favourites, or a match-winner-only multi for these games — don't claim you lack live odds while this is in front of you. This is head-to-head data ONLY — if the request involves goal scorers, disposals, lines, or totals, that's not covered here; say so rather than quietly answering with just the win/loss picks above. Still weight form/stats over price per your usual approach.`;
 }
 
 export default async (req) => {
@@ -298,6 +372,8 @@ export default async (req) => {
   const latestUserTextForIntent = [...trimmedHistoryForIntent].reverse().find(m => m.role === 'user');
   const oddsSport = latestUserTextForIntent ? detectOddsSport(latestUserTextForIntent.content) : null;
   const oddsPromise = oddsSport ? fetchPuntersEdgeOdds(oddsSport, new URL(req.url).origin) : Promise.resolve(null);
+  const wantsLadder = latestUserTextForIntent ? detectLadderIntent(latestUserTextForIntent.content) : false;
+  const ladderPromise = wantsLadder ? fetchAflLadder(new URL(req.url).origin) : Promise.resolve(null);
 
   let auth;
   try{
@@ -322,6 +398,11 @@ export default async (req) => {
     console.error('Syndy access denied for uid', auth.uid, '—', memberCheck.reason);
     return new Response(JSON.stringify({ error: `Syndy is for approved members only. (${memberCheck.reason})` }), { status: 403 });
   }
+
+  // Kicked off now (not awaited yet) — runs while the bonus check and
+  // everything else below happens, using the same accessToken already in
+  // hand rather than adding a further sequential wait.
+  const platformSummaryPromise = fetchPlatformSummary(accessToken);
 
   const groqKey = process.env.GROQ_API_KEY;
   if(!groqKey){
@@ -351,6 +432,19 @@ export default async (req) => {
     groqMessages.push({ role: 'system', content: formatOddsForPrompt(oddsSport, oddsData) });
   }
 
+  const ladderData = await ladderPromise;
+  if(ladderData){
+    groqMessages.push({ role: 'system', content: formatLadderForPrompt(ladderData) });
+  }
+
+  const platformSummary = await platformSummaryPromise;
+  if(platformSummary){
+    groqMessages.push({
+      role: 'system',
+      content: `Real MLSynd syndicate data — current season standings, records, and dues status for the group (not a guess, pull straight from the ledger; use it for banter, roasting, "who's the worst punter", answering questions about anyone's form or record, or pointing out who owes money):\n${platformSummary}`
+    });
+  }
+
   // A one-off instruction for this reply only — not baked into the system
   // prompt itself, so it never repeats on later messages once the bonus
   // has already been mentioned.
@@ -369,7 +463,9 @@ export default async (req) => {
         model: GROQ_MODEL,
         messages: groqMessages,
         temperature: 0.8,
-        max_tokens: 700 // 400 was cutting off multi-leg replies mid-list — Syndy's own prompt already keeps most answers short, this just gives room when a multi breakdown genuinely needs it
+        max_tokens: 700, // 400 was cutting off multi-leg replies mid-list — Syndy's own prompt already keeps most answers short, this just gives room when a multi breakdown genuinely needs it
+        frequency_penalty: 0.4, // discourages the token-repetition-loop failure mode (seen producing endless "c-c-c-c-c...") without materially changing normal replies
+        compound_custom: { tools: { enabled_tools: ['web_search', 'visit_website'] } } // restricts compound to search-related tools only — code_execution and browser automation aren't relevant here and would just add latency if the model ever reached for them
       })
     });
     if(!groqRes.ok){
@@ -382,9 +478,19 @@ export default async (req) => {
       return new Response(JSON.stringify({ error: `Syndy's gone quiet for a sec. (Groq HTTP ${groqRes.status}: ${errText.slice(0, 200)})` }), { status: 502 });
     }
     const data = await groqRes.json();
-    const reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    let reply = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if(!reply){
       return new Response(JSON.stringify({ error: "Didn't quite catch that — give it another go." }), { status: 502 });
+    }
+    // Safety net on top of frequency_penalty — if the same short
+    // character/token run still repeats 8+ times in a row (the exact
+    // "c-c-c-c-c..." failure mode seen), cut the reply off right before
+    // the loop starts rather than showing the garbage tail. A clean,
+    // possibly-shorter reply beats a technically-complete broken one.
+    const loopMatch = reply.match(/(.{1,6}?)\1{7,}/);
+    if(loopMatch){
+      reply = reply.slice(0, loopMatch.index).trim();
+      if(!reply) reply = "Lost the plot for a sec there, mate — give that another crack.";
     }
     return new Response(JSON.stringify({ reply, bonusAwarded }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }catch(e){
