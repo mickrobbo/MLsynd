@@ -533,6 +533,54 @@
   .holdem-hand-seat-name{ font-weight:700; color:var(--chalk); flex:1; }
   .holdem-hand-seat.folded .holdem-hand-seat-name{ text-decoration:line-through; }
   .holdem-hand-seat-committed{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass-light); }
+
+  /* ---- Seat-ring secondary actions — side-by-side cards instead of
+     stacked full-width buttons, easier to hit accurately on mobile. ---- */
+  .holdem-action-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .holdem-action-card{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    padding:14px 8px; border-radius:14px; cursor:pointer; text-align:center; min-height:64px;
+    background:linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
+    box-shadow:0 4px 10px rgba(0,0,0,.25); transition:transform .08s ease;
+  }
+  .holdem-action-card:active{ transform:scale(.96); }
+  .holdem-action-card-icon{ font-size:19px; line-height:1; }
+  .holdem-action-card-label{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:12.5px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.4px; }
+  .holdem-action-card-sub{ font-size:10px; color:var(--muted); }
+  .holdem-action-card.full-width{ grid-column:1 / -1; flex-direction:row; gap:8px; min-height:0; padding:14px; }
+  .holdem-action-card.primary{ background:linear-gradient(165deg, var(--brass-light), var(--brass)); border-color:var(--brass); }
+  .holdem-action-card.primary .holdem-action-card-label{ color:#0E1A16; }
+  .holdem-action-card.primary .holdem-action-card-sub{ color:rgba(14,26,22,.65); }
+
+  /* ---- Custom checkbox — replaces the bare native browser checkbox ---- */
+  .holdem-toggle-row{
+    display:flex; align-items:center; gap:10px; margin-top:6px; cursor:pointer;
+    padding:10px 12px; border-radius:12px; background:rgba(0,0,0,.15);
+  }
+  .holdem-toggle-row input[type="checkbox"]{ position:absolute; opacity:0; width:0; height:0; }
+  .holdem-toggle-box{
+    width:23px; height:23px; border-radius:7px; border:1.5px solid var(--brass-dim); background:var(--felt);
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s ease; position:relative;
+  }
+  .holdem-toggle-row input:checked + .holdem-toggle-box{
+    background:linear-gradient(165deg, var(--brass-light), var(--brass)); border-color:var(--brass);
+    box-shadow:0 0 10px rgba(203,177,102,.55);
+  }
+  .holdem-toggle-box::after{
+    content:'✓'; color:#0E1A16; font-size:15px; font-weight:800; line-height:1;
+    opacity:0; transform:scale(.4); transition:all .15s cubic-bezier(.34,1.56,.64,1);
+  }
+  .holdem-toggle-row input:checked + .holdem-toggle-box::after{ opacity:1; transform:scale(1); }
+  .holdem-toggle-label{ font-size:12px; color:var(--chalk); line-height:1.3; }
+
+  /* ---- In-hand action buttons — elevated, tactile, uniform ---- */
+  .holdem-action-btn{
+    flex:1; padding:16px 10px; border-radius:14px; font-family:'Barlow Condensed', sans-serif;
+    font-size:15px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
+    background:linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1.5px solid var(--brass-dim);
+    color:var(--chalk); box-shadow:0 4px 10px rgba(0,0,0,.3); transition:transform .08s ease;
+  }
+  .holdem-action-btn:active{ transform:scale(.95); }
   .holdem-hand-seat-tag{
     font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; padding:2px 6px;
     border-radius:999px; background:var(--brass-dim); color:var(--ink);
@@ -3803,7 +3851,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.31";
+const APP_VERSION = "2026-08-20.35";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5006,15 +5054,30 @@ async function renderHoldemSeatRing(){
       const amSittingOut = !!seats[mySeatIdx].sittingOut;
       const maxStack = (table.bigBlind || 10) * 100;
       const rebuyRoom = Math.max(0, maxStack - seats[mySeatIdx].stack);
-      actionsHtml = `<button type="button" class="pill-btn" id="holdemStandBtn" style="width:100%; margin-bottom:8px;">Stand up (cash out ${seats[mySeatIdx].stack.toLocaleString()} XP)</button>`;
-      actionsHtml += `<button type="button" class="pill-btn" id="holdemSitOutBtn" style="width:100%; margin-bottom:8px;">${amSittingOut ? "I'm back — deal me in" : 'Sit out next hands'}</button>`;
-      if(rebuyRoom > 0){
-        actionsHtml += `<button type="button" class="pill-btn" id="holdemRebuyBtn" style="width:100%; margin-bottom:8px;">💰 Add chips (up to ${rebuyRoom.toLocaleString()} XP)</button>`;
-      }
+      actionsHtml = `<div class="holdem-action-grid">
+        <div class="holdem-action-card" id="holdemStandBtn">
+          <span class="holdem-action-card-icon">🚪</span>
+          <span class="holdem-action-card-label">Stand up</span>
+          <span class="holdem-action-card-sub">Cash out ${seats[mySeatIdx].stack.toLocaleString()} XP</span>
+        </div>
+        <div class="holdem-action-card" id="holdemSitOutBtn">
+          <span class="holdem-action-card-icon">${amSittingOut ? '▶️' : '⏸️'}</span>
+          <span class="holdem-action-card-label">${amSittingOut ? "I'm back" : 'Sit out'}</span>
+          <span class="holdem-action-card-sub">${amSittingOut ? 'Deal me in' : 'Skip next hands'}</span>
+        </div>
+        ${rebuyRoom > 0 ? `<div class="holdem-action-card full-width" id="holdemRebuyBtn">
+          <span class="holdem-action-card-icon">💰</span>
+          <span class="holdem-action-card-label">Add chips</span>
+          <span class="holdem-action-card-sub">up to ${rebuyRoom.toLocaleString()} XP</span>
+        </div>` : ''}
+      </div>`;
       if(seatedCount >= 2){
-        actionsHtml += `<button type="button" class="pill-btn pill-btn-primary" id="holdemStartHandBtn" style="width:100%; margin-bottom:8px;">Start hand</button>`;
+        actionsHtml += `<div class="holdem-action-card primary full-width" id="holdemStartHandBtn" style="margin-bottom:8px;">
+          <span class="holdem-action-card-icon">🃏</span>
+          <span class="holdem-action-card-label" style="font-size:14px;">Start hand</span>
+        </div>`;
       }
-      actionsHtml += `<label style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted); margin-top:4px; cursor:pointer;"><input type="checkbox" id="holdemAutoStartToggle" ${table.autoStart ? 'checked' : ''}> Auto-start next hand after this one finishes</label>`;
+      actionsHtml += `<label class="holdem-toggle-row"><input type="checkbox" id="holdemAutoStartToggle" ${table.autoStart ? 'checked' : ''}><span class="holdem-toggle-box"></span><span class="holdem-toggle-label">Auto-start next hand after this one finishes</span></label>`;
     } else {
       actionsHtml = `<div class="hint">Watching — sit down once this hand finishes to join in.</div>`;
     }
@@ -5538,34 +5601,124 @@ async function renderHoldemHand(){
     // same toCall/betsThisStreet/stack checks, same conditions.
     const maxCommitted = Math.max(0, ...Object.values(hand.players).filter(p => !p.folded).map(p => p.committed));
     const toCall = Math.max(0, maxCommitted - myPlayer.committed);
-    const canRaise = hand.betsThisStreet < 4 && myPlayer.stack > toCall;
     const callIsAllIn = toCall > 0 && myPlayer.stack <= toCall;
     const callAmount = Math.min(toCall, myPlayer.stack);
+    // Uses the server's own authoritative raiseRange (computed by the
+    // exact same function the dealer validates against) instead of
+    // re-deriving an approximate min/max here — removes an entire class
+    // of client/server disagreement, and correctly reflects the real
+    // min-raise-increment tracking, which a simple client-side mirror
+    // couldn't replicate without duplicating real engine logic.
+    const canRaise = !!hand.raiseRange;
     const betLabel = hand.betsThisStreet === 0 ? 'Bet' : 'Raise';
     let checkCallLabel;
     if(toCall === 0) checkCallLabel = 'Check';
     else if(callIsAllIn) checkCallLabel = `All-in ${callAmount.toLocaleString()}`;
     else checkCallLabel = `Call ${toCall.toLocaleString()}`;
     actionsEl.innerHTML = `
-      <div style="display:flex; gap:8px;">
-        <button type="button" class="pill-btn pill-btn-action" id="holdemFoldBtn" style="flex:1;">Fold</button>
-        <button type="button" class="pill-btn pill-btn-action" id="holdemCheckCallBtn" style="flex:1;">${checkCallLabel}</button>
-        ${canRaise ? `<button type="button" class="pill-btn pill-btn-action" id="holdemBetRaiseBtn" style="flex:1;">${betLabel}</button>` : ''}
+      <div style="display:flex; gap:8px;" id="holdemMainActionRow">
+        <button type="button" class="holdem-action-btn" id="holdemFoldBtn">Fold</button>
+        <button type="button" class="holdem-action-btn" id="holdemCheckCallBtn">${checkCallLabel}</button>
+        ${canRaise ? `<button type="button" class="holdem-action-btn" id="holdemBetRaiseBtn">${betLabel}</button>` : ''}
       </div>
+      ${canRaise ? renderHoldemRaiseBuilder(hand, betLabel) : ''}
     `;
     document.getElementById('holdemFoldBtn').addEventListener('click', () => sendHoldemAction('fold'));
     document.getElementById('holdemCheckCallBtn').addEventListener('click', () => sendHoldemAction(toCall === 0 ? 'check' : 'call'));
     const betBtn = document.getElementById('holdemBetRaiseBtn');
-    if(betBtn) betBtn.addEventListener('click', () => sendHoldemAction(hand.betsThisStreet === 0 ? 'bet' : 'raise'));
+    if(betBtn) betBtn.addEventListener('click', () => {
+      document.getElementById('holdemMainActionRow').style.display = 'none';
+      document.getElementById('holdemRaiseBuilder').style.display = 'block';
+      updateHoldemRaiseDisplay(hand.raiseRange.min);
+    });
+    if(canRaise) wireHoldemRaiseBuilder(hand, betLabel);
   }catch(e){
     document.getElementById('holdemHandResult').textContent = "Couldn't load this hand right now.";
   }
 }
-async function sendHoldemAction(playerAction){
+
+// The chip-based raise builder — reuses the exact same .table-chip visual
+// language already established for Blackjack/Roulette betting (real
+// casino chip look, tap-pop animation, radial-gradient denominations),
+// not a new invented control. Chips here are poker-standard bet-sizing
+// shortcuts (min-raise, half pot, pot, all-in) rather than fixed XP
+// denominations, since a fixed 10/25/50/100 chip set makes no sense
+// across tables with wildly different blinds — a slider covers everything
+// in between for real fine control.
+function renderHoldemRaiseBuilder(hand, betLabel){
+  const range = hand.raiseRange;
+  return `
+    <div id="holdemRaiseBuilder" style="display:none; margin-top:10px; padding:12px; background:rgba(0,0,0,.2); border-radius:14px; border:1px solid var(--brass-dim);">
+      <div class="hint" style="margin-bottom:8px; text-align:center;">${betLabel} to <b id="holdemRaiseAmountDisplay" style="color:var(--brass-light); font-family:'IBM Plex Mono', monospace;">${range.min.toLocaleString()}</b> XP</div>
+      <div class="chip-rail" id="holdemRaiseChipRail">
+        <div class="table-chip chip-10" data-preset="min">Min</div>
+        <div class="table-chip chip-25" data-preset="half">½ Pot</div>
+        <div class="table-chip chip-50" data-preset="pot">Pot</div>
+        <div class="table-chip chip-100" data-preset="max">All-in</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px; margin:14px 0 12px;">
+        <button type="button" class="pill-btn" id="holdemRaiseMinusBtn">−</button>
+        <input type="range" id="holdemRaiseSlider" min="${range.min}" max="${range.max}" value="${range.min}" step="1" style="flex:1; accent-color:var(--brass);">
+        <button type="button" class="pill-btn" id="holdemRaisePlusBtn">+</button>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="holdem-action-btn" id="holdemRaiseCancelBtn">Cancel</button>
+        <button type="button" class="holdem-action-btn" id="holdemRaiseConfirmBtn">Confirm</button>
+      </div>
+    </div>
+  `;
+}
+function updateHoldemRaiseDisplay(amount){
+  const display = document.getElementById('holdemRaiseAmountDisplay');
+  const slider = document.getElementById('holdemRaiseSlider');
+  if(display) display.textContent = amount.toLocaleString();
+  if(slider) slider.value = amount;
+}
+function wireHoldemRaiseBuilder(hand, betLabel){
+  const range = hand.raiseRange;
+  const step = Math.max(1, Math.round((hand.lastRaiseIncrement || hand.bigBlind || 10)));
+  const maxCommitted = Math.max(0, ...Object.values(hand.players).filter(p => !p.folded).map(p => p.committed));
+
+  document.getElementById('holdemRaiseSlider').addEventListener('input', (e) => updateHoldemRaiseDisplay(Number(e.target.value)));
+  document.getElementById('holdemRaiseMinusBtn').addEventListener('click', () => {
+    const slider = document.getElementById('holdemRaiseSlider');
+    const next = Math.max(range.min, Number(slider.value) - step);
+    updateHoldemRaiseDisplay(next);
+  });
+  document.getElementById('holdemRaisePlusBtn').addEventListener('click', () => {
+    const slider = document.getElementById('holdemRaiseSlider');
+    const next = Math.min(range.max, Number(slider.value) + step);
+    updateHoldemRaiseDisplay(next);
+  });
+  document.querySelectorAll('#holdemRaiseChipRail .table-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const preset = chip.dataset.preset;
+      let amount;
+      if(preset === 'min') amount = range.min;
+      else if(preset === 'max') amount = range.max;
+      else if(preset === 'half') amount = Math.round(maxCommitted + hand.pot / 2);
+      else if(preset === 'pot') amount = maxCommitted + hand.pot;
+      amount = Math.max(range.min, Math.min(range.max, amount)); // pot-based presets can land outside range on a short stack — clamp to what's actually legal
+      updateHoldemRaiseDisplay(amount);
+      bjPlayChipSound();
+      chip.classList.remove('pc-chip-tap'); void chip.offsetWidth; chip.classList.add('pc-chip-tap');
+    });
+  });
+  document.getElementById('holdemRaiseCancelBtn').addEventListener('click', () => {
+    document.getElementById('holdemRaiseBuilder').style.display = 'none';
+    document.getElementById('holdemMainActionRow').style.display = 'flex';
+  });
+  document.getElementById('holdemRaiseConfirmBtn').addEventListener('click', () => {
+    const amount = Number(document.getElementById('holdemRaiseSlider').value);
+    sendHoldemAction(hand.betsThisStreet === 0 ? 'bet' : 'raise', amount);
+  });
+}
+
+async function sendHoldemAction(playerAction, raiseAmount){
   const statusEl = document.getElementById('holdemHandActionStatus');
   statusEl.textContent = '';
   try{
-    await holdemDealerCall(holdemCurrentTableId, 'act', { handId: holdemCurrentHandId, playerAction });
+    await holdemDealerCall(holdemCurrentTableId, 'act', { handId: holdemCurrentHandId, playerAction, raiseAmount });
     renderHoldemHand();
     refreshHoldemBadge();
   }catch(e){

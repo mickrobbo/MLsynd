@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-20.32",
+  "version": "2026-08-20.35",
   "date": "2026-08-20",
   "changes": [
-    "Fixed: critical Hold'em bug — a hand could crash and get permanently stuck exactly when the flop was about to be dealt, caused by Firebase silently dropping the board's initial empty state on save. Found through real testing, confirmed by reproducing the exact error, and fixed with regression tests that simulate the real save/reload cycle. This should also resolve any hand that's currently stuck 'in progress'"
+    "New: adjustable raises — pick your own amount using real poker chips (Min / Half Pot / Pot / All-in) plus a slider for exact control, instead of one fixed raise size. Proper minimum-raise rules apply, same as a real table"
   ]
 }
