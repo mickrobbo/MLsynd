@@ -1806,9 +1806,15 @@
      works as a plain sequential script-tag include with no bundler and no
      ES module setup — consistent with how this whole file already
      operates as one HTML page, no build step. -->
-<script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-database-compat.js"></script>
+<!-- defer: these load in parallel with the rest of the page instead of
+     blocking it — Hold'em's real-time features are only ever used from
+     later, user-triggered actions (opening a table/hand), well after
+     initial page load, so there's no downside to not blocking on them.
+     Not doing this originally was a real gap — worth fixing regardless
+     of whether it turns out to be the actual cause of anything. -->
+<script defer src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/12.17.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <div id="authGate" class="auth-gate">
@@ -3773,7 +3779,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.29";
+const APP_VERSION = "2026-08-20.30";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
