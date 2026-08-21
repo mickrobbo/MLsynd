@@ -37,7 +37,7 @@
 //     only by that uid
 
 import crypto from 'crypto';
-import { createHand, applyAction, legalActions } from './lib/holdem-engine-multiway.mjs';
+import { createHand, applyAction, legalActions, raiseRange } from './lib/holdem-engine-multiway.mjs';
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 const ACTION_TIMEOUT_MS = 90 * 1000; // 90s to act before auto-fold/auto-check — generous for an async app, short enough that a table doesn't stall forever on one AFK player
@@ -217,6 +217,17 @@ function publicPlayers(engineHand){
   return out;
 }
 function publicHandRecord(tableId, engineHand, revealedHoleCards){
+  // If it's someone's turn and they can legally raise, expose the real
+  // min/max here — the client shouldn't need to reimplement the min-raise
+  // tracking rule itself just to draw a slider; it reads the authoritative
+  // range straight from the same function the server validates against.
+  let raiseInfo = null;
+  if(!engineHand.result && engineHand.toAct){
+    const legal = legalActions(engineHand, engineHand.toAct);
+    if(legal.includes('bet') || legal.includes('raise')){
+      raiseInfo = raiseRange(engineHand, engineHand.toAct);
+    }
+  }
   return {
     tableId,
     buttonUid: engineHand.buttonUid,
@@ -225,7 +236,9 @@ function publicHandRecord(tableId, engineHand, revealedHoleCards){
     board: engineHand.board,
     pot: engineHand.pot,
     betsThisStreet: engineHand.betsThisStreet,
+    bigBlind: engineHand.bigBlind, // exposed so the client can compute and show a "Raise to X" preview — was previously invisible to the client entirely
     toAct: engineHand.result ? null : engineHand.toAct,
+    raiseRange: raiseInfo, // {min, max} for the player whose turn it is, or null if they can't raise right now
     actionLog: engineHand.actionLog,
     result: engineHand.result,
     players: publicPlayers(engineHand),
@@ -563,7 +576,7 @@ export default async (req) => {
 
 
     if(action === 'act'){
-      const { handId, playerAction } = body;
+      const { handId, playerAction, raiseAmount } = body;
       const table = await dbGet(`/holdemTables/${tableId}`, accessToken);
       if(!table || table.currentHandId !== handId) return json({ error: 'This hand is not currently active.' }, 400);
       // ETag-protected read-modify-write — if someone else's action (or
@@ -580,7 +593,15 @@ export default async (req) => {
         if(rebuilt.result) return json({ error: 'This hand has already finished.' }, 400);
         const legal = legalActions(rebuilt, auth.uid);
         if(!legal.includes(playerAction)) return json({ error: `Illegal action — legal right now: ${legal.join(', ')}` }, 400);
-        const next = applyAction(rebuilt, auth.uid, playerAction);
+        // For bet/raise, the server is the final authority on the amount
+        // being legal — legalActions only confirms the ACTION NAME is
+        // available, raiseRange (called again inside applyAction) checks
+        // the actual number against the real min/max every time, so a
+        // client sending a stale or fabricated amount can never commit
+        // more than the current rules actually allow.
+        const next = (playerAction === 'bet' || playerAction === 'raise')
+          ? applyAction(rebuilt, auth.uid, playerAction, raiseAmount)
+          : applyAction(rebuilt, auth.uid, playerAction);
         const saved = await persistEngineHand(tableId, handId, next, accessToken, etag);
         if(saved) return json({ ok: true });
         // else: someone else wrote first — loop once to retry against fresh state
