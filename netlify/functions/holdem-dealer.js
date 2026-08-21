@@ -575,6 +575,28 @@ export default async (req) => {
     }
 
 
+    if(action === 'deleteTable'){
+      // Deliberately restrictive, not left open to anyone: only the
+      // table's own creator or an admin, and only if the table is
+      // genuinely empty right now — never lets someone wipe out a table
+      // other people are actively seated at or mid-hand on, regardless
+      // of who's asking.
+      const table = await dbGet(`/holdemTables/${tableId}`, accessToken);
+      if(!table) return json({ ok: true }); // already gone — nothing to do, not an error
+      const seatedCount = Object.keys(table.seats || {}).length;
+      if(seatedCount > 0) return json({ error: 'Table has players seated — everyone needs to stand up first.' }, 400);
+      const isCreator = table.createdBy === auth.uid;
+      const isAdmin = auth.email === 'mlsynd00@gmail.com';
+      if(!isCreator && !isAdmin) return json({ error: "Only this table's creator or an admin can delete it." }, 403);
+      await dbSet(`/holdemTables/${tableId}`, null, accessToken); // null = delete, standard Firebase REST semantics
+      // Tidy up the associated history/chat too, rather than leaving
+      // orphaned data behind under a table ID nothing will ever reference
+      // again once it's gone from the browsable list.
+      await dbSet(`/holdemHistory/${tableId}`, null, accessToken);
+      await dbSet(`/holdemChat/${tableId}`, null, accessToken);
+      return json({ ok: true });
+    }
+
     if(action === 'act'){
       const { handId, playerAction, raiseAmount } = body;
       const table = await dbGet(`/holdemTables/${tableId}`, accessToken);
