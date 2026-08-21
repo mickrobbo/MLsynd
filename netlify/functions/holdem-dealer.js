@@ -593,18 +593,24 @@ export default async (req) => {
 
 
     if(action === 'deleteTable'){
-      // Deliberately restrictive, not left open to anyone: only the
-      // table's own creator or an admin, and only if the table is
-      // genuinely empty right now — never lets someone wipe out a table
-      // other people are actively seated at or mid-hand on, regardless
-      // of who's asking.
+      // Only the table's own creator or an admin — never open to anyone.
+      // Still fully blocks deleting a table with a hand actively in
+      // progress (that would destroy real in-flight game state and be
+      // genuinely unfair to whoever's mid-hand) — but no longer requires
+      // the table to be empty first. Anyone still seated but not
+      // actually playing gets their stack automatically cashed back to
+      // their real balance, exactly like standing up themselves would —
+      // nobody's XP is lost, it's just returned without needing each
+      // person to individually stand up first.
       const table = await dbGet(`/holdemTables/${tableId}`, accessToken);
       if(!table) return json({ ok: true }); // already gone — nothing to do, not an error
-      const seatedCount = Object.keys(table.seats || {}).length;
-      if(seatedCount > 0) return json({ error: 'Table has players seated — everyone needs to stand up first.' }, 400);
+      if(table.currentHandId) return json({ error: 'A hand is currently in progress — wait for it to finish first.' }, 400);
       const isCreator = table.createdBy === auth.uid;
       const isAdmin = auth.email === 'mlsynd00@gmail.com';
       if(!isCreator && !isAdmin) return json({ error: "Only this table's creator or an admin can delete it." }, 403);
+      for(const seat of Object.values(table.seats || {})){
+        if(seat.stack > 0) await creditXP(seat.uid, seat.stack, `Table "${table.name}" closed, cashed out`, accessToken);
+      }
       await dbSet(`/holdemTables/${tableId}`, null, accessToken); // null = delete, standard Firebase REST semantics
       // Tidy up the associated history/chat too, rather than leaving
       // orphaned data behind under a table ID nothing will ever reference
