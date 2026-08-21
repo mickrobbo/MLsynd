@@ -124,7 +124,10 @@
        hand view's own board panel — both share this one class). */
     content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
     background-image:url('/logo-icon.png');
-    background-repeat:no-repeat; background-position:center 55%; background-size:26%;
+    /* Explicit two-dimensional size, same reasoning as the Hold'em oval's
+       watermark fix — guarantees this never grows unexpectedly tall
+       regardless of the source image's real aspect ratio. */
+    background-repeat:no-repeat; background-position:center center; background-size:18% 18%;
     opacity:.08;
   }
   .bj-hand-row{ display:flex; justify-content:center; gap:10px; min-height:88px; align-items:flex-start; flex-wrap:wrap; position:relative; z-index:1; }
@@ -480,7 +483,17 @@
   .holdem-table-oval::after{
     content:''; position:absolute; inset:6%; border-radius:50%; pointer-events:none;
     background-image:url('/logo-icon.png');
-    background-repeat:no-repeat; background-position:center 50%; background-size:22%;
+    /* Explicit width AND height (not a single percentage, which only
+       constrains width and lets height scale to the image's own native
+       aspect ratio) — the previous two attempts at this kept getting
+       clipped by the ellipse's curve because a single-percentage size
+       can't guarantee height stays small if the source logo turns out to
+       be taller than wide, which I have no way to inspect directly from
+       here. Capping both dimensions independently guarantees this never
+       exceeds a known-safe box regardless of the image's real
+       proportions — worth a marginal, imperceptible stretch at this
+       size/opacity in exchange for actually guaranteeing no more clipping. */
+    background-repeat:no-repeat; background-position:center center; background-size:15% 15%;
     opacity:.10; mix-blend-mode:soft-light;
   }
   .holdem-seat{
@@ -489,6 +502,17 @@
     border-radius:12px; padding:8px 5px; text-align:center; min-height:64px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     box-shadow:0 4px 10px rgba(0,0,0,.35); z-index:1;
+  }
+  /* Same thin gold accent line used at the top of every panel throughout
+     the app (.panel::before) — scaled down and applied here too, so an
+     occupied seat reads as part of the same premium visual language
+     rather than a plainer, separate style. Only occupied seats get it —
+     empty seats don't render at all anymore, so there's nothing to apply
+     it to regardless. */
+  .holdem-seat.occupied::before{
+    content:''; position:absolute; top:0; left:8px; right:8px; height:2px; border-radius:2px;
+    background: linear-gradient(90deg, transparent, var(--brass) 50%, transparent);
+    opacity:.75; pointer-events:none;
   }
   .holdem-seat.occupied{ border-color:var(--brass-dim); }
   .holdem-seat.me{ border-color:var(--brass); box-shadow:0 0 0 1px rgba(203,177,102,.3), 0 0 12px rgba(203,177,102,.25); }
@@ -503,6 +527,21 @@
   }
   .holdem-seat-stack{ font-family:'IBM Plex Mono', monospace; font-size:9.5px; color:var(--brass-light); display:inline-block; }
   .holdem-seat-empty{ font-size:9.5px; color:var(--muted); }
+
+  /* Table stakes shown in the oval's own center — otherwise that space
+     sits empty except for the watermark between hands. Gives it real
+     purpose without competing with the watermark for attention. */
+  .holdem-table-center-info{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    text-align:center; pointer-events:none; z-index:0;
+  }
+  .holdem-table-center-bb{
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px;
+    color:var(--brass-light); letter-spacing:.5px; opacity:.55;
+  }
+  .holdem-table-center-label{
+    font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; opacity:.55; margin-top:1px;
+  }
 
   /* All 5 board cards fit on one row, never wrapping — smaller cards
      and a tighter gap SPECIFICALLY for the board (not touched anywhere
@@ -2257,9 +2296,12 @@
          stack, and lets you take an open seat or leave one, plus start a
          hand once at least 2 people are seated. -->
     <div class="panel casino-view" id="casinoHoldemTableView">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
         <h2 style="font-size:14px; margin:0;" id="holdemTableViewTitle">🎲 Table</h2>
-        <button type="button" class="pill-btn" id="holdemTableBackBtn">← Back</button>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button type="button" class="pill-btn" id="holdemTableDeleteBtn" title="Delete table" style="display:none; padding:6px 10px;">🗑️</button>
+          <button type="button" class="pill-btn" id="holdemTableBackBtn">← Back</button>
+        </div>
       </div>
       <div class="hint" id="holdemTableStatusLine" style="margin-bottom:10px;"></div>
       <div id="holdemSeatRing"></div>
@@ -3896,7 +3938,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.42";
+const APP_VERSION = "2026-08-20.43";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4915,9 +4957,10 @@ async function renderHoldemTableList(){
       const seated = Object.keys(t.seats || {}).length;
       const statusText = t.status === 'hand_in_progress' ? '🔴 Hand in progress' : '⏳ Waiting for players';
       // Matches the dealer's own deleteTable rule exactly — creator or
-      // admin, only when genuinely empty — so nobody's shown a button
-      // that would just get rejected by the server anyway.
-      const canDelete = seated === 0 && (t.createdBy === currentUserUid || currentUserEmail === ADMIN_EMAIL);
+      // admin, blocked only while a hand's actually in progress. Seated-
+      // but-not-playing is fine to delete; the server cashes everyone
+      // still sitting there back to their real balance automatically.
+      const canDelete = t.status !== 'hand_in_progress' && (t.createdBy === currentUserUid || currentUserEmail === ADMIN_EMAIL);
       return `
         <div class="holdem-table-row">
           <div>
@@ -4925,7 +4968,7 @@ async function renderHoldemTableList(){
             <div class="holdem-table-meta">${seated}/${t.maxSeats || 9} seated · BB ${t.bigBlind} XP · ${statusText}</div>
           </div>
           <div style="display:flex; gap:6px; align-items:center;">
-            ${canDelete ? `<button type="button" class="pill-btn holdem-delete-table-btn" data-id="${id}" data-name="${escapeHtml(t.name)}" title="Delete table" style="padding:6px 10px;">🗑️</button>` : ''}
+            ${canDelete ? `<button type="button" class="pill-btn holdem-delete-table-btn" data-id="${id}" data-name="${escapeHtml(t.name)}" data-seated="${seated}" title="Delete table" style="padding:6px 10px;">🗑️</button>` : ''}
             <button type="button" class="pill-btn holdem-open-table-btn" data-id="${id}">Open</button>
           </div>
         </div>
@@ -4936,7 +4979,11 @@ async function renderHoldemTableList(){
     });
     area.querySelectorAll('.holdem-delete-table-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if(!confirm(`Delete "${btn.dataset.name}"? This can't be undone.`)) return;
+        const seatedCount = Number(btn.dataset.seated);
+        const warning = seatedCount > 0
+          ? `Delete "${btn.dataset.name}"? ${seatedCount} player${seatedCount === 1 ? ' is' : 's are'} still seated — they'll be automatically cashed out to their real balance. This can't be undone.`
+          : `Delete "${btn.dataset.name}"? This can't be undone.`;
+        if(!confirm(warning)) return;
         try{
           await holdemDealerCall(btn.dataset.id, 'deleteTable', {});
           renderHoldemTableList();
@@ -5069,6 +5116,25 @@ async function renderHoldemSeatRing(){
     const seats = table.seats || {};
     const mySeatIdx = Object.keys(seats).find(i => seats[i].uid === currentUserUid);
 
+    const deleteBtn = document.getElementById('holdemTableDeleteBtn');
+    const canDeleteThisTable = table.status !== 'hand_in_progress' && (table.createdBy === currentUserUid || currentUserEmail === ADMIN_EMAIL);
+    deleteBtn.style.display = canDeleteThisTable ? 'inline-block' : 'none';
+    deleteBtn.onclick = async () => {
+      const seatedCount = Object.keys(seats).length;
+      const warning = seatedCount > 0
+        ? `Delete "${table.name}"? ${seatedCount} player${seatedCount === 1 ? ' is' : 's are'} still seated — they'll be automatically cashed out to their real balance. This can't be undone.`
+        : `Delete "${table.name}"? This can't be undone.`;
+      if(!confirm(warning)) return;
+      try{
+        await holdemDealerCall(holdemCurrentTableId, 'deleteTable', {});
+        holdemCurrentTableId = null;
+        renderHoldemTableList();
+        showCasinoView('casinoHoldemBrowserView');
+      }catch(e){
+        document.getElementById('holdemTableActionStatus').textContent = e.message;
+      }
+    };
+
     // Resolved up front so the render loop below stays synchronous — cache
     // hits make this essentially free on every re-render after the first.
     const seatedUids = Object.values(seats).map(s => s.uid);
@@ -5107,7 +5173,7 @@ async function renderHoldemSeatRing(){
       // doesn't visually mark out where nobody's sitting, and 9 "Empty
       // seat" boxes cluttered the table more than they helped.
     }
-    ring.innerHTML = `<div class="holdem-table-oval">${seatHtml}</div>`;
+    ring.innerHTML = `<div class="holdem-table-oval">${seatHtml}<div class="holdem-table-center-info"><div class="holdem-table-center-bb">${table.bigBlind.toLocaleString()} XP</div><div class="holdem-table-center-label">Big Blind</div></div></div>`;
     if(anyoneNewlySeated || anyStackChanged) bjPlayChipSound();
     holdemLastSeatsSnapshot = Object.fromEntries(Object.entries(seats).map(([i, s]) => [i, { uid: s.uid, stack: s.stack }]));
     holdemSeatRingSeeded = true;
