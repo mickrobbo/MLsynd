@@ -254,8 +254,29 @@ async function writeHandSecrets(handId, engineHand, accessToken){
 function serializeInternal(engineHand){
   return { ...engineHand, needsToAct: [...engineHand.needsToAct] };
 }
+// Firebase Realtime Database silently drops any node whose value is an
+// empty array or empty object — a well-documented RTDB behavior, not a
+// bug in this code, but one that bit real gameplay hard: `board` starts
+// as [] the instant a hand is created (before any flop), gets written
+// that way, and Firebase simply doesn't retain it. The NEXT time this
+// hand is loaded, `board` comes back as undefined — not [] — and the
+// moment the betting round completes and tries to deal the flop,
+// `hand.board.push(...)` crashes outright. Confirmed by simulating the
+// exact round-trip before writing this fix, not guessed at: a fresh
+// hand's board serializes to [], and reconstructing it the way Firebase
+// actually returns an empty-array key (absent) reproduces the precise
+// "Cannot read properties of undefined (reading 'push')" error reported
+// from real testing. This was never caught by the engine's own test
+// suite because those tests call applyAction directly against in-memory
+// objects — they never round-trip through Firebase's actual storage
+// behavior, which is exactly where this lived.
 function deserializeInternal(stored){
-  return { ...stored, needsToAct: new Set(stored.needsToAct || []) };
+  return {
+    ...stored,
+    needsToAct: new Set(stored.needsToAct || []),
+    board: stored.board || [],
+    actionLog: stored.actionLog || []
+  };
 }
 async function saveInternalHand(handId, engineHand, accessToken){
   await dbSet(`/holdemHandInternal/${handId}`, serializeInternal(engineHand), accessToken);
