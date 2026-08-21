@@ -1,22 +1,27 @@
-// ---- Multi-way Fixed-Limit Hold'em engine (up to 9 players) ----
-// Pure state-transition logic, same discipline as the heads-up version
-// this replaces: no Firebase, no network, no DOM, fully testable in
-// isolation. This is NOT an extension of holdem-engine.js — 3+ players
-// introduces side pots (impossible in heads-up, where there are only ever
-// two stacks and therefore only ever one pot), dealer-button rotation,
-// and genuinely different action-order and round-completion rules. This
-// file supersedes holdem-engine.js for anything beyond exactly 2 seated
-// players.
+// ---- Multi-way No-Limit Hold'em engine (up to 9 players) ----
+// Pure state-transition logic, same discipline as everything else in this
+// project: no Firebase, no network, no DOM, fully testable in isolation.
 //
-// Still Fixed-Limit (see holdem-engine.js's header for why that choice
-// was made) — No-Limit multi-way with side pots is a real future step
-// up, not a first version.
+// Was Fixed-Limit originally (every raise a fixed size), changed to
+// adjustable raises on request. Real minimum-raise tracking
+// (lastRaiseIncrement — a raise must be at least as big as the previous
+// bet/raise this street) up to a player's full stack (all-in). One
+// deliberate, documented simplification vs strict casino rules: a short
+// all-in below a full raise still fully reopens the action for other
+// players here, rather than the stricter "incomplete raise" rule some
+// rooms use — see the comment on raiseRange() below for why that's a
+// safe simplification (never misallocates XP, only occasionally gives
+// someone one extra chance to act).
+//
+// MAX_BETS_PER_STREET below is now just a defensive infinite-loop cap,
+// not a real gameplay constraint the way Fixed-Limit's 4-bet cap was —
+// No-Limit doesn't traditionally cap the number of raises at all.
 
 import { randomInt } from 'crypto';
 import { evaluateBestHand, compareHands } from './hand-evaluator.mjs';
 
 const STREETS = ['preflop', 'flop', 'turn', 'river', 'showdown'];
-const MAX_BETS_PER_STREET = 4;
+const MAX_BETS_PER_STREET = 20;
 const MAX_SEATS = 9;
 
 function freshDeck(){
@@ -107,6 +112,7 @@ function createHand(seats, buttonIndex, bigBlind){
     // file (activeNonAllInUids, not activeUids).
     needsToAct: new Set(activeNonAllInUids(players)),
     lastAggressorUid: null,
+    lastRaiseIncrement: bigBlind, // preflop's minimum raise floor — the big blind itself counts as the opening bet, standard rule
     actionLog: [{ uid: sbUid, action: 'post-sb', amount: sbPosted }, { uid: bbUid, action: 'post-bb', amount: bbPosted }],
     result: null // set once the hand ends: { pots: [{amount, winners:[uid,...], eligiblePlayers:[...]}, ...], reason }
   };
@@ -169,6 +175,30 @@ function toCallAmount(hand, uid){
   return Math.max(0, highestCommitted(hand) - hand.players[uid].committed);
 }
 
+// The adjustable raise range — the standard poker rule is a raise must
+// be at least as large as the previous bet/raise THIS street (tracked in
+// hand.lastRaiseIncrement, reset to the big blind at the start of every
+// street), and can go as high as the player's entire remaining stack
+// (all-in). If a player's stack is too short to make a full minimum
+// raise, min collapses down to max — their only legal "raise" is
+// whatever they have left, which is always legal (a short all-in).
+// Deliberate simplification, documented here rather than silently
+// assumed: this does NOT implement the stricter "incomplete raise
+// doesn't reopen the action" rule some casino rooms use for a short
+// all-in below a full raise — every raise here always reopens action for
+// the other players. That's slightly more generous to opponents than
+// strict tournament rules in that one specific edge case, but it can
+// never misallocate XP — it only ever means someone occasionally gets
+// one more chance to act than the strictest rule would give them.
+function raiseRange(hand, uid){
+  const p = hand.players[uid];
+  const maxCommitted = highestCommitted(hand);
+  const increment = hand.lastRaiseIncrement || hand.bigBlind;
+  const minRaiseTo = maxCommitted + increment;
+  const maxRaiseTo = p.committed + p.stack; // all-in
+  return { min: Math.min(minRaiseTo, maxRaiseTo), max: maxRaiseTo };
+}
+
 function legalActions(hand, uid){
   if(hand.result) return [];
   if(hand.toAct !== uid) return [];
@@ -198,7 +228,7 @@ function nextToAct(hand, uid){
   return null;
 }
 
-function applyAction(hand, uid, action){
+function applyAction(hand, uid, action, amount){
   if(hand.result) throw new Error('Hand is already over');
   if(hand.toAct !== uid) throw new Error('Not your turn');
   const legal = legalActions(hand, uid);
@@ -207,7 +237,6 @@ function applyAction(hand, uid, action){
   const next = deepClone(hand);
   const p = next.players[uid];
   const toCall = toCallAmount(next, uid);
-  const betSize = currentBetSize(next);
 
   if(action === 'fold'){
     p.folded = true;
@@ -229,18 +258,35 @@ function applyAction(hand, uid, action){
   }
 
   if(action === 'call'){
-    const amount = Math.min(toCall, p.stack);
-    commit(p, next, amount);
-    next.actionLog.push({ uid, action: 'call', amount });
+    const callAmount = Math.min(toCall, p.stack);
+    commit(p, next, callAmount);
+    next.actionLog.push({ uid, action: 'call', amount: callAmount });
     return advance(next);
   }
 
   if(action === 'bet' || action === 'raise'){
-    const amount = Math.min(toCall + betSize, p.stack);
-    commit(p, next, amount);
+    const range = raiseRange(next, uid);
+    // amount is the TOTAL this player will have committed this street
+    // after the raise (e.g. "raise to 150"), not the incremental size —
+    // matches how the client shows and the dealer validates it. Missing
+    // amount defaults to the minimum legal raise, so any caller that
+    // doesn't pass one (or passed a plain action name under the old
+    // fixed-size contract) still gets a safe, always-legal result.
+    const raiseTo = (amount === undefined || amount === null) ? range.min : amount;
+    if(raiseTo < range.min || raiseTo > range.max){
+      throw new Error(`Raise amount must be between ${range.min} and ${range.max}`);
+    }
+    const prevHighest = highestCommitted(next);
+    const delta = raiseTo - p.committed;
+    commit(p, next, delta);
     next.betsThisStreet += 1;
     next.lastAggressorUid = uid;
-    next.actionLog.push({ uid, action, amount });
+    // The size of THIS raise's increment becomes the floor for the next
+    // one — standard rule. Uses the actual increment achieved (which can
+    // be smaller than a full raise for a short all-in — see the
+    // deliberate-simplification note on raiseRange above).
+    next.lastRaiseIncrement = Math.max(1, raiseTo - prevHighest);
+    next.actionLog.push({ uid, action, amount: delta });
     // A bet/raise reopens action for every other active, non-all-in
     // player — including anyone who'd already acted this street.
     next.needsToAct = new Set(activeNonAllInUids(next.players).filter(u => u !== uid));
@@ -288,6 +334,7 @@ function goToNextStreetOrRunout(hand){
   Object.values(hand.players).forEach(p => { p.committed = 0; });
   hand.betsThisStreet = 0;
   hand.lastAggressorUid = null;
+  hand.lastRaiseIncrement = hand.bigBlind; // fresh street — minimum opening bet resets to the big blind, standard rule
   if(next === 'flop') hand.board.push(deckPop(hand), deckPop(hand), deckPop(hand));
   else if(next === 'turn' || next === 'river') hand.board.push(deckPop(hand));
 
@@ -378,4 +425,4 @@ function deepClone(hand){
   return cloned;
 }
 
-export { createHand, applyAction, legalActions, betSizes, freshDeck, computeSidePots, STREETS, MAX_SEATS };
+export { createHand, applyAction, legalActions, raiseRange, betSizes, freshDeck, computeSidePots, STREETS, MAX_SEATS };
