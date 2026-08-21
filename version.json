@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-20.30",
+  "version": "2026-08-20.31",
   "date": "2026-08-20",
   "changes": [
-    "Fixed: Firebase SDK scripts (added for Hold'em real-time updates) were loading in a way that could block the rest of the page — now load in parallel instead"
+    "New: profile photos — set yours from the Board tab (👤 My Profile), shown at the Hold'em table and in every seat during a live hand. Falls back to your initial in a gold circle if you haven't set one"
   ]
 }

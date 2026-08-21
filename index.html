@@ -1929,6 +1929,14 @@
   </div>
 
   <div class="tab-panel" id="tab-board">
+    <div class="panel" style="display:flex; align-items:center; gap:12px; cursor:pointer;" id="myProfileBtn">
+      <div id="myProfileAvatarThumb" style="flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:14px; color:var(--brass-light); letter-spacing:.5px;">👤 My Profile</div>
+        <div class="hint" style="margin-top:2px;">Change your photo — shown at the Hold'em table</div>
+      </div>
+      <div style="color:var(--muted); font-size:18px;">›</div>
+    </div>
     <div class="panel">
       <h2>Leaderboard</h2>
       <div id="leaderboardArea"></div>
@@ -2769,6 +2777,22 @@
       <div class="badge-info-bubble" id="badgeInfoBubble" style="display:none;"></div>
     </div>
     <div class="profile-stat-grid" id="profileStats"></div>
+  </div>
+</div>
+
+<!-- Your own avatar upload — deliberately separate from #profileModal
+     above (that one shows OTHER members' stats/badges when you tap their
+     name on the leaderboard). Different feature, kept clearly distinct
+     to avoid any ID collision between the two. -->
+<div id="myAvatarModal" class="profile-modal">
+  <div class="profile-sheet" style="text-align:center;">
+    <button type="button" class="profile-close" id="myAvatarModalCloseBtn">✕</button>
+    <div id="myAvatarPreview" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
+    <div style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:16px; color:var(--brass-light);" id="myAvatarNameDisplay"></div>
+    <div class="hint" style="margin:6px 0 16px;">This photo shows up next to your seat at the Hold'em table.</div>
+    <label for="myAvatarInput" class="pill-btn pill-btn-primary" style="display:inline-block; cursor:pointer;">Choose a photo</label>
+    <input type="file" id="myAvatarInput" accept="image/*" style="display:none;">
+    <div class="status-msg" id="myAvatarStatus" style="margin-top:10px;"></div>
   </div>
 </div>
 
@@ -3779,7 +3803,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.30";
+const APP_VERSION = "2026-08-20.31";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4926,6 +4950,12 @@ async function renderHoldemSeatRing(){
     const seats = table.seats || {};
     const mySeatIdx = Object.keys(seats).find(i => seats[i].uid === currentUserUid);
 
+    // Resolved up front so the render loop below stays synchronous — cache
+    // hits make this essentially free on every re-render after the first.
+    const seatedUids = Object.values(seats).map(s => s.uid);
+    const avatarByUid = {};
+    await Promise.all(seatedUids.map(async uid => { avatarByUid[uid] = await getAvatarDataUri(uid); }));
+
     let seatHtml = '';
     let anyoneNewlySeated = false;
     let anyStackChanged = false;
@@ -4952,7 +4982,7 @@ async function renderHoldemSeatRing(){
         if(isButton) classes.push('button-seat');
         if(s.sittingOut) classes.push('sitting-out');
         if(isNewlySeated) classes.push('seat-glow-in');
-        seatHtml += `<div class="${classes.join(' ')}" style="left:${leftPct}%; top:${topPct}%;"><span class="holdem-seat-name">${escapeHtml(s.name)}${s.uid === currentUserUid ? ' (you)' : ''}</span><span class="holdem-seat-stack${stackChanged ? ' stack-pulse' : ''}">${s.stack.toLocaleString()} XP</span>${s.sittingOut ? '<span class="holdem-seat-sitout-tag">Sitting out</span>' : ''}</div>`;
+        seatHtml += `<div class="${classes.join(' ')}" style="left:${leftPct}%; top:${topPct}%;">${avatarHtml(s.name, avatarByUid[s.uid], 32)}<span class="holdem-seat-name">${escapeHtml(s.name)}${s.uid === currentUserUid ? ' (you)' : ''}</span><span class="holdem-seat-stack${stackChanged ? ' stack-pulse' : ''}">${s.stack.toLocaleString()} XP</span>${s.sittingOut ? '<span class="holdem-seat-sitout-tag">Sitting out</span>' : ''}</div>`;
       } else {
         seatHtml += `<div class="holdem-seat" style="left:${leftPct}%; top:${topPct}%;"><span class="holdem-seat-empty">Empty seat</span></div>`;
       }
@@ -5053,6 +5083,141 @@ async function renderHoldemSeatRing(){
     ring.innerHTML = '<div class="empty">Couldn\'t load this table — try again.</div>';
   }
 }
+
+// =====================================================================
+// PLAYER AVATARS — stored as a small base64 JPEG data URI directly in
+// Realtime Database (/avatars/{uid}), not Firebase Storage. Deliberate:
+// this project has never used Storage (a genuinely separate Firebase
+// product with its own security rules language), and standing one up
+// just for small profile-picture-sized images would be a disproportionate
+// amount of new infrastructure for what this actually needs. Images are
+// resized and compressed client-side to a small square BEFORE upload
+// (128px, JPEG ~70%), which keeps the resulting string to a few KB —
+// genuinely fine for Realtime Database at this app's scale, not the
+// multi-megabyte originals a phone camera would produce.
+//
+// IMPORTANT rules note: avatars live at a dedicated /avatars/{uid} path,
+// NOT under /users/{uid} — the /users node is genuinely private (locked
+// to admin-only top-level read, self-only per-uid read), so anything
+// that needs to be visible to OTHER members (like an avatar shown at a
+// shared poker table) has to live somewhere with broader read access.
+// Checked the real rules file before building this, not assumed.
+
+const avatarCache = {}; // uid -> data URI string, or null if confirmed no avatar set — caching null too avoids re-fetching "no avatar" repeatedly
+async function getAvatarDataUri(uid){
+  if(uid in avatarCache) return avatarCache[uid];
+  try{
+    const res = await authedFetch(`/avatars/${uid}.json`);
+    const val = res.ok ? await res.json() : null;
+    avatarCache[uid] = val || null;
+    return avatarCache[uid];
+  }catch(e){
+    return null;
+  }
+}
+function invalidateAvatarCache(uid){
+  delete avatarCache[uid];
+}
+
+// Renders either a real <img> (if a data URI is given) or a fallback
+// circle with the person's initial — used everywhere an avatar shows up,
+// so the fallback always looks consistent.
+function avatarHtml(name, dataUri, sizePx){
+  const size = sizePx || 28;
+  if(dataUri){
+    return `<img src="${dataUri}" alt="" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:1px solid var(--brass-dim); flex-shrink:0;">`;
+  }
+  const initial = (name || '?').trim().charAt(0).toUpperCase();
+  return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--brass-dim); display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:${Math.round(size*0.45)}px; color:var(--brass-light); flex-shrink:0;">${escapeHtml(initial)}</div>`;
+}
+
+// Resizes and center-crops an uploaded image file down to a small square
+// JPEG, returned as a data URI ready to store directly. Pure Canvas API,
+// no libraries — center-crop means a non-square photo doesn't get
+// squished, it gets cropped to the middle square instead (the normal
+// behavior people expect from an avatar picker).
+function resizeImageToDataUri(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    if(!file.type || !file.type.startsWith('image/')){
+      reject(new Error('Please choose an image file.'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Couldn't read that file."));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Couldn't read that image."));
+      img.onload = () => {
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = maxDim;
+        canvas.height = maxDim;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, maxDim, maxDim);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveMyAvatar(dataUri){
+  await authedFetch(`/avatars/${currentUserUid}.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataUri)
+  });
+  invalidateAvatarCache(currentUserUid);
+}
+
+async function updateMyProfileThumb(){
+  const thumb = document.getElementById('myProfileAvatarThumb');
+  if(!thumb || !currentUserUid) return;
+  const existing = await getAvatarDataUri(currentUserUid);
+  thumb.innerHTML = avatarHtml(currentUserName, existing, 42);
+}
+
+async function openProfileModal(){
+  const modal = document.getElementById('myAvatarModal');
+  const preview = document.getElementById('myAvatarPreview');
+  const nameEl = document.getElementById('myAvatarNameDisplay');
+  const statusEl = document.getElementById('myAvatarStatus');
+  statusEl.textContent = '';
+  nameEl.textContent = currentUserName || '';
+  const existing = await getAvatarDataUri(currentUserUid);
+  preview.innerHTML = avatarHtml(currentUserName, existing, 96);
+  modal.classList.add('open');
+}
+document.getElementById('myProfileBtn').addEventListener('click', openProfileModal);
+document.getElementById('myAvatarModalCloseBtn').addEventListener('click', () => {
+  document.getElementById('myAvatarModal').classList.remove('open');
+});
+document.getElementById('myAvatarInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('myAvatarStatus');
+  const preview = document.getElementById('myAvatarPreview');
+  statusEl.textContent = 'Processing…';
+  try{
+    const dataUri = await resizeImageToDataUri(file, 128, 0.7);
+    // Sanity cap — the resize/compress step above should already keep
+    // this to a few KB, but a genuinely huge or unusual source image
+    // could still slip through larger than intended. Reject rather than
+    // silently store something oversized in Realtime Database.
+    if(dataUri.length > 100000){
+      statusEl.textContent = 'That image is too large even after compressing — try a simpler photo.';
+      return;
+    }
+    preview.innerHTML = avatarHtml(currentUserName, dataUri, 96);
+    statusEl.textContent = 'Saving…';
+    await saveMyAvatar(dataUri);
+    statusEl.textContent = 'Saved.';
+  }catch(err){
+    statusEl.textContent = err.message || "Couldn't process that image.";
+  }
+  e.target.value = ''; // reset so choosing the same file again still fires 'change'
+});
 
 async function renderHoldemHistory(tableId){
   const area = document.getElementById('holdemHistoryArea');
@@ -5261,6 +5426,11 @@ async function renderHoldemHand(){
     }
     holdemLastPot = hand.pot;
 
+    // Resolved up front, same reasoning as the seat ring — keeps the
+    // .map() below synchronous, and the cache makes repeat renders cheap.
+    const handAvatarByUid = {};
+    await Promise.all((hand.seatOrder || []).map(async uid => { handAvatarByUid[uid] = await getAvatarDataUri(uid); }));
+
     const seatsHtml = (hand.seatOrder || []).map(uid => {
       const p = hand.players[uid];
       if(!p) return '';
@@ -5279,6 +5449,7 @@ async function renderHoldemHand(){
         cardsHtml = `<div class="holdem-mini-cards"><div class="holdem-mini-card"></div><div class="holdem-mini-card"></div></div>`;
       }
       return `<div class="${classes.join(' ')}">
+        ${avatarHtml(uid === currentUserUid ? currentUserName : (currentState.members.find(m => m.linkedUid === uid) || {}).name, handAvatarByUid[uid], 26)}
         ${cardsHtml}
         <span class="holdem-hand-seat-name">${escapeHtml(uid === currentUserUid ? 'You' : (currentState.members.find(m => m.linkedUid === uid) || {}).name || 'Player')}</span>
         ${p.allIn ? '<span class="holdem-hand-seat-tag">All-in</span>' : ''}
@@ -9722,6 +9893,7 @@ document.getElementById('syndyChatInput').addEventListener('keydown', (e) => {
 function render(state){
   renderSyncStatusLine(state);
   renderHealthPill(state);
+  updateMyProfileThumb(); // cheap after the first call — getAvatarDataUri is cached
   if(!state || !state.members || state.members.length === 0){
     document.getElementById('leaderboardArea').innerHTML = '';
     document.getElementById('owedArea').innerHTML = '';
