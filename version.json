@@ -1,7 +1,13 @@
 {
-  "version": "2026-08-20.36",
+  "version": "2026-08-20.37",
   "date": "2026-08-20",
   "changes": [
-    "New: delete a Hold'em table — a 🗑️ button on the table browser, only shown when you're the table's creator (or admin) and it's actually empty, so nobody can wipe out a table others are using"
+    "Fixed: critical XP bug — winning a Hold'em pot was crediting your real balance immediately but never adding it back to your table stack, making a genuine win look like a loss at the seat",
+    "Fixed: long player names overlapping/cutting off in the circular seat layout",
+    "Fixed: all 5 board cards now fit on one row instead of wrapping",
+    "New: showdown now shows the winning hand type (Pair, Three of a Kind, etc.)",
+    "New: live countdown shown for the action timer, now 30s (was 90s)",
+    "Changed: flop/turn/river deal with a slower, more deliberate pace",
+    "Fixed: Casino Pot rules were genuinely missing from the deployed rules file, causing the 401 read errors"
   ]
 }

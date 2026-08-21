@@ -471,9 +471,9 @@
     opacity:.10; mix-blend-mode:soft-light;
   }
   .holdem-seat{
-    position:absolute; width:29%; max-width:96px; transform:translate(-50%,-50%);
+    position:absolute; width:26%; max-width:84px; transform:translate(-50%,-50%);
     background:linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--line);
-    border-radius:12px; padding:9px 6px; text-align:center; min-height:64px;
+    border-radius:12px; padding:8px 5px; text-align:center; min-height:64px;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
     box-shadow:0 4px 10px rgba(0,0,0,.35); z-index:1;
   }
@@ -484,9 +484,23 @@
     content:'D'; position:absolute; top:4px; right:6px; width:16px; height:16px; border-radius:50%;
     background:var(--brass); color:#0E1A16; font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center;
   }
-  .holdem-seat-name{ font-size:10.5px; font-weight:700; color:var(--chalk); line-height:1.2; }
+  .holdem-seat-name{
+    font-size:10.5px; font-weight:700; color:var(--chalk); line-height:1.2;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+  }
   .holdem-seat-stack{ font-family:'IBM Plex Mono', monospace; font-size:9.5px; color:var(--brass-light); display:inline-block; }
   .holdem-seat-empty{ font-size:9.5px; color:var(--muted); }
+
+  /* All 5 board cards fit on one row, never wrapping — smaller cards
+     and a tighter gap SPECIFICALLY for the board (not touched anywhere
+     else, so Blackjack's cards stay exactly as they are). 5 real
+     Hold'em cards, always exactly 5 max, never more — a fixed nowrap
+     row makes sense here in a way it wouldn't for a hand that could
+     grow past 5. */
+  .holdem-board-row{ flex-wrap:nowrap !important; gap:6px !important; }
+  .holdem-board-row .playing-card, .holdem-board-row .pc-flip-wrap{ width:44px !important; height:63px !important; }
+  .holdem-board-row .pc-pip{ font-size:9px !important; }
+  .holdem-board-row .pc-suit-big{ font-size:17px !important; }
   .holdem-seat.sitting-out{ opacity:.5; }
   .holdem-seat-sitout-tag{ font-size:8px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
 
@@ -2245,7 +2259,7 @@
       </div>
       <div class="bj-table" style="padding:16px 10px;">
         <div class="table-box" data-label="Board">
-          <div id="holdemBoardCards" class="bj-hand-row" style="min-height:60px;"></div>
+          <div id="holdemBoardCards" class="bj-hand-row holdem-board-row" style="min-height:60px;"></div>
           <div id="holdemPotLine" style="font-size:12px; color:var(--brass-light); margin-top:6px; text-align:center; font-weight:700;"></div>
         </div>
       </div>
@@ -3851,7 +3865,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.36";
+const APP_VERSION = "2026-08-20.37";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5033,8 +5047,8 @@ async function renderHoldemSeatRing(){
       // the oval aspect ratio via padding-bottom, so the same radius
       // number for both axes naturally traces an ellipse, not a circle.
       const angle = (2 * Math.PI * i / maxSeats) - Math.PI / 2;
-      const leftPct = (50 + 40 * Math.cos(angle)).toFixed(1);
-      const topPct = (50 + 40 * Math.sin(angle)).toFixed(1);
+      const leftPct = (50 + 42 * Math.cos(angle)).toFixed(1);
+      const topPct = (50 + 42 * Math.sin(angle)).toFixed(1);
       const s = seats[i];
       const isButton = table.status === 'hand_in_progress' && Number(table.buttonSeatIndex) === i;
       const prev = holdemLastSeatsSnapshot[i];
@@ -5399,6 +5413,8 @@ let holdemLastBoardLen = 0;
 let holdemMyCardsDealt = false;
 let holdemLastPot = 0;
 let holdemResultShown = false;
+let holdemCurrentActionDeadline = null;
+let holdemCountdownTickHandle = null;
 
 async function openHoldemHand(tableId, handId){
   holdemCurrentTableId = tableId;
@@ -5407,6 +5423,7 @@ async function openHoldemHand(tableId, handId){
   holdemMyCardsDealt = false;
   holdemLastPot = 0;
   holdemResultShown = false;
+  holdemCurrentActionDeadline = null;
   if(holdemTableListenerRef) holdemTableListenerRef.off('value');
   clearInterval(holdemTableChatPollHandle);
   clearInterval(holdemTableBackupPollHandle);
@@ -5418,8 +5435,21 @@ async function openHoldemHand(tableId, handId){
 
   clearInterval(holdemHandChatPollHandle);
   clearInterval(holdemHandBackupPollHandle);
+  clearInterval(holdemCountdownTickHandle);
   if(holdemHandListenerRef) holdemHandListenerRef.off('value');
   if(holdemHandSecretListenerRef) holdemHandSecretListenerRef.off('value');
+
+  // Ticks the countdown text every second independently of data-driven
+  // re-renders — the deadline itself doesn't change between actions, so
+  // without its own tick a real-time listener (which only fires when
+  // data actually changes) would leave the countdown frozen for however
+  // long nobody happens to act.
+  holdemCountdownTickHandle = setInterval(() => {
+    const el = document.getElementById('holdemCountdown');
+    if(!el || !holdemCurrentActionDeadline){ return; }
+    const secsLeft = Math.max(0, Math.ceil((holdemCurrentActionDeadline - Date.now()) / 1000));
+    el.textContent = `${secsLeft}s`;
+  }, 1000);
 
   try{
     await ensureHoldemRealtimeAuth();
@@ -5461,6 +5491,7 @@ document.getElementById('holdemHandBackBtn').addEventListener('click', () => {
   if(holdemHandSecretListenerRef) holdemHandSecretListenerRef.off('value');
   clearInterval(holdemHandChatPollHandle);
   clearInterval(holdemHandBackupPollHandle);
+  clearInterval(holdemCountdownTickHandle);
   holdemCurrentHandId = null;
   renderHoldemSeatRing();
   showCasinoView('casinoHoldemTableView');
@@ -5492,7 +5523,7 @@ async function renderHoldemHand(){
     if(board.length > holdemLastBoardLen){
       const already = board.slice(0, holdemLastBoardLen);
       const fresh = board.slice(holdemLastBoardLen);
-      boardEl.innerHTML = bjRenderCards(already, false) + bjRenderCards(fresh, true);
+      boardEl.innerHTML = bjRenderCards(already, false) + bjRenderCards(fresh, true, 500); // slower, more deliberate stagger than Blackjack's default — a real "dealing" pace for the flop's 3 cards especially, not a near-simultaneous reveal
       holdemLastBoardLen = board.length;
     } else if(board.length === 0){
       boardEl.innerHTML = '';
@@ -5573,7 +5604,14 @@ async function renderHoldemHand(){
     if(hand.result){
       const lines = hand.result.pots.map((pot, i) => {
         const names = pot.winners.map(uid => uid === currentUserUid ? 'You' : ((currentState.members.find(m => m.linkedUid === uid) || {}).name || 'Player'));
-        return `${pot.winners.length > 1 ? 'Split pot' : 'Pot'} (${pot.amount.toLocaleString()} XP): ${names.join(' & ')}`;
+        // evaluated[uid].rankName is already computed by the engine for
+        // every showdown (Pair, Two Pair, Full House, etc.) — was already
+        // reaching the client inside hand.result the whole time, just
+        // never actually displayed until now.
+        const winnerHandName = hand.result.evaluated && hand.result.evaluated[pot.winners[0]]
+          ? ` — ${hand.result.evaluated[pot.winners[0]].rankName}`
+          : '';
+        return `${pot.winners.length > 1 ? 'Split pot' : 'Pot'} (${pot.amount.toLocaleString()} XP): ${names.join(' & ')}${winnerHandName}`;
       });
       resultEl.innerHTML = `<b style="color:var(--brass-light);">${hand.result.reason === 'fold' ? 'Won by fold' : 'Showdown'}</b><br>${lines.join('<br>')}`;
       if(!holdemResultShown){
@@ -5589,6 +5627,7 @@ async function renderHoldemHand(){
         if(holdemHandSecretListenerRef) holdemHandSecretListenerRef.off('value');
         clearInterval(holdemHandChatPollHandle);
         clearInterval(holdemHandBackupPollHandle);
+        clearInterval(holdemCountdownTickHandle);
         holdemCurrentHandId = null;
         renderHoldemSeatRing();
         showCasinoView('casinoHoldemTableView');
@@ -5604,7 +5643,8 @@ async function renderHoldemHand(){
     }
     if(hand.toAct !== currentUserUid){
       const waitingName = (currentState.members.find(m => m.linkedUid === hand.toAct) || {}).name || 'them';
-      actionsEl.innerHTML = `<div class="hint">Waiting on ${escapeHtml(waitingName)}…</div>`;
+      actionsEl.innerHTML = `<div class="hint">Waiting on ${escapeHtml(waitingName)}… <span id="holdemCountdown"></span></div>`;
+      holdemCurrentActionDeadline = hand.actionDeadline;
       return;
     }
     if(myPlayer.allIn){
@@ -5634,6 +5674,7 @@ async function renderHoldemHand(){
     else if(callIsAllIn) checkCallLabel = `All-in ${callAmount.toLocaleString()}`;
     else checkCallLabel = `Call ${toCall.toLocaleString()}`;
     actionsEl.innerHTML = `
+      <div class="hint" style="text-align:center; margin-bottom:6px;">⏱️ <span id="holdemCountdown"></span> to act</div>
       <div style="display:flex; gap:8px;" id="holdemMainActionRow">
         <button type="button" class="holdem-action-btn" id="holdemFoldBtn">Fold</button>
         <button type="button" class="holdem-action-btn" id="holdemCheckCallBtn">${checkCallLabel}</button>
@@ -5641,6 +5682,7 @@ async function renderHoldemHand(){
       </div>
       ${canRaise ? renderHoldemRaiseBuilder(hand, betLabel) : ''}
     `;
+    holdemCurrentActionDeadline = hand.actionDeadline;
     document.getElementById('holdemFoldBtn').addEventListener('click', () => sendHoldemAction('fold'));
     document.getElementById('holdemCheckCallBtn').addEventListener('click', () => sendHoldemAction(toCall === 0 ? 'check' : 'call'));
     const betBtn = document.getElementById('holdemBetRaiseBtn');
@@ -6868,10 +6910,11 @@ function bjPipHtml(c){
 }
 // Renders a batch of cards as already-revealed faces, each staggered with
 // its own deal-in animation delay and a card-flick sound timed to match.
-function bjRenderCards(hand, animate){
+function bjRenderCards(hand, animate, delayMs){
+  const stagger = delayMs || 130;
   return hand.map((c, i) => {
     const isRed = c.suit === '♥' || c.suit === '♦';
-    const delay = animate ? i * 130 : 0;
+    const delay = animate ? i * stagger : 0;
     if(animate) setTimeout(bjPlayCardSound, delay);
     return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''}" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
   }).join('');
