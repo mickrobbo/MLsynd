@@ -3851,7 +3851,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.35";
+const APP_VERSION = "2026-08-20.36";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4869,18 +4869,36 @@ async function renderHoldemTableList(){
     area.innerHTML = entries.map(([id, t]) => {
       const seated = Object.keys(t.seats || {}).length;
       const statusText = t.status === 'hand_in_progress' ? '🔴 Hand in progress' : '⏳ Waiting for players';
+      // Matches the dealer's own deleteTable rule exactly — creator or
+      // admin, only when genuinely empty — so nobody's shown a button
+      // that would just get rejected by the server anyway.
+      const canDelete = seated === 0 && (t.createdBy === currentUserUid || currentUserEmail === ADMIN_EMAIL);
       return `
         <div class="holdem-table-row">
           <div>
             <div class="holdem-table-name">${escapeHtml(t.name)}</div>
             <div class="holdem-table-meta">${seated}/${t.maxSeats || 9} seated · BB ${t.bigBlind} XP · ${statusText}</div>
           </div>
-          <button type="button" class="pill-btn holdem-open-table-btn" data-id="${id}">Open</button>
+          <div style="display:flex; gap:6px; align-items:center;">
+            ${canDelete ? `<button type="button" class="pill-btn holdem-delete-table-btn" data-id="${id}" data-name="${escapeHtml(t.name)}" title="Delete table" style="padding:6px 10px;">🗑️</button>` : ''}
+            <button type="button" class="pill-btn holdem-open-table-btn" data-id="${id}">Open</button>
+          </div>
         </div>
       `;
     }).join('');
     area.querySelectorAll('.holdem-open-table-btn').forEach(btn => {
       btn.addEventListener('click', () => openHoldemTable(btn.dataset.id));
+    });
+    area.querySelectorAll('.holdem-delete-table-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if(!confirm(`Delete "${btn.dataset.name}"? This can't be undone.`)) return;
+        try{
+          await holdemDealerCall(btn.dataset.id, 'deleteTable', {});
+          renderHoldemTableList();
+        }catch(e){
+          alert(e.message);
+        }
+      });
     });
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load tables — try again.</div>';

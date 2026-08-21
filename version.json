@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-20.35",
+  "version": "2026-08-20.36",
   "date": "2026-08-20",
   "changes": [
-    "New: adjustable raises — pick your own amount using real poker chips (Min / Half Pot / Pot / All-in) plus a slider for exact control, instead of one fixed raise size. Proper minimum-raise rules apply, same as a real table"
+    "New: delete a Hold'em table — a 🗑️ button on the table browser, only shown when you're the table's creator (or admin) and it's actually empty, so nobody can wipe out a table others are using"
   ]
 }
