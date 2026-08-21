@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-20.31",
+  "version": "2026-08-20.32",
   "date": "2026-08-20",
   "changes": [
-    "New: profile photos — set yours from the Board tab (👤 My Profile), shown at the Hold'em table and in every seat during a live hand. Falls back to your initial in a gold circle if you haven't set one"
+    "Fixed: critical Hold'em bug — a hand could crash and get permanently stuck exactly when the flop was about to be dealt, caused by Firebase silently dropping the board's initial empty state on save. Found through real testing, confirmed by reproducing the exact error, and fixed with regression tests that simulate the real save/reload cycle. This should also resolve any hand that's currently stuck 'in progress'"
   ]
 }
