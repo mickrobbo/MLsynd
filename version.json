@@ -1,13 +1,7 @@
 {
-  "version": "2026-08-20.37",
+  "version": "2026-08-20.39",
   "date": "2026-08-20",
   "changes": [
-    "Fixed: critical XP bug — winning a Hold'em pot was crediting your real balance immediately but never adding it back to your table stack, making a genuine win look like a loss at the seat",
-    "Fixed: long player names overlapping/cutting off in the circular seat layout",
-    "Fixed: all 5 board cards now fit on one row instead of wrapping",
-    "New: showdown now shows the winning hand type (Pair, Three of a Kind, etc.)",
-    "New: live countdown shown for the action timer, now 30s (was 90s)",
-    "Changed: flop/turn/river deal with a slower, more deliberate pace",
-    "Fixed: Casino Pot rules were genuinely missing from the deployed rules file, causing the 401 read errors"
+    "New: automated weekend bettor rotation on the Slips tab — tracks who's betting each weekend, records win/loss outcomes, and automatically works out who bets next (a win locks you in plus a bonus second bet; a loss rotates the next person in line into your spot)"
   ]
 }

@@ -548,6 +548,24 @@
   .holdem-hand-seat.folded .holdem-hand-seat-name{ text-decoration:line-through; }
   .holdem-hand-seat-committed{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass-light); }
 
+  /* Real chip-stack visual for a player's current bet — reuses the exact
+     same color tiers as .table-chip (the raise builder's chips) for
+     consistency, just flattened into thin stacked ellipses (how a chip
+     stack actually reads visually) rather than the flat circular "single
+     chip from above" look used for tapping/selecting. A small negative
+     margin + shadow gives it a "sitting in front of the seat" lift
+     instead of reading as flush inline text. */
+  .holdem-chip-badge{ display:inline-flex; align-items:center; gap:5px; margin-top:1px; }
+  .holdem-chip-stack-visual{ position:relative; width:18px; height:24px; flex-shrink:0; filter: drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+  .holdem-mini-chip{
+    position:absolute; left:0; width:18px; height:7px; border-radius:50%;
+    border:1.3px dashed rgba(255,255,255,.55);
+  }
+  .holdem-mini-chip.chip-10{ background: radial-gradient(circle at 35% 25%, #e8e8e8, #b8b8b8 60%, #888); }
+  .holdem-mini-chip.chip-25{ background: radial-gradient(circle at 35% 25%, #4fae74, #1f7a4a 60%, #145535); }
+  .holdem-mini-chip.chip-50{ background: radial-gradient(circle at 35% 25%, #5b9fd6, #2a6ca8 60%, #1a4a78); }
+  .holdem-mini-chip.chip-100{ background: radial-gradient(circle at 35% 25%, #2a2a2a, #0d0d0d 60%, #000); border-color:var(--brass-light); }
+
   /* ---- Seat-ring secondary actions — side-by-side cards instead of
      stacked full-width buttons, easier to hit accurately on mobile. ---- */
   .holdem-action-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
@@ -3865,7 +3883,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.37";
+const APP_VERSION = "2026-08-20.38";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5226,6 +5244,26 @@ function avatarHtml(name, dataUri, sizePx){
   return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--brass-dim); display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:${Math.round(size*0.45)}px; color:var(--brass-light); flex-shrink:0;">${escapeHtml(initial)}</div>`;
 }
 
+// A real chip-stack visual for a player's current bet — not a literal
+// denomination breakdown, just a visually representative stack (more
+// chips, richer color, the bigger the bet reads) using the exact same
+// color tiers as the raise builder's chips, so the whole app's chip
+// language stays consistent. Purely cosmetic — the number is still the
+// source of truth, this sits right next to it, never replaces it.
+function holdemChipStackHtml(amount){
+  if(!amount || amount <= 0) return '';
+  let colorClass, count;
+  if(amount < 25){ colorClass = 'chip-10'; count = 1; }
+  else if(amount < 100){ colorClass = 'chip-25'; count = 2; }
+  else if(amount < 500){ colorClass = 'chip-50'; count = 3; }
+  else { colorClass = 'chip-100'; count = 4; }
+  let chips = '';
+  for(let i = 0; i < count; i++){
+    chips += `<div class="holdem-mini-chip ${colorClass}" style="bottom:${i * 4}px; z-index:${i};"></div>`;
+  }
+  return `<span class="holdem-chip-badge"><span class="holdem-chip-stack-visual">${chips}</span><span class="holdem-hand-seat-committed">${amount.toLocaleString()} XP</span></span>`;
+}
+
 // Resizes and center-crops an uploaded image file down to a small square
 // JPEG, returned as a data URI ready to store directly. Pure Canvas API,
 // no libraries — center-crop means a non-square photo doesn't get
@@ -5565,7 +5603,7 @@ async function renderHoldemHand(){
         ${cardsHtml}
         <span class="holdem-hand-seat-name">${escapeHtml(uid === currentUserUid ? 'You' : (currentState.members.find(m => m.linkedUid === uid) || {}).name || 'Player')}</span>
         ${p.allIn ? '<span class="holdem-hand-seat-tag">All-in</span>' : ''}
-        <span class="holdem-hand-seat-committed">${p.committed > 0 ? p.committed.toLocaleString() + ' XP' : ''}</span>
+        ${holdemChipStackHtml(p.committed)}
       </div>`;
     }).join('');
     document.getElementById('holdemHandSeats').innerHTML = seatsHtml;
