@@ -430,6 +430,136 @@
   .challenge-row-actions .pill-btn{ flex:1; text-align:center; justify-content:center; }
   .challenge-result-chip{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:12px; }
 
+  /* ---- Hold'em table list + seat ring ---- */
+  .holdem-table-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 10px; border-bottom:1px solid var(--line);
+  }
+  .holdem-table-row:last-child{ border-bottom:none; }
+  .holdem-table-name{ font-weight:700; color:var(--brass-light); font-size:13px; }
+  .holdem-table-meta{ font-size:11px; color:var(--muted); margin-top:2px; }
+
+  /* Real radial table — seats positioned around an oval by computed
+     angle, not a flat grid. padding-bottom maintains the oval's aspect
+     ratio responsively (a well-known CSS trick — percentage padding is
+     relative to WIDTH even on padding-bottom, which is what lets this
+     scale cleanly instead of needing a fixed pixel height). */
+  .holdem-table-oval{ position:relative; width:100%; padding-bottom:82%; margin:6px 0 14px; }
+  .holdem-table-oval::before{
+    content:''; position:absolute; inset:6%; border-radius:50%;
+    /* Velvet, not flat felt: a soft off-center sheen (light catching
+       raised nap at an angle, the way real velvet never reflects evenly)
+       layered over the same base green, plus a tighter inner vignette
+       for real depth instead of one flat radial fade. */
+    background:
+      radial-gradient(ellipse at 32% 22%, rgba(255,255,255,.07) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 68% 30%, rgba(255,255,255,.03) 0%, rgba(255,255,255,0) 30%),
+      radial-gradient(ellipse at 50% 35%, #124631 0%, #0A2A1E 60%, #071c14 100%);
+    border:1px solid var(--brass-dim);
+    box-shadow: inset 0 0 40px rgba(0,0,0,.55), inset 0 0 90px rgba(0,0,0,.35), 0 6px 16px rgba(0,0,0,.3);
+  }
+  /* The MLSynd mark, embedded into the felt itself — not a sticker on
+     top, an imprint IN the fabric. Low opacity + soft-light blending
+     (rather than a flat overlay) is what makes it read as woven into
+     the velvet instead of pasted over it — same reasoning that made the
+     Syndy coin watermark work: subtle enough to never compete with the
+     seats or cards sitting on top. */
+  .holdem-table-oval::after{
+    content:''; position:absolute; inset:6%; border-radius:50%; pointer-events:none;
+    background-image:url('/logo-icon.png');
+    background-repeat:no-repeat; background-position:center 46%; background-size:36%;
+    opacity:.10; mix-blend-mode:soft-light;
+  }
+  .holdem-seat{
+    position:absolute; width:29%; max-width:96px; transform:translate(-50%,-50%);
+    background:linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--line);
+    border-radius:12px; padding:9px 6px; text-align:center; min-height:64px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    box-shadow:0 4px 10px rgba(0,0,0,.35); z-index:1;
+  }
+  .holdem-seat.occupied{ border-color:var(--brass-dim); }
+  .holdem-seat.me{ border-color:var(--brass); box-shadow:0 0 0 1px rgba(203,177,102,.3), 0 0 12px rgba(203,177,102,.25); }
+  .holdem-seat.button-seat{ position:absolute; }
+  .holdem-seat.button-seat::after{
+    content:'D'; position:absolute; top:4px; right:6px; width:16px; height:16px; border-radius:50%;
+    background:var(--brass); color:#0E1A16; font-size:9px; font-weight:800; display:flex; align-items:center; justify-content:center;
+  }
+  .holdem-seat-name{ font-size:10.5px; font-weight:700; color:var(--chalk); line-height:1.2; }
+  .holdem-seat-stack{ font-family:'IBM Plex Mono', monospace; font-size:9.5px; color:var(--brass-light); display:inline-block; }
+  .holdem-seat-empty{ font-size:9.5px; color:var(--muted); }
+  .holdem-seat.sitting-out{ opacity:.5; }
+  .holdem-seat-sitout-tag{ font-size:8px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+
+  /* A player sitting down — the seat itself settles in with a soft
+     scale+glow, not an instant pop, paired with the chip sound. */
+  @keyframes holdemSeatIn{
+    0%{ transform:translate(-50%,-50%) scale(.7); opacity:0; box-shadow:0 0 0 rgba(203,177,102,0); }
+    60%{ box-shadow:0 0 22px rgba(203,177,102,.6); }
+    100%{ transform:translate(-50%,-50%) scale(1); opacity:1; box-shadow:0 4px 10px rgba(0,0,0,.35); }
+  }
+  .holdem-seat.seat-glow-in{ animation: holdemSeatIn .5s cubic-bezier(.22,.9,.32,1.15) both; }
+  /* A stack changing (rebuy, or settling after a hand) — same pulse
+     language as the in-hand pot, so a stack update reads as "something
+     just happened" here too, not a silent number swap. */
+  .holdem-seat-stack.stack-pulse{ animation: holdemPotPulse .5s ease-out; }
+
+  /* ---- In-game chat — compact, never competes with cards/actions for
+     space. Same message list + input used on both the table view and
+     the live hand view, since both point at the same /holdemChat/{tableId}
+     thread. ---- */
+  .holdem-chat-box{ margin-top:14px; border-top:1px solid var(--line); padding-top:10px; }
+  .holdem-chat-messages{
+    max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;
+    margin-bottom:8px; padding-right:2px;
+  }
+  .holdem-chat-msg{ font-size:11.5px; line-height:1.35; color:var(--chalk); }
+  @keyframes holdemChatIn{ 0%{ opacity:0; transform:translateY(4px); } 100%{ opacity:1; transform:translateY(0); } }
+  .holdem-chat-msg.chat-msg-in{ animation: holdemChatIn .28s ease-out both; }
+  .holdem-chat-msg b{ color:var(--brass-light); font-weight:700; }
+  .holdem-chat-input-row{ display:flex; gap:6px; align-items:center; }
+  .holdem-chat-input-row input{ flex:1; }
+  .holdem-chat-input-row .pill-btn{ flex-shrink:0; }
+  .holdem-chat-counter{ font-size:9.5px; color:var(--muted); text-align:right; margin-top:3px; }
+  .holdem-chat-counter.near-limit{ color:var(--loss); }
+
+  /* ---- In-hand seat status rows ---- */
+  .holdem-hand-seat{
+    display:flex; align-items:center; gap:8px; padding:8px 6px; border-bottom:1px solid var(--line);
+    font-size:12px;
+  }
+  .holdem-hand-seat:last-child{ border-bottom:none; }
+  .holdem-hand-seat.folded{ opacity:.4; }
+  .holdem-hand-seat.to-act{ background:rgba(203,177,102,.08); border-radius:8px; }
+  .holdem-hand-seat-name{ font-weight:700; color:var(--chalk); flex:1; }
+  .holdem-hand-seat.folded .holdem-hand-seat-name{ text-decoration:line-through; }
+  .holdem-hand-seat-committed{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass-light); }
+  .holdem-hand-seat-tag{
+    font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; padding:2px 6px;
+    border-radius:999px; background:var(--brass-dim); color:var(--ink);
+  }
+  .holdem-mini-cards{ display:flex; gap:2px; }
+  .holdem-mini-card{ width:16px; height:22px; border-radius:2px; background:repeating-linear-gradient(45deg, var(--brass-dim), var(--brass-dim) 2px, var(--felt-3) 2px, var(--felt-3) 4px); border:1px solid var(--brass); }
+
+  /* Pot ticks up in size + gold flash whenever it grows — paired with
+     bjPlayChipSound() in JS, so a bet/call/raise actually registers as an
+     event instead of the number just silently changing between polls. */
+  @keyframes holdemPotPulse{
+    0%{ transform:scale(1); color:var(--brass-light); }
+    35%{ transform:scale(1.12); color:#fff6de; text-shadow:0 0 10px rgba(255,224,150,.7); }
+    100%{ transform:scale(1); color:var(--brass-light); }
+  }
+  .holdem-pot-pulse{ animation: holdemPotPulse .5s ease-out; display:inline-block; }
+
+  /* The seat whose turn it is right now — same pulsing-dot language as
+     the Casino activity ticker's live indicator, so "your move" reads
+     immediately rather than needing to actually read the row. */
+  .holdem-hand-seat.to-act{ position:relative; }
+  .holdem-hand-seat.to-act::before{
+    content:''; position:absolute; left:-2px; top:8px; bottom:8px; width:3px; border-radius:3px;
+    background:var(--brass-light); box-shadow:0 0 8px rgba(245,232,168,.8);
+    animation: tickerPulse 1.3s ease-in-out infinite;
+  }
+
   /* New Challenge form — a proper premium card, not a plain grey box, with
      custom-styled select/input/buttons matching the rest of the app
      instead of falling back to raw browser form-control chrome. */
@@ -1669,6 +1799,16 @@
   opacity:0; animation: potFadeUp .5s ease forwards; animation-delay:3.65s;
 }
 </style>
+<!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
+     (board/pot/turn updates, seat changes). Nothing else in this app
+     uses it; everywhere else talks to Firebase over plain REST, and
+     that's staying exactly as-is. Compat build specifically, since it
+     works as a plain sequential script-tag include with no bundler and no
+     ES module setup — consistent with how this whole file already
+     operates as one HTML page, no build step. -->
+<script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <div id="authGate" class="auth-gate">
@@ -1974,8 +2114,96 @@
           <span class="casino-hub-sub">Head-to-head, your stake</span>
           <span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span>
         </div>
+        <div class="casino-hub-bubble" id="hubHoldemBtn" style="position:relative;">
+          <span class="casino-hub-icon">🎲</span>
+          <span class="casino-hub-label">Hold'em</span>
+          <span class="casino-hub-sub">Up to 9 players, spectators welcome</span>
+          <span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span>
+        </div>
       </div>
     </div>
+
+    <!-- Hold'em table browser -->
+    <div class="panel casino-view" id="casinoHoldemBrowserView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">🎲 Hold'em Tables</h2>
+        <button type="button" class="pill-btn" id="holdemBrowserBackBtn">← Back</button>
+      </div>
+      <div class="hint" style="margin-bottom:10px;">Fixed-Limit, up to 9 seats. Anyone can watch a table without sitting down — spectating is always free. Join a seat any time between hands.</div>
+      <button type="button" class="pill-btn pill-btn-primary" id="newHoldemTableBtn" style="width:100%; margin-bottom:12px;">🎲 New Table</button>
+      <div id="newHoldemTableForm" style="display:none; margin-bottom:12px;">
+        <label class="form-field-label">Table name</label>
+        <input type="text" id="holdemTableNameInput" class="form-input" placeholder="e.g. Friday Night">
+        <label class="form-field-label">Big blind (XP)</label>
+        <input type="number" id="holdemTableBBInput" class="form-input" min="1" step="1" placeholder="e.g. 10">
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="pill-btn pill-btn-primary" id="createHoldemTableBtn" style="flex:1;">Create</button>
+          <button type="button" class="pill-btn" id="cancelNewHoldemTableBtn" style="flex:1;">Cancel</button>
+        </div>
+        <div class="status-msg" id="newHoldemTableStatus" style="margin-top:8px;"></div>
+      </div>
+      <div id="holdemTableListArea"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- A single table — seat ring + sit/stand. Full hand-play (cards,
+         betting) is a separate next step; this shows who's seated, their
+         stack, and lets you take an open seat or leave one, plus start a
+         hand once at least 2 people are seated. -->
+    <div class="panel casino-view" id="casinoHoldemTableView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;" id="holdemTableViewTitle">🎲 Table</h2>
+        <button type="button" class="pill-btn" id="holdemTableBackBtn">← Back</button>
+      </div>
+      <div class="hint" id="holdemTableStatusLine" style="margin-bottom:10px;"></div>
+      <div id="holdemSeatRing"></div>
+      <div id="holdemTableActions" style="margin-top:12px;"></div>
+      <div class="status-msg" id="holdemTableActionStatus" style="margin-top:8px;"></div>
+      <details style="margin-top:16px;">
+        <summary style="cursor:pointer; font-family:'Barlow Condensed', sans-serif; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass); padding:6px 0;">Recent hands</summary>
+        <div id="holdemHistoryArea" style="margin-top:6px;"><div class="empty">Loading…</div></div>
+      </details>
+      <div class="holdem-chat-box">
+        <div id="holdemTableChatMessages" class="holdem-chat-messages"></div>
+        <div class="holdem-chat-input-row">
+          <input type="text" id="holdemTableChatInput" class="form-input" placeholder="Say something…" maxlength="160" style="margin-bottom:0;">
+          <button type="button" class="pill-btn" id="holdemTableChatSendBtn">Send</button>
+        </div>
+        <div id="holdemTableChatCounter" class="holdem-chat-counter">0/160</div>
+      </div>
+    </div>
+
+    <!-- The actual hand — board, pot, every seat's status, your own hole
+         cards, and action buttons. Spectators (not seated in this hand)
+         see everything except anyone's hole cards, same as watching a
+         real table over someone's shoulder. -->
+    <div class="panel casino-view" id="casinoHoldemHandView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">🎲 Hand in progress</h2>
+        <button type="button" class="pill-btn" id="holdemHandBackBtn">← Back</button>
+      </div>
+      <div class="bj-table" style="padding:16px 10px;">
+        <div class="table-box" data-label="Board">
+          <div id="holdemBoardCards" class="bj-hand-row" style="min-height:60px;"></div>
+          <div id="holdemPotLine" style="font-size:12px; color:var(--brass-light); margin-top:6px; text-align:center; font-weight:700;"></div>
+        </div>
+      </div>
+      <div id="holdemHandSeats" style="margin-top:12px;"></div>
+      <div class="table-box" data-label="Your Cards" style="margin-top:22px;">
+        <div id="holdemMyCards" class="bj-hand-row"></div>
+      </div>
+      <div id="holdemHandResult" class="hint" style="text-align:center; margin:10px 0;"></div>
+      <div id="holdemHandActions" style="margin-top:12px;"></div>
+      <div class="status-msg" id="holdemHandActionStatus" style="margin-top:8px;"></div>
+      <div class="holdem-chat-box">
+        <div id="holdemHandChatMessages" class="holdem-chat-messages"></div>
+        <div class="holdem-chat-input-row">
+          <input type="text" id="holdemHandChatInput" class="form-input" placeholder="Say something…" maxlength="160" style="margin-bottom:0;">
+          <button type="button" class="pill-btn" id="holdemHandChatSendBtn">Send</button>
+        </div>
+        <div id="holdemHandChatCounter" class="holdem-chat-counter">0/160</div>
+      </div>
+    </div>
+
 
     <!-- Pot panel — collapsed to headline total by default; everything
          else (split bar, contribution, eligibility, history, admin) lives
@@ -3545,7 +3773,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.21";
+const APP_VERSION = "2026-08-20.29";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4478,6 +4706,724 @@ document.getElementById('challengeHandBackBtn').addEventListener('click', () => 
   showCasinoView('casinoChallengesView');
 });
 
+// =====================================================================
+// HOLD'EM — table browser + seat ring. Every write (sit, stand, create
+// table, start a hand, act) goes through the trusted holdem-dealer
+// Netlify Function, never direct Firebase writes — firebase-rules.json
+// sets .write:false on all the Hold'em paths specifically so nothing
+// here can bypass the dealer and corrupt shared table/hand state or leak
+// hole cards. This first pass covers the table browser and seat ring
+// (who's seated, buy in, cash out, start a hand once 2+ are seated) —
+// actual hand play (cards, betting) is the clear next step once this is
+// confirmed working end to end.
+async function holdemDealerCall(tableId, action, extraParams){
+  const auth = await getValidAuth();
+  if(!auth) throw new Error('Session expired — sign in again.');
+  const res = await fetch('/.netlify/functions/holdem-dealer', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: auth.idToken, tableId, action, ...extraParams })
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(data.error || 'Something went wrong.');
+  return data;
+}
+
+// ---- Firebase SDK auth bridge (Hold'em real-time listeners only) ----
+// Everything else in this app reads/writes Firebase over plain REST
+// (authedFetch, elsewhere in this file) and that isn't changing — this
+// bridge exists ONLY so Hold'em's board/pot/turn/seat updates can use
+// real .on('value') listeners instead of polling. The Firebase JS SDK
+// needs its own signed-in session to respect security rules on realtime
+// listeners; rather than replacing this app's REST-based sign-in (used
+// everywhere else, including guest links and admin checks), the dealer
+// function mints a Firebase custom token for the already-authenticated
+// uid (see mintRealtimeToken in holdem-dealer.js), and that token signs
+// the SDK in as the SAME person, in parallel, touching nothing else.
+const firebaseConfig = {
+  apiKey: FB_API_KEY,
+  authDomain: 'mlsynd.firebaseapp.com',
+  databaseURL: FIREBASE_URL,
+  projectId: 'mlsynd'
+};
+let holdemFirebaseApp = null;
+let holdemRealtimeAuthPromise = null;
+function ensureHoldemRealtimeAuth(){
+  if(holdemRealtimeAuthPromise) return holdemRealtimeAuthPromise;
+  holdemRealtimeAuthPromise = (async () => {
+    if(!holdemFirebaseApp) holdemFirebaseApp = firebase.initializeApp(firebaseConfig);
+    if(firebase.auth().currentUser && firebase.auth().currentUser.uid === currentUserUid) return true;
+    const { customToken } = await holdemDealerCall(null, 'mintRealtimeToken', {});
+    await firebase.auth().signInWithCustomToken(customToken);
+    return true;
+  })().catch(e => {
+    holdemRealtimeAuthPromise = null; // let the next attempt retry rather than staying permanently broken from one transient failure
+    throw e;
+  });
+  return holdemRealtimeAuthPromise;
+}
+
+document.getElementById('hubHoldemBtn').addEventListener('click', () => {
+  renderHoldemTableList();
+  showCasinoView('casinoHoldemBrowserView');
+});
+document.getElementById('holdemBrowserBackBtn').addEventListener('click', () => showCasinoView(null));
+
+async function renderHoldemTableList(){
+  const area = document.getElementById('holdemTableListArea');
+  if(!area) return;
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const res = await authedFetch('/holdemTables.json');
+    const tables = res.ok ? ((await res.json()) || {}) : {};
+    const entries = Object.entries(tables).sort((a, b) => {
+      // Tables with people at them surface first — an empty table someone
+      // created and hasn't sat down at yet won't get buried, but a long-
+      // abandoned empty table also won't sit at the top forever.
+      const seatedA = Object.keys(a[1].seats || {}).length;
+      const seatedB = Object.keys(b[1].seats || {}).length;
+      if(seatedA !== seatedB) return seatedB - seatedA;
+      return (b[1].createdAt || 0) - (a[1].createdAt || 0);
+    });
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No tables yet — start one above.</div>';
+      return;
+    }
+    area.innerHTML = entries.map(([id, t]) => {
+      const seated = Object.keys(t.seats || {}).length;
+      const statusText = t.status === 'hand_in_progress' ? '🔴 Hand in progress' : '⏳ Waiting for players';
+      return `
+        <div class="holdem-table-row">
+          <div>
+            <div class="holdem-table-name">${escapeHtml(t.name)}</div>
+            <div class="holdem-table-meta">${seated}/${t.maxSeats || 9} seated · BB ${t.bigBlind} XP · ${statusText}</div>
+          </div>
+          <button type="button" class="pill-btn holdem-open-table-btn" data-id="${id}">Open</button>
+        </div>
+      `;
+    }).join('');
+    area.querySelectorAll('.holdem-open-table-btn').forEach(btn => {
+      btn.addEventListener('click', () => openHoldemTable(btn.dataset.id));
+    });
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load tables — try again.</div>';
+  }
+}
+
+document.getElementById('newHoldemTableBtn').addEventListener('click', () => {
+  document.getElementById('holdemTableNameInput').value = '';
+  document.getElementById('holdemTableBBInput').value = '';
+  document.getElementById('newHoldemTableStatus').textContent = '';
+  document.getElementById('newHoldemTableForm').style.display = 'block';
+});
+document.getElementById('cancelNewHoldemTableBtn').addEventListener('click', () => {
+  document.getElementById('newHoldemTableForm').style.display = 'none';
+});
+document.getElementById('createHoldemTableBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('newHoldemTableStatus');
+  const name = document.getElementById('holdemTableNameInput').value.trim();
+  const bigBlind = Math.floor(Number(document.getElementById('holdemTableBBInput').value));
+  if(!name){ statusEl.textContent = 'Give the table a name.'; return; }
+  if(!(bigBlind > 0)){ statusEl.textContent = 'Enter a big blind above 0.'; return; }
+  statusEl.textContent = 'Creating…';
+  try{
+    const result = await holdemDealerCall(null, 'createTable', { name, bigBlind, maxSeats: 9 });
+    document.getElementById('newHoldemTableForm').style.display = 'none';
+    showToast(`🎲 "${name}" table created`);
+    openHoldemTable(result.tableId);
+  }catch(e){
+    statusEl.textContent = e.message;
+  }
+});
+
+// Real-time, not polling — a live .on('value') listener replaces the
+// setInterval that used to sit here. Chat still polls lightly (its own
+// separate, lower-stakes concern) since it isn't the point of this
+// change. checkAutoStart/checkTimeout-style lazy triggers still need
+// SOME periodic check (a listener only fires when data changes, not
+// when a clock simply runs out with nothing else happening), so a much
+// slower backup interval remains for that specifically.
+let holdemCurrentTableId = null;
+let holdemTableListenerRef = null;
+let holdemTableChatPollHandle = null;
+let holdemTableBackupPollHandle = null;
+// Tracked so a re-render only animates/sounds what's genuinely NEW since
+// the last render — same reasoning as the hand view's board-tracking:
+// without this, every listener fire would replay every seat-in animation
+// and chip sound, which reads as glitchy, not premium.
+let holdemLastSeatsSnapshot = {};
+let holdemSeatRingSeeded = false;
+
+async function openHoldemTable(tableId){
+  holdemCurrentTableId = tableId;
+  holdemLastSeatsSnapshot = {};
+  holdemSeatRingSeeded = false;
+  renderHoldemSeatRing();
+  renderHoldemChat(tableId, 'holdemTableChatMessages');
+  wireHoldemChatUI(tableId, 'holdemTableChatMessages', 'holdemTableChatInput', 'holdemTableChatCounter', 'holdemTableChatSendBtn');
+  showCasinoView('casinoHoldemTableView');
+
+  clearInterval(holdemTableChatPollHandle);
+  clearInterval(holdemTableBackupPollHandle);
+  if(holdemTableListenerRef) holdemTableListenerRef.off('value');
+
+  try{
+    await ensureHoldemRealtimeAuth();
+    holdemTableListenerRef = firebase.database().ref(`/holdemTables/${tableId}`);
+    holdemTableListenerRef.on('value', () => {
+      if(holdemCurrentTableId === tableId) renderHoldemSeatRing();
+    });
+  }catch(e){
+    // Real-time auth failed for some reason (network hiccup, token mint
+    // failure) — fall back to the old polling behaviour rather than
+    // leaving the view frozen with no updates at all.
+    holdemTableBackupPollHandle = setInterval(() => {
+      const casinoTab = document.getElementById('tab-casino');
+      if(!casinoTab || !casinoTab.classList.contains('active') || !holdemCurrentTableId){ clearInterval(holdemTableBackupPollHandle); return; }
+      renderHoldemSeatRing();
+    }, 6000);
+  }
+
+  holdemTableChatPollHandle = setInterval(() => {
+    const casinoTab = document.getElementById('tab-casino');
+    if(!casinoTab || !casinoTab.classList.contains('active') || !holdemCurrentTableId){
+      clearInterval(holdemTableChatPollHandle);
+      return;
+    }
+    renderHoldemChat(tableId, 'holdemTableChatMessages');
+  }, 6000);
+}
+document.getElementById('holdemTableBackBtn').addEventListener('click', () => {
+  if(holdemTableListenerRef) holdemTableListenerRef.off('value');
+  clearInterval(holdemTableChatPollHandle);
+  clearInterval(holdemTableBackupPollHandle);
+  holdemCurrentTableId = null;
+  renderHoldemTableList();
+  showCasinoView('casinoHoldemBrowserView');
+});
+
+async function renderHoldemSeatRing(){
+  if(!holdemCurrentTableId) return;
+  const ring = document.getElementById('holdemSeatRing');
+  const actionsArea = document.getElementById('holdemTableActions');
+  const statusLine = document.getElementById('holdemTableStatusLine');
+  if(!ring) return;
+  try{
+    const res = await authedFetch(`/holdemTables/${holdemCurrentTableId}.json`);
+    const table = res.ok ? await res.json() : null;
+    if(!table){
+      ring.innerHTML = '<div class="empty">This table no longer exists.</div>';
+      actionsArea.innerHTML = '';
+      return;
+    }
+    document.getElementById('holdemTableViewTitle').textContent = `🎲 ${table.name}`;
+    const maxSeats = table.maxSeats || 9;
+    const seats = table.seats || {};
+    const mySeatIdx = Object.keys(seats).find(i => seats[i].uid === currentUserUid);
+
+    let seatHtml = '';
+    let anyoneNewlySeated = false;
+    let anyStackChanged = false;
+    for(let i = 0; i < maxSeats; i++){
+      // Positioned around an oval by computed angle, starting at the top
+      // and going clockwise — real radial table layout instead of a flat
+      // grid. left/top are both percentages of the container's own box
+      // (width/height respectively), and the container already carries
+      // the oval aspect ratio via padding-bottom, so the same radius
+      // number for both axes naturally traces an ellipse, not a circle.
+      const angle = (2 * Math.PI * i / maxSeats) - Math.PI / 2;
+      const leftPct = (50 + 40 * Math.cos(angle)).toFixed(1);
+      const topPct = (50 + 40 * Math.sin(angle)).toFixed(1);
+      const s = seats[i];
+      const isButton = table.status === 'hand_in_progress' && Number(table.buttonSeatIndex) === i;
+      const prev = holdemLastSeatsSnapshot[i];
+      const isNewlySeated = holdemSeatRingSeeded && s && (!prev || prev.uid !== s.uid);
+      const stackChanged = holdemSeatRingSeeded && s && prev && prev.uid === s.uid && prev.stack !== s.stack;
+      if(isNewlySeated) anyoneNewlySeated = true;
+      if(stackChanged) anyStackChanged = true;
+      if(s){
+        const classes = ['holdem-seat', 'occupied'];
+        if(s.uid === currentUserUid) classes.push('me');
+        if(isButton) classes.push('button-seat');
+        if(s.sittingOut) classes.push('sitting-out');
+        if(isNewlySeated) classes.push('seat-glow-in');
+        seatHtml += `<div class="${classes.join(' ')}" style="left:${leftPct}%; top:${topPct}%;"><span class="holdem-seat-name">${escapeHtml(s.name)}${s.uid === currentUserUid ? ' (you)' : ''}</span><span class="holdem-seat-stack${stackChanged ? ' stack-pulse' : ''}">${s.stack.toLocaleString()} XP</span>${s.sittingOut ? '<span class="holdem-seat-sitout-tag">Sitting out</span>' : ''}</div>`;
+      } else {
+        seatHtml += `<div class="holdem-seat" style="left:${leftPct}%; top:${topPct}%;"><span class="holdem-seat-empty">Empty seat</span></div>`;
+      }
+    }
+    ring.innerHTML = `<div class="holdem-table-oval">${seatHtml}</div>`;
+    if(anyoneNewlySeated || anyStackChanged) bjPlayChipSound();
+    holdemLastSeatsSnapshot = Object.fromEntries(Object.entries(seats).map(([i, s]) => [i, { uid: s.uid, stack: s.stack }]));
+    holdemSeatRingSeeded = true;
+
+    const seatedCount = Object.keys(seats).length;
+    statusLine.textContent = table.status === 'hand_in_progress'
+      ? 'A hand is in progress — spectators welcome.'
+      : `${seatedCount}/${maxSeats} seated · BB ${table.bigBlind} XP · ${seatedCount >= 2 ? 'ready to start' : 'needs at least 2 players'}`;
+
+    let actionsHtml = '';
+    if(table.status === 'hand_in_progress' && table.currentHandId){
+      actionsHtml = `<button type="button" class="pill-btn pill-btn-primary" id="holdemViewHandBtn" style="width:100%;">${mySeatIdx != null ? '🃏 Go to your hand' : '👀 Watch this hand'}</button>`;
+    } else if(mySeatIdx == null && seatedCount < maxSeats){
+      actionsHtml = `<input type="number" id="holdemBuyInInput" class="form-input" placeholder="Buy-in (XP)" style="margin-bottom:8px;"><button type="button" class="pill-btn pill-btn-primary" id="holdemSitBtn" style="width:100%;">Sit down</button>`;
+    } else if(mySeatIdx != null){
+      const amSittingOut = !!seats[mySeatIdx].sittingOut;
+      const maxStack = (table.bigBlind || 10) * 100;
+      const rebuyRoom = Math.max(0, maxStack - seats[mySeatIdx].stack);
+      actionsHtml = `<button type="button" class="pill-btn" id="holdemStandBtn" style="width:100%; margin-bottom:8px;">Stand up (cash out ${seats[mySeatIdx].stack.toLocaleString()} XP)</button>`;
+      actionsHtml += `<button type="button" class="pill-btn" id="holdemSitOutBtn" style="width:100%; margin-bottom:8px;">${amSittingOut ? "I'm back — deal me in" : 'Sit out next hands'}</button>`;
+      if(rebuyRoom > 0){
+        actionsHtml += `<button type="button" class="pill-btn" id="holdemRebuyBtn" style="width:100%; margin-bottom:8px;">💰 Add chips (up to ${rebuyRoom.toLocaleString()} XP)</button>`;
+      }
+      if(seatedCount >= 2){
+        actionsHtml += `<button type="button" class="pill-btn pill-btn-primary" id="holdemStartHandBtn" style="width:100%; margin-bottom:8px;">Start hand</button>`;
+      }
+      actionsHtml += `<label style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted); margin-top:4px; cursor:pointer;"><input type="checkbox" id="holdemAutoStartToggle" ${table.autoStart ? 'checked' : ''}> Auto-start next hand after this one finishes</label>`;
+    } else {
+      actionsHtml = `<div class="hint">Watching — sit down once this hand finishes to join in.</div>`;
+    }
+    actionsArea.innerHTML = actionsHtml;
+
+    const viewHandBtn = document.getElementById('holdemViewHandBtn');
+    if(viewHandBtn) viewHandBtn.addEventListener('click', () => openHoldemHand(holdemCurrentTableId, table.currentHandId));
+    const sitBtn = document.getElementById('holdemSitBtn');
+    if(sitBtn) sitBtn.addEventListener('click', async () => {
+      const buyIn = Math.floor(Number(document.getElementById('holdemBuyInInput').value));
+      const statusEl = document.getElementById('holdemTableActionStatus');
+      if(!(buyIn > 0)){ statusEl.textContent = 'Enter a buy-in above 0.'; return; }
+      statusEl.textContent = 'Sitting down…';
+      try{ await holdemDealerCall(holdemCurrentTableId, 'sit', { buyIn }); statusEl.textContent = ''; renderHoldemSeatRing(); }
+      catch(e){ statusEl.textContent = e.message; }
+    });
+    const standBtn = document.getElementById('holdemStandBtn');
+    if(standBtn) standBtn.addEventListener('click', async () => {
+      const statusEl = document.getElementById('holdemTableActionStatus');
+      try{ await holdemDealerCall(holdemCurrentTableId, 'stand', {}); statusEl.textContent = ''; renderHoldemSeatRing(); }
+      catch(e){ statusEl.textContent = e.message; }
+    });
+    const sitOutBtn = document.getElementById('holdemSitOutBtn');
+    if(sitOutBtn) sitOutBtn.addEventListener('click', async () => {
+      const statusEl = document.getElementById('holdemTableActionStatus');
+      try{ await holdemDealerCall(holdemCurrentTableId, 'toggleSitOut', {}); statusEl.textContent = ''; renderHoldemSeatRing(); }
+      catch(e){ statusEl.textContent = e.message; }
+    });
+    const startBtn = document.getElementById('holdemStartHandBtn');
+    if(startBtn) startBtn.addEventListener('click', async () => {
+      const statusEl = document.getElementById('holdemTableActionStatus');
+      statusEl.textContent = 'Dealing…';
+      try{
+        const result = await holdemDealerCall(holdemCurrentTableId, 'startHand', {});
+        statusEl.textContent = '';
+        openHoldemHand(holdemCurrentTableId, result.handId);
+      }catch(e){ statusEl.textContent = e.message; }
+    });
+    const rebuyBtn = document.getElementById('holdemRebuyBtn');
+    if(rebuyBtn) rebuyBtn.addEventListener('click', async () => {
+      const statusEl = document.getElementById('holdemTableActionStatus');
+      const input = prompt('Add how many XP to your stack?');
+      const amount = Math.floor(Number(input));
+      if(!input || !(amount > 0)) return;
+      statusEl.textContent = 'Adding chips…';
+      try{ await holdemDealerCall(holdemCurrentTableId, 'rebuy', { amount }); statusEl.textContent = ''; renderHoldemSeatRing(); }
+      catch(e){ statusEl.textContent = e.message; }
+    });
+    const autoStartToggle = document.getElementById('holdemAutoStartToggle');
+    if(autoStartToggle) autoStartToggle.addEventListener('change', async () => {
+      try{ await holdemDealerCall(holdemCurrentTableId, 'toggleAutoStart', {}); }
+      catch(e){ document.getElementById('holdemTableActionStatus').textContent = e.message; renderHoldemSeatRing(); }
+    });
+
+    renderHoldemHistory(holdemCurrentTableId);
+
+    // Lazy auto-start trigger — same "whoever's client polls next after
+    // the deadline fires it" pattern as the in-hand action timeout.
+    if(table.autoStart && table.autoStartAt && Date.now() >= table.autoStartAt && !table.currentHandId){
+      try{
+        const result = await holdemDealerCall(holdemCurrentTableId, 'checkAutoStart', {});
+        if(result.started){ openHoldemHand(holdemCurrentTableId, result.handId); return; }
+      }catch(e){}
+    }
+  }catch(e){
+    ring.innerHTML = '<div class="empty">Couldn\'t load this table — try again.</div>';
+  }
+}
+
+async function renderHoldemHistory(tableId){
+  const area = document.getElementById('holdemHistoryArea');
+  if(!area) return;
+  try{
+    const res = await authedFetch(`/holdemHistory/${tableId}.json`);
+    const history = res.ok ? ((await res.json()) || {}) : {};
+    const entries = Object.values(history).sort((a, b) => (b.endedAt || 0) - (a.endedAt || 0)).slice(0, 10);
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No hands played yet.</div>';
+      return;
+    }
+    area.innerHTML = entries.map(h => {
+      const names = h.winners.map(w => `${escapeHtml(w.name)} (+${w.amount.toLocaleString()})`).join(', ');
+      return `<div class="challenge-row"><div class="challenge-row-main" style="flex-direction:column; align-items:flex-start; gap:2px;"><span>${timeAgo(h.endedAt)} · Pot ${h.potTotal.toLocaleString()} XP · ${h.reason === 'fold' ? 'won by fold' : 'showdown'}</span><span style="color:var(--brass-light);">${names}</span></div></div>`;
+    }).join('');
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load hand history.</div>';
+  }
+}
+
+// ---- In-game chat ----
+// Same /holdemChat/{tableId} thread whether it's rendered inside the
+// table view or the live hand view — messagesId/inputId/counterId/sendId
+// let one pair of functions drive both UI instances without duplicating
+// the logic. Writes go straight to Firebase (authedFetch), not through
+// the dealer function — chat never touches XP or hand state, so it
+// doesn't need the trusted-server mediation everything else here does;
+// same trust level as Challenges already uses for its own reads/writes.
+// Approved-member read/write only, per firebase-rules.json.
+// Tracked per messagesId (table view and hand view are separate UI
+// instances of the same underlying thread) so only genuinely NEW
+// messages fade in — without this, every 4-6s poll would replay the
+// animation for the entire message history, not just what's new. First
+// render for a given instance seeds silently, same "don't animate
+// history as if it just happened" principle as the Casino ticker.
+const holdemChatSeenKeys = {};
+async function renderHoldemChat(tableId, messagesId){
+  const area = document.getElementById(messagesId);
+  if(!area || !tableId) return;
+  try{
+    const res = await authedFetch(`/holdemChat/${tableId}.json?orderBy=%22ts%22&limitToLast=30`);
+    const messages = res.ok ? ((await res.json()) || {}) : {};
+    const entries = Object.entries(messages).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0));
+    const wasAtBottom = area.scrollTop + area.clientHeight >= area.scrollHeight - 10;
+    const seenBefore = holdemChatSeenKeys[messagesId];
+    const isFirstRenderForThisInstance = !seenBefore;
+    area.innerHTML = entries.length === 0
+      ? '<div class="hint">No messages yet.</div>'
+      : entries.map(([key, m]) => {
+          const isNew = !isFirstRenderForThisInstance && seenBefore && !seenBefore.has(key);
+          return `<div class="holdem-chat-msg${isNew ? ' chat-msg-in' : ''}"><b>${escapeHtml(m.name)}:</b> ${escapeHtml(m.text)}</div>`;
+        }).join('');
+    holdemChatSeenKeys[messagesId] = new Set(entries.map(([key]) => key));
+    if(wasAtBottom) area.scrollTop = area.scrollHeight; // only auto-scroll if they were already at the bottom — don't yank someone back down mid-scroll-up to read earlier messages
+  }catch(e){}
+}
+async function sendHoldemChatMessage(tableId, inputId, counterId){
+  const input = document.getElementById(inputId);
+  const text = input.value.trim().slice(0, 160);
+  if(!text) return;
+  input.value = '';
+  updateHoldemChatCounter(inputId, counterId);
+  try{
+    await authedFetch(`/holdemChat/${tableId}.json`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: currentUserUid, name: currentUserName, text, ts: Date.now() })
+    });
+  }catch(e){}
+}
+function updateHoldemChatCounter(inputId, counterId){
+  const input = document.getElementById(inputId);
+  const counter = document.getElementById(counterId);
+  if(!input || !counter) return;
+  const len = input.value.length;
+  counter.textContent = `${len}/160`;
+  counter.classList.toggle('near-limit', len >= 140);
+}
+function wireHoldemChatUI(tableId, messagesId, inputId, counterId, sendBtnId){
+  const input = document.getElementById(inputId);
+  const sendBtn = document.getElementById(sendBtnId);
+  if(input) input.addEventListener('input', () => updateHoldemChatCounter(inputId, counterId));
+  if(sendBtn) sendBtn.addEventListener('click', () => sendHoldemChatMessage(tableId, inputId, counterId));
+  if(input) input.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendHoldemChatMessage(tableId, inputId, counterId); });
+}
+
+// ---- The live hand ----
+let holdemCurrentHandId = null;
+let holdemHandListenerRef = null;
+let holdemHandSecretListenerRef = null;
+let holdemHandChatPollHandle = null;
+let holdemHandBackupPollHandle = null;
+// Tracked so a re-render only animates/plays sound for what's genuinely
+// NEW since the last render — without this, every listener fire would
+// re-deal the same cards and re-play the deal sound, which reads as
+// glitchy rather than premium.
+let holdemLastBoardLen = 0;
+let holdemMyCardsDealt = false;
+let holdemLastPot = 0;
+let holdemResultShown = false;
+
+async function openHoldemHand(tableId, handId){
+  holdemCurrentTableId = tableId;
+  holdemCurrentHandId = handId;
+  holdemLastBoardLen = 0;
+  holdemMyCardsDealt = false;
+  holdemLastPot = 0;
+  holdemResultShown = false;
+  if(holdemTableListenerRef) holdemTableListenerRef.off('value');
+  clearInterval(holdemTableChatPollHandle);
+  clearInterval(holdemTableBackupPollHandle);
+
+  renderHoldemHand();
+  renderHoldemChat(tableId, 'holdemHandChatMessages');
+  wireHoldemChatUI(tableId, 'holdemHandChatMessages', 'holdemHandChatInput', 'holdemHandChatCounter', 'holdemHandChatSendBtn');
+  showCasinoView('casinoHoldemHandView');
+
+  clearInterval(holdemHandChatPollHandle);
+  clearInterval(holdemHandBackupPollHandle);
+  if(holdemHandListenerRef) holdemHandListenerRef.off('value');
+  if(holdemHandSecretListenerRef) holdemHandSecretListenerRef.off('value');
+
+  try{
+    await ensureHoldemRealtimeAuth();
+    holdemHandListenerRef = firebase.database().ref(`/holdemHands/${handId}`);
+    holdemHandListenerRef.on('value', () => {
+      if(holdemCurrentHandId === handId) renderHoldemHand();
+    });
+    // Own hole cards live on a separate path (only readable by the
+    // owning uid, per firebase-rules.json) — a second listener specific
+    // to this player, so a card reveal reaches them the instant it's
+    // dealt, not just when the public hand record next changes.
+    if(currentUserUid){
+      holdemHandSecretListenerRef = firebase.database().ref(`/holdemHandSecrets/${handId}/${currentUserUid}`);
+      holdemHandSecretListenerRef.on('value', () => {
+        if(holdemCurrentHandId === handId) renderHoldemHand();
+      });
+    }
+  }catch(e){
+    // Same fallback as the table view — real-time auth failed, degrade
+    // to polling rather than freezing the view with no updates.
+    holdemHandBackupPollHandle = setInterval(() => {
+      const casinoTab = document.getElementById('tab-casino');
+      if(!casinoTab || !casinoTab.classList.contains('active') || !holdemCurrentHandId){ clearInterval(holdemHandBackupPollHandle); return; }
+      renderHoldemHand();
+    }, 4000);
+  }
+
+  holdemHandChatPollHandle = setInterval(() => {
+    const casinoTab = document.getElementById('tab-casino');
+    if(!casinoTab || !casinoTab.classList.contains('active') || !holdemCurrentHandId){
+      clearInterval(holdemHandChatPollHandle);
+      return;
+    }
+    renderHoldemChat(tableId, 'holdemHandChatMessages');
+  }, 4000);
+}
+document.getElementById('holdemHandBackBtn').addEventListener('click', () => {
+  if(holdemHandListenerRef) holdemHandListenerRef.off('value');
+  if(holdemHandSecretListenerRef) holdemHandSecretListenerRef.off('value');
+  clearInterval(holdemHandChatPollHandle);
+  clearInterval(holdemHandBackupPollHandle);
+  holdemCurrentHandId = null;
+  renderHoldemSeatRing();
+  showCasinoView('casinoHoldemTableView');
+});
+
+async function renderHoldemHand(){
+  if(!holdemCurrentHandId) return;
+  try{
+    // Lazy auto-fold check, same pattern as the 24h challenge expiry —
+    // whichever client happens to poll first after the 90s deadline
+    // passes is the one that triggers it. Harmless if several clients'
+    // polls land close together; the dealer just no-ops once it's handled.
+    holdemDealerCall(holdemCurrentTableId, 'checkTimeout', {}).catch(() => {});
+
+    const res = await authedFetch(`/holdemHands/${holdemCurrentHandId}.json`);
+    const hand = res.ok ? await res.json() : null;
+    if(!hand){
+      document.getElementById('holdemHandResult').textContent = 'This hand is no longer available.';
+      return;
+    }
+
+    // Board: only the NEWLY-revealed cards animate/play a sound — the
+    // flop's 3 cards deal in together, the turn/river's single card deals
+    // in on its own. Re-polling the same board (nothing new since last
+    // render) stays silent and static, which is what makes the animation
+    // read as "a card was just dealt" rather than "the screen refreshed".
+    const board = hand.board || [];
+    const boardEl = document.getElementById('holdemBoardCards');
+    if(board.length > holdemLastBoardLen){
+      const already = board.slice(0, holdemLastBoardLen);
+      const fresh = board.slice(holdemLastBoardLen);
+      boardEl.innerHTML = bjRenderCards(already, false) + bjRenderCards(fresh, true);
+      holdemLastBoardLen = board.length;
+    } else if(board.length === 0){
+      boardEl.innerHTML = '';
+      holdemLastBoardLen = 0;
+    }
+
+    const potLine = document.getElementById('holdemPotLine');
+    potLine.textContent = `Pot: ${hand.pot.toLocaleString()} XP · ${hand.street}`;
+    if(hand.pot > holdemLastPot){
+      bjPlayChipSound(); // someone bet/called/raised since the last render — the same clink Blackjack uses for a bet
+      potLine.classList.remove('holdem-pot-pulse'); void potLine.offsetWidth; potLine.classList.add('holdem-pot-pulse');
+    }
+    holdemLastPot = hand.pot;
+
+    const seatsHtml = (hand.seatOrder || []).map(uid => {
+      const p = hand.players[uid];
+      if(!p) return '';
+      const classes = ['holdem-hand-seat'];
+      if(p.folded) classes.push('folded');
+      if(hand.toAct === uid && !hand.result) classes.push('to-act');
+      let cardsHtml;
+      if(hand.result && hand.revealedHoleCards && hand.revealedHoleCards[uid]){
+        // Showdown reveal uses the same flip animation as the dealer's
+        // hole card in solo Blackjack — genuinely flips face-up rather
+        // than just swapping to the revealed image.
+        cardsHtml = hand.revealedHoleCards[uid].map((c, i) => bjRenderFlipWrap(`holdemFlip-${uid}-${i}`, c)).join('');
+      } else if(p.folded){
+        cardsHtml = '';
+      } else {
+        cardsHtml = `<div class="holdem-mini-cards"><div class="holdem-mini-card"></div><div class="holdem-mini-card"></div></div>`;
+      }
+      return `<div class="${classes.join(' ')}">
+        ${cardsHtml}
+        <span class="holdem-hand-seat-name">${escapeHtml(uid === currentUserUid ? 'You' : (currentState.members.find(m => m.linkedUid === uid) || {}).name || 'Player')}</span>
+        ${p.allIn ? '<span class="holdem-hand-seat-tag">All-in</span>' : ''}
+        <span class="holdem-hand-seat-committed">${p.committed > 0 ? p.committed.toLocaleString() + ' XP' : ''}</span>
+      </div>`;
+    }).join('');
+    document.getElementById('holdemHandSeats').innerHTML = seatsHtml;
+    // Flip animations start from a defined "face-down" state and need a
+    // frame to register before flipping — same two-step trick the dealer's
+    // own hole-card reveal already uses in solo Blackjack.
+    if(hand.result && hand.revealedHoleCards){
+      requestAnimationFrame(() => {
+        Object.keys(hand.revealedHoleCards).forEach(uid => {
+          hand.revealedHoleCards[uid].forEach((c, i) => {
+            const el = document.getElementById(`holdemFlip-${uid}-${i}`);
+            if(el) el.classList.add('pc-flipped');
+          });
+        });
+      });
+    }
+
+    const myCardsEl = document.getElementById('holdemMyCards');
+    if(hand.players[currentUserUid]){
+      const mySecretRes = await authedFetch(`/holdemHandSecrets/${holdemCurrentHandId}/${currentUserUid}.json`);
+      const mySecret = mySecretRes.ok ? await mySecretRes.json() : null;
+      if(mySecret && mySecret.holeCards){
+        if(!holdemMyCardsDealt){
+          myCardsEl.innerHTML = bjRenderCards(mySecret.holeCards, true); // your own cards get the full deal-in treatment the first time they appear
+          holdemMyCardsDealt = true;
+        } else {
+          myCardsEl.innerHTML = bjRenderCards(mySecret.holeCards, false);
+        }
+      }
+    } else {
+      myCardsEl.innerHTML = '<div class="hint">Spectating — no cards this hand.</div>';
+    }
+
+    const resultEl = document.getElementById('holdemHandResult');
+    const actionsEl = document.getElementById('holdemHandActions');
+    if(hand.result){
+      const lines = hand.result.pots.map((pot, i) => {
+        const names = pot.winners.map(uid => uid === currentUserUid ? 'You' : ((currentState.members.find(m => m.linkedUid === uid) || {}).name || 'Player'));
+        return `${pot.winners.length > 1 ? 'Split pot' : 'Pot'} (${pot.amount.toLocaleString()} XP): ${names.join(' & ')}`;
+      });
+      resultEl.innerHTML = `<b style="color:var(--brass-light);">${hand.result.reason === 'fold' ? 'Won by fold' : 'Showdown'}</b><br>${lines.join('<br>')}`;
+      if(!holdemResultShown){
+        // The same bright ascending chime the Casino Pot jackpot uses —
+        // once, the first time this result is seen, not on every re-poll.
+        const iWon = hand.result.pots.some(pot => pot.winners.includes(currentUserUid));
+        if(iWon) playPotWinChime(); else bjPlayChime(false);
+        holdemResultShown = true;
+      }
+      actionsEl.innerHTML = `<button type="button" class="pill-btn pill-btn-primary" id="holdemBackToTableBtn" style="width:100%;">Back to table</button>`;
+      document.getElementById('holdemBackToTableBtn').addEventListener('click', () => {
+        if(holdemHandListenerRef) holdemHandListenerRef.off('value');
+        if(holdemHandSecretListenerRef) holdemHandSecretListenerRef.off('value');
+        clearInterval(holdemHandChatPollHandle);
+        clearInterval(holdemHandBackupPollHandle);
+        holdemCurrentHandId = null;
+        renderHoldemSeatRing();
+        showCasinoView('casinoHoldemTableView');
+      });
+      return;
+    }
+
+    resultEl.textContent = '';
+    const myPlayer = hand.players[currentUserUid];
+    if(!myPlayer || myPlayer.folded){
+      actionsEl.innerHTML = myPlayer ? '<div class="hint">You folded — waiting for the hand to finish.</div>' : '<div class="hint">Spectating.</div>';
+      return;
+    }
+    if(hand.toAct !== currentUserUid){
+      const waitingName = (currentState.members.find(m => m.linkedUid === hand.toAct) || {}).name || 'them';
+      actionsEl.innerHTML = `<div class="hint">Waiting on ${escapeHtml(waitingName)}…</div>`;
+      return;
+    }
+    if(myPlayer.allIn){
+      // Shouldn't normally happen — the engine never sets toAct to an
+      // already-all-in player — but handled defensively rather than
+      // showing buttons that would just error against the server.
+      actionsEl.innerHTML = `<div class="hint">You're all-in — waiting for the hand to finish.</div>`;
+      return;
+    }
+    // Mirrors legalActions() in holdem-engine-multiway.mjs exactly, so a
+    // player is never shown a button the server will actually reject —
+    // same toCall/betsThisStreet/stack checks, same conditions.
+    const maxCommitted = Math.max(0, ...Object.values(hand.players).filter(p => !p.folded).map(p => p.committed));
+    const toCall = Math.max(0, maxCommitted - myPlayer.committed);
+    const canRaise = hand.betsThisStreet < 4 && myPlayer.stack > toCall;
+    const callIsAllIn = toCall > 0 && myPlayer.stack <= toCall;
+    const callAmount = Math.min(toCall, myPlayer.stack);
+    const betLabel = hand.betsThisStreet === 0 ? 'Bet' : 'Raise';
+    let checkCallLabel;
+    if(toCall === 0) checkCallLabel = 'Check';
+    else if(callIsAllIn) checkCallLabel = `All-in ${callAmount.toLocaleString()}`;
+    else checkCallLabel = `Call ${toCall.toLocaleString()}`;
+    actionsEl.innerHTML = `
+      <div style="display:flex; gap:8px;">
+        <button type="button" class="pill-btn pill-btn-action" id="holdemFoldBtn" style="flex:1;">Fold</button>
+        <button type="button" class="pill-btn pill-btn-action" id="holdemCheckCallBtn" style="flex:1;">${checkCallLabel}</button>
+        ${canRaise ? `<button type="button" class="pill-btn pill-btn-action" id="holdemBetRaiseBtn" style="flex:1;">${betLabel}</button>` : ''}
+      </div>
+    `;
+    document.getElementById('holdemFoldBtn').addEventListener('click', () => sendHoldemAction('fold'));
+    document.getElementById('holdemCheckCallBtn').addEventListener('click', () => sendHoldemAction(toCall === 0 ? 'check' : 'call'));
+    const betBtn = document.getElementById('holdemBetRaiseBtn');
+    if(betBtn) betBtn.addEventListener('click', () => sendHoldemAction(hand.betsThisStreet === 0 ? 'bet' : 'raise'));
+  }catch(e){
+    document.getElementById('holdemHandResult').textContent = "Couldn't load this hand right now.";
+  }
+}
+async function sendHoldemAction(playerAction){
+  const statusEl = document.getElementById('holdemHandActionStatus');
+  statusEl.textContent = '';
+  try{
+    await holdemDealerCall(holdemCurrentTableId, 'act', { handId: holdemCurrentHandId, playerAction });
+    renderHoldemHand();
+    refreshHoldemBadge();
+  }catch(e){
+    statusEl.textContent = e.message;
+    renderHoldemHand(); // refresh regardless of outcome — on a conflict (someone else's action landed first), the board may have moved on, so show what's actually true rather than leaving stale buttons up
+  }
+}
+
+// Scans every table for one where I'm seated AND a hand's in progress AND
+// it's genuinely my turn — same "needs your attention" signal Challenges
+// already gives, so both live in the same place on the hub. Table count
+// is small (an 11-person friend group's worth of tables), so scanning
+// all of them here is cheap — this isn't the unbounded-history problem
+// the earlier Casino Floor feed had.
+async function refreshHoldemBadge(){
+  const badge = document.getElementById('holdemHubBadge');
+  if(!badge || !currentUserUid) return;
+  try{
+    const res = await authedFetch('/holdemTables.json');
+    const tables = res.ok ? ((await res.json()) || {}) : {};
+    const myActiveHandIds = Object.values(tables)
+      .filter(t => t.status === 'hand_in_progress' && t.currentHandId && t.seats && Object.values(t.seats).some(s => s.uid === currentUserUid))
+      .map(t => t.currentHandId);
+    if(myActiveHandIds.length === 0){ badge.style.display = 'none'; return; }
+    const handChecks = await Promise.all(myActiveHandIds.map(async id => {
+      const r = await authedFetch(`/holdemHands/${id}.json`);
+      const h = r.ok ? await r.json() : null;
+      return h && !h.result && h.toAct === currentUserUid;
+    }));
+    const needsMe = handChecks.filter(Boolean).length;
+    badge.textContent = needsMe;
+    badge.style.display = needsMe > 0 ? 'flex' : 'none';
+  }catch(e){}
+}
+
 async function ensureXPInitialized(){
   if(!currentUserUid) return;
   try{
@@ -5222,6 +6168,7 @@ let casinoTickerQueue = [];
 let casinoTickerShowing = false;
 async function pollCasinoTicker(){
   refreshChallengesBadgeOnly(); // piggybacks on the same 8s tab-scoped interval — no separate poller needed for this
+  refreshHoldemBadge();
   if(!currentState || !Array.isArray(currentState.members)) return;
   const linked = currentState.members.filter(m => m.linkedUid);
   if(linked.length === 0) return;
@@ -6094,6 +7041,7 @@ document.querySelector('[data-tab="casino"]').addEventListener('click', async ()
   await hubPromise;
   refreshCasinoHeroExtras();
   refreshChallengesBadgeOnly();
+  refreshHoldemBadge();
 });
 // Rank + next-milestone progress on the hero card — the whole point is
 // giving someone a reason to glance at Casino without having to tap into
@@ -6218,6 +7166,24 @@ document.getElementById('potDetailsToggleBtn').addEventListener('click', () => {
 // exactly as it did for manual typing — no per-game duplication needed.
 // ---- Per-game rules modal (shared sheet, content swapped per game) ----
 const CASINO_RULES = {
+  holdem: { title: "🎲 Hold'em Rules", body: `
+    <h3>Object</h3>
+    <p>Make the best possible 5-card hand using any combination of your 2 private hole cards and the 5 shared community cards. Best hand at showdown wins the pot — or win uncontested any time everyone else folds.</p>
+    <h3>Fixed-Limit</h3>
+    <p>Every bet and raise is a fixed size, not "any amount" — the small bet (half the big blind) is used preflop and on the flop, the big bet (equal to the full big blind) is used on the turn and river. The big blind is set once by whoever creates the table and applies to everyone seated there — it doesn't scale to your own buy-in, so bring enough chips to play real poker with the stakes as configured.</p>
+    <h3>The Deal</h3>
+    <p>Two players post forced blinds before cards are dealt: small blind and big blind, the two seats immediately after the dealer button. Everyone gets 2 private hole cards, face down, visible only to them.</p>
+    <h3>Betting Rounds</h3>
+    <p>Four rounds: <b>Preflop</b> (before any community cards), <b>Flop</b> (first 3 community cards), <b>Turn</b> (4th card), <b>River</b> (5th and final card). Each round, you can Check (if nobody's bet), Call, Bet/Raise (fixed size, capped at 4 total raises per round), or Fold.</p>
+    <h3>Side Pots</h3>
+    <p>If a player goes all-in for less than others are still betting, a separate side pot forms — that player can only win up to what they put in; the side pot is contested by whoever kept betting beyond that.</p>
+    <h3>Showdown</h3>
+    <p>If more than one player is still in after the river, remaining hands are revealed and compared. Best 5-card hand from your 2 + the board wins. Genuine ties split the pot evenly.</p>
+    <h3>Table Rules</h3>
+    <p>Up to 9 seats. Sit down any time there's an open seat and no hand's in progress, buy in for any amount of your own XP. Stand up between hands to cash your stack back to your real balance. Spectating is always free — anyone can watch a hand without a seat, they just never see hole cards until showdown.</p>
+    <h3>Timeouts</h3>
+    <p>90 seconds to act on your turn. Miss it and you're auto-folded (or auto-checked if you owe nothing) so the table doesn't stall on one AFK player.</p>
+  `},
   blackjack: { title: '🃏 Blackjack Rules', body: `
     <h3>Object</h3>
     <p>Get closer to 21 than the dealer without going over. Number cards are face value, J/Q/K are 10, Aces are 1 or 11 (whichever helps your hand more).</p>
@@ -6318,7 +7284,7 @@ document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
 const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
   ['war', '⚔️ Casino War'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
-  ['casinopot', '🏆 Monthly Casino Pot']
+  ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
   `<button type="button" data-rules-key="${key}">${label}</button>`).join('');

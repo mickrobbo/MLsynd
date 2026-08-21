@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-20.21",
+  "version": "2026-08-20.29",
   "date": "2026-08-20",
   "changes": [
-    "Fixed: Challenges panel was using unstyled default browser form controls — now matches the rest of the app's premium dark/brass styling"
+    "New: Hold'em now uses real-time Firebase listeners instead of polling for the board, pot, turn, and seats — updates are genuinely instant, not just fast. Chat and the auto-fold/auto-start timers still check periodically as a lighter backup",
+    "New: automatic fallback to the previous polling behavior if real-time auth fails for any reason, so a network hiccup degrades gracefully instead of freezing the view"
   ]
 }
