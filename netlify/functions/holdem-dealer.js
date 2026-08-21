@@ -40,7 +40,7 @@ import crypto from 'crypto';
 import { createHand, applyAction, legalActions, raiseRange } from './lib/holdem-engine-multiway.mjs';
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
-const ACTION_TIMEOUT_MS = 90 * 1000; // 90s to act before auto-fold/auto-check — generous for an async app, short enough that a table doesn't stall forever on one AFK player
+const ACTION_TIMEOUT_MS = 30 * 1000; // 30s to act before auto-fold/auto-check
 const MIN_PLAYERS_TO_START = 2;
 const REBUY_MAX_BIG_BLINDS = 100; // standard deep-stack cash game convention
 const AUTO_START_DELAY_MS = 4000; // 3-5s pause between hands when auto-start is on, so results are readable before the next deal
@@ -338,23 +338,38 @@ async function persistEngineHand(tableId, handId, engineHand, accessToken, etag)
   }
   await dbSet(`/holdemHands/${handId}`, publicHandRecord(tableId, engineHand, revealed), accessToken);
   if(engineHand.result){
-    // Pay out immediately — this is the direct-crediting advantage of
-    // being a trusted server. Each pot's winners split it evenly; an odd
+    // Pot winnings go to each winner's TABLE STACK, not their real XP
+    // balance — the comment a few lines below (and the 'stand' action
+    // above) already establishes the correct design: real balance only
+    // moves at buy-in (debit) and stand-up (credit whatever's left of the
+    // table stack). This used to ALSO call creditXP on the real balance
+    // immediately on every pot win, which was simply wrong against that
+    // design — it meant a winner's real balance jumped up immediately,
+    // while their table-seat stack was built from engineHand.players[uid]
+    // .stack alone, which the engine deliberately never increments with
+    // pot winnings (that's the dealer's job, not the pure engine's). Net
+    // effect: a winner's displayed table stack never reflected the pot
+    // they'd just won, making a genuine win look like a loss at the seat.
+    // Fixed by adding each winner's share directly to their engine-side
+    // stack instead of touching the real balance, so the one correct
+    // downstream sync (a few lines below, into table.seats) carries it
+    // through properly. Each pot's winners split it evenly; an odd
     // remainder XP (can't literally split an odd number of XP) goes to
     // whoever's earliest in seat order among the winners — arbitrary but
     // deterministic, and off by at most 1 XP either way.
-    for(const pot of engineHand.result.pots){
+    engineHand.result.pots.forEach(pot => {
       const share = Math.floor(pot.amount / pot.winners.length);
       let remainder = pot.amount - share * pot.winners.length;
-      for(const uid of pot.winners){
+      pot.winners.forEach(uid => {
         const amount = share + (remainder > 0 ? 1 : 0);
         if(remainder > 0) remainder--;
-        await creditXP(uid, amount, `Hold'em pot (${engineHand.result.reason})`, accessToken);
-      }
-    }
-    // Whatever's left in each player's stack after the hand goes back to
-    // their seat's stack figure — NOT their real XP balance yet, they
-    // keep playing with it at the table until they stand up (see 'stand').
+        if(engineHand.players[uid]) engineHand.players[uid].stack += amount;
+      });
+    });
+    // Whatever's left in each player's stack after the hand (now correctly
+    // including any pot they just won) goes back to their seat's stack
+    // figure — NOT their real XP balance yet, they keep playing with it
+    // at the table until they stand up (see 'stand' above).
     const table = await dbGet(`/holdemTables/${tableId}`, accessToken);
     if(table && table.seats){
       Object.entries(table.seats).forEach(([seatIdx, seat]) => {
