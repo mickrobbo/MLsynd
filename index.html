@@ -101,7 +101,9 @@
 
   /* ---- Blackjack table + playing cards ---- */
   .bj-table{
-    background: radial-gradient(ellipse at 50% 35%, #124631 0%, #0A2A1E 65%, #071c14 100%);
+    background:
+      radial-gradient(ellipse at 32% 22%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 35%),
+      radial-gradient(ellipse at 50% 35%, #124631 0%, #0A2A1E 65%, #071c14 100%);
     border: 1px solid var(--brass-dim); border-radius: 16px;
     padding: 22px 12px; box-shadow: inset 0 0 50px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.03);
     position:relative; overflow:hidden;
@@ -111,8 +113,19 @@
     width:140%; height:60%; background: radial-gradient(ellipse, rgba(255,224,150,.06) 0%, rgba(255,224,150,0) 70%);
     pointer-events:none;
   }
-  .bj-table::after{ /* separate flash overlay so it never fights the spotlight gradient above */
+  .bj-table::after{
+    /* Flash overlay (kept exactly as-is — the win/lose flash animations
+       below only ever touch background-color, so layering the felt
+       watermark's background-image onto this same element is safe and
+       never fights them, the two properties composite independently).
+       Same low-opacity, embedded-in-the-fabric watermark as the Hold'em
+       table felt, applied here too since this is the other place a real
+       green felt table shows up in the app (Blackjack, and the Hold'em
+       hand view's own board panel — both share this one class). */
     content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
+    background-image:url('/logo-icon.png');
+    background-repeat:no-repeat; background-position:center 55%; background-size:26%;
+    opacity:.08;
   }
   .bj-hand-row{ display:flex; justify-content:center; gap:10px; min-height:88px; align-items:flex-start; flex-wrap:wrap; position:relative; z-index:1; }
 
@@ -467,7 +480,7 @@
   .holdem-table-oval::after{
     content:''; position:absolute; inset:6%; border-radius:50%; pointer-events:none;
     background-image:url('/logo-icon.png');
-    background-repeat:no-repeat; background-position:center 46%; background-size:36%;
+    background-repeat:no-repeat; background-position:center 50%; background-size:22%;
     opacity:.10; mix-blend-mode:soft-light;
   }
   .holdem-seat{
@@ -3912,7 +3925,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.39";
+const APP_VERSION = "2026-08-20.40";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5110,9 +5123,10 @@ async function renderHoldemSeatRing(){
         if(s.sittingOut) classes.push('sitting-out');
         if(isNewlySeated) classes.push('seat-glow-in');
         seatHtml += `<div class="${classes.join(' ')}" style="left:${leftPct}%; top:${topPct}%;">${avatarHtml(s.name, avatarByUid[s.uid], 32)}<span class="holdem-seat-name">${escapeHtml(s.name)}${s.uid === currentUserUid ? ' (you)' : ''}</span><span class="holdem-seat-stack${stackChanged ? ' stack-pulse' : ''}">${s.stack.toLocaleString()} XP</span>${s.sittingOut ? '<span class="holdem-seat-sitout-tag">Sitting out</span>' : ''}</div>`;
-      } else {
-        seatHtml += `<div class="holdem-seat" style="left:${leftPct}%; top:${topPct}%;"><span class="holdem-seat-empty">Empty seat</span></div>`;
       }
+      // Empty seats render nothing at all — an occupied felt table
+      // doesn't visually mark out where nobody's sitting, and 9 "Empty
+      // seat" boxes cluttered the table more than they helped.
     }
     ring.innerHTML = `<div class="holdem-table-oval">${seatHtml}</div>`;
     if(anyoneNewlySeated || anyStackChanged) bjPlayChipSound();

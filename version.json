@@ -1,7 +1,9 @@
 {
-  "version": "2026-08-20.39",
+  "version": "2026-08-20.40",
   "date": "2026-08-20",
   "changes": [
-    "New: automated weekend bettor rotation on the Slips tab — tracks who's betting each weekend, records win/loss outcomes, and automatically works out who bets next (a win locks you in plus a bonus second bet; a loss rotates the next person in line into your spot)"
+    "Fixed: empty Hold'em seats no longer show a placeholder box at all — only occupied seats appear on the table",
+    "Fixed: the felt watermark on the Hold'em table was getting clipped at the top by the oval's curve — resized and repositioned",
+    "New: the same velvet felt + embedded watermark treatment now also applies to Blackjack's table and the Hold'em hand view's board panel, not just the seat ring"
   ]
 }
