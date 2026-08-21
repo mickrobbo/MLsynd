@@ -1,9 +1,14 @@
 {
-  "version": "2026-08-20.40",
+  "version": "2026-08-20.42",
   "date": "2026-08-20",
   "changes": [
+    "New: real chip-stack visuals next to each player's current bet in a live Hold'em hand — same colors as the raise-builder chips, more chips stacked as the bet grows",
+    "New: automated weekend bettor rotation, properly integrated into the Ledger app's existing 'This week's individual bets' — a win locks you in again next week plus auto-ticks the SGM bonus bet, a loss rotates the next person in line into your spot. Kept deliberately separate from Save Week so a correction re-save can never accidentally double-advance the rotation. (An earlier version of this lived as a standalone tracker on the Dashboard's Slips tab — that's been removed in favour of this proper integration, since the standalone version duplicated a much richer system that already existed)",
     "Fixed: empty Hold'em seats no longer show a placeholder box at all — only occupied seats appear on the table",
-    "Fixed: the felt watermark on the Hold'em table was getting clipped at the top by the oval's curve — resized and repositioned",
-    "New: the same velvet felt + embedded watermark treatment now also applies to Blackjack's table and the Hold'em hand view's board panel, not just the seat ring"
+    "Fixed: the felt watermark on the Hold'em table was getting clipped at the top by the oval's curve",
+    "New: the velvet felt + embedded watermark treatment now also applies to Blackjack's table and the Hold'em hand view's board panel, not just the seat ring",
+    "Fixed: the topmost seat on the Hold'em circular table could overlap the status line above it — checked and fixed across every table size and screen width",
+    "Fixed (significant): the 30s auto-fold/auto-check timeout, and auto-start-next-hand, could both silently fail to trigger under real-time listeners if nothing else happened to cause a re-render — an AFK player's own inaction was exactly the case that broke it. Both now checked on a genuine independent periodic timer",
+    "Fixed: Hold'em sit-down buy-ins and rebuy amounts didn't enforce whole numbers, unlike every other numeric input in the system"
   ]
 }

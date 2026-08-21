@@ -457,7 +457,7 @@
      ratio responsively (a well-known CSS trick — percentage padding is
      relative to WIDTH even on padding-bottom, which is what lets this
      scale cleanly instead of needing a fixed pixel height). */
-  .holdem-table-oval{ position:relative; width:100%; padding-bottom:82%; margin:6px 0 14px; }
+  .holdem-table-oval{ position:relative; width:100%; padding-bottom:82%; margin:38px 0 14px; }
   .holdem-table-oval::before{
     content:''; position:absolute; inset:6%; border-radius:50%;
     /* Velvet, not flat felt: a soft off-center sheen (light catching
@@ -578,31 +578,6 @@
   .holdem-mini-chip.chip-25{ background: radial-gradient(circle at 35% 25%, #4fae74, #1f7a4a 60%, #145535); }
   .holdem-mini-chip.chip-50{ background: radial-gradient(circle at 35% 25%, #5b9fd6, #2a6ca8 60%, #1a4a78); }
   .holdem-mini-chip.chip-100{ background: radial-gradient(circle at 35% 25%, #2a2a2a, #0d0d0d 60%, #000); border-color:var(--brass-light); }
-
-  /* ---- Weekend bettor rotation (Slips tab) ---- */
-  .rotation-slot{
-    display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:14px;
-    background:linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim);
-    box-shadow:0 4px 10px rgba(0,0,0,.25); margin-bottom:10px;
-  }
-  .rotation-slot-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:16px; color:var(--brass-light); letter-spacing:.4px; }
-  .rotation-bet-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px; }
-  .rotation-bet-label{ color:var(--muted); }
-  .rotation-status-pill{
-    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.4px;
-    padding:3px 10px; border-radius:999px; background:var(--felt); border:1px solid var(--brass-dim); color:var(--chalk);
-  }
-  .rotation-status-pill.won{ background:rgba(111,169,138,.18); border-color:var(--win); color:var(--win); }
-  .rotation-status-pill.lost{ background:rgba(193,96,74,.18); border-color:var(--loss); color:var(--loss); }
-  .rotation-outcome-btns{ display:flex; gap:8px; }
-  .rotation-outcome-btns .holdem-action-btn{ padding:10px 6px; font-size:11.5px; }
-  .rotation-next-line{ font-size:11px; color:var(--muted); margin-top:2px; }
-  .rotation-order-strip{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
-  .rotation-order-chip{
-    font-size:10.5px; padding:4px 9px; border-radius:999px; background:var(--felt); border:1px solid var(--line); color:var(--muted);
-  }
-  .rotation-order-chip.is-active{ border-color:var(--brass); color:var(--brass-light); background:rgba(203,177,102,.12); }
-  .rotation-order-chip.is-next-up{ border-color:var(--brass-light); color:var(--brass-light); box-shadow:0 0 8px rgba(255,224,150,.35); }
 
   /* ---- Seat-ring secondary actions — side-by-side cards instead of
      stacked full-width buttons, easier to hit accurately on mobile. ---- */
@@ -2078,10 +2053,6 @@
   </div>
 
   <div class="tab-panel" id="tab-slips">
-    <div class="panel" id="rotationPanel">
-      <h2>🎲 Weekend Bettor Rotation</h2>
-      <div id="rotationArea"></div>
-    </div>
     <div class="panel">
       <h2>Bet slips</h2>
       <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Uploaded from the ledger app each week.</div>
@@ -3925,7 +3896,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.40";
+const APP_VERSION = "2026-08-20.42";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5060,6 +5031,14 @@ async function openHoldemTable(tableId){
       return;
     }
     renderHoldemChat(tableId, 'holdemTableChatMessages');
+    // checkAutoStart lives inside renderHoldemSeatRing()'s own logic —
+    // under real-time listeners, that only re-runs when the table's data
+    // actually changes, but the auto-start delay is exactly a case where
+    // nothing changes for those few seconds while everyone's reading the
+    // last hand's result. Without this, auto-start could silently never
+    // actually trigger. Same fix, same reasoning as the hand view's
+    // checkTimeout gap just found and fixed.
+    renderHoldemSeatRing();
   }, 6000);
 }
 document.getElementById('holdemTableBackBtn').addEventListener('click', () => {
@@ -5227,8 +5206,11 @@ async function renderHoldemSeatRing(){
 
     renderHoldemHistory(holdemCurrentTableId);
 
-    // Lazy auto-start trigger — same "whoever's client polls next after
-    // the deadline fires it" pattern as the in-hand action timeout.
+    // Lazy auto-start trigger. Reliably re-checked every 6s via the chat
+    // interval above calling renderHoldemSeatRing() periodically — not
+    // just whenever the table's data happens to change, which wouldn't
+    // be enough on its own to guarantee this fires during a quiet gap
+    // between hands.
     if(table.autoStart && table.autoStartAt && Date.now() >= table.autoStartAt && !table.currentHandId){
       try{
         const result = await holdemDealerCall(holdemCurrentTableId, 'checkAutoStart', {});
@@ -5565,6 +5547,16 @@ async function openHoldemHand(tableId, handId){
       return;
     }
     renderHoldemChat(tableId, 'holdemHandChatMessages');
+    // The auto-fold/check timeout genuinely needs a real, independent
+    // periodic trigger — not just a side effect of renderHoldemHand()
+    // running. Under real-time listeners, renderHoldemHand() only re-runs
+    // when the hand's data actually changes, but an AFK player's inaction
+    // is exactly the case where nothing changes — meaning the listener
+    // never refires and the timeout that's supposed to catch that never
+    // gets checked. This chat interval already runs independently of any
+    // data change, so it's the correct place to also enforce the
+    // deadline, not a new interval invented just for this.
+    holdemDealerCall(tableId, 'checkTimeout', {}).catch(() => {});
   }, 4000);
 }
 document.getElementById('holdemHandBackBtn').addEventListener('click', () => {
@@ -5581,10 +5573,12 @@ document.getElementById('holdemHandBackBtn').addEventListener('click', () => {
 async function renderHoldemHand(){
   if(!holdemCurrentHandId) return;
   try{
-    // Lazy auto-fold check, same pattern as the 24h challenge expiry —
-    // whichever client happens to poll first after the 90s deadline
-    // passes is the one that triggers it. Harmless if several clients'
-    // polls land close together; the dealer just no-ops once it's handled.
+    // Lazy auto-fold check. This alone isn't enough to guarantee the
+    // timeout actually fires under real-time listeners — see the
+    // dedicated periodic call in the chat interval below, which is what
+    // actually catches an AFK player when nothing else is changing to
+    // trigger a fresh render here. This call just means it's ALSO
+    // checked the instant the hand view opens, not only every 4s.
     holdemDealerCall(holdemCurrentTableId, 'checkTimeout', {}).catch(() => {});
 
     const res = await authedFetch(`/holdemHands/${holdemCurrentHandId}.json`);
@@ -10185,168 +10179,11 @@ document.getElementById('syndyChatInput').addEventListener('keydown', (e) => {
   if(e.key === 'Enter') sendSyndyMessage();
 });
 
-// ---- Weekend Bettor Rotation ----
-// A new feature, not an extension of the existing "Slips" (uploaded bet
-// slip photo) tracking — that has no concept of rotation or outcomes at
-// all. Automates the rotation rule exactly as confirmed:
-//   - Win your FIRST bet of the weekend → locked in for next weekend AND
-//     get a bonus second bet this same weekend. The second bet's outcome
-//     never affects the rotation, win or lose.
-//   - Lose your first bet → you're out; whoever's next in the shared
-//     rotation queue takes your spot next weekend.
-// Persisted at /state/bettorRotation, which the existing Firebase rules
-// already permit any approved member to read and write (the same broad
-// /state permission everything else here already uses) — no new rules
-// needed, confirmed against the actual rules file before building this.
-const ROTATION_DEFAULT_ORDER = ['Murph','Mick','Dean','Tim','Trasky','Billy','Josh','Joffa','Brad','Zak','Damon'];
-
-async function saveRotationState(rotation){
-  await authedFetch('/state/bettorRotation.json', {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rotation)
-  });
-}
-
-function renderBettorRotation(state){
-  const area = document.getElementById('rotationArea');
-  if(!area) return;
-  const rotation = state && state.bettorRotation;
-  if(!rotation){
-    renderRotationSetup(area);
-    return;
-  }
-
-  let html = '';
-  rotation.active.forEach((slot, i) => {
-    html += `<div class="rotation-slot">
-      <div class="rotation-slot-name">${escapeHtml(slot.name)}</div>
-      <div class="rotation-bet-row">
-        <span class="rotation-bet-label">First bet</span>
-        ${slot.firstBetStatus === 'pending'
-          ? `<div class="rotation-outcome-btns"><button type="button" class="holdem-action-btn" data-slot="${i}" data-bet="first" data-outcome="won">Won</button><button type="button" class="holdem-action-btn" data-slot="${i}" data-bet="first" data-outcome="lost">Lost</button></div>`
-          : `<span class="rotation-status-pill ${slot.firstBetStatus}">${slot.firstBetStatus}</span>`}
-      </div>
-      ${slot.secondBetStatus ? `<div class="rotation-bet-row">
-        <span class="rotation-bet-label">Bonus bet</span>
-        ${slot.secondBetStatus === 'pending'
-          ? `<div class="rotation-outcome-btns"><button type="button" class="holdem-action-btn" data-slot="${i}" data-bet="second" data-outcome="won">Won</button><button type="button" class="holdem-action-btn" data-slot="${i}" data-bet="second" data-outcome="lost">Lost</button></div>`
-          : `<span class="rotation-status-pill ${slot.secondBetStatus}">${slot.secondBetStatus}</span>`}
-      </div>` : ''}
-      ${slot.nextWeekendName ? `<div class="rotation-next-line">Next weekend: <b style="color:var(--brass-light);">${escapeHtml(slot.nextWeekendName)}</b>${slot.nextWeekendName === slot.name ? ' (locked in)' : ' (rotated in)'}</div>` : ''}
-    </div>`;
-  });
-
-  const bothResolved = rotation.active.every(s => s.nextWeekendName);
-  if(bothResolved){
-    html += `<button type="button" class="holdem-action-btn" id="rotationStartNextBtn" style="width:100%; margin-top:4px;">Start next weekend →</button>`;
-  }
-
-  html += `<div class="rotation-order-strip">${rotation.order.map((name, i) => {
-    const isActive = rotation.active.some(s => s.name === name);
-    const isNextUp = i === rotation.nextUpIndex;
-    return `<span class="rotation-order-chip${isActive ? ' is-active' : ''}${isNextUp ? ' is-next-up' : ''}">${escapeHtml(name)}${isNextUp ? ' (next up)' : ''}</span>`;
-  }).join('')}</div>`;
-
-  area.innerHTML = html;
-
-  area.querySelectorAll('[data-bet]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const slotIdx = Number(btn.dataset.slot);
-      if(btn.dataset.bet === 'first') recordFirstBetOutcome(rotation, slotIdx, btn.dataset.outcome);
-      else recordSecondBetOutcome(rotation, slotIdx, btn.dataset.outcome);
-    });
-  });
-  const startBtn = document.getElementById('rotationStartNextBtn');
-  if(startBtn) startBtn.addEventListener('click', () => startNextRotationWeekend(rotation));
-}
-
-async function recordFirstBetOutcome(rotation, slotIdx, outcome){
-  const slot = rotation.active[slotIdx];
-  slot.firstBetStatus = outcome;
-  if(outcome === 'won'){
-    slot.secondBetStatus = 'pending';
-    slot.nextWeekendName = slot.name; // a win locks in the same spot for next weekend
-  } else {
-    slot.secondBetStatus = null;
-    slot.nextWeekendName = rotation.order[rotation.nextUpIndex]; // next untouched name in the shared queue takes the vacancy
-    rotation.nextUpIndex = (rotation.nextUpIndex + 1) % rotation.order.length;
-  }
-  await saveRotationState(rotation);
-  render(currentState); // rotation is a direct reference into currentState.bettorRotation, already mutated above — this just repaints immediately instead of waiting for the next poll
-}
-
-async function recordSecondBetOutcome(rotation, slotIdx, outcome){
-  // The bonus bet's outcome never touches the rotation — that was already
-  // decided the moment the first bet was won. This just records the result.
-  rotation.active[slotIdx].secondBetStatus = outcome;
-  await saveRotationState(rotation);
-  render(currentState);
-}
-
-async function startNextRotationWeekend(rotation){
-  if(!rotation.active.every(s => s.nextWeekendName)) return; // safety — button shouldn't be visible otherwise
-  rotation.history = rotation.history || [];
-  rotation.history.push({ resolvedAt: Date.now(), slots: JSON.parse(JSON.stringify(rotation.active)) });
-  rotation.active = rotation.active.map(s => ({ name: s.nextWeekendName, firstBetStatus: 'pending', secondBetStatus: null, nextWeekendName: null }));
-  await saveRotationState(rotation);
-  render(currentState);
-}
-
-function renderRotationSetup(area){
-  // Pre-filled with the exact state worked out from the actual
-  // conversation — Mick and Tim active, Trasky next up — not a blank
-  // form, since guessing at real-money sequencing would be irresponsible.
-  // Still fully editable before confirming.
-  area.innerHTML = `
-    <div class="hint" style="margin-bottom:10px;">Set up once — this reflects what you described: Mick and Tim active this weekend, Trasky next up. Check it over, then confirm.</div>
-    <div style="margin-bottom:10px;">
-      <div class="form-field-label">Rotation order (comma-separated)</div>
-      <input type="text" id="rotationOrderInput" class="form-input" value="${ROTATION_DEFAULT_ORDER.join(', ')}">
-    </div>
-    <div style="display:flex; gap:8px; margin-bottom:10px;">
-      <div style="flex:1;">
-        <div class="form-field-label">Active bettor 1</div>
-        <input type="text" id="rotationActive1Input" class="form-input" value="Mick">
-      </div>
-      <div style="flex:1;">
-        <div class="form-field-label">Active bettor 2</div>
-        <input type="text" id="rotationActive2Input" class="form-input" value="Tim">
-      </div>
-    </div>
-    <div style="margin-bottom:12px;">
-      <div class="form-field-label">Next up if someone loses</div>
-      <input type="text" id="rotationNextUpInput" class="form-input" value="Trasky">
-    </div>
-    <button type="button" class="holdem-action-btn" id="rotationConfirmSetupBtn" style="width:100%;">Confirm setup</button>
-  `;
-  document.getElementById('rotationConfirmSetupBtn').addEventListener('click', async () => {
-    const order = document.getElementById('rotationOrderInput').value.split(',').map(s => s.trim()).filter(Boolean);
-    const a1 = document.getElementById('rotationActive1Input').value.trim();
-    const a2 = document.getElementById('rotationActive2Input').value.trim();
-    const nextUpName = document.getElementById('rotationNextUpInput').value.trim();
-    const nextUpIndex = order.indexOf(nextUpName);
-    if(order.length === 0 || !a1 || !a2 || nextUpIndex === -1){
-      alert('Please fill in every field — "Next up" must be a name that appears in the order list.');
-      return;
-    }
-    const rotation = {
-      order, nextUpIndex,
-      active: [
-        { name: a1, firstBetStatus: 'pending', secondBetStatus: null, nextWeekendName: null },
-        { name: a2, firstBetStatus: 'pending', secondBetStatus: null, nextWeekendName: null }
-      ],
-      history: []
-    };
-    await saveRotationState(rotation);
-    currentState.bettorRotation = rotation;
-    render(currentState);
-  });
-}
 
 function render(state){
   renderSyncStatusLine(state);
   renderHealthPill(state);
   updateMyProfileThumb(); // cheap after the first call — getAvatarDataUri is cached
-  renderBettorRotation(state);
   if(!state || !state.members || state.members.length === 0){
     document.getElementById('leaderboardArea').innerHTML = '';
     document.getElementById('owedArea').innerHTML = '';
