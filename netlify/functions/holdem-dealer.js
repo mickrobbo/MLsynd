@@ -482,7 +482,8 @@ export default async (req) => {
     }
 
     if(action === 'sit'){
-      const { buyIn } = body;
+      const { buyIn: rawBuyIn } = body;
+      const buyIn = Math.floor(Number(rawBuyIn));
       if(!(buyIn > 0)) return json({ error: 'Enter a buy-in above 0.' }, 400);
       const balRes = await fetch(`${FIREBASE_URL}/xp/${auth.uid}/balance.json?access_token=${accessToken}`);
       const balance = (balRes.ok ? await balRes.json() : 0) || 0;
@@ -546,7 +547,8 @@ export default async (req) => {
       // during an active hand, same restriction 'stand' already has —
       // changing a stack mid-hand would complicate side-pot math for a
       // hand that's already in progress with a fixed set of stacks.
-      const { amount } = body;
+      const { amount: rawAmount } = body;
+      const amount = Math.floor(Number(rawAmount));
       if(!(amount > 0)) return json({ error: 'Enter an amount above 0.' }, 400);
       const table = await dbGet(`/holdemTables/${tableId}`, accessToken);
       if(!table || !table.seats) return json({ error: 'Table not found.' }, 404);
