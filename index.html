@@ -528,20 +528,56 @@
   .holdem-seat-stack{ font-family:'IBM Plex Mono', monospace; font-size:9.5px; color:var(--brass-light); display:inline-block; }
   .holdem-seat-empty{ font-size:9.5px; color:var(--muted); }
 
-  /* Table stakes shown in the oval's own center — otherwise that space
-     sits empty except for the watermark between hands. Gives it real
-     purpose without competing with the watermark for attention. */
-  .holdem-table-center-info{
+  /* The actual MLSYND CASINO watermark, now the felt's real centerpiece
+     instead of the blind info (which used to read as if IT were the
+     watermark, being the only prominent thing in the middle of an empty
+     table). Text-based, same gold-embossed treatment as the logo image
+     imprint above (::after) — soft-light blend + low opacity so it never
+     competes with seats or cards sitting on top of it. */
+  .holdem-table-wordmark{
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    text-align:center; pointer-events:none; z-index:0;
+    text-align:center; pointer-events:none; z-index:0; opacity:.16; mix-blend-mode:soft-light;
+    width:70%;
   }
-  .holdem-table-center-bb{
-    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px;
-    color:var(--brass-light); letter-spacing:.5px; opacity:.55;
+  .holdem-table-wordmark span{
+    display:block; font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15vw; max-font-size:64px;
+    letter-spacing:2px; color:var(--brass-light); line-height:1;
   }
-  .holdem-table-center-label{
-    font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; opacity:.55; margin-top:1px;
+  .holdem-table-wordmark small{
+    display:block; font-size:3.4vw; max-font-size:14px; letter-spacing:6px; color:var(--brass-light); margin-top:2px;
   }
+  /* Blind info demoted to a small bubble under the watermark, per request
+     — still visible at a glance, no longer masquerading as the table's
+     main visual. */
+  .holdem-table-blind-bubble{
+    position:absolute; bottom:6%; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,.32); border:1px solid var(--brass-dim); border-radius:999px;
+    padding:4px 12px; font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass-light);
+    display:flex; align-items:center; gap:6px; z-index:0; white-space:nowrap;
+  }
+  .holdem-table-blind-bubble-label{
+    font-family:'Barlow Condensed', sans-serif; font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);
+  }
+  /* Big Win modal — visual of the hand (mini cards) or the winning
+     roulette pocket (a coloured number chip), shown only when the log
+     entry actually carries that detail (older/other-game entries just
+     don't render this row). */
+  .big-win-visual{ margin:10px 0; display:flex; align-items:center; justify-content:center; gap:14px; min-height:0; }
+  .big-win-visual:empty{ display:none; margin:0; }
+  .big-win-visual .holdem-result-cards{ gap:6px; }
+  .big-win-visual .holdem-result-cards .playing-card{ width:38px !important; height:54px !important; }
+  .big-win-visual .holdem-result-cards .pc-pip{ font-size:9px !important; }
+  .big-win-visual .holdem-result-cards .pc-suit-big{ font-size:15px !important; }
+  .big-win-visual-side{ display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .big-win-visual-side-label{ font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+  .big-win-roulette-chip{
+    width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:22px; color:#fff;
+    border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 12px rgba(0,0,0,.4);
+  }
+  .big-win-roulette-chip.bw-red{ background:#8c2a22; }
+  .big-win-roulette-chip.bw-black{ background:#141414; }
+  .big-win-roulette-chip.bw-green{ background:#1f7a4a; }
 
   /* All 5 board cards fit on one row, never wrapping — smaller cards
      and a tighter gap SPECIFICALLY for the board (not touched anywhere
@@ -555,6 +591,24 @@
   .holdem-board-row .pc-suit-big{ font-size:17px !important; }
   .holdem-seat.sitting-out{ opacity:.5; }
   .holdem-seat-sitout-tag{ font-size:8px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+
+  /* Showdown result banner — a distinct celebratory container instead of
+     plain text, plus tiny hole-card icons per winner so the hand is shown,
+     not just named. Sized down the same way the board row is above. */
+  .holdem-result-banner{ background:linear-gradient(180deg, rgba(232,161,92,.14), rgba(232,161,92,.03)); border:1px solid var(--brass); border-radius:12px; padding:12px 14px; margin-bottom:10px; animation: holdemResultIn .35s cubic-bezier(.22,.9,.32,1.15) both; }
+  .holdem-result-banner.holdem-result-win{ border-color:#7FD98A; background:linear-gradient(180deg, rgba(127,217,138,.16), rgba(127,217,138,.03)); box-shadow:0 0 18px rgba(127,217,138,.25); }
+  .holdem-result-title{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--brass-light); margin-bottom:6px; }
+  .holdem-result-win .holdem-result-title{ color:#7FD98A; }
+  .holdem-result-pot-row{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:5px 0; }
+  .holdem-result-pot-row + .holdem-result-pot-row{ border-top:1px dashed rgba(212,175,120,.2); }
+  .holdem-result-pot-text{ font-size:13px; }
+  .holdem-result-pot-text b{ color:var(--brass-light); }
+  .holdem-result-cards{ display:flex; gap:4px; flex-wrap:nowrap; }
+  .holdem-result-cards .playing-card, .holdem-result-cards .pc-flip-wrap{ width:30px !important; height:43px !important; }
+  .holdem-result-cards .pc-pip{ font-size:7px !important; top:2px !important; left:2px !important; }
+  .holdem-result-cards .pc-pip-br{ bottom:2px !important; right:2px !important; }
+  .holdem-result-cards .pc-suit-big{ font-size:12px !important; }
+  @keyframes holdemResultIn{ from{ opacity:0; transform:translateY(-6px) scale(.97);} to{ opacity:1; transform:translateY(0) scale(1);} }
 
   /* A player sitting down — the seat itself settles in with a soft
      scale+glow, not an instant pop, paired with the chip sound. */
@@ -574,16 +628,34 @@
      the live hand view, since both point at the same /holdemChat/{tableId}
      thread. ---- */
   .holdem-chat-box{ margin-top:14px; border-top:1px solid var(--line); padding-top:10px; }
-  .holdem-chat-messages{
-    max-height:120px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;
-    margin-bottom:8px; padding-right:2px;
+  .holdem-chat-label{
+    font-family:'Barlow Condensed', sans-serif; font-size:11px; font-weight:700; letter-spacing:.8px;
+    text-transform:uppercase; color:var(--brass); margin-bottom:6px; display:flex; align-items:center; gap:5px;
   }
-  .holdem-chat-msg{ font-size:11.5px; line-height:1.35; color:var(--chalk); }
+  .holdem-chat-messages{
+    max-height:150px; min-height:44px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;
+    margin-bottom:8px; padding:8px 9px; border-radius:10px;
+    background:rgba(0,0,0,.22); border:1px solid var(--line);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.35);
+  }
+  .holdem-chat-messages:empty::before{
+    content:'No messages yet — say hello.'; font-size:11.5px; color:var(--muted); font-style:italic;
+  }
+  .holdem-chat-msg{
+    font-size:11.5px; line-height:1.35; color:var(--chalk);
+    padding:5px 9px; border-radius:9px; background:rgba(255,255,255,.03);
+    border:1px solid rgba(212,175,120,.08); width:fit-content; max-width:92%;
+  }
+  .holdem-chat-msg.chat-msg-mine{ background:rgba(232,161,92,.12); border-color:rgba(232,161,92,.25); align-self:flex-end; }
   @keyframes holdemChatIn{ 0%{ opacity:0; transform:translateY(4px); } 100%{ opacity:1; transform:translateY(0); } }
   .holdem-chat-msg.chat-msg-in{ animation: holdemChatIn .28s ease-out both; }
   .holdem-chat-msg b{ color:var(--brass-light); font-weight:700; }
   .holdem-chat-input-row{ display:flex; gap:6px; align-items:center; }
-  .holdem-chat-input-row input{ flex:1; }
+  .holdem-chat-input-row input{
+    flex:1; border-radius:999px !important; padding-left:14px !important;
+    transition: box-shadow .15s ease, border-color .15s ease;
+  }
+  .holdem-chat-input-row input:focus{ border-color:var(--brass) !important; box-shadow:0 0 0 2px rgba(203,177,102,.18); }
   .holdem-chat-input-row .pill-btn{ flex-shrink:0; }
   .holdem-chat-counter{ font-size:9.5px; color:var(--muted); text-align:right; margin-top:3px; }
   .holdem-chat-counter.near-limit{ color:var(--loss); }
@@ -925,6 +997,102 @@
   .bet-spot-btn small{ font-weight:500; color:var(--muted); font-size:10px; }
   .bet-spot-btn.active{ background:var(--brass-dim); border-color:var(--brass); color:var(--ink); box-shadow:0 0 14px rgba(255,214,120,.5); }
   .bet-spot-btn.active small{ color:#3a2e08; }
+
+  /* ---- Craps ---- */
+  .craps-puck-row{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:10px; }
+  .craps-puck{
+    width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:13px; letter-spacing:.5px;
+    border:2px solid; transition: all .2s ease;
+  }
+  .craps-puck.off{ background:rgba(0,0,0,.3); border-color:var(--muted); color:var(--muted); }
+  .craps-puck.on{ background:linear-gradient(165deg, var(--brass-light), var(--brass)); border-color:var(--brass-light); color:#2a2005; box-shadow:0 0 14px rgba(255,214,120,.5); }
+  .craps-dice-row{ display:flex; gap:10px; justify-content:center; margin-bottom:10px; }
+  .craps-die{
+    width:50px; height:50px; border-radius:10px; background:linear-gradient(165deg, #fdfdfd, #d8d8d8);
+    box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.08);
+    display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 1fr);
+    padding:7px; gap:2px;
+  }
+  .craps-die.rolling{ animation: crapsDieRoll .5s ease-in-out; }
+  @keyframes crapsDieRoll{ 0%{ transform:rotate(0deg); } 50%{ transform:rotate(180deg) scale(1.08); } 100%{ transform:rotate(360deg); } }
+  .craps-die-pip{ width:100%; height:100%; border-radius:50%; }
+  .craps-die-pip.on{ background:#1c1c1c; }
+  .craps-total-msg{ text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; min-height:22px; margin-bottom:8px; }
+  .craps-bet-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .craps-bet-spot{
+    position:relative; background:var(--felt-2); border:2px solid var(--brass-dim); border-radius:10px;
+    padding:10px 8px; text-align:center; cursor:pointer; transition: all .15s ease;
+  }
+  .craps-bet-spot.full-row{ grid-column:1 / -1; }
+  .craps-bet-spot:active{ transform:scale(.97); }
+  .craps-bet-spot.disabled{ opacity:.35; pointer-events:none; }
+  .craps-bet-spot-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; color:var(--brass-light); }
+  .craps-bet-spot-sub{ font-size:9.5px; color:var(--muted); margin-top:1px; }
+  .craps-bet-spot-amt{
+    margin-top:4px; font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--chalk);
+    min-height:14px;
+  }
+  .craps-bet-spot.has-live::before{
+    content:''; position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%;
+    background:var(--brass-light); box-shadow:0 0 6px rgba(255,214,120,.7);
+  }
+  .craps-live-summary{ font-size:11px; color:var(--muted); text-align:center; margin-bottom:8px; min-height:14px; }
+  .craps-history{ display:flex; gap:5px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+  .craps-history-chip{
+    width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:9px; font-weight:700; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.5); flex-shrink:0;
+  }
+  .craps-section-label{
+    font-family:'Barlow Condensed', sans-serif; font-size:11px; font-weight:700; letter-spacing:.8px;
+    text-transform:uppercase; color:var(--brass); margin:14px 0 6px; text-align:center;
+  }
+  .craps-section-label small{ text-transform:none; letter-spacing:0; font-weight:500; color:var(--muted); font-size:10px; }
+  /* Place bets — classic rounded number pucks laid out like a real table's
+     place-bet boxes, gold-embossed when live so a working bet reads at a
+     glance without needing to check the amount text. */
+  .craps-place-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:7px; }
+  .craps-place-spot{
+    position:relative; background:radial-gradient(circle at 35% 30%, var(--felt-2), var(--felt-3) 70%);
+    border:2px solid var(--brass-dim); border-radius:50%; aspect-ratio:1; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; cursor:pointer; transition: all .15s ease; padding:4px;
+  }
+  .craps-place-spot:active{ transform:scale(.95); }
+  .craps-place-num{ font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:22px; color:var(--brass-light); line-height:1; }
+  .craps-place-odds{ font-size:8.5px; color:var(--muted); margin-top:1px; }
+  .craps-place-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 14px rgba(255,214,120,.4); background:radial-gradient(circle at 35% 30%, var(--brass-dim), var(--felt-3) 75%); }
+  .craps-place-spot.has-live .craps-place-num{ color:#2a2005; }
+  .craps-place-spot .craps-bet-spot-amt{ font-size:9px; margin-top:1px; }
+  /* Hardways — diamond tiles, the traditional shape for this bet on a real
+     felt, with the dice-pair callout baked into the tile. */
+  .craps-hardway-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:7px; }
+  .craps-hardway-spot{
+    background:var(--felt-2); border:2px solid var(--brass-dim); border-radius:8px; transform:rotate(45deg);
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: all .15s ease;
+    margin:6px auto; width:78%;
+  }
+  .craps-hardway-spot > *{ transform:rotate(-45deg); }
+  .craps-hardway-spot:active{ transform:rotate(45deg) scale(.94); }
+  .craps-hardway-inner{ display:flex; flex-direction:column; align-items:center; gap:0; }
+  .craps-hardway-dice{ font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--muted); }
+  .craps-hardway-label{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:11px; color:var(--brass-light); line-height:1.1; }
+  .craps-hardway-odds{ font-size:8px; color:var(--muted); }
+  .craps-hardway-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 14px rgba(255,214,120,.4); background:var(--brass-dim); }
+  .craps-hardway-spot.has-live .craps-hardway-label, .craps-hardway-spot.has-live .craps-hardway-dice, .craps-hardway-spot.has-live .craps-hardway-odds{ color:#2a2005; }
+  .craps-hardway-spot .craps-bet-spot-amt{ font-size:8px; }
+  /* One-roll props — a tight strip of small chip-style spots, same visual
+     language as Roulette's outside-bet row. */
+  .craps-prop-row{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+  .craps-prop-spot{
+    background:var(--felt-2); border:2px solid var(--brass-dim); border-radius:8px; padding:7px 4px;
+    text-align:center; cursor:pointer; transition: all .15s ease;
+  }
+  .craps-prop-spot:active{ transform:scale(.95); }
+  .craps-prop-label{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:12px; color:var(--brass-light); }
+  .craps-prop-odds{ font-size:8.5px; color:var(--muted); margin-top:1px; }
+  .craps-prop-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 12px rgba(255,214,120,.35); background:var(--brass-dim); }
+  .craps-prop-spot.has-live .craps-prop-label, .craps-prop-spot.has-live .craps-prop-odds{ color:#2a2005; }
+  .craps-prop-spot .craps-bet-spot-amt{ font-size:8.5px; margin-top:1px; }
 
   .hand-total-chip{
     display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 5px;
@@ -2312,6 +2480,7 @@
         <div id="holdemHistoryArea" style="margin-top:6px;"><div class="empty">Loading…</div></div>
       </details>
       <div class="holdem-chat-box">
+        <div class="holdem-chat-label">💬 Table Chat</div>
         <div id="holdemTableChatMessages" class="holdem-chat-messages"></div>
         <div class="holdem-chat-input-row">
           <input type="text" id="holdemTableChatInput" class="form-input" placeholder="Say something…" maxlength="160" style="margin-bottom:0;">
@@ -2344,6 +2513,7 @@
       <div id="holdemHandActions" style="margin-top:12px;"></div>
       <div class="status-msg" id="holdemHandActionStatus" style="margin-top:8px;"></div>
       <div class="holdem-chat-box">
+        <div class="holdem-chat-label">💬 Table Chat</div>
         <div id="holdemHandChatMessages" class="holdem-chat-messages"></div>
         <div class="holdem-chat-input-row">
           <input type="text" id="holdemHandChatInput" class="form-input" placeholder="Say something…" maxlength="160" style="margin-bottom:0;">
@@ -2489,6 +2659,7 @@
         <button type="button" class="game-bubble" data-game="war"><span class="game-bubble-icon">⚔️</span><span class="game-bubble-label">Casino War</span></button>
         <button type="button" class="game-bubble" data-game="slots"><span class="game-bubble-icon">🎰</span><span class="game-bubble-label">Slots</span></button>
         <button type="button" class="game-bubble" data-game="videopoker"><span class="vp-icon-cards"><span class="vp-icon-card vp-icon-card-1"><span class="vp-icon-pip vp-pip-black">A♠</span></span><span class="vp-icon-card vp-icon-card-2"><span class="vp-icon-pip vp-pip-red">A♥</span></span></span><span class="game-bubble-label">Video Poker</span></button>
+        <button type="button" class="game-bubble" data-game="craps"><span class="game-bubble-icon">🎲</span><span class="game-bubble-label">Craps</span></button>
       </div>
       <button type="button" class="game-bubble-wide" data-game="dailyspin">🎁 Spin the Wheel</button>
     </div>
@@ -2567,7 +2738,7 @@
       <div style="display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;">
         <div class="bet-spot-row">
           <button type="button" class="bet-spot-btn active" data-bac-bet="player">Player<br><small>1:1</small></button>
-          <button type="button" class="bet-spot-btn" data-bac-bet="banker">Banker<br><small>0.95:1</small></button>
+          <button type="button" class="bet-spot-btn" data-bac-bet="banker">Banker<br><small>1:1</small></button>
           <button type="button" class="bet-spot-btn" data-bac-bet="tie">Tie<br><small>8:1</small></button>
         </div>
       </div>
@@ -2695,6 +2866,109 @@
         <button type="button" id="warSurrenderBtn" class="pill-btn" style="padding:8px 18px; display:none;">Surrender</button>
         <button type="button" id="warNewHandBtn" class="pill-btn" style="padding:8px 18px; display:none;">New hand</button>
       </div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameCraps" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="craps">📜 Rules</button></div>
+    <div class="panel" style="text-align:center;">
+      <div class="craps-puck-row">
+        <div class="craps-puck off" id="crapsPuck">OFF</div>
+      </div>
+      <div class="craps-dice-row">
+        <div class="craps-die" id="crapsDie1"></div>
+        <div class="craps-die" id="crapsDie2"></div>
+      </div>
+      <div class="craps-total-msg" id="crapsTotalMsg"></div>
+      <div class="craps-live-summary" id="crapsLiveSummary"></div>
+      <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rolls</div>
+      <div class="craps-history" id="crapsHistory"></div>
+    </div>
+    <div class="panel" id="crapsBetPanel">
+      <div class="hint" style="margin-bottom:8px;">Pick a chip below, then tap a spot to place it. Pass Line/Don't Pass only before the point's set; Come/Don't Come/Odds only once it is. Field &amp; Props are one-roll bets — place them fresh each roll.</div>
+      <div class="craps-bet-grid" id="crapsBetGrid">
+        <div class="craps-bet-spot" data-craps-bet="pass">
+          <div class="craps-bet-spot-label">Pass Line</div>
+          <div class="craps-bet-spot-sub">Pays 1:1</div>
+          <div class="craps-bet-spot-amt" data-amt="pass"></div>
+        </div>
+        <div class="craps-bet-spot" data-craps-bet="dontpass">
+          <div class="craps-bet-spot-label">Don't Pass</div>
+          <div class="craps-bet-spot-sub">Pays 1:1 · bar 12</div>
+          <div class="craps-bet-spot-amt" data-amt="dontpass"></div>
+        </div>
+        <div class="craps-bet-spot disabled" data-craps-bet="passodds">
+          <div class="craps-bet-spot-label">Odds — Pass</div>
+          <div class="craps-bet-spot-sub">True odds, no house edge</div>
+          <div class="craps-bet-spot-amt" data-amt="passodds"></div>
+        </div>
+        <div class="craps-bet-spot disabled" data-craps-bet="dontpassodds">
+          <div class="craps-bet-spot-label">Odds — Don't Pass</div>
+          <div class="craps-bet-spot-sub">True odds, no house edge</div>
+          <div class="craps-bet-spot-amt" data-amt="dontpassodds"></div>
+        </div>
+        <div class="craps-bet-spot disabled" data-craps-bet="come">
+          <div class="craps-bet-spot-label">Come</div>
+          <div class="craps-bet-spot-sub">Pays 1:1</div>
+          <div class="craps-bet-spot-amt" data-amt="come"></div>
+        </div>
+        <div class="craps-bet-spot disabled" data-craps-bet="dontcome">
+          <div class="craps-bet-spot-label">Don't Come</div>
+          <div class="craps-bet-spot-sub">Pays 1:1 · bar 12</div>
+          <div class="craps-bet-spot-amt" data-amt="dontcome"></div>
+        </div>
+        <div class="craps-bet-spot full-row" data-craps-bet="field">
+          <div class="craps-bet-spot-label">Field</div>
+          <div class="craps-bet-spot-sub">2,3,4,9,10,11,12 · 2 pays 2:1 · 12 pays 3:1 · rest 1:1</div>
+          <div class="craps-bet-spot-amt" data-amt="field"></div>
+        </div>
+      </div>
+
+      <div class="craps-section-label">Place Bets <small>— stays live until it hits or a 7 shows</small></div>
+      <div class="craps-place-grid" id="crapsPlaceGrid">
+        <div class="craps-place-spot" data-craps-bet="place" data-craps-num="4"><div class="craps-place-num">4</div><div class="craps-place-odds">9:5</div><div class="craps-bet-spot-amt" data-amt="place-4"></div></div>
+        <div class="craps-place-spot" data-craps-bet="place" data-craps-num="5"><div class="craps-place-num">5</div><div class="craps-place-odds">7:5</div><div class="craps-bet-spot-amt" data-amt="place-5"></div></div>
+        <div class="craps-place-spot" data-craps-bet="place" data-craps-num="6"><div class="craps-place-num">6</div><div class="craps-place-odds">7:6</div><div class="craps-bet-spot-amt" data-amt="place-6"></div></div>
+        <div class="craps-place-spot" data-craps-bet="place" data-craps-num="8"><div class="craps-place-num">8</div><div class="craps-place-odds">7:6</div><div class="craps-bet-spot-amt" data-amt="place-8"></div></div>
+        <div class="craps-place-spot" data-craps-bet="place" data-craps-num="9"><div class="craps-place-num">9</div><div class="craps-place-odds">7:5</div><div class="craps-bet-spot-amt" data-amt="place-9"></div></div>
+        <div class="craps-place-spot" data-craps-bet="place" data-craps-num="10"><div class="craps-place-num">10</div><div class="craps-place-odds">9:5</div><div class="craps-bet-spot-amt" data-amt="place-10"></div></div>
+      </div>
+
+      <div class="craps-section-label">Hardways <small>— stays live until it hits hard, easy, or a 7 shows</small></div>
+      <div class="craps-hardway-grid" id="crapsHardwayGrid">
+        <div class="craps-hardway-spot" data-craps-bet="hardway" data-craps-num="4"><div class="craps-hardway-dice">2•2</div><div class="craps-hardway-label">Hard 4</div><div class="craps-hardway-odds">7:1</div><div class="craps-bet-spot-amt" data-amt="hardway-4"></div></div>
+        <div class="craps-hardway-spot" data-craps-bet="hardway" data-craps-num="6"><div class="craps-hardway-dice">3•3</div><div class="craps-hardway-label">Hard 6</div><div class="craps-hardway-odds">9:1</div><div class="craps-bet-spot-amt" data-amt="hardway-6"></div></div>
+        <div class="craps-hardway-spot" data-craps-bet="hardway" data-craps-num="8"><div class="craps-hardway-dice">4•4</div><div class="craps-hardway-label">Hard 8</div><div class="craps-hardway-odds">9:1</div><div class="craps-bet-spot-amt" data-amt="hardway-8"></div></div>
+        <div class="craps-hardway-spot" data-craps-bet="hardway" data-craps-num="10"><div class="craps-hardway-dice">5•5</div><div class="craps-hardway-label">Hard 10</div><div class="craps-hardway-odds">7:1</div><div class="craps-bet-spot-amt" data-amt="hardway-10"></div></div>
+      </div>
+
+      <div class="craps-section-label">One-Roll Props <small>— resolve this roll only</small></div>
+      <div class="craps-prop-row" id="crapsPropRow">
+        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="any7"><div class="craps-prop-label">Any 7</div><div class="craps-prop-odds">4:1</div><div class="craps-bet-spot-amt" data-amt="prop-any7"></div></div>
+        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="anycraps"><div class="craps-prop-label">Any Craps</div><div class="craps-prop-odds">7:1</div><div class="craps-bet-spot-amt" data-amt="prop-anycraps"></div></div>
+        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="2"><div class="craps-prop-label">2</div><div class="craps-prop-odds">30:1</div><div class="craps-bet-spot-amt" data-amt="prop-2"></div></div>
+        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="3"><div class="craps-prop-label">3</div><div class="craps-prop-odds">15:1</div><div class="craps-bet-spot-amt" data-amt="prop-3"></div></div>
+        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="11"><div class="craps-prop-label">11</div><div class="craps-prop-odds">15:1</div><div class="craps-bet-spot-amt" data-amt="prop-11"></div></div>
+        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="12"><div class="craps-prop-label">12</div><div class="craps-prop-odds">30:1</div><div class="craps-bet-spot-amt" data-amt="prop-12"></div></div>
+      </div>
+
+      <div style="display:flex; justify-content:center; margin-top:6px;">
+        <div class="bj-chip" id="crapsChipDisplay">50</div>
+        <input type="number" id="crapsBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail chip-rail-select" data-target="crapsBetInput">
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="crapsBetInput">Clear Chips</button>
+      </div>
+      <div class="deal-row">
+        <button type="button" id="crapsClearStagedBtn" class="pill-btn pill-btn-action">Clear New Bets</button>
+        <button type="button" id="crapsRollBtn" class="pill-btn pill-btn-primary">Roll</button>
+      </div>
+      <div id="crapsBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
     </div>
 
@@ -2948,6 +3222,7 @@
     <div class="win-badge">🔥 Big Win</div>
     <div class="win-amount" id="bigWinAmount">+0 XP</div>
     <div class="win-meta" id="bigWinWho"></div>
+    <div id="bigWinVisual" class="big-win-visual"></div>
     <div class="win-meta" id="bigWinWhen"></div>
     <button type="button" class="win-close-btn" id="bigWinNiceOneBtn">Nice one</button>
   </div>
@@ -3938,7 +4213,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-20.43";
+const APP_VERSION = "2026-08-22.46";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5173,7 +5448,7 @@ async function renderHoldemSeatRing(){
       // doesn't visually mark out where nobody's sitting, and 9 "Empty
       // seat" boxes cluttered the table more than they helped.
     }
-    ring.innerHTML = `<div class="holdem-table-oval">${seatHtml}<div class="holdem-table-center-info"><div class="holdem-table-center-bb">${table.bigBlind.toLocaleString()} XP</div><div class="holdem-table-center-label">Big Blind</div></div></div>`;
+    ring.innerHTML = `<div class="holdem-table-oval"><div class="holdem-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>${seatHtml}<div class="holdem-table-blind-bubble">${table.bigBlind.toLocaleString()} XP <span class="holdem-table-blind-bubble-label">Big Blind</span></div></div>`;
     if(anyoneNewlySeated || anyStackChanged) bjPlayChipSound();
     holdemLastSeatsSnapshot = Object.fromEntries(Object.entries(seats).map(([i, s]) => [i, { uid: s.uid, stack: s.stack }]));
     holdemSeatRingSeeded = true;
@@ -5455,8 +5730,12 @@ async function renderHoldemHistory(tableId){
       return;
     }
     area.innerHTML = entries.map(h => {
-      const names = h.winners.map(w => `${escapeHtml(w.name)} (+${w.amount.toLocaleString()})`).join(', ');
-      return `<div class="challenge-row"><div class="challenge-row-main" style="flex-direction:column; align-items:flex-start; gap:2px;"><span>${timeAgo(h.endedAt)} · Pot ${h.potTotal.toLocaleString()} XP · ${h.reason === 'fold' ? 'won by fold' : 'showdown'}</span><span style="color:var(--brass-light);">${names}</span></div></div>`;
+      const names = h.winners.map(w => `${escapeHtml(w.name)}${w.rankName ? ` — ${escapeHtml(w.rankName)}` : ''} (+${w.amount.toLocaleString()})`).join(', ');
+      // Mini cards for the first winner with revealed hole cards on file
+      // (showdowns only — fold wins never had their cards revealed).
+      const cardWinner = h.winners.find(w => w.holeCards && w.holeCards.length);
+      const cardsHtml = cardWinner ? `<div class="holdem-result-cards" style="margin-top:2px;">${bjRenderCards(cardWinner.holeCards, false)}</div>` : '';
+      return `<div class="challenge-row"><div class="challenge-row-main" style="flex-direction:column; align-items:flex-start; gap:2px;"><span>${timeAgo(h.endedAt)} · Pot ${h.potTotal.toLocaleString()} XP · ${h.reason === 'fold' ? 'won by fold' : 'showdown'}</span><span style="color:var(--brass-light);">${names}</span>${cardsHtml}</div></div>`;
     }).join('');
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load hand history.</div>';
@@ -5490,10 +5769,11 @@ async function renderHoldemChat(tableId, messagesId){
     const seenBefore = holdemChatSeenKeys[messagesId];
     const isFirstRenderForThisInstance = !seenBefore;
     area.innerHTML = entries.length === 0
-      ? '<div class="hint">No messages yet.</div>'
+      ? ''
       : entries.map(([key, m]) => {
           const isNew = !isFirstRenderForThisInstance && seenBefore && !seenBefore.has(key);
-          return `<div class="holdem-chat-msg${isNew ? ' chat-msg-in' : ''}"><b>${escapeHtml(m.name)}:</b> ${escapeHtml(m.text)}</div>`;
+          const isMine = m.uid === currentUserUid;
+          return `<div class="holdem-chat-msg${isNew ? ' chat-msg-in' : ''}${isMine ? ' chat-msg-mine' : ''}">${isMine ? '' : `<b>${escapeHtml(m.name)}:</b> `}${escapeHtml(m.text)}</div>`;
         }).join('');
     holdemChatSeenKeys[messagesId] = new Set(entries.map(([key]) => key));
     if(wasAtBottom) area.scrollTop = area.scrollHeight; // only auto-scroll if they were already at the bottom — don't yank someone back down mid-scroll-up to read earlier messages
@@ -5725,7 +6005,15 @@ async function renderHoldemHand(){
     }
 
     const myCardsEl = document.getElementById('holdemMyCards');
-    if(hand.players[currentUserUid]){
+    if(hand.result && hand.revealedHoleCards && hand.revealedHoleCards[currentUserUid]){
+      // At showdown the hole-card SECRET is gone/inaccessible (the dealer's
+      // job there is done), but the revealed cards driving the seat display
+      // are already public — use those instead of re-fetching the secret.
+      // Previously this fell through to the "Spectating" branch below even
+      // for the hand's own winner, since hand.players[currentUserUid] can
+      // be missing/reshaped by the time results land.
+      myCardsEl.innerHTML = bjRenderCards(hand.revealedHoleCards[currentUserUid], false);
+    } else if(hand.players[currentUserUid]){
       const mySecretRes = await authedFetch(`/holdemHandSecrets/${holdemCurrentHandId}/${currentUserUid}.json`);
       const mySecret = mySecretRes.ok ? await mySecretRes.json() : null;
       if(mySecret && mySecret.holeCards){
@@ -5743,7 +6031,8 @@ async function renderHoldemHand(){
     const resultEl = document.getElementById('holdemHandResult');
     const actionsEl = document.getElementById('holdemHandActions');
     if(hand.result){
-      const lines = hand.result.pots.map((pot, i) => {
+      const iWon = hand.result.pots.some(pot => pot.winners.includes(currentUserUid));
+      const rows = hand.result.pots.map((pot, i) => {
         const names = pot.winners.map(uid => uid === currentUserUid ? 'You' : ((currentState.members.find(m => m.linkedUid === uid) || {}).name || 'Player'));
         // evaluated[uid].rankName is already computed by the engine for
         // every showdown (Pair, Two Pair, Full House, etc.) — was already
@@ -5752,13 +6041,22 @@ async function renderHoldemHand(){
         const winnerHandName = hand.result.evaluated && hand.result.evaluated[pot.winners[0]]
           ? ` — ${hand.result.evaluated[pot.winners[0]].rankName}`
           : '';
-        return `${pot.winners.length > 1 ? 'Split pot' : 'Pot'} (${pot.amount.toLocaleString()} XP): ${names.join(' & ')}${winnerHandName}`;
+        const label = `${pot.winners.length > 1 ? 'Split pot' : 'Pot'} (${pot.amount.toLocaleString()} XP): ${names.join(' & ')}${winnerHandName}`;
+        // Mini hole cards for the (first) winner of this pot, when we
+        // actually have their revealed cards — a visual of the hand
+        // alongside the text, not just a rank name.
+        const winnerCards = hand.revealedHoleCards && hand.revealedHoleCards[pot.winners[0]]
+          ? `<div class="holdem-result-cards">${bjRenderCards(hand.revealedHoleCards[pot.winners[0]], false)}</div>`
+          : '';
+        return `<div class="holdem-result-pot-row"><span class="holdem-result-pot-text"><b>${escapeHtml(label.split(': ')[0])}:</b> ${escapeHtml(label.split(': ').slice(1).join(': '))}</span>${winnerCards}</div>`;
       });
-      resultEl.innerHTML = `<b style="color:var(--brass-light);">${hand.result.reason === 'fold' ? 'Won by fold' : 'Showdown'}</b><br>${lines.join('<br>')}`;
+      resultEl.innerHTML = `<div class="holdem-result-banner${iWon ? ' holdem-result-win' : ''}">
+        <div class="holdem-result-title">${iWon ? '🏆 You won! · ' : ''}${hand.result.reason === 'fold' ? 'Won by fold' : 'Showdown'}</div>
+        ${rows.join('')}
+      </div>`;
       if(!holdemResultShown){
         // The same bright ascending chime the Casino Pot jackpot uses —
         // once, the first time this result is seen, not on every re-poll.
-        const iWon = hand.result.pots.some(pot => pot.winners.includes(currentUserUid));
         if(iWon) playPotWinChime(); else bjPlayChime(false);
         holdemResultShown = true;
       }
@@ -6023,9 +6321,18 @@ async function awardXP(amount, reason, opts){
     await authedFetch(`/xp/${currentUserUid}/balance.json`, {
       method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(next)
     });
+    // opts.detail is an optional small visual payload for the Big Win
+    // modal/ticker — e.g. { type:'cards', cards:[...] } or
+    // { type:'roulette', number, color } — set by the specific game that
+    // called awardXP, so a win entry can later show what actually
+    // happened (the hand, the number) instead of just a text reason.
+    // Deliberately optional and tiny (a few cards or a number+color) —
+    // never the full game state.
+    const logBody = { amount, reason, balanceAfter: next, ts: Date.now() };
+    if(opts && opts.detail) logBody.detail = opts.detail;
     await authedFetch(`/xp/${currentUserUid}/log.json`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
+      body: JSON.stringify(logBody)
     });
     // Lifetime-earned only ever goes up — losses don't reduce it. This is
     // what the 10K/100K/250K/500K/1M milestone badges track, deliberately
@@ -6692,7 +6999,7 @@ let casinoFloorMergedEntries = [];
 // Fetches just the last few entries per member via the ts index — same
 // bounded-query approach used to fix the Floor feed's full-history
 // problem, never re-downloads full logs.
-const CASINO_TICKER_THRESHOLD_XP = 300;
+const CASINO_TICKER_THRESHOLD_XP = 500;
 let casinoTickerSeenKeys = new Set();
 let casinoTickerSeeded = false; // first poll only seeds "already seen" silently — otherwise every past win in the group would flash by the instant you open Casino, framed as if it just happened
 let casinoTickerQueue = [];
@@ -6840,6 +7147,24 @@ function showBigWinModal(entry){
   document.getElementById('bigWinWho').innerHTML = `<b>${escapeHtml(entry.name || 'Unknown')}</b> — ${escapeHtml(entry.reason || '')}`;
   const when = entry.ts ? new Date(entry.ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
   document.getElementById('bigWinWhen').textContent = when;
+  // Visual of what actually happened — a hand's cards, or the winning
+  // roulette pocket — when the log entry carries that detail (see
+  // awardXP's opts.detail). Older entries or games that don't set it
+  // simply render nothing here.
+  const visualEl = document.getElementById('bigWinVisual');
+  const d = entry.detail;
+  if(d && d.type === 'cards'){
+    const parts = [];
+    if(d.playerCards && d.playerCards.length) parts.push(`<div class="big-win-visual-side"><span class="big-win-visual-side-label">Player</span><div class="holdem-result-cards">${bjRenderCards(d.playerCards, false)}</div></div>`);
+    if(d.bankerCards && d.bankerCards.length) parts.push(`<div class="big-win-visual-side"><span class="big-win-visual-side-label">Dealer</span><div class="holdem-result-cards">${bjRenderCards(d.bankerCards, false)}</div></div>`);
+    visualEl.innerHTML = parts.join('');
+  } else if(d && d.type === 'roulette'){
+    visualEl.innerHTML = `<div class="big-win-visual-side"><span class="big-win-visual-side-label">Winning number</span><div class="big-win-roulette-chip bw-${d.color}">${d.number}</div></div>`;
+  } else if(d && d.type === 'dice'){
+    visualEl.innerHTML = `<div class="big-win-visual-side"><span class="big-win-visual-side-label">Roll</span><div style="display:flex; gap:8px;"><div class="craps-die" style="width:38px; height:38px; padding:5px;">${crapsDiePipLayout(d.a)}</div><div class="craps-die" style="width:38px; height:38px; padding:5px;">${crapsDiePipLayout(d.b)}</div></div></div>`;
+  } else {
+    visualEl.innerHTML = '';
+  }
   document.getElementById('bigWinModal').classList.add('open');
 }
 document.getElementById('bigWinCloseBtn').addEventListener('click', () => document.getElementById('bigWinModal').classList.remove('open'));
@@ -6901,7 +7226,7 @@ async function checkAndAwardTippingXP(){
       if(myJokerRound === round) points *= 2;
 
       if(points > 0){
-        await awardXP(points * XP_RATES.perTippingPoint, `Tipping Round ${round} (${points}pt${points === 1 ? '' : 's'})`);
+        await awardXP(points * XP_RATES.perTippingPoint, `Tipping ${roundLabel(round)} (${points}pt${points === 1 ? '' : 's'})`);
       }
       await authedFetch(`/xp/${currentUserUid}/awardedTippingRounds/${round}.json`, {
         method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(true)
@@ -7506,7 +7831,8 @@ document.getElementById('bjNewHandBtn').addEventListener('click', bjNewHand);
 // ---- Casino landing hub (Games / Rules / Earning XP) ----
 const CASINO_GAME_PANEL_IDS = {
   blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
-  war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin'
+  war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin',
+  craps: 'casinoGameCraps'
 };
 // Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
 // computing "my rank" doesn't re-fetch every linked member's balance a
@@ -7556,6 +7882,7 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
       if(!dailySpinWheelBuilt) dailySpinBuildWheel();
       dailySpinRefreshCooldown();
     }
+    if(btn.dataset.game === 'craps' && !crapsBuilt){ crapsInit(); }
   });
 });
 
@@ -7740,7 +8067,7 @@ const CASINO_RULES = {
     <h3>Play</h3>
     <p>Tap Hit to reveal cards one at a time — Player's first card, Banker's first, Player's second, Banker's second. If either hand has 8 or 9 at that point (a "Natural"), the hand ends there. Otherwise, fixed drawing rules decide whether Player and/or Banker draw a third card — there's no strategy or choice involved, the rules are automatic, keep tapping Hit to reveal what happens.</p>
     <h3>Payouts</h3>
-    <p>Player wins: 1:1. Banker wins: 0.95:1 (a standard 5% commission). Tie: 8:1, and Player/Banker bets push (are returned) rather than lose if the hand ties.</p>
+    <p>Player wins: 1:1. Banker wins: 1:1. Tie: 8:1, and Player/Banker bets push (are returned) rather than lose if the hand ties.</p>
   `},
   roulette: { title: '🎡 Roulette Rules', body: `
     <h3>The wheel</h3>
@@ -7761,6 +8088,26 @@ const CASINO_RULES = {
     <p>If it's a tie, you choose: <b>Go to War</b> — your bet is matched (doubled total risk), three cards are burned, and you each get one new card. Higher card wins the war: winning pays 1:1 on your original bet (the raise is simply returned), losing the war loses everything wagered. A second tie during the war is a full push — everything's returned. Or <b>Surrender</b> — forfeit half your original bet immediately and end the hand there.</p>
     <h3>Pairs (side bet)</h3>
     <p>Optional, wagered separately before the deal — tap the "Pairs bet" pill next to Deal to switch it on. Pays 10:1 if your card and the dealer's very first card share the same rank (which also means the hand is about to tie).</p>
+  `},
+  craps: { title: '🎲 Craps Rules', body: `
+    <h3>The come-out roll</h3>
+    <p>Every round starts with the "puck" OFF — no point set yet. On this first roll: a 7 or 11 is a natural (Pass Line wins, Don't Pass loses); a 2 or 3 is craps (Pass Line loses, Don't Pass wins); a 12 is also craps for Pass Line (loses), but Don't Pass simply pushes (barred — your bet is returned, not won). Any other number (4, 5, 6, 8, 9, or 10) becomes "the point" — the puck flips ON and shows that number.</p>
+    <h3>Once the point is on</h3>
+    <p>The shooter keeps rolling. Roll the point number again before a 7 shows up, and Pass Line wins (Don't Pass loses) — the puck goes OFF and a new come-out round begins. Roll a 7 first ("seven-out") and Pass Line loses (Don't Pass wins) — same reset. Every other number in between just keeps the round going.</p>
+    <h3>Pass Line / Don't Pass</h3>
+    <p>Placed only before the point is set (while the puck's OFF) — once it's riding, it stays on that same round until the point's made or it sevens-out, no need to re-place it. Pays 1:1.</p>
+    <h3>Odds (behind Pass/Don't Pass)</h3>
+    <p>Once the point's on, you can back your Pass Line or Don't Pass bet with an Odds bet — true odds, no house edge at all. Pass Odds pays based on the point: 2:1 on a 4 or 10, 3:2 on a 5 or 9, 6:5 on a 6 or 8. Don't Pass Odds pays the reverse (you're laying the odds, risking more to win less): 1:2 on a 4 or 10, 2:3 on a 5 or 9, 5:6 on a 6 or 8. Resolves alongside its Pass/Don't Pass bet — same win, same loss, same timing.</p>
+    <h3>Come / Don't Come</h3>
+    <p>Only available once the point is already on. Works exactly like a fresh Pass Line/Don't Pass bet, just decided by the very next roll instead of the come-out: 7/11 wins Come (loses Don't Come), 2/3 loses Come (wins Don't Come, 12 pushes), anything else becomes that bet's own personal "point" — win if it repeats before a 7, lose if a 7 shows first. You can have Come and Don't Come bets riding on more than one number at once. Pays 1:1.</p>
+    <h3>Place Bets</h3>
+    <p>Bet that a specific number (4, 5, 6, 8, 9, or 10) rolls before a 7 — works anytime, come-out or point phase, no need to wait for the point. Stays live roll after roll until it hits (pays out and clears) or a 7 wipes every Place bet at once. Payouts: 9:5 on 4/10, 7:5 on 5/9, 7:6 on 6/8.</p>
+    <h3>Field</h3>
+    <p>A one-roll bet on the very next roll only — win if it lands 2, 3, 4, 9, 10, 11, or 12; lose on 5, 6, 7, or 8. Most winning numbers pay 1:1; 2 pays double (2:1) and 12 pays triple (3:1). Doesn't carry over — place it again each roll you want it working.</p>
+    <h3>Hardways</h3>
+    <p>Bet that 4, 6, 8, or 10 rolls as an exact pair (e.g. 2+2 for a hard 4) before it rolls the "easy" way (any other combination adding to the same number, e.g. 3+1) or a 7 shows. Stays live until it resolves one of those three ways. Pays 7:1 on hard 4/10, 9:1 on hard 6/8.</p>
+    <h3>One-Roll Props</h3>
+    <p>Decided by the very next roll only, regardless of come-out or point state. Any 7 pays 4:1. Any Craps (2, 3, or 12) pays 7:1. A specific 2 or 12 pays 30:1; a specific 3 or 11 pays 15:1.</p>
   `},
   slots: { title: '🎰 Slots Rules', body: `
     <h3>Object</h3>
@@ -7815,7 +8162,7 @@ document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
 // the exact same modal used by each table's own "📜 Rules" button. ----
 const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
-  ['war', '⚔️ Casino War'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
+  ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
   ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
@@ -8066,7 +8413,7 @@ async function bacResolve(){
   const naturalTag = isNatural ? ` — Natural ${Math.max(playerTotal, bankerTotal)}!` : '';
   if(betType === winner){
     if(betType === 'tie'){ outcome = `Tie wins!${naturalTag} 8:1 payout`; delta = bet * 8; }
-    else if(betType === 'banker'){ outcome = `Banker wins${naturalTag} — you win (5% commission)`; delta = Math.floor(bet * 0.95); }
+    else if(betType === 'banker'){ outcome = `Banker wins${naturalTag} — you win`; delta = bet; }
     else { outcome = `Player wins${naturalTag} — you win`; delta = bet; }
   } else if(winner === 'tie'){
     outcome = `Tie${naturalTag} — Player/Banker bets push`; delta = 0;
@@ -8093,7 +8440,7 @@ async function bacResolve(){
     setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700);
   }
 
-  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Baccarat win' : 'Baccarat loss', { silent: true });
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Baccarat win' : 'Baccarat loss', { silent: true, detail: { type: 'cards', playerCards: bacPlayerHand, bankerCards: bacBankerHand, playerTotal, bankerTotal } });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
@@ -8611,7 +8958,7 @@ async function rouletteSpin(){
     setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
 
-  if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? 'Roulette win' : 'Roulette loss', { silent: true });
+  if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? 'Roulette win' : 'Roulette loss', { silent: true, detail: { type: 'roulette', number: winningPocket, color } });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
@@ -8726,7 +9073,7 @@ async function warResolve(delta, label, wasWar){
     setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700);
   }
 
-  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Casino War win' : 'Casino War loss', { silent: true });
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Casino War win' : 'Casino War loss', { silent: true, detail: { type: 'cards', playerCards: [warPlayerCard], bankerCards: [warDealerCard] } });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
@@ -8782,6 +9129,350 @@ document.getElementById('warBetInput').addEventListener('input', (e) => {
   chip.textContent = e.target.value || '0';
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
 });
+
+// ---- Craps (full table: Pass/Don't Pass, Odds, Come/Don't Come, Place,
+// Field, Hardways, one-roll Props) ----
+// State model: "live" bets are already riding from a previous roll (the
+// balance was never touched for them — same house style as every other
+// game here, XP only moves via awardXP at actual resolution, not at
+// staking time). "Staged" bets are new chips placed since the last roll
+// that haven't been rolled for yet. Roll() commits staged into live (or
+// resolves it immediately, same rules either way), then resolves
+// everything live against the new total, and finally nets out ONE
+// awardXP call for the whole roll — mirrors Roulette's "stake several
+// spots, one net settle" pattern rather than a payout call per bet type.
+let crapsBuilt = false;
+let crapsPoint = null; // null (come-out) or 4/5/6/8/9/10
+let crapsLive = { pass: 0, dontpass: 0 };
+let crapsPassOdds = 0, crapsDontPassOdds = 0; // odds riding behind the Pass/Don't Pass line — only ever live while a point's on
+let crapsComePoints = {};      // { [num]: amount } — Come bets already assigned a point
+let crapsDontComePoints = {};  // { [num]: amount } — Don't Come bets already assigned a point
+let crapsPlace = { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 };   // Place bets — live across rolls until it hits or a 7 shows
+let crapsHardway = { 4: 0, 6: 0, 8: 0, 10: 0 };             // Hardway bets — live across rolls until hard/easy/7
+let crapsStaged = {
+  pass: 0, dontpass: 0, come: 0, dontcome: 0, field: 0, passodds: 0, dontpassodds: 0,
+  place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 }, hardway: { 4: 0, 6: 0, 8: 0, 10: 0 },
+  prop: { any7: 0, anycraps: 0, 2: 0, 3: 0, 11: 0, 12: 0 }
+};
+const CRAPS_FIELD_PAYOUT = { 2: 2, 3: 1, 4: 1, 9: 1, 10: 1, 11: 1, 12: 3 };
+// True odds — no house edge on any of these, same math a real table uses.
+const CRAPS_PASS_ODDS_MULT = { 4: 2, 5: 1.5, 6: 1.2, 8: 1.2, 9: 1.5, 10: 2 };
+const CRAPS_DONTPASS_ODDS_MULT = { 4: 0.5, 5: 2 / 3, 6: 5 / 6, 8: 5 / 6, 9: 2 / 3, 10: 0.5 };
+const CRAPS_PLACE_MULT = { 4: 9 / 5, 5: 7 / 5, 6: 7 / 6, 8: 7 / 6, 9: 7 / 5, 10: 9 / 5 };
+const CRAPS_HARDWAY_MULT = { 4: 7, 6: 9, 8: 9, 10: 7 };
+const CRAPS_PROP_MULT = { any7: 4, anycraps: 7, 2: 30, 3: 15, 11: 15, 12: 30 };
+function crapsSumObj(o){ return Object.values(o).reduce((s, v) => s + v, 0); }
+function crapsSumStaged(){
+  return crapsStaged.pass + crapsStaged.dontpass + crapsStaged.come + crapsStaged.dontcome + crapsStaged.field
+    + crapsStaged.passodds + crapsStaged.dontpassodds + crapsSumObj(crapsStaged.place) + crapsSumObj(crapsStaged.hardway) + crapsSumObj(crapsStaged.prop);
+}
+function crapsTotalAtRisk(){
+  const comeSum = crapsSumObj(crapsComePoints);
+  const dontComeSum = crapsSumObj(crapsDontComePoints);
+  return crapsLive.pass + crapsLive.dontpass + crapsPassOdds + crapsDontPassOdds + comeSum + dontComeSum
+    + crapsSumObj(crapsPlace) + crapsSumObj(crapsHardway) + crapsSumStaged();
+}
+let crapsHistory = []; // recent roll totals, coloured by what they meant (natural/point/craps/seven-out)
+function crapsRenderHistory(){
+  const el = document.getElementById('crapsHistory');
+  el.innerHTML = crapsHistory.slice(-12).reverse().map(h => {
+    const bg = h.kind === 'sevenout' ? '#8c2a22' : (h.kind === 'point' ? '#1f7a4a' : '#3a3a3a');
+    return `<div class="craps-history-chip" style="background:${bg};">${h.total}</div>`;
+  }).join('');
+}
+function crapsInit(){
+  crapsBuilt = true;
+  crapsRenderBetSpots();
+  crapsRenderDice(1, 1, false);
+  document.getElementById('crapsTotalMsg').textContent = '';
+}
+function crapsRenderPuck(){
+  const puck = document.getElementById('crapsPuck');
+  if(crapsPoint == null){ puck.textContent = 'OFF'; puck.classList.remove('on'); puck.classList.add('off'); }
+  else { puck.textContent = crapsPoint; puck.classList.remove('off'); puck.classList.add('on'); }
+  // Pass/Don't Pass only placeable pre-point; Odds only once a matching
+  // line bet is already riding; Come/Don't Come only once the point's on
+  // — mirrors a real table's puck-driven betting windows. Place, Hardway
+  // and Props work anytime, so they're never toggled here.
+  document.querySelectorAll('#crapsBetGrid [data-craps-bet="pass"], #crapsBetGrid [data-craps-bet="dontpass"]').forEach(el => {
+    el.classList.toggle('disabled', crapsPoint != null || crapsLive.pass > 0 || crapsLive.dontpass > 0);
+  });
+  document.querySelector('#crapsBetGrid [data-craps-bet="passodds"]').classList.toggle('disabled', !(crapsPoint != null && crapsLive.pass > 0));
+  document.querySelector('#crapsBetGrid [data-craps-bet="dontpassodds"]').classList.toggle('disabled', !(crapsPoint != null && crapsLive.dontpass > 0));
+  document.querySelectorAll('#crapsBetGrid [data-craps-bet="come"], #crapsBetGrid [data-craps-bet="dontcome"]').forEach(el => {
+    el.classList.toggle('disabled', crapsPoint == null);
+  });
+}
+function crapsDiePipLayout(n){
+  // 3x3 pip grid, classic die-face layouts, indices 0-8 (row-major)
+  const layouts = {
+    1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8]
+  };
+  const on = new Set(layouts[n] || []);
+  return Array.from({ length: 9 }, (_, i) => `<div class="craps-die-pip${on.has(i) ? ' on' : ''}"></div>`).join('');
+}
+function crapsRenderDice(a, b, rolling){
+  const d1 = document.getElementById('crapsDie1'), d2 = document.getElementById('crapsDie2');
+  d1.innerHTML = crapsDiePipLayout(a); d2.innerHTML = crapsDiePipLayout(b);
+  [d1, d2].forEach(d => { d.classList.remove('rolling'); if(rolling){ void d.offsetWidth; d.classList.add('rolling'); } });
+}
+function crapsFmtAmt(n){ return n > 0 ? `${n.toLocaleString()} XP` : ''; }
+// Generic setter — handles both simple spots (key === amt-id, e.g. "pass")
+// and per-number spots (amt-id is "place-4", live/staged looked up by
+// number within the relevant object).
+function crapsSetSpotAmt(amtKey, spotSelector, live, staged){
+  const el = document.querySelector(`[data-amt="${amtKey}"]`);
+  const spot = document.querySelector(spotSelector);
+  if(!el || !spot) return;
+  const total = live + staged;
+  el.textContent = total > 0 ? `${crapsFmtAmt(live)}${staged > 0 ? `${live > 0 ? ' + ' : ''}${crapsFmtAmt(staged)} new` : ''}` : '';
+  spot.classList.toggle('has-live', total > 0);
+}
+function crapsRenderBetSpots(){
+  crapsSetSpotAmt('pass', '[data-craps-bet="pass"]', crapsLive.pass, crapsStaged.pass);
+  crapsSetSpotAmt('dontpass', '[data-craps-bet="dontpass"]', crapsLive.dontpass, crapsStaged.dontpass);
+  crapsSetSpotAmt('passodds', '[data-craps-bet="passodds"]', crapsPassOdds, crapsStaged.passodds);
+  crapsSetSpotAmt('dontpassodds', '[data-craps-bet="dontpassodds"]', crapsDontPassOdds, crapsStaged.dontpassodds);
+  const comeSum = crapsSumObj(crapsComePoints);
+  const dontComeSum = crapsSumObj(crapsDontComePoints);
+  crapsSetSpotAmt('come', '[data-craps-bet="come"]', comeSum, crapsStaged.come);
+  crapsSetSpotAmt('dontcome', '[data-craps-bet="dontcome"]', dontComeSum, crapsStaged.dontcome);
+  crapsSetSpotAmt('field', '[data-craps-bet="field"]', 0, crapsStaged.field);
+  [4, 5, 6, 8, 9, 10].forEach(n => {
+    crapsSetSpotAmt(`place-${n}`, `[data-craps-bet="place"][data-craps-num="${n}"]`, crapsPlace[n], crapsStaged.place[n]);
+  });
+  [4, 6, 8, 10].forEach(n => {
+    crapsSetSpotAmt(`hardway-${n}`, `[data-craps-bet="hardway"][data-craps-num="${n}"]`, crapsHardway[n], crapsStaged.hardway[n]);
+  });
+  ['any7', 'anycraps', 2, 3, 11, 12].forEach(k => {
+    crapsSetSpotAmt(`prop-${k}`, `[data-craps-bet="prop"][data-craps-num="${k}"]`, 0, crapsStaged.prop[k]);
+  });
+
+  const liveBits = [];
+  Object.entries(crapsComePoints).forEach(([n, amt]) => liveBits.push(`Come (${n}): ${amt.toLocaleString()}`));
+  Object.entries(crapsDontComePoints).forEach(([n, amt]) => liveBits.push(`Don't Come (${n}): ${amt.toLocaleString()}`));
+  Object.entries(crapsPlace).forEach(([n, amt]) => { if(amt > 0) liveBits.push(`Place ${n}: ${amt.toLocaleString()}`); });
+  Object.entries(crapsHardway).forEach(([n, amt]) => { if(amt > 0) liveBits.push(`Hard ${n}: ${amt.toLocaleString()}`); });
+  document.getElementById('crapsLiveSummary').textContent = liveBits.join('  ·  ');
+  crapsRenderPuck();
+}
+// Single delegated handler across all four bet sections — reads the bet
+// type from data-craps-bet and (for Place/Hardway/Prop) the specific
+// number from data-craps-num, so one listener covers every spot on the
+// table instead of one per bet type.
+document.querySelectorAll('#crapsBetGrid .craps-bet-spot, #crapsPlaceGrid .craps-place-spot, #crapsHardwayGrid .craps-hardway-spot, #crapsPropRow .craps-prop-spot').forEach(spot => {
+  spot.addEventListener('click', () => {
+    if(spot.classList.contains('disabled')) return;
+    const type = spot.dataset.crapsBet;
+    const num = spot.dataset.crapsNum;
+    const chip = parseInt(document.getElementById('crapsBetInput').value, 10) || 0;
+    if(chip <= 0) return;
+    if(type === 'place' || type === 'hardway' || type === 'prop'){
+      crapsStaged[type][num] += chip;
+    } else {
+      crapsStaged[type] += chip;
+    }
+    crapsRenderBetSpots();
+    bjPlayChipSound();
+    spot.classList.remove('pc-chip-tap'); void spot.offsetWidth; spot.classList.add('pc-chip-tap');
+  });
+});
+document.getElementById('crapsClearStagedBtn').addEventListener('click', () => {
+  crapsStaged = {
+    pass: 0, dontpass: 0, come: 0, dontcome: 0, field: 0, passodds: 0, dontpassodds: 0,
+    place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 }, hardway: { 4: 0, 6: 0, 8: 0, 10: 0 },
+    prop: { any7: 0, anycraps: 0, 2: 0, 3: 0, 11: 0, 12: 0 }
+  };
+  document.getElementById('crapsBetError').textContent = '';
+  crapsRenderBetSpots();
+});
+document.getElementById('crapsBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('crapsChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+
+async function crapsRoll(){
+  const errEl = document.getElementById('crapsBetError');
+  errEl.textContent = '';
+  const stagedTotal = crapsSumStaged();
+  const alreadyLive = crapsTotalAtRisk() - stagedTotal;
+  if(stagedTotal === 0 && alreadyLive === 0){ errEl.textContent = 'Place at least one bet first.'; return; }
+  const balance = await getXPBalance();
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(crapsTotalAtRisk() > balance){ errEl.textContent = `You only have ${balance} XP (at risk: ${crapsTotalAtRisk()}).`; return; }
+
+  document.getElementById('crapsRollBtn').disabled = true;
+  bjPlayChipSound();
+
+  const a = 1 + Math.floor(Math.random() * 6);
+  const b = 1 + Math.floor(Math.random() * 6);
+  const total = a + b;
+  const isHardRoll = a === b;
+  crapsRenderDice(a, b, true);
+  bjPlaySpinSound();
+  await bjWait(650);
+
+  // Commit staged Pass/Don't Pass onto the felt if a point isn't already
+  // riding (mutually exclusive with the disabled state in the UI, but
+  // guarded here too). Place/Hardway commit unconditionally — they work
+  // regardless of come-out or point phase.
+  if(crapsPoint == null){
+    crapsLive.pass += crapsStaged.pass;
+    crapsLive.dontpass += crapsStaged.dontpass;
+  }
+  if(crapsPoint != null && crapsLive.pass > 0) crapsPassOdds += crapsStaged.passodds;
+  if(crapsPoint != null && crapsLive.dontpass > 0) crapsDontPassOdds += crapsStaged.dontpassodds;
+  [4, 5, 6, 8, 9, 10].forEach(n => { crapsPlace[n] += crapsStaged.place[n]; });
+  [4, 6, 8, 10].forEach(n => { crapsHardway[n] += crapsStaged.hardway[n]; });
+
+  let delta = 0;
+  const wonSpots = [], lostSpots = [];
+
+  const isComeOut = crapsPoint == null;
+  if(isComeOut){
+    // ---- Come-out roll ----
+    if(total === 7 || total === 11){
+      if(crapsLive.pass > 0){ delta += crapsLive.pass; wonSpots.push('Pass Line'); crapsLive.pass = 0; }
+      if(crapsLive.dontpass > 0){ delta -= crapsLive.dontpass; lostSpots.push("Don't Pass"); crapsLive.dontpass = 0; }
+    } else if(total === 2 || total === 3 || total === 12){
+      if(crapsLive.pass > 0){ delta -= crapsLive.pass; lostSpots.push('Pass Line'); crapsLive.pass = 0; }
+      if(crapsLive.dontpass > 0){
+        if(total === 12){ /* bar 12 — push, bet simply returned, no delta */ }
+        else { delta += crapsLive.dontpass; wonSpots.push("Don't Pass"); }
+        crapsLive.dontpass = 0;
+      }
+    } else {
+      crapsPoint = total; // point established — Pass/Don't Pass now ride until it resolves
+    }
+    // Come/Don't Come/Odds can't be freshly staged pre-point (UI disables
+    // the spots), so nothing further to resolve here.
+  } else {
+    // ---- Point phase ----
+    if(total === 7){
+      // Seven-out: Pass/Don't Pass (+ their Odds), every Come point, every
+      // Don't Come point all resolve at once, then the puck goes back OFF.
+      if(crapsLive.pass > 0){ delta -= crapsLive.pass; lostSpots.push('Pass Line'); }
+      if(crapsPassOdds > 0){ delta -= crapsPassOdds; lostSpots.push('Odds — Pass'); }
+      if(crapsLive.dontpass > 0){ delta += crapsLive.dontpass; wonSpots.push("Don't Pass"); }
+      if(crapsDontPassOdds > 0){ delta += Math.round(crapsDontPassOdds * CRAPS_DONTPASS_ODDS_MULT[crapsPoint]); wonSpots.push("Odds — Don't Pass"); }
+      Object.entries(crapsComePoints).forEach(([n, amt]) => { delta -= amt; lostSpots.push(`Come (${n})`); });
+      Object.entries(crapsDontComePoints).forEach(([n, amt]) => { delta += amt; wonSpots.push(`Don't Come (${n})`); });
+      crapsLive.pass = 0; crapsLive.dontpass = 0; crapsPassOdds = 0; crapsDontPassOdds = 0;
+      crapsComePoints = {}; crapsDontComePoints = {};
+      crapsPoint = null;
+    } else {
+      if(total === crapsPoint){
+        if(crapsLive.pass > 0){ delta += crapsLive.pass; wonSpots.push('Pass Line'); crapsLive.pass = 0; }
+        if(crapsPassOdds > 0){ delta += Math.round(crapsPassOdds * CRAPS_PASS_ODDS_MULT[crapsPoint]); wonSpots.push('Odds — Pass'); crapsPassOdds = 0; }
+        if(crapsLive.dontpass > 0){ delta -= crapsLive.dontpass; lostSpots.push("Don't Pass"); crapsLive.dontpass = 0; }
+        if(crapsDontPassOdds > 0){ delta -= crapsDontPassOdds; lostSpots.push("Odds — Don't Pass"); crapsDontPassOdds = 0; }
+        crapsPoint = null; // point made — new come-out round begins
+      }
+      if(crapsComePoints[total]){ delta += crapsComePoints[total]; wonSpots.push(`Come (${total})`); delete crapsComePoints[total]; }
+      if(crapsDontComePoints[total]){ delta -= crapsDontComePoints[total]; lostSpots.push(`Don't Come (${total})`); delete crapsDontComePoints[total]; }
+    }
+    // Freshly staged Come/Don't Come this roll resolve exactly like a
+    // come-out roll would, just for that individual bet.
+    if(crapsStaged.come > 0){
+      if(total === 7 || total === 11){ delta += crapsStaged.come; wonSpots.push('Come'); }
+      else if(total === 2 || total === 3 || total === 12){ delta -= crapsStaged.come; lostSpots.push('Come'); }
+      else { crapsComePoints[total] = (crapsComePoints[total] || 0) + crapsStaged.come; }
+    }
+    if(crapsStaged.dontcome > 0){
+      if(total === 2 || total === 3){ delta += crapsStaged.dontcome; wonSpots.push("Don't Come"); }
+      else if(total === 7 || total === 11){ delta -= crapsStaged.dontcome; lostSpots.push("Don't Come"); }
+      else if(total === 12){ /* bar 12 — push */ }
+      else { crapsDontComePoints[total] = (crapsDontComePoints[total] || 0) + crapsStaged.dontcome; }
+    }
+  }
+
+  // ---- Place bets — work every roll regardless of come-out/point phase.
+  // A 7 wipes every live Place bet; hitting a placed number pays out and
+  // clears that one spot (re-place it to keep it working next time).
+  if(total === 7){
+    [4, 5, 6, 8, 9, 10].forEach(n => { if(crapsPlace[n] > 0){ delta -= crapsPlace[n]; lostSpots.push(`Place ${n}`); crapsPlace[n] = 0; } });
+  } else if(crapsPlace[total]){
+    delta += Math.round(crapsPlace[total] * CRAPS_PLACE_MULT[total]); wonSpots.push(`Place ${total}`); crapsPlace[total] = 0;
+  }
+
+  // ---- Hardways — also work every roll. A 7 wipes them all; the SAME
+  // number rolled the easy (non-double) way loses just that one; rolled
+  // as a double pays out; anything else leaves it riding.
+  if(total === 7){
+    [4, 6, 8, 10].forEach(n => { if(crapsHardway[n] > 0){ delta -= crapsHardway[n]; lostSpots.push(`Hard ${n}`); crapsHardway[n] = 0; } });
+  } else {
+    [4, 6, 8, 10].forEach(n => {
+      if(crapsHardway[n] > 0 && total === n){
+        if(isHardRoll){ delta += crapsHardway[n] * CRAPS_HARDWAY_MULT[n]; wonSpots.push(`Hard ${n}`); }
+        else { delta -= crapsHardway[n]; lostSpots.push(`Hard ${n} (easy way)`); }
+        crapsHardway[n] = 0;
+      }
+    });
+  }
+
+  // ---- Field — always resolves, every roll, come-out or point phase ----
+  if(crapsStaged.field > 0){
+    const mult = CRAPS_FIELD_PAYOUT[total];
+    if(mult){ delta += crapsStaged.field * mult; wonSpots.push('Field'); }
+    else { delta -= crapsStaged.field; lostSpots.push('Field'); }
+  }
+
+  // ---- One-roll props — resolve immediately, every roll, never carry over ----
+  const PROP_LABELS = { any7: 'Any 7', anycraps: 'Any Craps', 2: 'Prop 2', 3: 'Prop 3', 11: 'Prop 11', 12: 'Prop 12' };
+  const propWins = (key, t) => {
+    if(key === 'any7') return t === 7;
+    if(key === 'anycraps') return t === 2 || t === 3 || t === 12;
+    return t === Number(key);
+  };
+  Object.keys(crapsStaged.prop).forEach(key => {
+    const amt = crapsStaged.prop[key];
+    if(amt <= 0) return;
+    if(propWins(key, total)){ delta += amt * CRAPS_PROP_MULT[key]; wonSpots.push(PROP_LABELS[key]); }
+    else { delta -= amt; lostSpots.push(PROP_LABELS[key]); }
+  });
+
+  crapsStaged = {
+    pass: 0, dontpass: 0, come: 0, dontcome: 0, field: 0, passodds: 0, dontpassodds: 0,
+    place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 }, hardway: { 4: 0, 6: 0, 8: 0, 10: 0 },
+    prop: { any7: 0, anycraps: 0, 2: 0, 3: 0, 11: 0, 12: 0 }
+  };
+  crapsRenderBetSpots();
+
+  const resultEl = document.getElementById('crapsTotalMsg');
+  const isSevenOut = !isComeOut && total === 7;
+  let msg = `${a} + ${b} = ${total}`;
+  if(isComeOut && total !== 7 && total !== 11 && total !== 2 && total !== 3 && total !== 12) msg += ` — point is ${total}`;
+  else if(isSevenOut) msg += ' — seven out';
+  else if(!isComeOut && crapsPoint == null && !isSevenOut) msg += ' — point made!';
+  if(wonSpots.length || lostSpots.length){
+    msg += `  |  ${[...wonSpots.map(s => `${s} won`), ...lostSpots.map(s => `${s} lost`)].join(', ')}`;
+  }
+  resultEl.textContent = `${msg}  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
+  resultEl.style.color = delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)');
+  resultEl.classList.remove('bj-outcome-pop'); void resultEl.offsetWidth; resultEl.classList.add('bj-outcome-pop');
+
+  crapsHistory.push({ total, kind: isSevenOut ? 'sevenout' : ((!isComeOut && crapsPoint == null) ? 'point' : 'roll') });
+  crapsRenderHistory();
+
+  const panelEl = document.getElementById('casinoGameCraps');
+  if(delta > 0){
+    bjPlayChime(true);
+    bjLaunchConfetti(resultEl, 22);
+  } else if(delta < 0){
+    bjPlayChime(false);
+    panelEl.classList.add('pc-shake');
+    setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
+  }
+
+  document.getElementById('crapsRollBtn').disabled = false;
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Craps win' : 'Craps loss', { silent: true, detail: { type: 'dice', a, b, total } });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+document.getElementById('crapsRollBtn').addEventListener('click', crapsRoll);
 
 // ---- Slots (5 reels, single payline) ----
 // Restored original polished implementation (recovered from an earlier
@@ -9819,7 +10510,7 @@ function selectTipChartPoint(idx){
     selDot.setAttribute('opacity', '1');
   }
   if(tip){
-    tip.innerHTML = `<strong>Round ${p.round}</strong> — running points: <span style="color:var(--brass)">${p.cum}</span>`;
+    tip.innerHTML = `<strong>${roundLabel(p.round)}</strong> — running points: <span style="color:var(--brass)">${p.cum}</span>`;
     tip.style.opacity = '1';
   }
 }
@@ -10319,7 +11010,7 @@ function render(state){
       return `<div class="multi-leg-block ${resultCls}">
         <div class="multi-leg-row">
           <span class="multi-leg-name${b.result === 'Loss' ? ' loss' : ''}">${escapeHtml(b.name || '')}</span>
-          <span class="multi-leg-result">${b.pl != null ? `<span style="margin-right:6px; font-weight:700; color:${b.pl >= 0 ? 'var(--win)' : 'var(--loss)'};">${fmtMoney(b.pl)}</span>` : ''}${icon}</span>
+          <span class="multi-leg-result">${b.pl != null ? `<span style="margin-right:6px; font-weight:700; color:${b.result === 'Loss' ? 'var(--loss)' : (b.result === 'Win' ? 'var(--win)' : (b.pl >= 0 ? 'var(--win)' : 'var(--loss)'))};">${fmtMoney(b.pl)}</span>` : ''}${icon}</span>
         </div>
         ${b.sgm ? `<div class="sgm-badge ${b.sgmResult === 'Win' ? 'win' : (b.sgmResult === 'Loss' ? 'loss' : 'pending')}">
           <span>${b.sgmResult === 'Win' ? '✅' : (b.sgmResult === 'Loss' ? '❌' : '➖')}</span> SGM Bonus Bet Received${(b.sgmResult === 'Win' && b.sgmAmount != null) ? ` <span class="sgm-amount">+${fmtMoney(b.sgmAmount).replace('+','')}</span>` : ''}
@@ -11507,9 +12198,9 @@ function renderJokerPanel(games, currentRound, auth){
       ? `<div class="hint" style="margin-top:10px; margin-bottom:0;">🃏 No Joker round chosen yet. Joker is home-and-away season only — not selectable during finals.</div>`
       : `<div class="hint" style="margin-top:10px; margin-bottom:0;">🃏 No Joker round chosen yet.</div>`;
   } else if(jokerLocked){
-    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#E8A15C;">🃏 Joker Round: <b>Round ${myJokerRound}</b> — locked in.</div>`;
+    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#E8A15C;">🃏 Joker Round: <b>${roundLabel(myJokerRound)}</b> — locked in.</div>`;
   } else {
-    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#E8A15C;">🃏 Joker Round: <b>Round ${myJokerRound}</b> — can still change.</div>`;
+    statusHtml = `<div class="hint" style="margin-top:10px; margin-bottom:0; color:#E8A15C;">🃏 Joker Round: <b>${roundLabel(myJokerRound)}</b> — can still change.</div>`;
   }
   statusSlot.innerHTML = statusHtml;
 
@@ -11524,7 +12215,7 @@ function renderJokerPanel(games, currentRound, auth){
         showToast('Joker round cleared');
       } else {
         await setMyJoker(auth, games, currentRound);
-        showToast(`Round ${currentRound} set as your Joker`);
+        showToast(`${roundLabel(currentRound)} set as your Joker`);
       }
     }catch(e){
       showToast('Could not save your Joker');
@@ -11611,7 +12302,7 @@ async function refreshTipping(){
     if(tippingSelectedRound == null || !allRounds.includes(tippingSelectedRound)) tippingSelectedRound = currentRound;
 
     roundSelectWrap.innerHTML = `<select id="tippingRoundSelect">${allRounds.map(r =>
-      `<option value="${r}"${r === tippingSelectedRound ? ' selected' : ''}>Round ${r}${r === currentRound ? ' — current' : ''}</option>`
+      `<option value="${r}"${r === tippingSelectedRound ? ' selected' : ''}>${roundLabel(r)}${r === currentRound ? ' — current' : ''}</option>`
     ).join('')}</select>`;
     document.getElementById('tippingRoundSelect').addEventListener('change', (e) => {
       tippingSelectedRound = Number(e.target.value);
@@ -11642,6 +12333,19 @@ async function renderTippingPrizePot(){
   }
 }
 
+const TIPPING_ROUND_NAMES = {
+  0: 'Opening Round',
+  5: 'Gather Round',
+  25: 'Wildcard Finals',
+  26: 'Qualifying/Elimination Round',
+  27: 'Semi Finals',
+  28: 'Preliminary Finals',
+  29: 'Grand Final'
+};
+function roundLabel(r){
+  return TIPPING_ROUND_NAMES[r] || `Round ${r}`;
+}
+
 let tippingDraft = {}; // { [gameId]: { pick, margin } } — live selections before the one Save-all click
 let tippingRoundGameMeta = {}; // { [gameId]: { label, isMarginGame, round } } — only unlocked games in the current round view
 let tipCountdownIntervals = {}; // { [gameId]: intervalId } — live "until the opening bounce" clocks, cleared on every re-render
@@ -11666,7 +12370,7 @@ async function renderTippingRound(games, currentRound){
   const hint = document.getElementById('tippingHint');
   const round = tippingSelectedRound;
 
-  heading.textContent = `Footy Tipping — Round ${round}`;
+  heading.textContent = `Footy Tipping — ${roundLabel(round)}`;
   hint.textContent = 'Pick a winner for every game, then tap Save all picks once — the round\u2019s first game also needs a margin, used only as a season-end tiebreaker. Picks stay hidden from everyone else until that game kicks off.';
 
   const roundGames = games.filter(g => g.round === round);
@@ -12974,7 +13678,7 @@ async function renderTippingLadder(games){
   const maxRound = Math.max(...involvedRounds);
   const currentRoundLive = !(roundCounts[maxRound].done === roundCounts[maxRound].total);
   const liveNoteHtml = currentRoundLive
-    ? `<div class="hint" style="margin-bottom:10px;">Round ${maxRound} is still in progress (${roundCounts[maxRound].done}/${roundCounts[maxRound].total} games done) — points update live as each result comes in. The Perfect Round bonus can't be awarded until the round's fully finished.</div>`
+    ? `<div class="hint" style="margin-bottom:10px;">${roundLabel(maxRound)} is still in progress (${roundCounts[maxRound].done}/${roundCounts[maxRound].total} games done) — points update live as each result comes in. The Perfect Round bonus can't be awarded until the round's fully finished.</div>`
     : '';
 
   let html = warningHtml + liveNoteHtml + '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
