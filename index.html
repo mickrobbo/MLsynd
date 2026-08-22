@@ -191,6 +191,16 @@
     100%{ transform:scale(1) rotate(0deg); }
   }
   .bj-chip.pc-chip-pulse{ animation: chipPulse .45s cubic-bezier(.34,1.6,.5,1); }
+  /* Roulette & Craps: the chip readout is tappable to type any custom
+     amount (see the click handlers on rouletteChipDisplay/crapsChipDisplay)
+     — no house limit on either table, the 10-250 buttons are just quick
+     picks. A small pencil badge hints it's editable, not just a display. */
+  #rouletteChipDisplay, #crapsChipDisplay{ cursor:pointer; position:relative; }
+  #rouletteChipDisplay::after, #crapsChipDisplay::after{
+    content:'✎'; position:absolute; bottom:-3px; right:-3px; width:16px; height:16px; border-radius:50%;
+    background:var(--ink); border:1px solid var(--brass-light); color:var(--brass-light);
+    font-size:9px; display:flex; align-items:center; justify-content:center;
+  }
 
   /* Idle "breathing" glow so the primary action always reads as tappable —
      a real table doesn't sit static waiting for you to notice the button. */
@@ -3016,7 +3026,7 @@
       <div class="roulette-history" id="rouletteHistory"></div>
     </div>
     <div class="panel" id="rouletteBetPanel">
-      <div class="hint" style="margin-bottom:8px;">American table — pick a chip below, tap a number or outside bet to place it, then Spin. Tap adjacent numbers to build Split/Street/Corner/Double Street bets.</div>
+      <div class="hint" style="margin-bottom:8px;">American table — pick a chip below (or tap the chip readout to type any amount — no limit), tap a number or outside bet to place it, then Spin. Tap adjacent numbers to build Split/Street/Corner/Double Street bets.</div>
       <div class="roulette-table-grid" id="rouletteTableGrid"></div>
       <div id="rouletteActiveBetsArea" class="roulette-active-bets"></div>
       <div id="rouletteSelectedSpot" class="roulette-selected-spot">No bets placed yet</div>
@@ -3113,7 +3123,7 @@
       </div>
     </div>
     <div class="panel" id="crapsBetPanel">
-      <div class="hint" style="margin-bottom:8px;">Pick a chip below, then tap a spot to place it. Pass Line/Don't Pass only before the point's set; Come/Don't Come/Odds only once it is. Field &amp; Props are one-roll bets — place them fresh each roll.</div>
+      <div class="hint" style="margin-bottom:8px;">Pick a chip below (or tap the chip readout to type any amount — no limit), then tap a spot to place it. Pass Line/Don't Pass only before the point's set; Come/Don't Come/Odds only once it is. Field &amp; Props are one-roll bets — place them fresh each roll.</div>
       <div class="craps-bet-grid" id="crapsBetGrid">
         <div class="craps-bet-spot" data-craps-bet="pass">
           <div class="craps-bet-spot-label">Pass Line</div>
@@ -4451,7 +4461,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.60";
+const APP_VERSION = "2026-08-22.61";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9223,6 +9233,18 @@ document.getElementById('rouletteBetInput').addEventListener('input', (e) => {
   const errEl = document.getElementById('rouletteBetError');
   if(errEl) errEl.textContent = '';
 });
+// Tap the chip readout to type any amount — the 10/25/50/100/250 buttons
+// are quick-pick shortcuts, not a ceiling; there's no house limit here.
+document.getElementById('rouletteChipDisplay').addEventListener('click', () => {
+  const input = document.getElementById('rouletteBetInput');
+  const entry = prompt('Bet amount (XP):', input.value || '50');
+  if(entry === null) return;
+  const amount = Math.floor(Number(entry));
+  if(!(amount > 0)) return;
+  input.value = amount;
+  input.dispatchEvent(new Event('input'));
+  document.querySelectorAll('#rouletteBetPanel .table-chip').forEach(c => c.classList.remove('active-chip'));
+});
 function rouletteEvaluate(bet, pocket){
   if(bet.type === 'straight') return pocket === bet.value ? 35 : -1;
   if(bet.type === 'topline') return ['0','00','1','2','3'].includes(pocket) ? 6 : -1;
@@ -9766,6 +9788,18 @@ document.getElementById('crapsBetInput').addEventListener('input', (e) => {
   if(!chip) return;
   chip.textContent = e.target.value || '0';
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+// Tap the chip readout to type any amount — the 10/25/50/100/250 buttons
+// are quick-pick shortcuts, not a ceiling; there's no house limit here.
+document.getElementById('crapsChipDisplay').addEventListener('click', () => {
+  const input = document.getElementById('crapsBetInput');
+  const entry = prompt('Bet amount (XP):', input.value || '50');
+  if(entry === null) return;
+  const amount = Math.floor(Number(entry));
+  if(!(amount > 0)) return;
+  input.value = amount;
+  input.dispatchEvent(new Event('input'));
+  document.querySelectorAll('#crapsBetPanel .table-chip').forEach(c => c.classList.remove('active-chip'));
 });
 
 let crapsRolling = false; // guards against a double-tap firing two overlapping rolls — the real cause of "bets only half-clear" reports (see crapsRoll)

@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-22.60",
+  "version": "2026-08-22.61",
   "date": "2026-08-22",
   "changes": [
-    "Reverted: the 250 XP cap on Roulette and Craps has been removed — both are no-limit again, same as every other Casino game. The live staked/at-risk readouts are back to plain totals with no cap shown."
+    "Fixed: the real reason Roulette and Craps still capped out at 250 XP on a single spot — the chip readout was tied only to the preset 10/25/50/100/250 buttons, with no way to enter more. Tap the chip readout (now marked with a pencil) on either game to type any amount — the preset chips are just quick picks now, not a ceiling."
   ]
 }
