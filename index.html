@@ -999,26 +999,95 @@
   .bet-spot-btn.active small{ color:#3a2e08; }
 
   /* ---- Craps ---- */
-  .craps-puck-row{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:10px; }
+  /* A proper felt "table" surface for the puck/dice header — matching
+     Roulette's velvet treatment (radial sheen + vignette) and brass rail
+     rather than sitting in a plain flat panel. */
+  .craps-table-rail{
+    position:relative; border-radius:22px; padding:3px;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,.5), rgba(255,255,255,0) 32%),
+      conic-gradient(from -40deg, #f7e2a4, #b9903c, #6b4f1a, #b9903c, #f7e2a4, #b9903c, #6b4f1a, #b9903c, #f7e2a4);
+    box-shadow: 0 8px 20px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,255,255,.45), inset 0 -3px 6px rgba(0,0,0,.5);
+  }
+  .craps-table-felt{
+    position:relative; border-radius:19px; overflow:hidden; padding:18px 12px 14px;
+    background:
+      radial-gradient(ellipse at 32% 14%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 40%),
+      radial-gradient(ellipse at 50% 30%, #124631 0%, #0A2A1E 55%, #071c14 100%);
+    box-shadow: inset 0 0 36px rgba(0,0,0,.6), inset 0 0 80px rgba(0,0,0,.3);
+  }
+  /* MLSYND wordmark imprinted into the felt, same soft-light treatment as
+     the Hold'em table — this table gets the same high-roller identity. */
+  .craps-table-wordmark{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    text-align:center; pointer-events:none; z-index:0; opacity:.14; mix-blend-mode:soft-light; width:80%;
+  }
+  .craps-table-wordmark span{
+    display:block; font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:13vw;
+    letter-spacing:2px; color:var(--brass-light); line-height:1;
+  }
+  .craps-table-wordmark small{
+    display:block; font-size:3vw; letter-spacing:5px; color:var(--brass-light); margin-top:2px;
+  }
+  .craps-table-felt > *{ position:relative; z-index:1; }
+  .craps-puck-row{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:12px; }
   .craps-puck{
     width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center;
     font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:13px; letter-spacing:.5px;
     border:2px solid; transition: all .2s ease;
   }
-  .craps-puck.off{ background:rgba(0,0,0,.3); border-color:var(--muted); color:var(--muted); }
-  .craps-puck.on{ background:linear-gradient(165deg, var(--brass-light), var(--brass)); border-color:var(--brass-light); color:#2a2005; box-shadow:0 0 14px rgba(255,214,120,.5); }
-  .craps-dice-row{ display:flex; gap:10px; justify-content:center; margin-bottom:10px; }
-  .craps-die{
-    width:50px; height:50px; border-radius:10px; background:linear-gradient(165deg, #fdfdfd, #d8d8d8);
-    box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.08);
-    display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 1fr);
-    padding:7px; gap:2px;
+  .craps-puck.off{ background:rgba(0,0,0,.35); border-color:var(--muted); color:var(--muted); box-shadow:inset 0 2px 4px rgba(0,0,0,.5); }
+  .craps-puck.on{
+    background: radial-gradient(circle at 32% 26%, #fff6de, var(--brass-light) 35%, var(--brass) 65%, var(--brass-dim) 100%);
+    border-color:var(--brass-light); color:#2a2005;
+    box-shadow:0 4px 10px rgba(0,0,0,.5), inset 0 2px 3px rgba(255,255,255,.6), inset 0 -3px 5px rgba(0,0,0,.3), 0 0 14px rgba(255,214,120,.5);
   }
-  .craps-die.rolling{ animation: crapsDieRoll .5s ease-in-out; }
-  @keyframes crapsDieRoll{ 0%{ transform:rotate(0deg); } 50%{ transform:rotate(180deg) scale(1.08); } 100%{ transform:rotate(360deg); } }
+  .craps-dice-row{ display:flex; gap:16px; justify-content:center; margin-bottom:12px; perspective:400px; }
+  /* Real dice: an ivory-bone gradient body (same family as the roulette
+     ball's material), a beveled edge via layered inset shadows, a soft
+     ambient shadow pooling underneath so it reads as sitting ON the felt
+     rather than pasted flat onto it. */
+  .craps-die{
+    width:52px; height:52px; border-radius:9px;
+    background: radial-gradient(circle at 30% 24%, #ffffff, #f2ede2 45%, #d8d0bd 85%);
+    box-shadow:
+      0 10px 14px rgba(0,0,0,.5),
+      0 2px 3px rgba(0,0,0,.35),
+      inset 0 2px 2px rgba(255,255,255,.9),
+      inset 0 -4px 6px rgba(0,0,0,.18),
+      inset 3px 0 4px rgba(255,255,255,.35),
+      inset -3px 0 5px rgba(0,0,0,.12);
+    display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 1fr);
+    padding:8px; gap:2px; transform-style:preserve-3d;
+  }
+  /* Carved-in pip look: a dark dished centre with a tiny bright rim catch,
+     rather than a flat solid dot. */
   .craps-die-pip{ width:100%; height:100%; border-radius:50%; }
-  .craps-die-pip.on{ background:#1c1c1c; }
-  .craps-total-msg{ text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; min-height:22px; margin-bottom:8px; }
+  .craps-die-pip.on{
+    background: radial-gradient(circle at 35% 30%, #3a3a3a, #111 55%, #000 100%);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.4);
+  }
+  /* Tumble: a genuine toss-and-settle — rotates on two axes with a bounce
+     arc (translateY dips like gravity, not just a flat spin) and eases
+     into a slightly-overshot settle at the end, matching the weight the
+     roulette ball's spin-down already has. */
+  @keyframes crapsDieTumble{
+    0%{ transform:translateY(0) rotateX(0) rotateY(0) rotateZ(0) scale(1); }
+    12%{ transform:translateY(-22px) rotateX(140deg) rotateY(80deg) rotateZ(40deg) scale(1.05); }
+    28%{ transform:translateY(-6px) rotateX(300deg) rotateY(220deg) rotateZ(160deg) scale(1); }
+    44%{ transform:translateY(-16px) rotateX(480deg) rotateY(340deg) rotateZ(260deg) scale(1.04); }
+    60%{ transform:translateY(-2px) rotateX(620deg) rotateY(460deg) rotateZ(340deg) scale(1); }
+    76%{ transform:translateY(-8px) rotateX(700deg) rotateY(540deg) rotateZ(400deg) scale(1.02); }
+    90%{ transform:translateY(0) rotateX(720deg) rotateY(600deg) rotateZ(430deg) scale(1); }
+    100%{ transform:translateY(0) rotateX(720deg) rotateY(600deg) rotateZ(440deg) scale(1); }
+  }
+  .craps-die.tumbling{ animation: crapsDieTumble .68s cubic-bezier(.24,.85,.35,1) both; }
+  .craps-die:nth-child(2).tumbling{ animation-duration:.72s; animation-delay:.03s; }
+  .craps-dice-shadow{ display:flex; gap:16px; justify-content:center; margin-top:-6px; margin-bottom:2px; }
+  .craps-dice-shadow-blob{
+    width:38px; height:8px; border-radius:50%; background:radial-gradient(ellipse, rgba(0,0,0,.45), rgba(0,0,0,0) 72%);
+  }
+  .craps-total-msg{ text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px; min-height:22px; margin-bottom:4px; }
   .craps-bet-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
   .craps-bet-spot{
     position:relative; background:var(--felt-2); border:2px solid var(--brass-dim); border-radius:10px;
@@ -2871,18 +2940,22 @@
 
     <div class="casino-game-panel" id="casinoGameCraps" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="craps">📜 Rules</button></div>
-    <div class="panel" style="text-align:center;">
-      <div class="craps-puck-row">
-        <div class="craps-puck off" id="crapsPuck">OFF</div>
+    <div class="craps-table-rail" id="crapsTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
+      <div class="craps-table-felt">
+        <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="craps-puck-row">
+          <div class="craps-puck off" id="crapsPuck">OFF</div>
+        </div>
+        <div class="craps-dice-row">
+          <div class="craps-die" id="crapsDie1"></div>
+          <div class="craps-die" id="crapsDie2"></div>
+        </div>
+        <div class="craps-dice-shadow"><div class="craps-dice-shadow-blob"></div><div class="craps-dice-shadow-blob"></div></div>
+        <div class="craps-total-msg" id="crapsTotalMsg"></div>
+        <div class="craps-live-summary" id="crapsLiveSummary"></div>
+        <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rolls</div>
+        <div class="craps-history" id="crapsHistory"></div>
       </div>
-      <div class="craps-dice-row">
-        <div class="craps-die" id="crapsDie1"></div>
-        <div class="craps-die" id="crapsDie2"></div>
-      </div>
-      <div class="craps-total-msg" id="crapsTotalMsg"></div>
-      <div class="craps-live-summary" id="crapsLiveSummary"></div>
-      <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rolls</div>
-      <div class="craps-history" id="crapsHistory"></div>
     </div>
     <div class="panel" id="crapsBetPanel">
       <div class="hint" style="margin-bottom:8px;">Pick a chip below, then tap a spot to place it. Pass Line/Don't Pass only before the point's set; Come/Don't Come/Odds only once it is. Field &amp; Props are one-roll bets — place them fresh each roll.</div>
@@ -4213,7 +4286,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.46";
+const APP_VERSION = "2026-08-22.48";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8893,6 +8966,13 @@ function rouletteRenderHistory(){
     return `<div class="roulette-history-chip" style="background:${bg};">${pocket}</div>`;
   }).join('');
 }
+// Scrolls the given element into view smoothly — used right as a Spin/Roll
+// starts so the animation is actually on-screen even if the person just
+// tapped a button sitting below the wheel/dice on a small phone.
+function scrollIntoViewSmooth(elId){
+  const el = document.getElementById(elId);
+  if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 async function rouletteSpin(){
   rouletteConfirmPendingSelectionIfAny();
   const errEl = document.getElementById('rouletteBetError');
@@ -8904,6 +8984,7 @@ async function rouletteSpin(){
   if(totalStaked > balance){ errEl.textContent = `You only have ${balance} XP (staked: ${totalStaked}).`; return; }
 
   document.getElementById('rouletteSpinBtn').disabled = true;
+  scrollIntoViewSmooth('rouletteWheelPanel');
   const resultEl = document.getElementById('rouletteResultMsg');
   resultEl.textContent = '';
   resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
@@ -9183,7 +9264,7 @@ function crapsRenderHistory(){
 function crapsInit(){
   crapsBuilt = true;
   crapsRenderBetSpots();
-  crapsRenderDice(1, 1, false);
+  crapsRenderDice(1, 1);
   document.getElementById('crapsTotalMsg').textContent = '';
 }
 function crapsRenderPuck(){
@@ -9211,10 +9292,27 @@ function crapsDiePipLayout(n){
   const on = new Set(layouts[n] || []);
   return Array.from({ length: 9 }, (_, i) => `<div class="craps-die-pip${on.has(i) ? ' on' : ''}"></div>`).join('');
 }
-function crapsRenderDice(a, b, rolling){
+function crapsRenderDice(a, b){
   const d1 = document.getElementById('crapsDie1'), d2 = document.getElementById('crapsDie2');
   d1.innerHTML = crapsDiePipLayout(a); d2.innerHTML = crapsDiePipLayout(b);
-  [d1, d2].forEach(d => { d.classList.remove('rolling'); if(rolling){ void d.offsetWidth; d.classList.add('rolling'); } });
+}
+// A real toss: the CSS tumble (rotate + bounce, see .craps-die.tumbling)
+// runs for its own duration while the pip faces flicker through random
+// values every ~70ms, landing on the true result only right at the end —
+// same "reveal only at the last moment" feel as the roulette ball's spin
+// rather than an instant number swap under a spinning cube.
+async function crapsAnimateRoll(finalA, finalB){
+  const d1 = document.getElementById('crapsDie1'), d2 = document.getElementById('crapsDie2');
+  [d1, d2].forEach(d => { d.classList.remove('tumbling'); void d.offsetWidth; d.classList.add('tumbling'); });
+  const stepMs = 70, totalFlickerMs = 560;
+  const steps = Math.floor(totalFlickerMs / stepMs);
+  for(let i = 0; i < steps; i++){
+    crapsRenderDice(1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6));
+    await bjWait(stepMs);
+  }
+  crapsRenderDice(finalA, finalB);
+  await bjWait(150); // let the tumble's own settle tail finish before anything reads the result
+  [d1, d2].forEach(d => d.classList.remove('tumbling'));
 }
 function crapsFmtAmt(n){ return n > 0 ? `${n.toLocaleString()} XP` : ''; }
 // Generic setter — handles both simple spots (key === amt-id, e.g. "pass")
@@ -9304,15 +9402,15 @@ async function crapsRoll(){
   if(crapsTotalAtRisk() > balance){ errEl.textContent = `You only have ${balance} XP (at risk: ${crapsTotalAtRisk()}).`; return; }
 
   document.getElementById('crapsRollBtn').disabled = true;
+  scrollIntoViewSmooth('crapsTableRail');
   bjPlayChipSound();
 
   const a = 1 + Math.floor(Math.random() * 6);
   const b = 1 + Math.floor(Math.random() * 6);
   const total = a + b;
   const isHardRoll = a === b;
-  crapsRenderDice(a, b, true);
   bjPlaySpinSound();
-  await bjWait(650);
+  await crapsAnimateRoll(a, b);
 
   // Commit staged Pass/Don't Pass onto the felt if a point isn't already
   // riding (mutually exclusive with the disabled state in the UI, but
