@@ -1526,9 +1526,22 @@
     animation: streakFlicker 1.4s ease-in-out infinite;
   }
   @keyframes streakFlicker{ 0%,100%{ opacity:1; } 50%{ opacity:.72; } }
+  /* Player tier gem — a small faceted diamond shape (rotated square, split
+     top/bottom facets), not an emoji. Colour is the only thing that
+     changes between tiers; same shape throughout reads as one consistent
+     status system rather than five unrelated icons. */
   .tier-badge{
-    display:inline-block; margin-left:4px; font-size:12px; vertical-align:middle;
-    filter: drop-shadow(0 0 3px rgba(255,214,120,.45));
+    display:inline-block; width:10px; height:10px; margin-left:5px; vertical-align:middle;
+    transform:rotate(45deg); border-radius:2px; position:relative; flex-shrink:0;
+    box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.55), inset 0 -1px 1px rgba(0,0,0,.35);
+  }
+  .tier-badge.tier-bronze{ background: linear-gradient(155deg, #e0a469, #a9672f 55%, #6b3f1a); }
+  .tier-badge.tier-silver{ background: linear-gradient(155deg, #f4f4f4, #b8b8b8 55%, #838383); }
+  .tier-badge.tier-gold{ background: linear-gradient(155deg, #fff0b8, #d4af37 55%, #8a6620); }
+  .tier-badge.tier-platinum{ background: linear-gradient(155deg, #eef8ff, #a9cbe0 55%, #6f93a8); }
+  .tier-badge.tier-diamond{
+    background: linear-gradient(155deg, #eafdff, #7fd8ff 55%, #2a9dc9);
+    box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.7), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 5px rgba(127,216,255,.7);
   }
 
   .lb-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -2812,6 +2825,7 @@
         <div class="casino-social-tab" id="membersTabFloor">🃏 Floor</div>
       </div>
       <div id="membersLeaderboardView">
+        <div style="text-align:right; margin-bottom:4px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="tiers" style="padding:4px 9px; font-size:10.5px;">ⓘ Tier badges</button></div>
         <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
       </div>
       <div id="membersFloorView" style="display:none;">
@@ -4518,7 +4532,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.66";
+const APP_VERSION = "2026-08-22.68";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4975,11 +4989,11 @@ function renderXpInfoView(){
 const PRESTIGE_WEIGHT_DATASCORE = 200; // per Season Score point (betting board)
 const PRESTIGE_WEIGHT_TIPPING = 150;   // per cumulative Tipping season point
 const CASINO_TIERS = [
-  { name: 'Diamond', threshold: 1000000, icon: '💎' },
-  { name: 'Platinum', threshold: 500000, icon: '💠' },
-  { name: 'Gold', threshold: 250000, icon: '🥇' },
-  { name: 'Silver', threshold: 100000, icon: '🥈' },
-  { name: 'Bronze', threshold: 10000, icon: '🥉' }
+  { name: 'Diamond', threshold: 1000000, key: 'diamond' },
+  { name: 'Platinum', threshold: 500000, key: 'platinum' },
+  { name: 'Gold', threshold: 250000, key: 'gold' },
+  { name: 'Silver', threshold: 100000, key: 'silver' },
+  { name: 'Bronze', threshold: 10000, key: 'bronze' }
 ];
 function computePrestigeScore(lifetimeXP, dataScore, tippingPoints){
   const xpPart = lifetimeXP || 0;
@@ -5004,7 +5018,12 @@ function casinoTierFor(prestigeScore){
 }
 function casinoTierBadgeHtml(prestigeScore){
   const t = casinoTierFor(prestigeScore);
-  return t ? `<span class="tier-badge" title="${t.name} tier">${t.icon}</span>` : '';
+  // A custom-built gem, not an emoji — the leaderboard already uses
+  // 🥇🥈🥉 for #1/#2/#3 rank position, so a Gold/Silver/Bronze TIER badge
+  // using the exact same medal emoji sat right next to it read as
+  // confusing and cheap. Same faceted-gem language as the roulette ball/
+  // Hold'em poker chip icons elsewhere — no glyph, just a shaped div.
+  return t ? `<span class="tier-badge tier-${t.key}" title="${t.name} tier"></span>` : '';
 }
 // Cache for surfaces that render the same uid repeatedly and re-render
 // often (chat, Hold'em seats) — avoids re-fetching per uid on every tick.
@@ -5100,8 +5119,13 @@ async function renderCasinoBadgesView(){
     const boardScore = bettingBoardScoreFor(currentUserUid);
     const prestige = computePrestigeScore(lifetime, boardScore, tippingPoints);
     const myTier = casinoTierFor(prestige);
-    body.innerHTML = `<div class="hint" style="margin-bottom:4px;">Lifetime XP earned: <b style="color:var(--brass-light);">${lifetime.toLocaleString()}</b>${myTier ? ` — currently <b style="color:var(--brass-light);">${casinoTierBadgeHtml(prestige)} ${myTier.name}</b> tier` : ''}</div>
-      <div class="hint" style="margin-bottom:10px;">Your tier is a combined score across the whole dashboard — Casino Lifetime XP, your betting board Season Score (${boardScore.toFixed(2)}), and cumulative Footy Tipping points (${tippingPoints})<span style="color:var(--muted);"> — not just Casino play. Shows next to your name everywhere: the leaderboard, your profile, Hold'em seats, and table chat.</span></div>` + rows.join('');
+    body.innerHTML = `<div class="hint" style="margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+        <span>Lifetime XP earned: <b style="color:var(--brass-light);">${lifetime.toLocaleString()}</b>${myTier ? ` — currently <b style="color:var(--brass-light);">${casinoTierBadgeHtml(prestige)} ${myTier.name}</b> tier` : ''}</span>
+        <button type="button" class="pill-btn" id="tiersInfoBtn" style="flex-shrink:0; padding:5px 10px; font-size:11px;">ⓘ How tiers work</button>
+      </div>
+      <div class="hint" style="margin-bottom:10px; font-size:10.5px;">Board Season Score ${boardScore.toFixed(2)} &middot; Tipping ${tippingPoints} pts</div>` + rows.join('');
+    const tiersInfoBtn = document.getElementById('tiersInfoBtn');
+    if(tiersInfoBtn) tiersInfoBtn.addEventListener('click', () => openCasinoRules('tiers'));
   }catch(e){
     body.innerHTML = '<div class="empty">Could not load badges — try again.</div>';
   }
@@ -8755,13 +8779,22 @@ const CASINO_RULES = {
   `},
   casinopot: { title: '🏆 Monthly Casino Pot', body: `
     <h3>Where it comes from</h3>
-    <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the month, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
+    <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the month, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
     <h3>How it's split</h3>
     <p><b>60%</b> is shared out proportionally by how much each eligible member personally lost that month — lose more, get a bigger slice of that 60%. <b>40%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that month — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Eligibility</h3>
     <p>You qualify for the 60% share if you played the tables <b>20 times or more</b> this month, <b>or</b> earned any real (non-casino) XP this month — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
     <h3>Timing</h3>
     <p>The month locks the moment the calendar rolls over (AEST), and the pot is redistributed automatically at <b>8am AEST on the 1st</b>. If nobody qualified in a given month, the pot simply rolls into the next one rather than disappearing.</p>
+  `},
+  tiers: { title: '🏅 Player Tiers', body: `
+    <h3>What the badge means</h3>
+    <p>Your tier gem — Bronze, Silver, Gold, Platinum, or Diamond — is a status badge shown next to your name everywhere it appears: the Casino leaderboard, your profile card, Hold'em seats, and table chat. It's not a Casino-only thing — it's a combined score across the whole dashboard.</p>
+    <h3>How it's worked out</h3>
+    <p>Your "Prestige Score" adds together three things: your Casino <b>Lifetime XP</b> (never goes down, even after a loss), your betting board <b>Season Score</b> (P/L, multi and individual win rates, and volume — the same score the Board tab itself ranks on), and your cumulative <b>Footy Tipping</b> season points. A bad week at the punt or tipping never subtracts from it — only good results ever add.</p>
+    <h3>Thresholds</h3>
+    <p><b>🥉 Bronze</b> at 10,000 &middot; <b>🥈 Silver</b> at 100,000 &middot; <b>🥇 Gold</b> at 250,000 &middot; <b>💠 Platinum</b> at 500,000 &middot; <b>💎 Diamond</b> at 1,000,000 combined points.</p>
+    <p class="hint" style="margin-top:6px;">Your current score and tier are shown at the top of the Badges screen.</p>
   `}
 };
 function openCasinoRules(key){
@@ -8785,7 +8818,7 @@ document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
 const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
   ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
-  ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot']
+  ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot'], ['tiers', '🏅 Player Tiers']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
   `<button type="button" data-rules-key="${key}">${label}</button>`).join('');

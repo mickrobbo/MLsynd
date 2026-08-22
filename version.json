@@ -1,29 +1,8 @@
 {
-  "version": "2026-08-22.66",
+  "version": "2026-08-22.68",
   "date": "2026-08-22",
   "changes": [
-    "New: Player status tiers — Bronze/Silver/Gold/Platinum/Diamond, combining the whole dashboard: Casino Lifetime XP, the betting board's own Season Score (P/L, win rates, volume), and cumulative Footy Tipping season points into one 'Prestige Score'. A bad run never subtracts — only good results add. Badge shows next to your name on the leaderboard, your profile, Hold'em seats, and table chat. Explained on the Badges view with your live breakdown.",
-    "Fixed: the win-streak feature was writing to a Firebase path with no rule allowing it — streaks were almost certainly never actually saving. Firebase rules updated to fix it, plus a new rule for the tier system's tipping-points cache (deploy firebase-rules.json for this).",
-    "Fixed: Hold'em tables created before creator-tracking existed (old test tables) could never show a Delete button for anyone. Those now delete for any signed-in member; properly-owned tables are unaffected. Admin-email check made case/whitespace-insensitive as a defensive fix.",
-    "Fixed: the real reason Roulette and Craps still capped at 250 XP on a single spot — the chip readout was tied only to the preset buttons, no way to enter more. Chips now stack by tapping (250 x4 = 1000 XP) on every Casino game, and a 5 XP chip was added to every chip rail across the Casino.",
-    "New: Win streaks — 3+ wins in a row across any single-player Casino game shows a flickering 🔥 flame badge next to your name on the leaderboard, plus a toast the moment you hit it.",
-    "New: Session recap — leaving a Casino game shows a quick card: hands played, net XP, biggest win.",
-    "New: Croupier table-talk — dealer-voice captions flash at the right moments on Roulette, Craps, and Blackjack (no more bets, come-out/point/seven-out, blackjack/bust/push, etc).",
-    "New: Blackjack, Baccarat, and Casino War all now have a 'last 10 outcomes' history strip, matching Roulette/Craps/Hold'em.",
-    "Fixed: Craps wins/losses were never feeding the Monthly Casino Pot — a gap in the reason-text pattern that detects a casino round.",
-    "New: Craps got Take Down / Let It Ride / Press for Place and Hardway wins — pay out and clear (default), leave the bet working, or add the win straight onto the bet.",
-    "New: full brass rail bezel treatment extended to Blackjack, Baccarat, Casino War, Video Poker, and Challenges' head-to-head hand view, matching Roulette/Craps/Hold'em. Craps' One-Roll Props got their own bordered panel with Any 7 as a red banner row.",
-    "New: Craps built as a full high-roller table — Pass Line, Don't Pass, Come, Don't Come, Field, Odds, Place, Hardways, Props — with a real 3D dice cube (2.1s tumble), casino chip-token bet display, and its own felt/rail table with MLSYND CASINO watermark.",
-    "Fixed: a real double-tap race across Casino — a fast double-tap on the main action button could debit a bet or claim a reward twice. Fixed on Blackjack (Deal/Double/Split), Casino War, Baccarat, Roulette, Daily Spin, and Challenges (Accept/Send).",
-    "Fixed: Hold'em's Stand Up and Sit Out buttons could silently fail to respond — a live-update redraw was yanking the button out from under a tap. Fixed at the root.",
-    "Fixed: Hold'em's own hand winner could see 'Spectating' in Your Cards at showdown despite everyone else seeing their cards. Showdown now shows a proper result banner with mini cards and a trophy on your own win; Recent Hands shows the same. Watermark is the actual MLSYND CASINO wordmark, Big Blind moved to a small bubble, in-table chat got real message bubbles.",
-    "Fixed: Tipping's background refresh could silently wipe a pick you'd tapped or a margin you'd typed but hadn't saved yet. It now pauses while you're typing, and unsaved picks survive the refresh.",
-    "Fixed: Home tab's individual bet amount now colors by actual Win/Loss result, not the sign of the dollar figure — a $0.00 loss shows red instead of green.",
-    "New: Lifetime XP shown on the Casino leaderboard and member profile cards. New: a Casino XP teaser on the Home tab with a quick Play button through.",
-    "Moved: Challenges and Hold'em live inside Games as regular game bubbles instead of separate hub tiles; each has its own distinct icon.",
-    "Casino: live-win flash ticker threshold raised 300→500 XP. Baccarat's Banker bet no longer takes a commission — pays 1:1, same as Player. Big Win popups show a visual of the actual hand or winning number when available.",
-    "Tipping: Rounds 0, 5, and 25-29 show their real names (Opening Round, Gather Round, Wildcard Finals, Qualifying/Elimination Round, Semi Finals, Preliminary Finals, Grand Final) everywhere a round appears.",
-    "Polish: the Sport dropdown, News dropdown, and Tipping's round selector match the app's real dark/brass input styling instead of plain browser defaults.",
-    "Ledger app: fixed the Bettor Rotation panel — winning a bet no longer auto-ticks the SGM checkbox (that's a separate, unrelated promo). A win now auto-adds a genuine second bet row instead, which correctly counts toward the tally. Hint text and a tooltip rewritten to explain the real rules (deploy LEDGER-index.html for this)."
+    "New: how the Player Tier system works is now a proper Rules entry ('🏅 Player Tiers') instead of permanent on-screen text — accessible via a small 'ⓘ Tier badges' button right on the Casino leaderboard, an 'ⓘ How tiers work' button on the Badges screen, and from the main Rules hub alongside every game's own rules.",
+    "Polish: the Badges screen's tier summary is now a compact one-liner (your score breakdown) instead of a full paragraph explaining the mechanics — the explanation lives behind the new button instead."
   ]
 }
