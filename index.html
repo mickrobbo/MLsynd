@@ -437,6 +437,20 @@
     box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 2px 3px rgba(255,255,255,.6), inset 0 -3px 5px rgba(0,0,0,.35); z-index:4;
   }
   .dailyspin-wheel.pc-winner-flash{ animation: roulettePocketFlash .5s ease 3; }
+  /* Big Wheel's per-segment markers — at 54 narrow wedges there's no room
+     for real text (see the comment in bigWheelBuildWheel), so each wedge
+     just gets a small dot; only the rare Joker wedge gets its own icon,
+     matching how a physical wheel's numbers sit on the rim, not crammed
+     into every panel. */
+  .bigwheel-segment-dot{
+    position:absolute; top:50%; left:50%; width:6px; height:6px; margin:-3px 0 0 -3px;
+    border-radius:50%; background:rgba(255,255,255,.55); box-shadow:0 1px 2px rgba(0,0,0,.5);
+    transition: transform 4s cubic-bezier(.1,.6,.15,1);
+  }
+  .bigwheel-segment-dot.joker-dot{
+    width:16px; height:16px; margin:-8px 0 0 -8px; background:none; box-shadow:none;
+    display:flex; align-items:center; justify-content:center; font-size:12px;
+  }
 
   /* ---- Casino landing hub — Games / Rules / How to earn XP / Badges ---- */
   /* Grid, not a flex-wrap row — learned from the earlier 6-across game-
@@ -1275,6 +1289,22 @@
   .craps-place-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 14px rgba(255,214,120,.4); background:radial-gradient(circle at 35% 30%, var(--brass-dim), var(--felt-3) 75%); }
   .craps-place-spot.has-live .craps-place-num{ color:#2a2005; }
   .craps-place-spot .craps-bet-spot-amt{ font-size:9px; margin-top:1px; }
+  /* Sic Bo — Totals (4-17) and the Single/Double/Triple number spots.
+     auto-fill rather than a fixed column count so it lays out sensibly
+     regardless of screen width instead of guessing a column count. */
+  .sicbo-total-grid, .sicbo-number-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(56px, 1fr)); gap:6px; margin-bottom:4px;
+  }
+  .sicbo-spot{
+    position:relative; background:var(--felt-2); border:2px solid var(--brass-dim); border-radius:9px;
+    padding:7px 4px; text-align:center; cursor:pointer; transition: all .15s ease;
+  }
+  .sicbo-spot:active{ transform:scale(.94); }
+  .sicbo-spot-num{ font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:17px; color:var(--brass-light); line-height:1; }
+  .sicbo-spot-odds{ font-size:8px; color:var(--muted); margin-top:1px; }
+  .sicbo-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 12px rgba(255,214,120,.4); background:var(--brass-dim); }
+  .sicbo-spot.has-live .sicbo-spot-num, .sicbo-spot.has-live .sicbo-spot-odds{ color:#2a2005; }
+  .sicbo-spot .craps-bet-spot-amt{ margin-top:3px; min-height:0; }
   /* Hardways — diamond tiles, the traditional shape for this bet on a real
      felt, with the dice-pair callout baked into the tile. */
   .craps-hardway-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:7px; }
@@ -1563,6 +1593,14 @@
     display:flex; align-items:center; justify-content:center;
   }
   .tier-status-sub{ font-size:10.5px; color:var(--muted); margin-top:6px; }
+  .tier-up-gem-row{ display:flex; justify-content:center; margin:6px 0 10px; filter: drop-shadow(0 0 10px rgba(255,214,120,.5)); }
+  /* Home tab's Form Guide — one line per category (Tipping/Casino streak/
+     Betting/Casino Pot), same weight as the Highlights rows above it. */
+  .form-guide-row{ display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--line); }
+  .form-guide-row:last-child{ border-bottom:none; }
+  .form-guide-icon{ font-size:16px; flex-shrink:0; width:20px; text-align:center; }
+  .form-guide-text{ font-size:12.5px; color:var(--chalk); line-height:1.4; }
+  .form-guide-text b{ color:var(--brass-light); }
 
   .lb-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .lb-table{
@@ -2511,6 +2549,11 @@
       <div id="highlightsArea"></div>
     </div>
 
+    <div class="panel" id="formGuidePanel">
+      <h2>📋 Form Guide</h2>
+      <div id="formGuideArea"><div class="empty">Loading…</div></div>
+    </div>
+
     <div class="panel panel-quiet" id="onThisDayPanel">
       <h2>📅 On This Day In Sport</h2>
       <div id="onThisDayArea"><div class="empty">Loading…</div></div>
@@ -2948,6 +2991,8 @@
         <button type="button" class="game-bubble" data-game="slots"><span class="game-bubble-icon">🎰</span><span class="game-bubble-label">Slots</span></button>
         <button type="button" class="game-bubble" data-game="videopoker"><span class="vp-icon-cards"><span class="vp-icon-card vp-icon-card-1"><span class="vp-icon-pip vp-pip-black">A♠</span></span><span class="vp-icon-card vp-icon-card-2"><span class="vp-icon-pip vp-pip-red">A♥</span></span></span><span class="game-bubble-label">Video Poker</span></button>
         <button type="button" class="game-bubble" data-game="craps"><span class="game-bubble-icon">🎲</span><span class="game-bubble-label">Craps</span></button>
+        <button type="button" class="game-bubble" data-game="sicbo"><span class="game-bubble-icon">⚅</span><span class="game-bubble-label">Sic Bo</span></button>
+        <button type="button" class="game-bubble" data-game="bigwheel"><span class="game-bubble-icon">🛞</span><span class="game-bubble-label">Big Wheel</span></button>
         <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
         <button type="button" class="game-bubble" id="hubChallengesBtn" style="position:relative;"><span class="game-bubble-icon">🥊</span><span class="game-bubble-label">Challenges</span><span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span></button>
       </div>
@@ -3293,6 +3338,64 @@
     </div>
     </div>
 
+    <div class="casino-game-panel" id="casinoGameSicBo" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="sicbo">📜 Rules</button></div>
+    <div class="pc-table-rail" id="sicBoTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
+      <div class="craps-table-felt">
+        <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="craps-dice-row" id="sicBoDiceRow">
+          <div class="craps-die craps-die-3d" id="sicDie1"></div>
+          <div class="craps-die craps-die-3d" id="sicDie2"></div>
+          <div class="craps-die craps-die-3d" id="sicDie3"></div>
+        </div>
+        <div class="craps-dice-shadow"><div class="craps-dice-shadow-blob"></div><div class="craps-dice-shadow-blob"></div><div class="craps-dice-shadow-blob"></div></div>
+        <div class="craps-total-msg" id="sicBoTotalMsg"></div>
+        <div class="croupier-caption" id="sicBoCroupierMsg"></div>
+        <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rolls</div>
+        <div class="craps-history" id="sicBoHistory"></div>
+      </div>
+    </div>
+    <div class="panel" id="sicBoBetPanel">
+      <div class="hint" style="margin-bottom:8px;">Pick a chip below (or tap the chip readout to type any amount — no limit), then tap a spot to place it. Every bet resolves fresh each roll — nothing carries over.</div>
+      <div class="craps-bet-grid" id="sicBoBetGrid">
+        <div class="craps-bet-spot" data-sic-bet="big"><div class="craps-bet-spot-label">Big</div><div class="craps-bet-spot-sub">11-17, no triples · 1:1</div><div class="craps-bet-spot-amt" data-sic-amt="big"></div></div>
+        <div class="craps-bet-spot" data-sic-bet="small"><div class="craps-bet-spot-label">Small</div><div class="craps-bet-spot-sub">4-10, no triples · 1:1</div><div class="craps-bet-spot-amt" data-sic-amt="small"></div></div>
+        <div class="craps-bet-spot full-row" data-sic-bet="anytriple"><div class="craps-bet-spot-label">Any Triple</div><div class="craps-bet-spot-sub">All three dice match · 30:1</div><div class="craps-bet-spot-amt" data-sic-amt="anytriple"></div></div>
+      </div>
+
+      <div class="craps-section-label">Totals <small>— exact sum of all three dice</small></div>
+      <div class="sicbo-total-grid" id="sicBoTotalGrid"></div>
+
+      <div class="craps-section-label">Single Number <small>— pays per matching die (1/2/3)</small></div>
+      <div class="sicbo-number-grid" id="sicBoSingleGrid"></div>
+
+      <div class="craps-section-label">Specific Double <small>— any two dice show this number · 10:1</small></div>
+      <div class="sicbo-number-grid" id="sicBoDoubleGrid"></div>
+
+      <div class="craps-section-label">Specific Triple <small>— all three dice show this number · 180:1</small></div>
+      <div class="sicbo-number-grid" id="sicBoTripleGrid"></div>
+
+      <div style="display:flex; justify-content:center; margin-top:12px;">
+        <div class="bj-chip" id="sicBoChipDisplay">50</div>
+        <input type="number" id="sicBoBetInput" min="5" step="5" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="sicBoBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="sicBoBetInput">Clear Chips</button>
+      </div>
+      <div class="deal-row">
+        <button type="button" id="sicBoClearBtn" class="pill-btn pill-btn-action">Clear Bets</button>
+        <button type="button" id="sicBoRollBtn" class="pill-btn pill-btn-primary">Roll</button>
+      </div>
+      <div id="sicBoBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    </div>
+
     <div class="casino-game-panel" id="casinoGameSlots" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="slots">📜 Rules</button></div>
     <div class="panel slots-panel" style="text-align:center;">
@@ -3377,6 +3480,57 @@
       <div id="dailySpinResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:20px; margin-top:10px; min-height:26px;"></div>
       <button type="button" id="dailySpinBtn" class="pill-btn pill-btn-primary" style="margin-top:12px;">Spin the Wheel</button>
       <div id="dailySpinCooldownMsg" class="hint" style="margin-top:10px;"></div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameBigWheel" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="bigwheel">📜 Rules</button></div>
+    <div class="pc-table-rail" id="bigWheelTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
+      <div class="craps-table-felt">
+        <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="dailyspin-wheel-wrap">
+          <div class="dailyspin-bezel-outer"></div>
+          <div class="dailyspin-wheel" id="bigWheelWheel"></div>
+          <div class="dailyspin-dividers"></div>
+          <div class="dailyspin-glass-shine"></div>
+          <div class="dailyspin-labels-layer" id="bigWheelLabelsLayer"></div>
+          <div class="dailyspin-pointer"></div>
+          <div class="dailyspin-hub">🛞</div>
+        </div>
+        <div class="craps-total-msg" id="bigWheelResultMsg"></div>
+        <div class="croupier-caption" id="bigWheelCroupierMsg"></div>
+        <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent spins</div>
+        <div class="craps-history" id="bigWheelHistory"></div>
+      </div>
+    </div>
+    <div class="panel" id="bigWheelBetPanel">
+      <div class="hint" style="margin-bottom:8px;">Pick a chip below (or tap the chip readout to type any amount — no limit), then tap a value to bet on it. Every bet resolves fresh each spin — nothing carries over.</div>
+      <div class="sicbo-number-grid" id="bigWheelBetGrid">
+        <div class="sicbo-spot" data-wheel-bet="1"><div class="sicbo-spot-num">1</div><div class="sicbo-spot-odds">1:1</div><div class="craps-bet-spot-amt" data-wheel-amt="1"></div></div>
+        <div class="sicbo-spot" data-wheel-bet="2"><div class="sicbo-spot-num">2</div><div class="sicbo-spot-odds">2:1</div><div class="craps-bet-spot-amt" data-wheel-amt="2"></div></div>
+        <div class="sicbo-spot" data-wheel-bet="5"><div class="sicbo-spot-num">5</div><div class="sicbo-spot-odds">5:1</div><div class="craps-bet-spot-amt" data-wheel-amt="5"></div></div>
+        <div class="sicbo-spot" data-wheel-bet="10"><div class="sicbo-spot-num">10</div><div class="sicbo-spot-odds">10:1</div><div class="craps-bet-spot-amt" data-wheel-amt="10"></div></div>
+        <div class="sicbo-spot" data-wheel-bet="20"><div class="sicbo-spot-num">20</div><div class="sicbo-spot-odds">20:1</div><div class="craps-bet-spot-amt" data-wheel-amt="20"></div></div>
+        <div class="sicbo-spot" data-wheel-bet="joker"><div class="sicbo-spot-num">🃏</div><div class="sicbo-spot-odds">40:1</div><div class="craps-bet-spot-amt" data-wheel-amt="joker"></div></div>
+      </div>
+      <div style="display:flex; justify-content:center; margin-top:12px;">
+        <div class="bj-chip" id="bigWheelChipDisplay">50</div>
+        <input type="number" id="bigWheelBetInput" min="5" step="5" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="bigWheelBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="bigWheelBetInput">Clear Chips</button>
+      </div>
+      <div class="deal-row">
+        <button type="button" id="bigWheelClearBtn" class="pill-btn pill-btn-action">Clear Bets</button>
+        <button type="button" id="bigWheelSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
+      </div>
+      <div id="bigWheelBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
     </div>
 
@@ -3564,6 +3718,17 @@
       <div class="session-recap-stat"><span class="lbl">Biggest win</span><span class="val" id="sessionRecapBiggest">—</span></div>
     </div>
     <button type="button" class="win-close-btn" id="sessionRecapNiceOneBtn">Nice one</button>
+  </div>
+</div>
+
+<div id="tierUpModal" class="profile-modal">
+  <div class="profile-sheet big-win-sheet" style="text-align:center;">
+    <button type="button" class="profile-close" id="tierUpCloseBtn">✕</button>
+    <div class="win-badge">🎉 Tier Up!</div>
+    <div class="tier-up-gem-row"><span class="tier-badge tier-status-gem" id="tierUpGem" style="width:34px; height:34px;"></span></div>
+    <div class="win-amount" id="tierUpName" style="font-size:26px;">Gold</div>
+    <div class="win-meta">You've climbed to a new tier — combined score across Casino, the betting board, and Tipping.</div>
+    <button type="button" class="win-close-btn" id="tierUpNiceOneBtn">Nice one</button>
   </div>
 </div>
 
@@ -4552,7 +4717,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.70";
+const APP_VERSION = "2026-08-22.74";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5066,6 +5231,68 @@ async function getCasinoTierBadgeHtml(uid){
     return casinoTierBadgeHtml(score);
   }catch(e){ return ''; }
 }
+
+// ---- Tier-up celebration — fires once, the first time the CURRENT user
+// actually crosses into a new tier, regardless of which of the three
+// components (Casino XP, betting board, tipping) pushed them over. The
+// "already celebrated" state lives server-side (/xp/{uid}/lastKnownTier)
+// so it survives a refresh and doesn't fire again next session, only on
+// a genuine new crossing. Cheap to call from anywhere a score might have
+// just moved — it's a no-op unless the tier actually went up. ----
+const TIER_ORDER = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'];
+let tierUpCheckInFlight = false;
+async function checkCasinoTierUp(prestigeScore){
+  if(!currentUserUid || tierUpCheckInFlight || prestigeScore == null) return;
+  const newTier = casinoTierFor(prestigeScore);
+  if(!newTier) return;
+  tierUpCheckInFlight = true;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/lastKnownTier.json`);
+    const lastTierName = res.ok ? await res.json() : null;
+    const lastIdx = lastTierName ? TIER_ORDER.indexOf(lastTierName) : -1;
+    const newIdx = TIER_ORDER.indexOf(newTier.name);
+    if(newIdx > lastIdx){
+      await authedFetch(`/xp/${currentUserUid}/lastKnownTier.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newTier.name)
+      });
+      showTierUpCelebration(newTier);
+    }
+  }catch(e){} finally { tierUpCheckInFlight = false; }
+}
+// Convenience wrapper for call sites that just want "check my own score
+// now" without recomputing it themselves — fetches the two pieces that
+// aren't already free (lifetime XP, tipping points) and reuses
+// bettingBoardScoreFor for the third. Fire-and-forget from callers; never
+// awaited since a tier check should never hold up the thing that
+// triggered it (a bet resolving, a ladder render, etc).
+async function checkCasinoTierUpForCurrentUser(){
+  if(!currentUserUid) return;
+  try{
+    const [lifetimeRes, tippingRes] = await Promise.all([
+      authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`),
+      authedFetch(`/tippingStats/${currentUserUid}/seasonPoints.json`)
+    ]);
+    const lifetime = (await lifetimeRes.json()) || 0;
+    const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
+    const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(currentUserUid), tippingPoints);
+    await checkCasinoTierUp(prestige);
+  }catch(e){}
+}
+function showTierUpCelebration(tier){
+  const badgeEl = document.getElementById('tierUpGem');
+  if(badgeEl) badgeEl.className = `tier-badge tier-status-gem tier-${tier.key}`;
+  const nameEl = document.getElementById('tierUpName');
+  if(nameEl) nameEl.textContent = tier.name;
+  const modal = document.getElementById('tierUpModal');
+  if(!modal) return;
+  modal.classList.add('open');
+  bjPlayChime(true);
+  const sheet = modal.querySelector('.profile-sheet');
+  if(sheet) bjLaunchConfetti(sheet, 36);
+}
+document.getElementById('tierUpCloseBtn').addEventListener('click', () => document.getElementById('tierUpModal').classList.remove('open'));
+document.getElementById('tierUpNiceOneBtn').addEventListener('click', () => document.getElementById('tierUpModal').classList.remove('open'));
+document.getElementById('tierUpModal').addEventListener('click', (e) => { if(e.target.id === 'tierUpModal') document.getElementById('tierUpModal').classList.remove('open'); });
 
 const XP_MILESTONE_BADGES = [
   { key: 'xp10k', threshold: 10000, icon: '🥉', name: '10K Club' },
@@ -6866,6 +7093,11 @@ async function awardXP(amount, reason, opts){
       if(amount > casinoSessionStats.biggestWin) casinoSessionStats.biggestWin = amount;
     }
     if(!(opts && opts.silent)) updateXPBalanceDisplay(next);
+    // Tier-up check — only a WIN can push the Prestige Score up, and this
+    // is a no-op unless a genuinely new tier was actually crossed (see
+    // checkCasinoTierUp), so it's safe to fire on every win rather than
+    // needing to know in advance whether this particular one mattered.
+    if(amount > 0) checkCasinoTierUpForCurrentUser();
   }catch(e){}
 }
 
@@ -6907,7 +7139,7 @@ function updateXPBalanceDisplay(bal){
 // classifier rather than touching each of the six game functions
 // individually. Losses fund the pot; any casino play (win or lose) counts
 // toward the 20-play activity-eligibility threshold.
-const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Slots|Video Poker|Spin the Wheel)/i;
+const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Sic Bo|Big Wheel|Slots|Video Poker|Spin the Wheel)/i;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
@@ -7730,7 +7962,8 @@ function showBigWinModal(entry){
   } else if(d && d.type === 'roulette'){
     visualEl.innerHTML = `<div class="big-win-visual-side"><span class="big-win-visual-side-label">Winning number</span><div class="big-win-roulette-chip bw-${d.color}">${d.number}</div></div>`;
   } else if(d && d.type === 'dice'){
-    visualEl.innerHTML = `<div class="big-win-visual-side"><span class="big-win-visual-side-label">Roll</span><div style="display:flex; gap:8px;"><div class="craps-die" style="width:38px; height:38px; padding:5px;">${crapsDiePipLayout(d.a)}</div><div class="craps-die" style="width:38px; height:38px; padding:5px;">${crapsDiePipLayout(d.b)}</div></div></div>`;
+    const diceHtml = [d.a, d.b, d.c].filter(v => v != null).map(v => `<div class="craps-die" style="width:38px; height:38px; padding:5px;">${crapsDiePipLayout(v)}</div>`).join('');
+    visualEl.innerHTML = `<div class="big-win-visual-side"><span class="big-win-visual-side-label">Roll</span><div style="display:flex; gap:8px;">${diceHtml}</div></div>`;
   } else {
     visualEl.innerHTML = '';
   }
@@ -8025,8 +8258,8 @@ async function bjStartHandInner(){
   const ppBet = parseInt(document.getElementById('bjPerfectPairsAmount').value, 10) || 0;
   const balance = await getXPBalance();
   const totalStake = bet + (ppOn ? ppBet : 0);
-  if(!bet || bet < 10){ errEl.textContent = 'Minimum bet is 10 XP.'; return; }
-  if(ppOn && ppBet < 10){ errEl.textContent = 'Minimum Perfect Pairs side bet is 10 XP.'; return; }
+  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
+  if(ppOn && ppBet < 5){ errEl.textContent = 'Minimum Perfect Pairs side bet is 5 XP.'; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
@@ -8460,11 +8693,11 @@ document.getElementById('bjNewHandBtn').addEventListener('click', bjNewHand);
 const CASINO_GAME_PANEL_IDS = {
   blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
   war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin',
-  craps: 'casinoGameCraps'
+  craps: 'casinoGameCraps', sicbo: 'casinoGameSicBo', bigwheel: 'casinoGameBigWheel'
 };
 const CASINO_GAME_LABELS = {
   blackjack: 'Blackjack', baccarat: 'Baccarat', roulette: 'Roulette', war: 'Casino War',
-  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps'
+  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', sicbo: 'Sic Bo', bigwheel: 'Big Wheel'
 };
 // Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
 // computing "my rank" doesn't re-fetch every linked member's balance a
@@ -8531,6 +8764,8 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
       dailySpinRefreshCooldown();
     }
     if(btn.dataset.game === 'craps' && !crapsBuilt){ crapsInit(); }
+    if(btn.dataset.game === 'sicbo' && !sicBoBuilt){ sicBoInit(); }
+    if(btn.dataset.game === 'bigwheel' && !bigWheelBuilt){ bigWheelBuildWheel(); }
   });
 });
 
@@ -8777,6 +9012,30 @@ const CASINO_RULES = {
     <h3>One-Roll Props</h3>
     <p>Decided by the very next roll only, regardless of come-out or point state. Any 7 pays 4:1. Any Craps (2, 3, or 12) pays 7:1. A specific 2 or 12 pays 30:1; a specific 3 or 11 pays 15:1.</p>
   `},
+  sicbo: { title: '🎲 Sic Bo Rules', body: `
+    <h3>The idea</h3>
+    <p>Three dice, one roll, every bet on the table resolves fresh each time — nothing carries over between rolls the way it does in Craps. Place as many bets as you like, tap Roll, everything settles at once.</p>
+    <h3>Big / Small</h3>
+    <p><b>Big</b> wins if the three dice total 11-17; <b>Small</b> wins on 4-10. Either way, a triple (all three dice matching) always loses both, regardless of the total. Pays 1:1.</p>
+    <h3>Totals</h3>
+    <p>Bet the exact sum of all three dice, 4 through 17. The further from the middle, the rarer it is and the bigger it pays — 6:1 on 9-12 up to 60:1 on a 4 or 17.</p>
+    <h3>Single Number</h3>
+    <p>Bet a number 1-6 appears on any of the three dice. Pays per matching die — one die pays 1:1, two dice pay 2:1, all three pay 3:1.</p>
+    <h3>Specific Double</h3>
+    <p>Bet that a chosen number shows on at least two of the three dice. Pays 10:1.</p>
+    <h3>Specific Triple</h3>
+    <p>Bet all three dice come up the exact same chosen number. The rarest bet on the table — pays 180:1.</p>
+    <h3>Any Triple</h3>
+    <p>Bet all three dice match, any number. Pays 30:1.</p>
+  `},
+  bigwheel: { title: '🛞 Big Wheel Rules', body: `
+    <h3>The idea</h3>
+    <p>A real Big Six money wheel — 54 segments, each worth 1, 2, 5, 10, 20, or the rare Joker. Bet on which value the wheel lands on, tap Spin, it settles once and every staked bet resolves against that single outcome. Nothing carries over — place fresh bets each spin.</p>
+    <h3>Odds</h3>
+    <p>The lower the value, the more common it is on the wheel — and the lower it pays. <b>1</b> pays 1:1 (24 of the 54 segments), <b>2</b> pays 2:1 (15 segments), <b>5</b> pays 5:1 (8 segments), <b>10</b> pays 10:1 (4 segments), <b>20</b> pays 20:1 (2 segments), and the single <b>Joker</b> segment — the rarest spot on the wheel — pays 40:1.</p>
+    <h3>Multiple bets</h3>
+    <p>Just like the other tables, you can bet on more than one value at once. Only the value the wheel actually lands on pays out; everything else staked that spin loses.</p>
+  `},
   slots: { title: '🎰 Slots Rules', body: `
     <h3>Object</h3>
     <p>Tap Spin — all five reels spin and stop in sequence, left to right. Payouts follow the classic left-to-right payline: matching symbols have to run unbroken starting from reel 1. Two matching pays a small 1:1 consolation, three/four/five pay escalating multipliers per the table below. A broken run (e.g. reels 1 and 3 match but not 2) pays nothing.</p>
@@ -8845,7 +9104,7 @@ document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
 // the exact same modal used by each table's own "📜 Rules" button. ----
 const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
-  ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
+  ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['sicbo', '⚅ Sic Bo'], ['bigwheel', '🛞 Big Wheel'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
   ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot'], ['tiers', '🏅 Player Tiers']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
@@ -8982,7 +9241,7 @@ async function bacDealInner(){
   errEl.textContent = '';
   const bet = parseInt(betInput.value, 10);
   const balance = await getXPBalance();
-  if(!bet || bet < 10){ errEl.textContent = 'Minimum bet is 10 XP.'; return; }
+  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
@@ -9722,8 +9981,8 @@ async function warDealInner(){
   const ppBet = parseInt(document.getElementById('warPerfectPairsAmount').value, 10) || 0;
   const balance = await getXPBalance();
   const totalStake = bet + (ppOn ? ppBet : 0);
-  if(!bet || bet < 10){ errEl.textContent = 'Minimum bet is 10 XP.'; return; }
-  if(ppOn && ppBet < 10){ errEl.textContent = 'Minimum Pairs side bet is 10 XP.'; return; }
+  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
+  if(ppOn && ppBet < 5){ errEl.textContent = 'Minimum Pairs side bet is 5 XP.'; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
@@ -10341,6 +10600,467 @@ async function crapsRollInner(){
   renderXPLog();
 }
 document.getElementById('crapsRollBtn').addEventListener('click', crapsRoll);
+
+// ================= Sic Bo =================
+// Single-round game — every bet resolves fresh each roll, nothing carries
+// over the way Craps' Pass Line does, so this is structurally much closer
+// to Roulette (stage several bets, spin/roll once, settle everything at
+// once) than to Craps. Reuses crapsBuildDieCube/crapsSetFrontFace/
+// crapsDiePipLayout as-is (already parameterised by die id) rather than
+// duplicating the whole 3D cube system for a third time.
+let sicBoBuilt = false;
+let sicBoRolling = false;
+const SICBO_TOTAL_PAYOUT = { 4: 60, 5: 30, 6: 17, 7: 12, 8: 8, 9: 6, 10: 6, 11: 6, 12: 6, 13: 8, 14: 12, 15: 17, 16: 30, 17: 60 };
+let sicStaged = {
+  big: 0, small: 0, anytriple: 0,
+  total: { 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0 },
+  single: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+  double: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+  triple: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+};
+let sicBoHistory = [];
+function sicBoInit(){
+  sicBoBuilt = true;
+  crapsBuildDieCube('sicDie1'); crapsBuildDieCube('sicDie2'); crapsBuildDieCube('sicDie3');
+  crapsSetFrontFace('sicDie1', 3); crapsSetFrontFace('sicDie2', 4); crapsSetFrontFace('sicDie3', 5);
+  document.getElementById('sicBoTotalGrid').innerHTML = Object.keys(SICBO_TOTAL_PAYOUT).map(n =>
+    `<div class="sicbo-spot" data-sic-bet="total" data-sic-num="${n}"><div class="sicbo-spot-num">${n}</div><div class="sicbo-spot-odds">${SICBO_TOTAL_PAYOUT[n]}:1</div><div class="craps-bet-spot-amt" data-sic-amt="total-${n}"></div></div>`
+  ).join('');
+  document.getElementById('sicBoSingleGrid').innerHTML = [1,2,3,4,5,6].map(n =>
+    `<div class="sicbo-spot" data-sic-bet="single" data-sic-num="${n}"><div class="sicbo-spot-num">${n}</div><div class="sicbo-spot-odds">1-2-3:1</div><div class="craps-bet-spot-amt" data-sic-amt="single-${n}"></div></div>`
+  ).join('');
+  document.getElementById('sicBoDoubleGrid').innerHTML = [1,2,3,4,5,6].map(n =>
+    `<div class="sicbo-spot" data-sic-bet="double" data-sic-num="${n}"><div class="sicbo-spot-num">${n}${n}</div><div class="sicbo-spot-odds">10:1</div><div class="craps-bet-spot-amt" data-sic-amt="double-${n}"></div></div>`
+  ).join('');
+  document.getElementById('sicBoTripleGrid').innerHTML = [1,2,3,4,5,6].map(n =>
+    `<div class="sicbo-spot" data-sic-bet="triple" data-sic-num="${n}"><div class="sicbo-spot-num">${n}${n}${n}</div><div class="sicbo-spot-odds">180:1</div><div class="craps-bet-spot-amt" data-sic-amt="triple-${n}"></div></div>`
+  ).join('');
+  sicBoRenderBetSpots();
+  document.querySelectorAll('#sicBoBetGrid .craps-bet-spot, #sicBoTotalGrid .sicbo-spot, #sicBoSingleGrid .sicbo-spot, #sicBoDoubleGrid .sicbo-spot, #sicBoTripleGrid .sicbo-spot').forEach(spot => {
+    spot.addEventListener('click', (e) => {
+      const ghostPill = e.target.closest('.craps-chip-new');
+      const type = spot.dataset.sicBet;
+      const num = spot.dataset.sicNum;
+      if(ghostPill){
+        if(num){ sicStaged[type][num] = 0; } else { sicStaged[type] = 0; }
+        sicBoRenderBetSpots();
+        bjPlayChipSound();
+        return;
+      }
+      const chip = parseInt(document.getElementById('sicBoBetInput').value, 10) || 0;
+      if(chip <= 0) return;
+      if(num){ sicStaged[type][num] += chip; } else { sicStaged[type] += chip; }
+      sicBoRenderBetSpots();
+      bjPlayChipSound();
+      spot.classList.remove('pc-chip-tap'); void spot.offsetWidth; spot.classList.add('pc-chip-tap');
+    });
+  });
+}
+function sicBoFmtChip(n){ return n >= 1000 ? (n % 1000 === 0 ? (n / 1000) + 'k' : (n / 1000).toFixed(1) + 'k') : String(n); }
+function sicBoSetSpotAmt(amtKey, spotSelector, staged){
+  const el = document.querySelector(`[data-sic-amt="${amtKey}"]`);
+  const spot = document.querySelector(spotSelector);
+  if(!el || !spot) return;
+  el.innerHTML = staged > 0 ? `<span class="craps-chip-pill craps-chip-new" data-clear-key="${amtKey}" title="Remove this bet">${sicBoFmtChip(staged)} ✕</span>` : '';
+  spot.classList.toggle('has-live', staged > 0);
+}
+function sicBoRenderBetSpots(){
+  sicBoSetSpotAmt('big', '[data-sic-bet="big"]', sicStaged.big);
+  sicBoSetSpotAmt('small', '[data-sic-bet="small"]', sicStaged.small);
+  sicBoSetSpotAmt('anytriple', '[data-sic-bet="anytriple"]', sicStaged.anytriple);
+  Object.keys(SICBO_TOTAL_PAYOUT).forEach(n => sicBoSetSpotAmt(`total-${n}`, `[data-sic-bet="total"][data-sic-num="${n}"]`, sicStaged.total[n]));
+  [1,2,3,4,5,6].forEach(n => {
+    sicBoSetSpotAmt(`single-${n}`, `[data-sic-bet="single"][data-sic-num="${n}"]`, sicStaged.single[n]);
+    sicBoSetSpotAmt(`double-${n}`, `[data-sic-bet="double"][data-sic-num="${n}"]`, sicStaged.double[n]);
+    sicBoSetSpotAmt(`triple-${n}`, `[data-sic-bet="triple"][data-sic-num="${n}"]`, sicStaged.triple[n]);
+  });
+}
+function sicBoSumStaged(){
+  let s = sicStaged.big + sicStaged.small + sicStaged.anytriple;
+  [sicStaged.total, sicStaged.single, sicStaged.double, sicStaged.triple].forEach(obj => {
+    s += Object.values(obj).reduce((a, b) => a + b, 0);
+  });
+  return s;
+}
+document.getElementById('sicBoClearBtn').addEventListener('click', () => {
+  sicStaged = {
+    big: 0, small: 0, anytriple: 0,
+    total: { 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0 },
+    single: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+    double: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+    triple: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+  };
+  document.getElementById('sicBoBetError').textContent = '';
+  sicBoRenderBetSpots();
+  const railEl = document.getElementById('sicBoTableRail');
+  if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); }
+});
+document.getElementById('sicBoBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('sicBoChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+document.getElementById('sicBoChipDisplay').addEventListener('click', () => {
+  const input = document.getElementById('sicBoBetInput');
+  const entry = prompt('Bet amount (XP):', input.value || '50');
+  if(entry === null) return;
+  const amount = Math.floor(Number(entry));
+  if(!(amount > 0)) return;
+  input.value = amount;
+  input.dispatchEvent(new Event('input'));
+});
+
+async function sicBoAnimateRoll(a, b, c){
+  const cubes = ['sicDie1', 'sicDie2', 'sicDie3'].map(id => document.querySelector(`#${id} .craps-die-cube`));
+  cubes.forEach(cube => { if(cube){ cube.classList.remove('tumbling'); void cube.offsetWidth; cube.classList.add('tumbling'); } });
+  const stepMs = 70, totalFlickerMs = 1680;
+  const steps = Math.floor(totalFlickerMs / stepMs);
+  for(let i = 0; i < steps; i++){
+    crapsSetFrontFace('sicDie1', 1 + Math.floor(Math.random() * 6));
+    crapsSetFrontFace('sicDie2', 1 + Math.floor(Math.random() * 6));
+    crapsSetFrontFace('sicDie3', 1 + Math.floor(Math.random() * 6));
+    await bjWait(stepMs);
+  }
+  crapsSetFrontFace('sicDie1', a); crapsSetFrontFace('sicDie2', b); crapsSetFrontFace('sicDie3', c);
+  await bjWait(420);
+  cubes.forEach(cube => { if(cube) cube.classList.remove('tumbling'); });
+}
+const SICBO_CROUPIER_LINES = {
+  roll: ['No more bets — rolling.', 'Dice are live.', 'Here we go.'],
+  triple: ['Triple! Big number for the house to pay.', "That's a triple — nice catch if you had it."],
+  bigWin: ['Big payout on that one!', 'Well played.'],
+  loss: ['House wins this roll.', 'Not this time.']
+};
+let sicBoRolling2 = false; // named distinctly from sicBoRolling (the outer guard) — this one just tracks whether the button should stay disabled
+async function sicBoRoll(){
+  if(sicBoRolling) return;
+  sicBoRolling = true;
+  const rollBtn = document.getElementById('sicBoRollBtn');
+  const clearBtn = document.getElementById('sicBoClearBtn');
+  rollBtn.disabled = true; clearBtn.disabled = true;
+  try{
+    await sicBoRollInner();
+  } finally {
+    rollBtn.disabled = false; clearBtn.disabled = false;
+    sicBoRolling = false;
+  }
+}
+async function sicBoRollInner(){
+  const errEl = document.getElementById('sicBoBetError');
+  errEl.textContent = '';
+  const totalStaked = sicBoSumStaged();
+  if(totalStaked === 0){ errEl.textContent = 'Place at least one bet first.'; return; }
+  const balance = await getXPBalance();
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(totalStaked > balance){ errEl.textContent = `You only have ${balance} XP (staked: ${totalStaked}).`; return; }
+
+  scrollIntoViewSmooth('sicBoTableRail');
+  bjPlayChipSound();
+  croupierSay('sicBoCroupierMsg', SICBO_CROUPIER_LINES.roll);
+
+  const a = 1 + Math.floor(Math.random() * 6);
+  const b = 1 + Math.floor(Math.random() * 6);
+  const c = 1 + Math.floor(Math.random() * 6);
+  bjPlaySpinSound();
+  await sicBoAnimateRoll(a, b, c);
+
+  const total = a + b + c;
+  const isTriple = a === b && b === c;
+  const counts = {}; [a, b, c].forEach(d => { counts[d] = (counts[d] || 0) + 1; });
+
+  let delta = 0;
+  const wonSpots = [], lostSpots = [];
+
+  if(sicStaged.big > 0){
+    if(!isTriple && total >= 11 && total <= 17){ delta += sicStaged.big; wonSpots.push('Big'); }
+    else { delta -= sicStaged.big; lostSpots.push('Big'); }
+  }
+  if(sicStaged.small > 0){
+    if(!isTriple && total >= 4 && total <= 10){ delta += sicStaged.small; wonSpots.push('Small'); }
+    else { delta -= sicStaged.small; lostSpots.push('Small'); }
+  }
+  if(sicStaged.anytriple > 0){
+    if(isTriple){ delta += sicStaged.anytriple * 30; wonSpots.push('Any Triple'); }
+    else { delta -= sicStaged.anytriple; lostSpots.push('Any Triple'); }
+  }
+  Object.keys(SICBO_TOTAL_PAYOUT).forEach(n => {
+    const amt = sicStaged.total[n]; if(!(amt > 0)) return;
+    if(Number(n) === total){ delta += amt * SICBO_TOTAL_PAYOUT[n]; wonSpots.push(`Total ${n}`); }
+    else { delta -= amt; lostSpots.push(`Total ${n}`); }
+  });
+  [1,2,3,4,5,6].forEach(n => {
+    const singleAmt = sicStaged.single[n];
+    if(singleAmt > 0){
+      const matches = counts[n] || 0;
+      if(matches > 0){ delta += singleAmt * matches; wonSpots.push(`Number ${n} (x${matches})`); }
+      else { delta -= singleAmt; lostSpots.push(`Number ${n}`); }
+    }
+    const doubleAmt = sicStaged.double[n];
+    if(doubleAmt > 0){
+      if((counts[n] || 0) >= 2){ delta += doubleAmt * 10; wonSpots.push(`Double ${n}`); }
+      else { delta -= doubleAmt; lostSpots.push(`Double ${n}`); }
+    }
+    const tripleAmt = sicStaged.triple[n];
+    if(tripleAmt > 0){
+      if(isTriple && a === n){ delta += tripleAmt * 180; wonSpots.push(`Triple ${n}`); }
+      else { delta -= tripleAmt; lostSpots.push(`Triple ${n}`); }
+    }
+  });
+
+  sicStaged = {
+    big: 0, small: 0, anytriple: 0,
+    total: { 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0 },
+    single: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+    double: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
+    triple: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
+  };
+  sicBoRenderBetSpots();
+
+  const resultEl = document.getElementById('sicBoTotalMsg');
+  let msg = `${a} + ${b} + ${c} = ${total}${isTriple ? ' — TRIPLE!' : ''}`;
+  if(wonSpots.length || lostSpots.length){
+    msg += `  |  ${[...wonSpots.map(s => `${s} won`), ...lostSpots.map(s => `${s} lost`)].join(', ')}`;
+  }
+  resultEl.textContent = `${msg}  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
+  resultEl.style.color = delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)');
+  resultEl.classList.remove('bj-outcome-pop'); void resultEl.offsetWidth; resultEl.classList.add('bj-outcome-pop');
+
+  if(isTriple) croupierSay('sicBoCroupierMsg', SICBO_CROUPIER_LINES.triple);
+  else if(delta >= 500) croupierSay('sicBoCroupierMsg', SICBO_CROUPIER_LINES.bigWin);
+  else if(delta < 0) croupierSay('sicBoCroupierMsg', SICBO_CROUPIER_LINES.loss);
+
+  sicBoHistory.push({ total, isTriple });
+  const histEl = document.getElementById('sicBoHistory');
+  if(histEl){
+    histEl.innerHTML = sicBoHistory.slice(-10).reverse().map(h => {
+      const bg = h.isTriple ? '#8c2a22' : (h.total >= 11 ? '#1f7a4a' : '#3a3a3a');
+      return `<div class="craps-history-chip" style="background:${bg};">${h.total}</div>`;
+    }).join('');
+  }
+
+  const railEl = document.getElementById('sicBoTableRail');
+  if(delta > 0){
+    bjPlayChime(true);
+    bjLaunchConfetti(resultEl, 22);
+    if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); setTimeout(() => railEl.classList.remove('pc-flash-gold'), 700); }
+  } else if(delta < 0){
+    bjPlayChime(false);
+    if(railEl){ railEl.classList.add('pc-shake'); setTimeout(() => railEl.classList.remove('pc-shake'), 700); }
+  }
+
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Sic Bo win' : 'Sic Bo loss', { silent: true, detail: { type: 'dice', a, b, c } });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+document.getElementById('sicBoRollBtn').addEventListener('click', sicBoRoll);
+// ================= /Sic Bo =================
+
+// ================= Big Wheel =================
+// A real Big Six money wheel — 54 segments at true casino odds (24x "1",
+// 15x "2", 8x "5", 4x "10", 2x "20", 1x Joker), not the free daily-prize
+// wheel Daily Spin already has. Reuses that exact wheel/spin mechanism
+// (conic-gradient segments, a counter-rotating label layer, peg-tick
+// audio) since it's already a solid, tested build — this is the same
+// spinning-wheel physics wearing a betting-game ruleset instead of a
+// once-every-2-days free spin.
+const BIG_WHEEL_PAYOUT = { '1': 1, '2': 2, '5': 5, '10': 10, '20': 20, joker: 40 };
+function buildBigWheelSegments(){
+  // Round-robin interleave guarantees the exact real-world segment counts
+  // (54 total) while spreading same-value wedges around the wheel rather
+  // than clumping them — order is purely cosmetic, every wedge is equally
+  // likely regardless of where it sits.
+  const queues = [['1', 24], ['2', 15], ['5', 8], ['10', 4], ['20', 2], ['joker', 1]].map(([val, count]) => ({ val, remaining: count }));
+  const result = [];
+  while(result.length < 54){
+    for(const q of queues){
+      if(q.remaining > 0 && result.length < 54){ result.push(q.val); q.remaining--; }
+    }
+  }
+  return result;
+}
+const BIG_WHEEL_SEGMENTS = buildBigWheelSegments();
+const BIG_WHEEL_COLORS = { '1': '#123626', '2': '#5a1a1f', '5': '#1c3a5e', '10': '#4a2a6b', '20': '#8a6620', joker: '#e0b23e' };
+let bigWheelBuilt = false;
+let bigWheelRotation = 0;
+let bigWheelSpinning = false;
+let bigWheelHistory = [];
+let bigWheelStaged = { '1': 0, '2': 0, '5': 0, '10': 0, '20': 0, joker: 0 };
+
+function bigWheelBuildWheel(){
+  bigWheelBuilt = true;
+  const wheel = document.getElementById('bigWheelWheel');
+  const labelsLayer = document.getElementById('bigWheelLabelsLayer');
+  const n = BIG_WHEEL_SEGMENTS.length;
+  const anglePer = 360 / n;
+  const stops = BIG_WHEEL_SEGMENTS.map((val, i) => `${BIG_WHEEL_COLORS[val]} ${(i * anglePer).toFixed(3)}deg ${((i + 1) * anglePer).toFixed(3)}deg`);
+  wheel.style.background = `conic-gradient(${stops.join(',')})`;
+  // At 54 narrow wedges (~6.7° each) there's no room for real text on
+  // every single one without it overlapping its neighbours — same
+  // legibility wall Daily Spin hit with "JACKPOT" on its 24 wider
+  // segments, just worse here. A small dot per wedge, colour-matched,
+  // reads clearly at this density; the actual numbers live on the bet
+  // spots below where there's real room, same as a physical wheel's
+  // numbers are on the rim, not filling every wedge.
+  let piecesHtml = '';
+  BIG_WHEEL_SEGMENTS.forEach((val, i) => {
+    const angle = i * anglePer + anglePer / 2;
+    const isJoker = val === 'joker';
+    piecesHtml += `<div class="bigwheel-segment-dot${isJoker ? ' joker-dot' : ''}" data-base-angle="${angle}" data-radius="98" style="transform: rotate(${angle}deg) translateY(-98px) rotate(${-angle}deg);">${isJoker ? '🃏' : ''}</div>`;
+  });
+  labelsLayer.innerHTML = piecesHtml;
+}
+function bigWheelSetSpotAmt(val, staged){
+  const el = document.querySelector(`[data-wheel-amt="${val}"]`);
+  const spot = document.querySelector(`[data-wheel-bet="${val}"]`);
+  if(!el || !spot) return;
+  el.innerHTML = staged > 0 ? `<span class="craps-chip-pill craps-chip-new" data-clear-key="${val}" title="Remove this bet">${sicBoFmtChip(staged)} ✕</span>` : '';
+  spot.classList.toggle('has-live', staged > 0);
+}
+function bigWheelRenderBetSpots(){
+  Object.keys(bigWheelStaged).forEach(val => bigWheelSetSpotAmt(val, bigWheelStaged[val]));
+}
+document.querySelectorAll('#bigWheelBetGrid .sicbo-spot').forEach(spot => {
+  spot.addEventListener('click', (e) => {
+    const val = spot.dataset.wheelBet;
+    const ghostPill = e.target.closest('.craps-chip-new');
+    if(ghostPill){
+      bigWheelStaged[val] = 0;
+      bigWheelRenderBetSpots();
+      bjPlayChipSound();
+      return;
+    }
+    const chip = parseInt(document.getElementById('bigWheelBetInput').value, 10) || 0;
+    if(chip <= 0) return;
+    bigWheelStaged[val] += chip;
+    bigWheelRenderBetSpots();
+    bjPlayChipSound();
+    spot.classList.remove('pc-chip-tap'); void spot.offsetWidth; spot.classList.add('pc-chip-tap');
+  });
+});
+document.getElementById('bigWheelClearBtn').addEventListener('click', () => {
+  bigWheelStaged = { '1': 0, '2': 0, '5': 0, '10': 0, '20': 0, joker: 0 };
+  document.getElementById('bigWheelBetError').textContent = '';
+  bigWheelRenderBetSpots();
+  const railEl = document.getElementById('bigWheelTableRail');
+  if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); }
+});
+document.getElementById('bigWheelBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('bigWheelChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+document.getElementById('bigWheelChipDisplay').addEventListener('click', () => {
+  const input = document.getElementById('bigWheelBetInput');
+  const entry = prompt('Bet amount (XP):', input.value || '50');
+  if(entry === null) return;
+  const amount = Math.floor(Number(entry));
+  if(!(amount > 0)) return;
+  input.value = amount;
+  input.dispatchEvent(new Event('input'));
+});
+
+const BIGWHEEL_CROUPIER_LINES = {
+  spin: ['No more bets — spinning.', 'Wheel is live.', 'Here we go.'],
+  joker: ["It's the Joker! Big payout for the house to make.", "Joker! That's the rarest spot on the wheel."],
+  loss: ['House wins this spin.', 'Not this time.']
+};
+async function bigWheelSpin(){
+  if(bigWheelSpinning) return;
+  bigWheelSpinning = true;
+  const spinBtn = document.getElementById('bigWheelSpinBtn');
+  const clearBtn = document.getElementById('bigWheelClearBtn');
+  spinBtn.disabled = true; clearBtn.disabled = true;
+  try{
+    await bigWheelSpinInner();
+  } finally {
+    spinBtn.disabled = false; clearBtn.disabled = false;
+    bigWheelSpinning = false;
+  }
+}
+async function bigWheelSpinInner(){
+  const errEl = document.getElementById('bigWheelBetError');
+  errEl.textContent = '';
+  const totalStaked = Object.values(bigWheelStaged).reduce((a, b) => a + b, 0);
+  if(totalStaked === 0){ errEl.textContent = 'Place at least one bet first.'; return; }
+  const balance = await getXPBalance();
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(totalStaked > balance){ errEl.textContent = `You only have ${balance} XP (staked: ${totalStaked}).`; return; }
+
+  scrollIntoViewSmooth('bigWheelTableRail');
+  bjPlayChipSound();
+  croupierSay('bigWheelCroupierMsg', BIGWHEEL_CROUPIER_LINES.spin);
+
+  const winIndex = Math.floor(Math.random() * BIG_WHEEL_SEGMENTS.length);
+  const winVal = BIG_WHEEL_SEGMENTS[winIndex];
+  const anglePer = 360 / BIG_WHEEL_SEGMENTS.length;
+  const targetAngle = winIndex * anglePer + anglePer / 2;
+  const spins = 5 + Math.floor(Math.random() * 2);
+  bigWheelRotation = bigWheelRotation - (bigWheelRotation % 360) + spins * 360 + (360 - targetAngle);
+  const wheel = document.getElementById('bigWheelWheel');
+  wheel.style.transform = `rotate(${bigWheelRotation}deg)`;
+  document.querySelectorAll('#bigWheelLabelsLayer .bigwheel-segment-dot').forEach(label => {
+    const baseAngle = parseFloat(label.dataset.baseAngle);
+    const radius = parseFloat(label.dataset.radius);
+    const liveAngle = baseAngle + bigWheelRotation;
+    label.style.transform = `rotate(${liveAngle}deg) translateY(-${radius}px) rotate(${-liveAngle}deg)`;
+  });
+  dailySpinSchedulePegTicks(4000, 55);
+  bjPlaySpinSound();
+  await bjWait(4200);
+  wheel.classList.remove('pc-winner-flash'); void wheel.offsetWidth; wheel.classList.add('pc-winner-flash');
+
+  let delta = 0;
+  const wonSpots = [], lostSpots = [];
+  Object.keys(bigWheelStaged).forEach(val => {
+    const amt = bigWheelStaged[val]; if(!(amt > 0)) return;
+    const label = val === 'joker' ? 'Joker' : val;
+    if(val === winVal){ delta += amt * BIG_WHEEL_PAYOUT[val]; wonSpots.push(label); }
+    else { delta -= amt; lostSpots.push(label); }
+  });
+  bigWheelStaged = { '1': 0, '2': 0, '5': 0, '10': 0, '20': 0, joker: 0 };
+  bigWheelRenderBetSpots();
+
+  const resultEl = document.getElementById('bigWheelResultMsg');
+  const winLabel = winVal === 'joker' ? 'Joker 🃏' : winVal;
+  let msg = `Landed on ${winLabel}`;
+  if(wonSpots.length || lostSpots.length){
+    msg += `  |  ${[...wonSpots.map(s => `${s} won`), ...lostSpots.map(s => `${s} lost`)].join(', ')}`;
+  }
+  resultEl.textContent = `${msg}  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
+  resultEl.style.color = delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)');
+  resultEl.classList.remove('bj-outcome-pop'); void resultEl.offsetWidth; resultEl.classList.add('bj-outcome-pop');
+
+  if(winVal === 'joker') croupierSay('bigWheelCroupierMsg', BIGWHEEL_CROUPIER_LINES.joker);
+  else if(delta < 0) croupierSay('bigWheelCroupierMsg', BIGWHEEL_CROUPIER_LINES.loss);
+
+  bigWheelHistory.push(winVal);
+  const histEl = document.getElementById('bigWheelHistory');
+  if(histEl){
+    histEl.innerHTML = bigWheelHistory.slice(-10).reverse().map(v => {
+      return `<div class="craps-history-chip" style="background:${BIG_WHEEL_COLORS[v]};">${v === 'joker' ? '🃏' : v}</div>`;
+    }).join('');
+  }
+
+  const railEl = document.getElementById('bigWheelTableRail');
+  if(delta > 0){
+    bjPlayChime(true);
+    bjLaunchConfetti(resultEl, winVal === 'joker' ? 50 : 22);
+    if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); setTimeout(() => railEl.classList.remove('pc-flash-gold'), 900); }
+  } else if(delta < 0){
+    bjPlayChime(false);
+    if(railEl){ railEl.classList.add('pc-shake'); setTimeout(() => railEl.classList.remove('pc-shake'), 700); }
+  }
+
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Big Wheel win' : 'Big Wheel loss', { silent: true });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+document.getElementById('bigWheelSpinBtn').addEventListener('click', bigWheelSpin);
+// ================= /Big Wheel =================
 
 // ---- Slots (5 reels, single payline) ----
 // Restored original polished implementation (recovered from an earlier
@@ -11272,6 +11992,72 @@ function computeHighlights(history){
   return { bestGroupWin, worstGroupLoss, bestIndWin };
 }
 
+// ---- Home tab's Form Guide — one line each for Tipping, a hot Casino
+// streak, the standout betting result, and Casino Pot activity. Not a
+// scheduled/cached weekly digest (that would need a server-side cron this
+// app doesn't have) — it's computed fresh every time Home loads instead,
+// off data that's already being tracked elsewhere (tippingStats cache,
+// currentStreak, the same computeHighlights() the Highlights panel above
+// it already uses, and this month's Casino Pot activity). Runs once per
+// Home tab visit, not on a poll — this is "form" that's slow to shift day
+// to day, not something that needs to be live-ticking. ----
+let formGuideRenderedThisSession = false;
+async function renderFormGuide(){
+  const area = document.getElementById('formGuideArea');
+  if(!area) return;
+  if(!currentState || !currentState.members){ area.innerHTML = '<div class="empty">No roster loaded yet.</div>'; return; }
+  const linked = currentState.members.filter(m => m.linkedUid);
+  if(linked.length === 0){ area.innerHTML = '<div class="empty">Nobody\'s linked an account yet.</div>'; return; }
+  try{
+    const rows = await Promise.all(linked.map(async m => {
+      try{
+        const [tipRes, streakRes] = await Promise.all([
+          authedFetch(`/tippingStats/${m.linkedUid}/seasonPoints.json`),
+          authedFetch(`/xp/${m.linkedUid}/currentStreak.json`)
+        ]);
+        const tippingPoints = tipRes.ok ? ((await tipRes.json()) || 0) : 0;
+        const streak = streakRes.ok ? ((await streakRes.json()) || 0) : 0;
+        return { name: m.name, uid: m.linkedUid, tippingPoints, streak };
+      }catch(e){ return { name: m.name, uid: m.linkedUid, tippingPoints: 0, streak: 0 }; }
+    }));
+
+    const tippingLeader = rows.reduce((best, r) => (r.tippingPoints > (best ? best.tippingPoints : 0)) ? r : best, null);
+    const streakLeader = rows.reduce((best, r) => (r.streak > (best ? best.streak : 0)) ? r : best, null);
+
+    const hl = computeHighlights(currentState.history || []);
+
+    let casinoLeaderName = null, casinoLeaderCount = 0;
+    try{
+      const monthKey = casinoPotMonthKey(new Date());
+      const potData = await fetchCasinoPotMonth(monthKey);
+      Object.entries(potData.playCounts || {}).forEach(([uid, count]) => {
+        if(count > casinoLeaderCount){
+          casinoLeaderCount = count;
+          const m = linked.find(mm => mm.linkedUid === uid);
+          casinoLeaderName = m ? m.name : null;
+        }
+      });
+    }catch(e){}
+
+    const lines = [];
+    if(tippingLeader && tippingLeader.tippingPoints > 0){
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎯</span><span class="form-guide-text"><b>${escapeHtml(tippingLeader.name)}</b> leads the Tipping ladder — ${tippingLeader.tippingPoints} pts</span></div>`);
+    }
+    if(streakLeader && streakLeader.streak >= 3){
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🔥</span><span class="form-guide-text"><b>${escapeHtml(streakLeader.name)}</b> is on a ${streakLeader.streak}-win Casino heater</span></div>`);
+    }
+    if(hl.bestIndWin){
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">💰</span><span class="form-guide-text"><b>${escapeHtml(hl.bestIndWin.name)}</b> holds the best individual bet win — ${fmtMoney(hl.bestIndWin.pl)}</span></div>`);
+    }
+    if(casinoLeaderName){
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎰</span><span class="form-guide-text"><b>${escapeHtml(casinoLeaderName)}</b> — most active at the tables this month (${casinoLeaderCount} plays)</span></div>`);
+    }
+    area.innerHTML = lines.length ? lines.join('') : '<div class="empty">Not enough activity yet to build a form guide.</div>';
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load the form guide — try again.</div>';
+  }
+}
+
 function shortWeekLabel(label){
   const m = (label || '').match(/(\d+)/);
   return m ? 'W' + m[1] : (label || '').slice(0, 4);
@@ -11960,6 +12746,14 @@ function render(state){
     hlRow('Worst group leg loss', hl.worstGroupLoss, d => `@ ${d.odds.toFixed(2)}`) +
     hlRow('Best individual bet win', hl.bestIndWin, d => fmtMoney(d.pl));
 
+  // Once per session, not on every render() call (this fires often —
+  // same reasoning as why the tier badges above are fetched after the
+  // fact rather than blocking here).
+  if(!formGuideRenderedThisSession){
+    formGuideRenderedThisSession = true;
+    renderFormGuide();
+  }
+
   const ranked = rankedMembers(state.members);
   let html = '<div class="lb-scroll"><table class="lb-table"><tr><th class="lb-sticky lb-rank-col">#</th><th class="lb-sticky lb-name-col">Name</th><th>P/L</th><th>Win%</th><th>Score</th><th>W-L-V</th><th>Ind W-L</th><th>Avg Leg</th></tr>';
   ranked.forEach((m, i) => {
@@ -11992,6 +12786,10 @@ function render(state){
       if(cell) cell.insertAdjacentHTML('afterbegin', badgeHtml);
     });
   });
+  // Board's own Season Score is one of the three tier inputs — a strong
+  // week here can push the current user over a threshold same as a
+  // casino win or a good tipping round can.
+  if(currentUserUid) checkCasinoTierUpForCurrentUser();
   document.getElementById('leaderboardArea').querySelectorAll('.profile-link').forEach(el => {
     el.addEventListener('click', () => openProfile(el.dataset.profileName));
   });
@@ -14598,7 +15396,7 @@ async function renderTippingLadder(games){
     if(myRow){
       authedFetch(`/tippingStats/${currentUserUid}/seasonPoints.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(myRow.points)
-      }).catch(() => {});
+      }).then(() => checkCasinoTierUpForCurrentUser()).catch(() => {});
     }
   }
 
