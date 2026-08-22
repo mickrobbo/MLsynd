@@ -283,6 +283,20 @@
     background: radial-gradient(circle at 30% 25%, #ffffff, #e2e2e2 45%, #a8a8a8 75%, #757575);
     box-shadow:0 2px 4px rgba(0,0,0,.6), 0 0 4px rgba(255,255,255,.5), 0 1px 1px rgba(255,255,255,.6) inset;
   }
+  /* Hold'em's own icon — a real poker chip (striped edge + a lighter
+     inlay disc), not the dice glyph Craps already legitimately owns.
+     Built the same way the Roulette ball icon is, rather than an emoji,
+     so it renders identically everywhere. */
+  .holdem-chip-icon{
+    display:inline-block; width:26px; height:26px; border-radius:50%; position:relative;
+    background: repeating-conic-gradient(#8c2a22 0deg 30deg, #f0ead8 30deg 60deg);
+    box-shadow:0 3px 6px rgba(0,0,0,.55), inset 0 1px 2px rgba(255,255,255,.35), inset 0 -2px 3px rgba(0,0,0,.35);
+  }
+  .holdem-chip-icon::after{
+    content:''; position:absolute; inset:5px; border-radius:50%;
+    background: radial-gradient(circle at 32% 28%, var(--brass-light), var(--brass) 60%, var(--brass-dim) 100%);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,.5), inset 0 -2px 3px rgba(0,0,0,.35);
+  }
   /* Perfect Pairs / Pairs toggle icon — a tiny CSS-built card, not an
      emoji. 🎴 and 🂠 were rendering as two different generic fallback
      glyphs (neither an actual card) depending on the game, which is
@@ -2717,8 +2731,8 @@
         <button type="button" class="game-bubble" data-game="slots"><span class="game-bubble-icon">🎰</span><span class="game-bubble-label">Slots</span></button>
         <button type="button" class="game-bubble" data-game="videopoker"><span class="vp-icon-cards"><span class="vp-icon-card vp-icon-card-1"><span class="vp-icon-pip vp-pip-black">A♠</span></span><span class="vp-icon-card vp-icon-card-2"><span class="vp-icon-pip vp-pip-red">A♥</span></span></span><span class="game-bubble-label">Video Poker</span></button>
         <button type="button" class="game-bubble" data-game="craps"><span class="game-bubble-icon">🎲</span><span class="game-bubble-label">Craps</span></button>
-        <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="game-bubble-icon">🎲</span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
-        <button type="button" class="game-bubble" id="hubChallengesBtn" style="position:relative;"><span class="game-bubble-icon">⚔️</span><span class="game-bubble-label">Challenges</span><span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span></button>
+        <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
+        <button type="button" class="game-bubble" id="hubChallengesBtn" style="position:relative;"><span class="game-bubble-icon">🥊</span><span class="game-bubble-label">Challenges</span><span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span></button>
       </div>
       <button type="button" class="game-bubble-wide" data-game="dailyspin">🎁 Spin the Wheel</button>
     </div>
@@ -4276,7 +4290,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.49";
+const APP_VERSION = "2026-08-22.50";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
