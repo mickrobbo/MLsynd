@@ -379,17 +379,26 @@ async function persistEngineHand(tableId, handId, engineHand, accessToken, etag)
       table.currentHandId = null;
       table.status = 'waiting';
 
-      // Lightweight hand history — winners, pot sizes, board, timestamp
-      // only. Deliberately NOT the full action log or any hole cards
-      // beyond what's already public (showdown reveals), so this doesn't
-      // become a second copy of sensitive hand state to keep secure —
-      // it's a scoreboard, not a replay.
+      // Lightweight hand history — winners, pot sizes, board, timestamp,
+      // plus (showdown only) each winner's already-public hole cards and
+      // rank name, so "Recent Hands" can show a mini-card visual of what
+      // won instead of just a name. Still deliberately NOT the full action
+      // log or a fold-winner's cards (those were never revealed/mucked, so
+      // this doesn't become a second copy of sensitive hand state to
+      // keep secure — it's a scoreboard, not a replay).
       const winnersSummary = [];
       engineHand.result.pots.forEach(pot => {
         const share = Math.floor(pot.amount / pot.winners.length);
         pot.winners.forEach(uid => {
           const seatEntry = Object.values(table.seats).find(s => s.uid === uid);
-          winnersSummary.push({ uid, name: seatEntry ? seatEntry.name : 'Player', amount: share });
+          const entry = { uid, name: seatEntry ? seatEntry.name : 'Player', amount: share };
+          if(engineHand.result.reason === 'showdown' && revealed[uid]){
+            entry.holeCards = revealed[uid];
+            if(engineHand.result.evaluated && engineHand.result.evaluated[uid]){
+              entry.rankName = engineHand.result.evaluated[uid].rankName;
+            }
+          }
+          winnersSummary.push(entry);
         });
       });
       await dbSet(`/holdemHistory/${tableId}/${handId}`, {
