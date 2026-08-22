@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-22.48",
+  "version": "2026-08-22.49",
   "date": "2026-08-22",
   "changes": [
+    "Moved: Challenges and Hold'em are no longer their own tiles on the Casino landing hub — they now live inside Games, alongside Blackjack/Roulette/Craps/etc, as regular game bubbles (badges for pending challenges/active hands still show). The landing hub is back down to Games/Rules/Earning XP/Badges.",
     "New: pressing Spin (Roulette) or Roll (Craps) now smoothly scrolls the wheel/dice into view first, so the animation is actually visible even if you tapped the button from further down the page on a small phone screen.",
     "Polish: Craps now sits on a real felt table — a brass rail bezel and velvet felt surface matching Roulette's treatment, with its own embossed MLSYND CASINO watermark. Dice got a full rework: an ivory-bone bevelled body with real carved-in pips (not flat dots), a soft contact shadow pooling under each die, and a genuine tumble-and-settle animation (multi-axis rotation with a bounce arc, pip faces flickering through random values mid-toss) instead of a flat spin.",
     "New: Craps added to the Games list as a full high-roller table, same visual polish level as Roulette — Pass Line, Don't Pass, Come, Don't Come, Field, Odds behind Pass/Don't Pass (true odds, no house edge), Place bets (4/5/6/8/9/10), Hardways (4/6/8/10), and one-roll Props (Any 7, Any Craps, 2, 3, 11, 12), plus a recent-rolls history strip.",

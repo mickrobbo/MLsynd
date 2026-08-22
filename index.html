@@ -2491,18 +2491,6 @@
           <span class="casino-hub-label">Badges</span>
           <span class="casino-hub-sub">Founding Player &amp; XP milestones</span>
         </div>
-        <div class="casino-hub-bubble" id="hubChallengesBtn" style="position:relative;">
-          <span class="casino-hub-icon">⚔️</span>
-          <span class="casino-hub-label">Challenges</span>
-          <span class="casino-hub-sub">Head-to-head, your stake</span>
-          <span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span>
-        </div>
-        <div class="casino-hub-bubble" id="hubHoldemBtn" style="position:relative;">
-          <span class="casino-hub-icon">🎲</span>
-          <span class="casino-hub-label">Hold'em</span>
-          <span class="casino-hub-sub">Up to 9 players, spectators welcome</span>
-          <span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span>
-        </div>
       </div>
     </div>
 
@@ -2729,6 +2717,8 @@
         <button type="button" class="game-bubble" data-game="slots"><span class="game-bubble-icon">🎰</span><span class="game-bubble-label">Slots</span></button>
         <button type="button" class="game-bubble" data-game="videopoker"><span class="vp-icon-cards"><span class="vp-icon-card vp-icon-card-1"><span class="vp-icon-pip vp-pip-black">A♠</span></span><span class="vp-icon-card vp-icon-card-2"><span class="vp-icon-pip vp-pip-red">A♥</span></span></span><span class="game-bubble-label">Video Poker</span></button>
         <button type="button" class="game-bubble" data-game="craps"><span class="game-bubble-icon">🎲</span><span class="game-bubble-label">Craps</span></button>
+        <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="game-bubble-icon">🎲</span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
+        <button type="button" class="game-bubble" id="hubChallengesBtn" style="position:relative;"><span class="game-bubble-icon">⚔️</span><span class="game-bubble-label">Challenges</span><span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span></button>
       </div>
       <button type="button" class="game-bubble-wide" data-game="dailyspin">🎁 Spin the Wheel</button>
     </div>
@@ -4286,7 +4276,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.48";
+const APP_VERSION = "2026-08-22.49";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7944,6 +7934,12 @@ document.getElementById('badgesBackBtn').addEventListener('click', () => showCas
 // ---- Casino game selector ----
 document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
   btn.addEventListener('click', () => {
+    // hubHoldemBtn/hubChallengesBtn live in this same bubble row now (moved
+    // in from the old hub tiles) but navigate to their own full-page views
+    // via their own dedicated listeners below, not a casino-game-panel —
+    // they carry no data-game, so this generic per-game handler no-ops
+    // for them instead of trying to toggle a panel that doesn't exist.
+    if(!btn.dataset.game) return;
     document.querySelectorAll('.game-bubble').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
     document.getElementById('casinoGamesEmptyState').style.display = 'none';
