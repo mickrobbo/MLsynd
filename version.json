@@ -1,8 +1,9 @@
 {
-  "version": "2026-08-22.68",
+  "version": "2026-08-22.69",
   "date": "2026-08-22",
   "changes": [
-    "New: how the Player Tier system works is now a proper Rules entry ('🏅 Player Tiers') instead of permanent on-screen text — accessible via a small 'ⓘ Tier badges' button right on the Casino leaderboard, an 'ⓘ How tiers work' button on the Badges screen, and from the main Rules hub alongside every game's own rules.",
-    "Polish: the Badges screen's tier summary is now a compact one-liner (your score breakdown) instead of a full paragraph explaining the mechanics — the explanation lives behind the new button instead."
+    "Fixed: tier gems had no gap before the name they sit next to (margin was on the wrong side) — now properly spaced everywhere they appear.",
+    "Fixed: the Player Tiers rules entry still described the old medal emoji — now shows the actual gem badges themselves next to each tier's name and threshold.",
+    "New: tier gems now also show on the Footy Tipping ladder and the Board tab's own leaderboard, not just the Casino leaderboard — same badge, same score, everywhere someone's name appears in a ranked list."
   ]
 }

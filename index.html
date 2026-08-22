@@ -1531,7 +1531,7 @@
      changes between tiers; same shape throughout reads as one consistent
      status system rather than five unrelated icons. */
   .tier-badge{
-    display:inline-block; width:10px; height:10px; margin-left:5px; vertical-align:middle;
+    display:inline-block; width:10px; height:10px; margin-right:6px; vertical-align:middle;
     transform:rotate(45deg); border-radius:2px; position:relative; flex-shrink:0;
     box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.55), inset 0 -1px 1px rgba(0,0,0,.35);
   }
@@ -4532,7 +4532,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.68";
+const APP_VERSION = "2026-08-22.69";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8789,11 +8789,17 @@ const CASINO_RULES = {
   `},
   tiers: { title: '🏅 Player Tiers', body: `
     <h3>What the badge means</h3>
-    <p>Your tier gem — Bronze, Silver, Gold, Platinum, or Diamond — is a status badge shown next to your name everywhere it appears: the Casino leaderboard, your profile card, Hold'em seats, and table chat. It's not a Casino-only thing — it's a combined score across the whole dashboard.</p>
+    <p>Your tier gem — Bronze, Silver, Gold, Platinum, or Diamond — is a status badge shown next to your name everywhere it appears: the Casino leaderboard, the Footy Tipping ladder, the Board leaderboard, your profile card, Hold'em seats, and table chat. It's not a Casino-only thing — it's a combined score across the whole dashboard.</p>
     <h3>How it's worked out</h3>
     <p>Your "Prestige Score" adds together three things: your Casino <b>Lifetime XP</b> (never goes down, even after a loss), your betting board <b>Season Score</b> (P/L, multi and individual win rates, and volume — the same score the Board tab itself ranks on), and your cumulative <b>Footy Tipping</b> season points. A bad week at the punt or tipping never subtracts from it — only good results ever add.</p>
     <h3>Thresholds</h3>
-    <p><b>🥉 Bronze</b> at 10,000 &middot; <b>🥈 Silver</b> at 100,000 &middot; <b>🥇 Gold</b> at 250,000 &middot; <b>💠 Platinum</b> at 500,000 &middot; <b>💎 Diamond</b> at 1,000,000 combined points.</p>
+    <div style="display:flex; flex-direction:column; gap:9px; margin:10px 0;">
+      <div style="display:flex; align-items:center; gap:10px;"><span class="tier-badge tier-bronze" style="width:15px; height:15px; margin:0;"></span><span><b>Bronze</b> — 10,000 combined points</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="tier-badge tier-silver" style="width:15px; height:15px; margin:0;"></span><span><b>Silver</b> — 100,000</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="tier-badge tier-gold" style="width:15px; height:15px; margin:0;"></span><span><b>Gold</b> — 250,000</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="tier-badge tier-platinum" style="width:15px; height:15px; margin:0;"></span><span><b>Platinum</b> — 500,000</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="tier-badge tier-diamond" style="width:15px; height:15px; margin:0;"></span><span><b>Diamond</b> — 1,000,000</span></div>
+    </div>
     <p class="hint" style="margin-top:6px;">Your current score and tier are shown at the top of the Badges screen.</p>
   `}
 };
@@ -11952,6 +11958,18 @@ function render(state){
   html += '</table></div>';
   document.getElementById('leaderboardArea').innerHTML = html;
   refreshJokerIconSlots();
+  // Tier gems are fetched/inserted after the fact rather than awaited
+  // above — render() itself isn't async (called from a lot of places that
+  // rely on it finishing synchronously), so this can't block the actual
+  // table paint. Same gem shown on the Casino leaderboard/Tipping ladder/
+  // Hold'em seats/chat, added in place once each lookup resolves.
+  ranked.filter(m => m.linkedUid).forEach(m => {
+    getCasinoTierBadgeHtml(m.linkedUid).then(badgeHtml => {
+      if(!badgeHtml) return;
+      const cell = document.querySelector(`#leaderboardArea .profile-link[data-uid="${CSS.escape(m.linkedUid)}"]`);
+      if(cell) cell.insertAdjacentHTML('afterbegin', badgeHtml);
+    });
+  });
   document.getElementById('leaderboardArea').querySelectorAll('.profile-link').forEach(el => {
     el.addEventListener('click', () => openProfile(el.dataset.profileName));
   });
@@ -14620,6 +14638,11 @@ async function renderTippingLadder(games){
     : '';
 
   let html = warningHtml + liveNoteHtml + '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
+  // Same tier gem shown on the Casino leaderboard/Hold'em seats/chat —
+  // resolved once per unique uid here (cached, so free after the first
+  // time each person's tier is looked up this session).
+  const tierBadgeByUid = {};
+  await Promise.all(rows.map(async r => { tierBadgeByUid[r.uid] = await getCasinoTierBadgeHtml(r.uid); }));
   rows.forEach((r, i) => {
     const isLeader = hasSpread && r.points === topScore;
     const isLoser = hasSpread && rows.length > 1 && r.points === bottomScore;
@@ -14637,7 +14660,7 @@ async function renderTippingLadder(games){
     // only, so if boardJokerActiveByUid hadn't loaded yet when this ran (a real
     // race on first load), or updated later, nothing ever told the ladder to
     // reflect it — it could sit wrong for a full 4-minute poll cycle or more.
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td data-uid="${escapeHtml(r.uid)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td data-uid="${escapeHtml(r.uid)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${tierBadgeByUid[r.uid] || ''}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;
