@@ -1,18 +1,7 @@
 {
-  "version": "2026-08-22.58",
+  "version": "2026-08-22.60",
   "date": "2026-08-22",
   "changes": [
-    "New: Craps added as a full high-roller table — Pass Line, Don't Pass, Come, Don't Come, Field, Odds (true odds, no house edge), Place bets, Hardways, and one-roll Props, on its own felt table with a brass rail bezel and MLSYND CASINO watermark. Dice are a genuine 3D cube with a 2.1s tumble, real chip-token bet display, and a per-spot bet-removal control.",
-    "Polish: Blackjack, Baccarat, Casino War, and Video Poker tables now have the same brass rail bezel as Roulette/Craps/Hold'em, closing the visual gap between the older and newer tables. Spin/Roll now smoothly scroll the wheel/dice into view before the animation starts.",
-    "Fixed: a real double-tap race across most of Casino — a fast double-tap on the main action button could debit a bet or claim a reward twice before the first tap finished processing. Fixed on Blackjack (Deal/Double Down/Split), Casino War, Baccarat, Roulette, Daily Spin, and Challenges (Accept/Send). Also fixed a narrower Blackjack gap where a second tap on Hit during the auto-resolve pause on a made 21 could sneak in an illegal card.",
-    "Fixed: Hold'em's Stand Up and Sit Out buttons could silently fail to respond — a live-update redraw was yanking the button out from under a tap. Fixed at the root so the table only redraws when something's actually changed.",
-    "Fixed: Hold'em's own hand winner could see 'Spectating' in Your Cards at showdown despite everyone else seeing their cards. Showdown now shows a proper result banner with mini cards and a trophy on your own win; Recent Hands shows the same. Table watermark is now the actual MLSYND CASINO wordmark, Big Blind moved to a small bubble, and in-table chat got real message bubbles.",
-    "Fixed: Tipping's background refresh could silently wipe a pick you'd tapped or a margin you'd typed but hadn't saved yet. It now pauses while you're actively typing, and unsaved picks survive the refresh.",
-    "Fixed: Home tab's individual bet amount now colors by actual Win/Loss result rather than the sign of the dollar figure — a $0.00 loss now shows red instead of green.",
-    "New: Lifetime XP now shown on the Casino leaderboard and on member profile cards, alongside current balance. New: a Casino XP teaser on the Home tab with a quick Play button through.",
-    "Moved: Challenges and Hold'em now live inside Games as regular game bubbles instead of separate tiles on the Casino landing hub; each has its own distinct icon (no more sharing dice/swords with Craps and Casino War).",
-    "Casino: live-win flash ticker threshold raised 300→500 XP. Baccarat's Banker bet no longer takes a commission — pays 1:1, same as Player. Big Win popups show a visual of the actual hand or winning number when available.",
-    "Tipping: Rounds 0, 5, and 25-29 now show their real names (Opening Round, Gather Round, Wildcard Finals, Qualifying/Elimination Round, Semi Finals, Preliminary Finals, Grand Final) everywhere a round appears.",
-    "Polish: the Sport dropdown, News dropdown, and Tipping's round selector now match the app's real dark/brass input styling instead of plain browser defaults."
+    "Reverted: the 250 XP cap on Roulette and Craps has been removed — both are no-limit again, same as every other Casino game. The live staked/at-risk readouts are back to plain totals with no cap shown."
   ]
 }

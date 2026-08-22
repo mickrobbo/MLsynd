@@ -1227,6 +1227,22 @@
     text-transform:uppercase; color:var(--brass); margin:14px 0 6px; text-align:center;
   }
   .craps-section-label small{ text-transform:none; letter-spacing:0; font-weight:500; color:var(--muted); font-size:10px; }
+  /* Take Down / Let It Ride / Press — a real table lets you leave a
+     winning Place/Hardway bet working instead of it auto-clearing, or
+     "press" (add the win straight onto the bet, growing it) instead of
+     collecting. One shared mode applies to every Place/Hardway spot —
+     switch it anytime, it only affects wins from here on. */
+  .craps-winmode-row{ display:flex; gap:6px; justify-content:center; margin-bottom:4px; }
+  .craps-winmode-btn{
+    flex:1; max-width:120px; padding:7px 4px; border-radius:999px; cursor:pointer;
+    background:rgba(0,0,0,.22); border:1px solid var(--brass-dim); color:var(--muted);
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:11px; letter-spacing:.3px;
+    transition: all .15s ease;
+  }
+  .craps-winmode-btn.active{
+    background: linear-gradient(165deg, var(--brass-light), var(--brass)); color:#2a2005; border-color:var(--brass-light);
+    box-shadow:0 0 10px rgba(255,214,120,.4);
+  }
   /* Place bets — classic rounded number pucks laid out like a real table's
      place-bet boxes, gold-embossed when live so a working bet reads at a
      glance without needing to check the amount text. */
@@ -1272,6 +1288,20 @@
   .craps-prop-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 12px rgba(255,214,120,.35); background:var(--brass-dim); }
   .craps-prop-spot.has-live .craps-prop-label, .craps-prop-spot.has-live .craps-prop-odds{ color:#2a2005; }
   .craps-prop-spot .craps-bet-spot-amt{ font-size:8.5px; margin-top:1px; }
+  /* Boxed like the reference table's side propositions panel — its own
+     border and a distinct red "Any 7" banner across the top, the one bet
+     every real table always calls out on its own. */
+  .craps-props-box{
+    border:1px solid var(--brass-dim); border-radius:12px; padding:8px; background:rgba(0,0,0,.15);
+  }
+  .craps-prop-any7{
+    width:100%; margin-bottom:8px; background:linear-gradient(165deg, #7a2a20, #4a150f) !important;
+    border-color:#a8402f !important;
+  }
+  .craps-prop-any7 .craps-prop-label{ color:#ffb199; }
+  .craps-prop-any7 .craps-prop-odds{ color:#e8a58f; }
+  .craps-prop-any7.has-live{ background:var(--brass-dim) !important; border-color:var(--brass-light) !important; }
+  .craps-prop-any7.has-live .craps-prop-label, .craps-prop-any7.has-live .craps-prop-odds{ color:#2a2005; }
 
   .hand-total-chip{
     display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 5px;
@@ -3123,6 +3153,12 @@
       </div>
 
       <div class="craps-section-label">Place Bets <small>— stays live until it hits or a 7 shows</small></div>
+      <div class="craps-winmode-row" id="crapsWinModeRow">
+        <button type="button" class="craps-winmode-btn active" data-mode="takedown">Take Down</button>
+        <button type="button" class="craps-winmode-btn" data-mode="ride">Let It Ride</button>
+        <button type="button" class="craps-winmode-btn" data-mode="press">Press</button>
+      </div>
+      <div class="hint" id="crapsWinModeHint" style="text-align:center; margin-top:-4px; margin-bottom:8px;">A Place/Hardway win pays out and clears the spot.</div>
       <div class="craps-place-grid" id="crapsPlaceGrid">
         <div class="craps-place-spot" data-craps-bet="place" data-craps-num="4"><div class="craps-place-num">4</div><div class="craps-place-odds">9:5</div><div class="craps-bet-spot-amt" data-amt="place-4"></div></div>
         <div class="craps-place-spot" data-craps-bet="place" data-craps-num="5"><div class="craps-place-num">5</div><div class="craps-place-odds">7:5</div><div class="craps-bet-spot-amt" data-amt="place-5"></div></div>
@@ -3141,13 +3177,15 @@
       </div>
 
       <div class="craps-section-label">One-Roll Props <small>— resolve this roll only</small></div>
-      <div class="craps-prop-row" id="crapsPropRow">
-        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="any7"><div class="craps-prop-label">Any 7</div><div class="craps-prop-odds">4:1</div><div class="craps-bet-spot-amt" data-amt="prop-any7"></div></div>
-        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="anycraps"><div class="craps-prop-label">Any Craps</div><div class="craps-prop-odds">7:1</div><div class="craps-bet-spot-amt" data-amt="prop-anycraps"></div></div>
-        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="2"><div class="craps-prop-label">2</div><div class="craps-prop-odds">30:1</div><div class="craps-bet-spot-amt" data-amt="prop-2"></div></div>
-        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="3"><div class="craps-prop-label">3</div><div class="craps-prop-odds">15:1</div><div class="craps-bet-spot-amt" data-amt="prop-3"></div></div>
-        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="11"><div class="craps-prop-label">11</div><div class="craps-prop-odds">15:1</div><div class="craps-bet-spot-amt" data-amt="prop-11"></div></div>
-        <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="12"><div class="craps-prop-label">12</div><div class="craps-prop-odds">30:1</div><div class="craps-bet-spot-amt" data-amt="prop-12"></div></div>
+      <div class="craps-props-box">
+        <div class="craps-prop-spot craps-prop-any7" data-craps-bet="prop" data-craps-num="any7"><div class="craps-prop-label">Any 7</div><div class="craps-prop-odds">4:1</div><div class="craps-bet-spot-amt" data-amt="prop-any7"></div></div>
+        <div class="craps-prop-row" id="crapsPropRow">
+          <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="anycraps"><div class="craps-prop-label">Any Craps</div><div class="craps-prop-odds">7:1</div><div class="craps-bet-spot-amt" data-amt="prop-anycraps"></div></div>
+          <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="2"><div class="craps-prop-label">2</div><div class="craps-prop-odds">30:1</div><div class="craps-bet-spot-amt" data-amt="prop-2"></div></div>
+          <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="3"><div class="craps-prop-label">3</div><div class="craps-prop-odds">15:1</div><div class="craps-bet-spot-amt" data-amt="prop-3"></div></div>
+          <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="11"><div class="craps-prop-label">11</div><div class="craps-prop-odds">15:1</div><div class="craps-bet-spot-amt" data-amt="prop-11"></div></div>
+          <div class="craps-prop-spot" data-craps-bet="prop" data-craps-num="12"><div class="craps-prop-label">12</div><div class="craps-prop-odds">30:1</div><div class="craps-bet-spot-amt" data-amt="prop-12"></div></div>
+        </div>
       </div>
 
       <div style="display:flex; justify-content:center; margin-top:6px;">
@@ -4413,7 +4451,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.58";
+const APP_VERSION = "2026-08-22.60";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8412,7 +8450,9 @@ const CASINO_RULES = {
     <h3>Come / Don't Come</h3>
     <p>Only available once the point is already on. Works exactly like a fresh Pass Line/Don't Pass bet, just decided by the very next roll instead of the come-out: 7/11 wins Come (loses Don't Come), 2/3 loses Come (wins Don't Come, 12 pushes), anything else becomes that bet's own personal "point" — win if it repeats before a 7, lose if a 7 shows first. You can have Come and Don't Come bets riding on more than one number at once. Pays 1:1.</p>
     <h3>Place Bets</h3>
-    <p>Bet that a specific number (4, 5, 6, 8, 9, or 10) rolls before a 7 — works anytime, come-out or point phase, no need to wait for the point. Stays live roll after roll until it hits (pays out and clears) or a 7 wipes every Place bet at once. Payouts: 9:5 on 4/10, 7:5 on 5/9, 7:6 on 6/8.</p>
+    <p>Bet that a specific number (4, 5, 6, 8, 9, or 10) rolls before a 7 — works anytime, come-out or point phase, no need to wait for the point. Stays live roll after roll until it hits or a 7 wipes every Place bet at once. Payouts: 9:5 on 4/10, 7:5 on 5/9, 7:6 on 6/8.</p>
+    <h3>Take Down / Let It Ride / Press</h3>
+    <p>Choose how a Place or Hardway win gets handled — <b>Take Down</b> pays out and clears the spot (default), <b>Let It Ride</b> pays out but leaves the same bet working for the next roll, and <b>Press</b> skips the payout and adds the win straight onto the bet instead, growing it. Switch anytime — it only changes what happens to wins from that point on.</p>
     <h3>Field</h3>
     <p>A one-roll bet on the very next roll only — win if it lands 2, 3, 4, 9, 10, 11, or 12; lose on 5, 6, 7, or 8. Most winning numbers pay 1:1; 2 pays double (2:1) and 12 pays triple (3:1). Doesn't carry over — place it again each roll you want it working.</p>
     <h3>Hardways</h3>
@@ -9499,6 +9539,7 @@ document.getElementById('warBetInput').addEventListener('input', (e) => {
 // awardXP call for the whole roll — mirrors Roulette's "stake several
 // spots, one net settle" pattern rather than a payout call per bet type.
 let crapsBuilt = false;
+let crapsWinMode = 'takedown'; // 'takedown' | 'ride' | 'press' — applies to Place & Hardway wins from here on
 let crapsPoint = null; // null (come-out) or 4/5/6/8/9/10
 let crapsLive = { pass: 0, dontpass: 0 };
 let crapsPassOdds = 0, crapsDontPassOdds = 0; // odds riding behind the Pass/Don't Pass line — only ever live while a point's on
@@ -9661,7 +9702,7 @@ function crapsRenderBetSpots(){
 // type from data-craps-bet and (for Place/Hardway/Prop) the specific
 // number from data-craps-num, so one listener covers every spot on the
 // table instead of one per bet type.
-document.querySelectorAll('#crapsBetGrid .craps-bet-spot, #crapsPlaceGrid .craps-place-spot, #crapsHardwayGrid .craps-hardway-spot, #crapsPropRow .craps-prop-spot').forEach(spot => {
+document.querySelectorAll('#crapsBetGrid .craps-bet-spot, #crapsPlaceGrid .craps-place-spot, #crapsHardwayGrid .craps-hardway-spot, .craps-props-box .craps-prop-spot').forEach(spot => {
   spot.addEventListener('click', (e) => {
     if(spot.classList.contains('disabled')) return;
     // Tapping a "ghost" (staged-but-not-yet-rolled) chip pill removes just
@@ -9692,6 +9733,18 @@ document.querySelectorAll('#crapsBetGrid .craps-bet-spot, #crapsPlaceGrid .craps
     crapsRenderBetSpots();
     bjPlayChipSound();
     spot.classList.remove('pc-chip-tap'); void spot.offsetWidth; spot.classList.add('pc-chip-tap');
+  });
+});
+const CRAPS_WINMODE_HINTS = {
+  takedown: 'A Place/Hardway win pays out and clears the spot.',
+  ride: 'A Place/Hardway win pays out — the bet itself stays working at the same amount.',
+  press: "A Place/Hardway win adds straight onto the bet instead of paying out — it grows, still working."
+};
+document.querySelectorAll('#crapsWinModeRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    crapsWinMode = btn.dataset.mode;
+    document.querySelectorAll('#crapsWinModeRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('crapsWinModeHint').textContent = CRAPS_WINMODE_HINTS[crapsWinMode];
   });
 });
 document.getElementById('crapsClearStagedBtn').addEventListener('click', () => {
@@ -9834,25 +9887,38 @@ async function crapsRollInner(){
   }
 
   // ---- Place bets — work every roll regardless of come-out/point phase.
-  // A 7 wipes every live Place bet; hitting a placed number pays out and
-  // clears that one spot (re-place it to keep it working next time).
+  // A 7 wipes every live Place bet. Hitting a placed number's payout
+  // depends on crapsWinMode: Take Down pays out and clears the spot
+  // (default, re-place it to keep it working); Let It Ride pays out but
+  // leaves the same amount riding; Press skips the payout and adds the
+  // win straight onto the bet instead, growing it — same real-table
+  // options as backing a Place bet down or building it up.
+  const winModeTag = crapsWinMode === 'ride' ? ' (riding)' : (crapsWinMode === 'press' ? ' (pressed)' : '');
   if(total === 7){
     [4, 5, 6, 8, 9, 10].forEach(n => { if(crapsPlace[n] > 0){ delta -= crapsPlace[n]; lostSpots.push(`Place ${n}`); crapsPlace[n] = 0; } });
   } else if(crapsPlace[total]){
-    delta += Math.round(crapsPlace[total] * CRAPS_PLACE_MULT[total]); wonSpots.push(`Place ${total}`); crapsPlace[total] = 0;
+    const winAmt = Math.round(crapsPlace[total] * CRAPS_PLACE_MULT[total]);
+    wonSpots.push(`Place ${total}${winModeTag}`);
+    if(crapsWinMode === 'press'){ crapsPlace[total] += winAmt; }
+    else { delta += winAmt; if(crapsWinMode === 'takedown') crapsPlace[total] = 0; }
   }
 
   // ---- Hardways — also work every roll. A 7 wipes them all; the SAME
   // number rolled the easy (non-double) way loses just that one; rolled
-  // as a double pays out; anything else leaves it riding.
+  // as a double pays out (subject to crapsWinMode, same as Place above);
+  // anything else leaves it riding.
   if(total === 7){
     [4, 6, 8, 10].forEach(n => { if(crapsHardway[n] > 0){ delta -= crapsHardway[n]; lostSpots.push(`Hard ${n}`); crapsHardway[n] = 0; } });
   } else {
     [4, 6, 8, 10].forEach(n => {
       if(crapsHardway[n] > 0 && total === n){
-        if(isHardRoll){ delta += crapsHardway[n] * CRAPS_HARDWAY_MULT[n]; wonSpots.push(`Hard ${n}`); }
-        else { delta -= crapsHardway[n]; lostSpots.push(`Hard ${n} (easy way)`); }
-        crapsHardway[n] = 0;
+        if(isHardRoll){
+          const winAmt = crapsHardway[n] * CRAPS_HARDWAY_MULT[n];
+          wonSpots.push(`Hard ${n}${winModeTag}`);
+          if(crapsWinMode === 'press'){ crapsHardway[n] += winAmt; }
+          else { delta += winAmt; if(crapsWinMode === 'takedown') crapsHardway[n] = 0; }
+        }
+        else { delta -= crapsHardway[n]; lostSpots.push(`Hard ${n} (easy way)`); crapsHardway[n] = 0; }
       }
     });
   }
