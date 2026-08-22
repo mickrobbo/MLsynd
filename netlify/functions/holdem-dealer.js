@@ -615,8 +615,14 @@ export default async (req) => {
       if(!table) return json({ ok: true }); // already gone — nothing to do, not an error
       if(table.currentHandId) return json({ error: 'A hand is currently in progress — wait for it to finish first.' }, 400);
       const isCreator = table.createdBy === auth.uid;
-      const isAdmin = auth.email === 'mlsynd00@gmail.com';
-      if(!isCreator && !isAdmin) return json({ error: "Only this table's creator or an admin can delete it." }, 403);
+      const isAdmin = (auth.email || '').trim().toLowerCase() === 'mlsynd00@gmail.com';
+      // Tables from before createdBy was tracked (or created some other
+      // way that skipped it) have no real owner to protect — the strict
+      // creator/admin check would otherwise permanently strand them,
+      // since nobody could ever satisfy isCreator on a table that never
+      // recorded one. Anyone signed in can clean those up.
+      const hasNoRecordedOwner = !table.createdBy;
+      if(!isCreator && !isAdmin && !hasNoRecordedOwner) return json({ error: "Only this table's creator or an admin can delete it." }, 403);
       for(const seat of Object.values(table.seats || {})){
         if(seat.stack > 0) await creditXP(seat.uid, seat.stack, `Table "${table.name}" closed, cashed out`, accessToken);
       }
