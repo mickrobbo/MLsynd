@@ -604,6 +604,12 @@
      entry actually carries that detail (older/other-game entries just
      don't render this row). */
   .big-win-visual{ margin:10px 0; display:flex; align-items:center; justify-content:center; gap:14px; min-height:0; }
+  .session-recap-stats{ display:flex; gap:10px; justify-content:center; margin:14px 0 4px; }
+  .session-recap-stat{
+    background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:10px 16px; min-width:100px;
+  }
+  .session-recap-stat .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+  .session-recap-stat .val{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:700; color:var(--brass-light); }
   .big-win-visual:empty{ display:none; margin:0; }
   .big-win-visual .holdem-result-cards{ gap:6px; }
   .big-win-visual .holdem-result-cards .playing-card{ width:38px !important; height:54px !important; }
@@ -982,6 +988,7 @@
     color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.5);
   }
   .table-chip:active{ transform:scale(.88); }
+  .table-chip.chip-5{ background: radial-gradient(circle at 35% 30%, #f0dfc0, #d9b877 60%, #a5843f); color:#2a2005; text-shadow:none; }
   .table-chip.chip-10{ background: radial-gradient(circle at 35% 30%, #e8e8e8, #b8b8b8 60%, #888); color:#222; text-shadow:none; }
   .table-chip.chip-25{ background: radial-gradient(circle at 35% 30%, #4fae74, #1f7a4a 60%, #145535); }
   .table-chip.chip-50{ background: radial-gradient(circle at 35% 30%, #5b9fd6, #2a6ca8 60%, #1a4a78); }
@@ -1503,6 +1510,25 @@
      even when their spendable balance has dipped from recent losses. */
   .lb-lifetime-telly{
     font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--muted); letter-spacing:.2px;
+  }
+  /* Croupier caption — an italic, dealer-voice line that briefly flashes
+     in and settles, distinct from the bold outcome/result text each game
+     already shows (this is table atmosphere, not the actual result). */
+  .croupier-caption{
+    text-align:center; font-style:italic; font-size:12px; color:var(--muted);
+    min-height:16px; margin-top:2px; letter-spacing:.2px;
+  }
+  @keyframes croupierFlash{ 0%{ opacity:0; transform:translateY(-3px); } 25%{ opacity:1; transform:translateY(0); } 80%{ opacity:1; } 100%{ opacity:.75; } }
+  .croupier-caption.croupier-flash{ animation: croupierFlash .5s ease-out; }
+  .lb-streak-badge{
+    display:inline-flex; align-items:center; margin-left:5px; font-family:'Barlow Condensed', sans-serif;
+    font-size:10.5px; font-weight:700; color:#ffb199; text-shadow:0 0 8px rgba(255,120,80,.6);
+    animation: streakFlicker 1.4s ease-in-out infinite;
+  }
+  @keyframes streakFlicker{ 0%,100%{ opacity:1; } 50%{ opacity:.72; } }
+  .tier-badge{
+    display:inline-block; margin-left:4px; font-size:12px; vertical-align:middle;
+    filter: drop-shadow(0 0 3px rgba(255,214,120,.45));
   }
 
   .lb-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -2849,6 +2875,7 @@
         <button type="button" class="pill-btn" id="challengeHandBackBtn">← Back</button>
       </div>
       <div id="challengeHandStakeInfo" class="hint" style="text-align:center; margin-bottom:10px;"></div>
+      <div class="pc-table-rail">
       <div class="bj-table">
         <div class="table-box" data-label="Dealer">
           <div id="chDealerCards" class="bj-hand-row"></div>
@@ -2858,6 +2885,7 @@
           <div id="chPlayerCards" class="bj-hand-row"></div>
           <div id="chPlayerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
         </div>
+      </div>
       </div>
       <div id="chResultMsg" class="hint" style="text-align:center; margin:10px 0; min-height:16px;"></div>
       <div style="display:flex; gap:8px;" id="chActionRow">
@@ -2900,10 +2928,11 @@
         <div class="bj-chip" id="bjChipDisplay">50</div>
         <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
           <label style="font-size:11px; color:var(--muted);">Bet amount</label>
-          <input type="number" id="bjBetInput" min="10" step="10" value="50" readonly style="width:90px; text-align:center; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:8px; padding:8px; font-size:14px;">
+          <input type="number" id="bjBetInput" min="5" step="10" value="50" readonly style="width:90px; text-align:center; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:8px; padding:8px; font-size:14px;">
         </div>
       </div>
       <div class="chip-rail" data-target="bjBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
@@ -2916,6 +2945,7 @@
         Perfect Pairs bet: <input type="number" id="bjPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;">
       </div>
       <div class="chip-rail chip-rail-small" data-target="bjPerfectPairsAmount" id="bjPPChipRail" style="display:none;">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="chip-clear-btn" data-target="bjPerfectPairsAmount">Clear Chips</button>
@@ -2944,6 +2974,8 @@
       <div id="bjPPOutcomeMsg" style="text-align:center; font-size:12.5px; color:var(--brass-light); margin-top:8px; min-height:16px;"></div>
       <div id="bjInsuranceOutcomeMsg" style="text-align:center; font-size:12.5px; margin-top:4px; min-height:16px;"></div>
       <div id="bjOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
+      <div class="croupier-caption" id="bjCroupierMsg"></div>
+      <div class="roulette-history" id="bjHistory"></div>
       <div id="bjInsurancePanel" style="display:none; text-align:center; margin-top:10px; padding:10px; border:1px solid var(--brass-dim); border-radius:12px; background:rgba(0,0,0,.15);">
         <div style="font-size:13px; color:var(--brass-light); margin-bottom:8px; font-weight:700;">Dealer shows an Ace — Insurance for <span id="bjInsuranceCost"></span> XP?</div>
         <div style="display:flex; gap:8px; justify-content:center;">
@@ -2974,9 +3006,10 @@
       </div>
       <div style="display:flex; justify-content:center; margin-top:10px;">
         <div class="bj-chip" id="bacChipDisplay">50</div>
-        <input type="number" id="bacBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+        <input type="number" id="bacBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
       <div class="chip-rail" data-target="bacBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
@@ -3001,6 +3034,7 @@
         <div id="bacPlayerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
       </div>
       <div id="bacOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:14px; min-height:24px;"></div>
+      <div class="roulette-history" id="bacHistory"></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
         <button type="button" id="bacHitBtn" class="pill-btn" style="padding:8px 18px; display:none;">Hit</button>
         <button type="button" id="bacNewHandBtn" class="pill-btn" style="padding:8px 18px; display:none;">New hand</button>
@@ -3022,6 +3056,7 @@
         <div class="roulette-pointer"></div>
       </div>
       <div id="rouletteResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:20px; margin-top:6px; min-height:26px;"></div>
+      <div class="croupier-caption" id="rouletteCroupierMsg"></div>
       <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent spins</div>
       <div class="roulette-history" id="rouletteHistory"></div>
     </div>
@@ -3033,9 +3068,10 @@
       <button type="button" id="rouletteConfirmBetBtn" class="pill-btn pill-btn-primary" style="display:none; margin-top:8px; padding:9px 20px; font-size:13px;">✓ Confirm Bet</button>
       <div style="display:flex; justify-content:center; margin-top:10px;">
         <div class="bj-chip" id="rouletteChipDisplay">50</div>
-        <input type="number" id="rouletteBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+        <input type="number" id="rouletteBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
-      <div class="chip-rail chip-rail-select" data-target="rouletteBetInput">
+      <div class="chip-rail" data-target="rouletteBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
@@ -3058,9 +3094,10 @@
       <div class="hint">One card each — higher card wins. Tie? Go to war (double the bet) or surrender half.</div>
       <div style="display:flex; justify-content:center; margin-top:8px;">
         <div class="bj-chip" id="warChipDisplay">50</div>
-        <input type="number" id="warBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+        <input type="number" id="warBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
       <div class="chip-rail" data-target="warBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
@@ -3073,6 +3110,7 @@
         Pairs bet (player &amp; dealer card match, 10:1): <input type="number" id="warPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;">
       </div>
       <div class="chip-rail chip-rail-small" data-target="warPerfectPairsAmount" id="warPPChipRail" style="display:none;">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="chip-clear-btn" data-target="warPerfectPairsAmount">Clear Chips</button>
@@ -3094,6 +3132,7 @@
       </div>
       <div id="warPPOutcomeMsg" style="text-align:center; font-size:12.5px; color:var(--brass-light); margin-top:8px; min-height:16px;"></div>
       <div id="warOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
+      <div class="roulette-history" id="warHistory"></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
         <button type="button" id="warGoBtn" class="pill-btn" style="padding:8px 18px; display:none;">Go to War</button>
         <button type="button" id="warSurrenderBtn" class="pill-btn" style="padding:8px 18px; display:none;">Surrender</button>
@@ -3117,6 +3156,7 @@
         </div>
         <div class="craps-dice-shadow"><div class="craps-dice-shadow-blob"></div><div class="craps-dice-shadow-blob"></div></div>
         <div class="craps-total-msg" id="crapsTotalMsg"></div>
+        <div class="croupier-caption" id="crapsCroupierMsg"></div>
         <div class="craps-live-summary" id="crapsLiveSummary"></div>
         <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rolls</div>
         <div class="craps-history" id="crapsHistory"></div>
@@ -3200,9 +3240,10 @@
 
       <div style="display:flex; justify-content:center; margin-top:6px;">
         <div class="bj-chip" id="crapsChipDisplay">50</div>
-        <input type="number" id="crapsBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+        <input type="number" id="crapsBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
-      <div class="chip-rail chip-rail-select" data-target="crapsBetInput">
+      <div class="chip-rail" data-target="crapsBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
@@ -3236,9 +3277,10 @@
     <div class="panel" id="slotsBetPanel">
       <div style="display:flex; justify-content:center; margin-top:4px;">
         <div class="bj-chip" id="slotsChipDisplay">50</div>
-        <input type="number" id="slotsBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+        <input type="number" id="slotsBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
       <div class="chip-rail" data-target="slotsBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
@@ -3267,9 +3309,10 @@
     <div class="panel" id="vpBetPanel">
       <div style="display:flex; justify-content:center; margin-top:4px;">
         <div class="bj-chip" id="vpChipDisplay">50</div>
-        <input type="number" id="vpBetInput" min="10" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+        <input type="number" id="vpBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
       <div class="chip-rail" data-target="vpBetInput" id="vpChipRail">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
         <button type="button" class="table-chip chip-25" data-val="25">25</button>
         <button type="button" class="table-chip chip-50" data-val="50">50</button>
@@ -3473,6 +3516,20 @@
     <div id="bigWinVisual" class="big-win-visual"></div>
     <div class="win-meta" id="bigWinWhen"></div>
     <button type="button" class="win-close-btn" id="bigWinNiceOneBtn">Nice one</button>
+  </div>
+</div>
+
+<div id="sessionRecapModal" class="profile-modal">
+  <div class="profile-sheet big-win-sheet" style="text-align:center;">
+    <button type="button" class="profile-close" id="sessionRecapCloseBtn">✕</button>
+    <div class="win-badge">📋 Session Recap</div>
+    <div class="win-meta" id="sessionRecapGame" style="font-size:16px; color:var(--brass-light); font-weight:700; margin-bottom:6px;"></div>
+    <div class="win-amount" id="sessionRecapNet">+0 XP</div>
+    <div class="session-recap-stats">
+      <div class="session-recap-stat"><span class="lbl">Hands played</span><span class="val" id="sessionRecapHands">0</span></div>
+      <div class="session-recap-stat"><span class="lbl">Biggest win</span><span class="val" id="sessionRecapBiggest">—</span></div>
+    </div>
+    <button type="button" class="win-close-btn" id="sessionRecapNiceOneBtn">Nice one</button>
   </div>
 </div>
 
@@ -4461,7 +4518,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.61";
+const APP_VERSION = "2026-08-22.66";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4893,6 +4950,84 @@ function renderXpInfoView(){
 // place that decides locked vs unlocked — there's no other code path that
 // shows badge state, so there's nothing else to keep in sync.
 // =====================================================================
+// =====================================================================
+// Player status tiers — Bronze/Silver/Gold/Platinum/Diamond, a compact
+// always-visible badge shown wherever someone's name appears (leaderboard,
+// profile card, Hold'em seats, table chat). Combines the whole dashboard,
+// not just Casino: Lifetime XP, the betting board's own Season Score
+// (P/L + multi/individual win rates + volume, already computed by
+// computeDerived), and cumulative Footy Tipping season points — one
+// "Prestige Score" against the same 10K/100K/250K/500K/1M thresholds
+// XP_MILESTONE_BADGES already uses below, rather than a second set of
+// numbers to keep track of.
+//
+// The three inputs live on wildly different scales (XP in the hundreds of
+// thousands, Season Score typically low-to-mid double digits, Tipping
+// points maybe 0-200 for a full season) — PRESTIGE_WEIGHT_* converts the
+// smaller two into "XP-equivalent" points on the same scale before
+// summing, so a genuinely strong tipping or betting season is a real,
+// visible chunk of progress rather than a rounding error next to casino
+// play. These weights are a first-pass calibration — tune them once you
+// see real numbers if any one component feels over/under-weighted.
+// Negative Season Score never subtracts — a bad run at the punt shouldn't
+// pull someone's whole status down, only good results add to it.
+// =====================================================================
+const PRESTIGE_WEIGHT_DATASCORE = 200; // per Season Score point (betting board)
+const PRESTIGE_WEIGHT_TIPPING = 150;   // per cumulative Tipping season point
+const CASINO_TIERS = [
+  { name: 'Diamond', threshold: 1000000, icon: '💎' },
+  { name: 'Platinum', threshold: 500000, icon: '💠' },
+  { name: 'Gold', threshold: 250000, icon: '🥇' },
+  { name: 'Silver', threshold: 100000, icon: '🥈' },
+  { name: 'Bronze', threshold: 10000, icon: '🥉' }
+];
+function computePrestigeScore(lifetimeXP, dataScore, tippingPoints){
+  const xpPart = lifetimeXP || 0;
+  const boardPart = Math.max(0, dataScore || 0) * PRESTIGE_WEIGHT_DATASCORE;
+  const tippingPart = Math.max(0, tippingPoints || 0) * PRESTIGE_WEIGHT_TIPPING;
+  return xpPart + boardPart + tippingPart;
+}
+// Betting board's Season Score for a given uid — free, no fetch: the full
+// roster (with .pl/.wins/.losses/.indWin/.indLoss/.legs already on each
+// member) is already sitting in currentState from the moment the app
+// loads, same data computeDerived() already turns into the Board tab's
+// own Season Score column.
+function bettingBoardScoreFor(uid){
+  if(!currentState || !currentState.members || !uid) return 0;
+  const m = currentState.members.find(mm => mm.linkedUid === uid);
+  return m ? computeDerived(m).dataScore : 0;
+}
+function casinoTierFor(prestigeScore){
+  if(prestigeScore == null) return null;
+  for(const t of CASINO_TIERS){ if(prestigeScore >= t.threshold) return t; }
+  return null;
+}
+function casinoTierBadgeHtml(prestigeScore){
+  const t = casinoTierFor(prestigeScore);
+  return t ? `<span class="tier-badge" title="${t.name} tier">${t.icon}</span>` : '';
+}
+// Cache for surfaces that render the same uid repeatedly and re-render
+// often (chat, Hold'em seats) — avoids re-fetching per uid on every tick.
+// Lifetime XP and season totals only ever go up over a session, so a
+// session-long cache going briefly stale (someone crosses a tier
+// mid-session) is a low-stakes tradeoff for not hammering the DB.
+let casinoTierCache = {};
+async function getCasinoTierBadgeHtml(uid){
+  if(!uid) return '';
+  if(casinoTierCache[uid] !== undefined) return casinoTierBadgeHtml(casinoTierCache[uid]);
+  try{
+    const [lifetimeRes, tippingRes] = await Promise.all([
+      authedFetch(`/xp/${uid}/lifetimeEarned.json`),
+      authedFetch(`/tippingStats/${uid}/seasonPoints.json`)
+    ]);
+    const lifetime = (await lifetimeRes.json()) || 0;
+    const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
+    const score = computePrestigeScore(lifetime, bettingBoardScoreFor(uid), tippingPoints);
+    casinoTierCache[uid] = score;
+    return casinoTierBadgeHtml(score);
+  }catch(e){ return ''; }
+}
+
 const XP_MILESTONE_BADGES = [
   { key: 'xp10k', threshold: 10000, icon: '🥉', name: '10K Club' },
   { key: 'xp100k', threshold: 100000, icon: '🥈', name: '100K Club' },
@@ -4960,7 +5095,13 @@ async function renderCasinoBadgesView(){
       rows.push(casinoBadgeRowHtml(b.icon, b.name, `Earn ${b.threshold.toLocaleString()} lifetime XP.`, ids.includes(b.key)));
     });
 
-    body.innerHTML = `<div class="hint" style="margin-bottom:4px;">Lifetime XP earned: <b style="color:var(--brass-light);">${lifetime.toLocaleString()}</b></div>` + rows.join('');
+    const tippingRes = await authedFetch(`/tippingStats/${currentUserUid}/seasonPoints.json`);
+    const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
+    const boardScore = bettingBoardScoreFor(currentUserUid);
+    const prestige = computePrestigeScore(lifetime, boardScore, tippingPoints);
+    const myTier = casinoTierFor(prestige);
+    body.innerHTML = `<div class="hint" style="margin-bottom:4px;">Lifetime XP earned: <b style="color:var(--brass-light);">${lifetime.toLocaleString()}</b>${myTier ? ` — currently <b style="color:var(--brass-light);">${casinoTierBadgeHtml(prestige)} ${myTier.name}</b> tier` : ''}</div>
+      <div class="hint" style="margin-bottom:10px;">Your tier is a combined score across the whole dashboard — Casino Lifetime XP, your betting board Season Score (${boardScore.toFixed(2)}), and cumulative Footy Tipping points (${tippingPoints})<span style="color:var(--muted);"> — not just Casino play. Shows next to your name everywhere: the leaderboard, your profile, Hold'em seats, and table chat.</span></div>` + rows.join('');
   }catch(e){
     body.innerHTML = '<div class="empty">Could not load badges — try again.</div>';
   }
@@ -5502,11 +5643,16 @@ async function renderHoldemTableList(){
     area.innerHTML = entries.map(([id, t]) => {
       const seated = Object.keys(t.seats || {}).length;
       const statusText = t.status === 'hand_in_progress' ? '🔴 Hand in progress' : '⏳ Waiting for players';
-      // Matches the dealer's own deleteTable rule exactly — creator or
-      // admin, blocked only while a hand's actually in progress. Seated-
-      // but-not-playing is fine to delete; the server cashes everyone
-      // still sitting there back to their real balance automatically.
-      const canDelete = t.status !== 'hand_in_progress' && (t.createdBy === currentUserUid || currentUserEmail === ADMIN_EMAIL);
+      // Matches the dealer's own deleteTable rule exactly — creator, admin
+      // (case/whitespace-insensitive, same as the server), or a table
+      // that never recorded a creator at all (old test tables from before
+      // createdBy was tracked — nobody could ever be "the creator" of
+      // those, so they'd otherwise be permanently stuck with no delete
+      // button showing for anyone). Still blocked only while a hand's
+      // actually in progress. Seated-but-not-playing is fine to delete;
+      // the server cashes everyone still sitting there back to their real
+      // balance automatically.
+      const canDelete = t.status !== 'hand_in_progress' && (t.createdBy === currentUserUid || (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() || !t.createdBy);
       return `
         <div class="holdem-table-row">
           <div>
@@ -5664,7 +5810,7 @@ async function renderHoldemSeatRing(){
     const mySeatIdx = Object.keys(seats).find(i => seats[i].uid === currentUserUid);
 
     const deleteBtn = document.getElementById('holdemTableDeleteBtn');
-    const canDeleteThisTable = table.status !== 'hand_in_progress' && (table.createdBy === currentUserUid || currentUserEmail === ADMIN_EMAIL);
+    const canDeleteThisTable = table.status !== 'hand_in_progress' && (table.createdBy === currentUserUid || (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() || !table.createdBy);
     deleteBtn.style.display = canDeleteThisTable ? 'inline-block' : 'none';
     deleteBtn.onclick = async () => {
       const seatedCount = Object.keys(seats).length;
@@ -5687,6 +5833,8 @@ async function renderHoldemSeatRing(){
     const seatedUids = Object.values(seats).map(s => s.uid);
     const avatarByUid = {};
     await Promise.all(seatedUids.map(async uid => { avatarByUid[uid] = await getAvatarDataUri(uid); }));
+    const tierBadgeByUid = {};
+    await Promise.all(seatedUids.map(async uid => { tierBadgeByUid[uid] = await getCasinoTierBadgeHtml(uid); }));
 
     let seatHtml = '';
     let anyoneNewlySeated = false;
@@ -5714,7 +5862,7 @@ async function renderHoldemSeatRing(){
         if(isButton) classes.push('button-seat');
         if(s.sittingOut) classes.push('sitting-out');
         if(isNewlySeated) classes.push('seat-glow-in');
-        seatHtml += `<div class="${classes.join(' ')}" style="left:${leftPct}%; top:${topPct}%;">${avatarHtml(s.name, avatarByUid[s.uid], 32)}<span class="holdem-seat-name">${escapeHtml(s.name)}${s.uid === currentUserUid ? ' (you)' : ''}</span><span class="holdem-seat-stack${stackChanged ? ' stack-pulse' : ''}">${s.stack.toLocaleString()} XP</span>${s.sittingOut ? '<span class="holdem-seat-sitout-tag">Sitting out</span>' : ''}</div>`;
+        seatHtml += `<div class="${classes.join(' ')}" style="left:${leftPct}%; top:${topPct}%;">${avatarHtml(s.name, avatarByUid[s.uid], 32)}<span class="holdem-seat-name">${tierBadgeByUid[s.uid] || ''}${escapeHtml(s.name)}${s.uid === currentUserUid ? ' (you)' : ''}</span><span class="holdem-seat-stack${stackChanged ? ' stack-pulse' : ''}">${s.stack.toLocaleString()} XP</span>${s.sittingOut ? '<span class="holdem-seat-sitout-tag">Sitting out</span>' : ''}</div>`;
       }
       // Empty seats render nothing at all — an occupied felt table
       // doesn't visually mark out where nobody's sitting, and 9 "Empty
@@ -6065,12 +6213,18 @@ async function renderHoldemChat(tableId, messagesId){
     const wasAtBottom = area.scrollTop + area.clientHeight >= area.scrollHeight - 10;
     const seenBefore = holdemChatSeenKeys[messagesId];
     const isFirstRenderForThisInstance = !seenBefore;
+    // Tier badge next to each sender's name — same badge as the leaderboard
+    // and Hold'em seats, resolved once per unique sender in this batch
+    // (cached per uid, so this is essentially free after the first render).
+    const uniqueUids = [...new Set(entries.map(([, m]) => m.uid).filter(Boolean))];
+    const tierBadgeByUid = {};
+    await Promise.all(uniqueUids.map(async uid => { tierBadgeByUid[uid] = await getCasinoTierBadgeHtml(uid); }));
     area.innerHTML = entries.length === 0
       ? ''
       : entries.map(([key, m]) => {
           const isNew = !isFirstRenderForThisInstance && seenBefore && !seenBefore.has(key);
           const isMine = m.uid === currentUserUid;
-          return `<div class="holdem-chat-msg${isNew ? ' chat-msg-in' : ''}${isMine ? ' chat-msg-mine' : ''}">${isMine ? '' : `<b>${escapeHtml(m.name)}:</b> `}${escapeHtml(m.text)}</div>`;
+          return `<div class="holdem-chat-msg${isNew ? ' chat-msg-in' : ''}${isMine ? ' chat-msg-mine' : ''}">${isMine ? '' : `<b>${tierBadgeByUid[m.uid] || ''}${escapeHtml(m.name)}:</b> `}${escapeHtml(m.text)}</div>`;
         }).join('');
     holdemChatSeenKeys[messagesId] = new Set(entries.map(([key]) => key));
     if(wasAtBottom) area.scrollTop = area.scrollHeight; // only auto-scroll if they were already at the bottom — don't yank someone back down mid-scroll-up to read earlier messages
@@ -6650,6 +6804,21 @@ async function awardXP(amount, reason, opts){
     // threshold. Never allowed to block or fail the actual game outcome —
     // its own try/catch inside trackCasinoPotContribution keeps it silent.
     trackCasinoPotContribution(currentUserUid, amount, reason);
+    // Win streak — same "is this a real casino game round" gate as the
+    // Pot above, same reasoning: this function is the one place every
+    // single-player game's result already passes through, so it's the
+    // one place a cross-game streak can be tracked without touching each
+    // game's own code. Persisted server-side (not just in this tab) so
+    // it can show up on the leaderboard and at a Hold'em seat too.
+    updateCasinoStreak(currentUserUid, amount, reason);
+    // Per-game session recap — only accumulates while casinoSessionGame is
+    // set, which happens when a game bubble is tapped and clears when you
+    // leave it (see the game-bubble handler and casinoSessionShowRecapIfAny).
+    if(casinoSessionGame && CASINO_POT_REASON_PATTERN.test(reason || '')){
+      casinoSessionStats.hands++;
+      casinoSessionStats.net += amount;
+      if(amount > casinoSessionStats.biggestWin) casinoSessionStats.biggestWin = amount;
+    }
     if(!(opts && opts.silent)) updateXPBalanceDisplay(next);
   }catch(e){}
 }
@@ -6692,7 +6861,7 @@ function updateXPBalanceDisplay(bal){
 // classifier rather than touching each of the six game functions
 // individually. Losses fund the pot; any casino play (win or lose) counts
 // toward the 20-play activity-eligibility threshold.
-const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Slots|Video Poker|Spin the Wheel)/i;
+const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Slots|Video Poker|Spin the Wheel)/i;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
@@ -6791,6 +6960,56 @@ async function trackCasinoPotContribution(uid, amount, reason){
   // the number just sits stale while someone's actively playing.
   try{ renderCasinoPotPanel(); }catch(e){}
 }
+
+// ---- Win streak — cross-game, server-persisted so it shows on the
+// leaderboard and at a Hold'em seat, not just to the player themselves. ----
+async function updateCasinoStreak(uid, amount, reason){
+  if(!CASINO_POT_REASON_PATTERN.test(reason || '')) return;
+  try{
+    const res = await authedFetch(`/xp/${uid}/currentStreak.json`);
+    const prev = (await res.json()) || 0;
+    const next = amount > 0 ? prev + 1 : 0;
+    await authedFetch(`/xp/${uid}/currentStreak.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+    });
+    // Only flash for the player's own win, and only from 3 in a row on —
+    // a streak of 1 or 2 isn't a "heater" yet, it's just a normal win.
+    if(next >= 3 && uid === currentUserUid && currentUserRole !== 'readonly'){
+      showToast(`🔥 ${next} in a row!`);
+    }
+  }catch(e){}
+}
+
+// ---- Per-game session recap — tracked only while actively inside a
+// single-player Casino game (casinoSessionGame set by the game-bubble
+// click handler), shown once when leaving it for something else. ----
+let casinoSessionGame = null;
+let casinoSessionStats = { hands: 0, net: 0, biggestWin: 0 };
+function casinoSessionShowRecapIfAny(){
+  if(casinoSessionGame && casinoSessionStats.hands > 0){
+    showCasinoSessionRecap(casinoSessionGame, casinoSessionStats);
+  }
+  casinoSessionGame = null;
+  casinoSessionStats = { hands: 0, net: 0, biggestWin: 0 };
+}
+function showCasinoSessionRecap(gameLabel, stats){
+  document.getElementById('sessionRecapGame').textContent = gameLabel;
+  document.getElementById('sessionRecapHands').textContent = stats.hands.toLocaleString();
+  const netEl = document.getElementById('sessionRecapNet');
+  netEl.textContent = `${stats.net >= 0 ? '+' : ''}${stats.net.toLocaleString()} XP`;
+  netEl.style.color = stats.net >= 0 ? 'var(--win)' : 'var(--loss)';
+  document.getElementById('sessionRecapBiggest').textContent = stats.biggestWin > 0 ? `+${stats.biggestWin.toLocaleString()} XP` : '—';
+  document.getElementById('sessionRecapModal').classList.add('open');
+}
+document.getElementById('sessionRecapCloseBtn').addEventListener('click', () => {
+  document.getElementById('sessionRecapModal').classList.remove('open');
+});
+document.getElementById('sessionRecapNiceOneBtn').addEventListener('click', () => {
+  document.getElementById('sessionRecapModal').classList.remove('open');
+});
+document.getElementById('sessionRecapModal').addEventListener('click', (e) => {
+  if(e.target.id === 'sessionRecapModal') document.getElementById('sessionRecapModal').classList.remove('open');
+});
 
 async function fetchCasinoPotMonth(monthKey){
   try{
@@ -7541,6 +7760,7 @@ async function checkAndAwardTippingXP(){
 
 // ---- Blackjack ----
 let bjDeck = [], bjPlayerHand = [], bjDealerHand = [], bjCurrentBet = 0, bjHandActive = false;
+let bjHistory = []; // 'W'/'L'/'P' per completed hand — net result, not per-split-hand
 let bjAudioCtx = null;
 function bjGetAudioCtx(){
   if(!bjAudioCtx){ try{ bjAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){} }
@@ -7765,6 +7985,7 @@ async function bjStartHandInner(){
   if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
   bjPlayChipSound();
+  croupierSay('bjCroupierMsg', CROUPIER_LINES.bjShuffle);
   bjCurrentBet = bet;
   bjDeck = bjFreshDeck();
   bjPlayerHand = [bjDeck.pop(), bjDeck.pop()];
@@ -8049,6 +8270,14 @@ async function bjSplit(){
     bjActionBusy = false;
   }
 }
+function bjRenderHistory(){
+  const el = document.getElementById('bjHistory');
+  if(!el) return;
+  el.innerHTML = bjHistory.slice(-10).reverse().map(r => {
+    const bg = r === 'W' ? 'var(--win)' : (r === 'L' ? 'var(--loss)' : 'rgb(91,141,190)');
+    return `<div class="roulette-history-chip" style="background:${bg};">${r}</div>`;
+  }).join('');
+}
 async function bjResolveHand(){
   bjHandActive = false;
   document.getElementById('bjHitBtn').style.display = 'none';
@@ -8134,6 +8363,16 @@ async function bjResolveHand(){
   outcomeEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
   document.getElementById('bjNewHandBtn').style.display = 'inline-block';
 
+  bjHistory.push(totalDelta > 0 ? 'W' : (totalDelta < 0 ? 'L' : 'P'));
+  bjRenderHistory();
+  const bjLine0 = parts[0].label;
+  if(bjLine0.startsWith('Blackjack')) croupierSay('bjCroupierMsg', CROUPIER_LINES.bjBlackjack);
+  else if(bjLine0.startsWith('Bust')) croupierSay('bjCroupierMsg', CROUPIER_LINES.bjBust);
+  else if(bjLine0.startsWith('Dealer busts')) croupierSay('bjCroupierMsg', CROUPIER_LINES.bjDealerBust);
+  else if(bjLine0.startsWith('Push')) croupierSay('bjCroupierMsg', CROUPIER_LINES.bjPush);
+  else if(totalDelta > 0) croupierSay('bjCroupierMsg', CROUPIER_LINES.bjWin);
+  else if(totalDelta < 0) croupierSay('bjCroupierMsg', CROUPIER_LINES.bjLoss);
+
   const tableEl = document.getElementById('bjTableArea');
   if(totalDelta > 0){
     bjPlayChime(true);
@@ -8177,12 +8416,21 @@ const CASINO_GAME_PANEL_IDS = {
   war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin',
   craps: 'casinoGameCraps'
 };
+const CASINO_GAME_LABELS = {
+  blackjack: 'Blackjack', baccarat: 'Baccarat', roulette: 'Roulette', war: 'Casino War',
+  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps'
+};
 // Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
 // computing "my rank" doesn't re-fetch every linked member's balance a
 // second time right after the leaderboard just did exactly that — was
 // doubling the XP-balance read count on every single Casino tab open.
 let lastLeaderboardBalances = null;
 async function showCasinoView(viewId){
+  // Leaving whatever game was active for a hub view, Hold'em, Challenges,
+  // Rules, etc — same recap-on-exit as switching games (see the
+  // game-bubble handler). Games view itself is excluded since that's
+  // where casinoSessionGame actually gets set, not left.
+  if(viewId !== 'casinoGamesView') casinoSessionShowRecapIfAny();
   document.querySelectorAll('.casino-view').forEach(v => v.classList.toggle('active', v.id === viewId));
   document.getElementById('casinoHubPanel').style.display = viewId ? 'none' : 'block';
   // Communal panels (pot + members) belong to the lobby only; your own
@@ -8220,6 +8468,11 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     // they carry no data-game, so this generic per-game handler no-ops
     // for them instead of trying to toggle a panel that doesn't exist.
     if(!btn.dataset.game) return;
+    // Leaving whatever game was previously active (or the hub) — show its
+    // recap if any hands were actually played, then start a fresh session
+    // for the one being opened now.
+    casinoSessionShowRecapIfAny();
+    casinoSessionGame = CASINO_GAME_LABELS[btn.dataset.game] || null;
     document.querySelectorAll('.game-bubble').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
     document.getElementById('casinoGamesEmptyState').style.display = 'none';
@@ -8327,14 +8580,19 @@ async function renderXPLeaderboard(){
   try{
     const rows = await Promise.all(linked.map(async m => {
       try{
-        const [balRes, lifetimeRes] = await Promise.all([
+        const [balRes, lifetimeRes, streakRes, tippingRes] = await Promise.all([
           authedFetch(`/xp/${m.linkedUid}/balance.json`),
-          authedFetch(`/xp/${m.linkedUid}/lifetimeEarned.json`)
+          authedFetch(`/xp/${m.linkedUid}/lifetimeEarned.json`),
+          authedFetch(`/xp/${m.linkedUid}/currentStreak.json`),
+          authedFetch(`/tippingStats/${m.linkedUid}/seasonPoints.json`)
         ]);
         const bal = await balRes.json();
         const lifetime = await lifetimeRes.json();
-        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0, lifetime: lifetime != null ? lifetime : 0 };
-      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null, lifetime: null }; }
+        const streak = await streakRes.json();
+        const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
+        const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(m.linkedUid), tippingPoints);
+        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0, lifetime: lifetime != null ? lifetime : 0, streak: streak || 0, prestige };
+      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null, lifetime: null, streak: 0, prestige: 0 }; }
     }));
     rows.sort((a,b) => (b.balance || 0) - (a.balance || 0));
     lastLeaderboardBalances = rows; // reused by refreshCasinoHeroExtras — avoids a duplicate full-roster fetch for "my rank"
@@ -8345,9 +8603,12 @@ async function renderXPLeaderboard(){
       const isMe = r.uid === currentUserUid || r.name === currentUserName;
       const isTop3 = i < 3;
       const bg = isMe ? 'background:rgba(203,177,102,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : '');
+      // A streak of 1 or 2 is just a normal win — only 3+ in a row reads
+      // as an actual "heater" worth calling out on the board.
+      const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
       return `<div style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '11px 8px' : '8px 4px'}; border-bottom:1px solid var(--line); ${bg}">
         <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
-        <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</span>
+        <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${casinoTierBadgeHtml(r.prestige)}${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${streakBadge}</span>
         <span style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
           <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${r.balance != null ? r.balance.toLocaleString() : '—'}</span>
           <span class="lb-lifetime-telly">🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime</span>
@@ -8532,6 +8793,14 @@ document.getElementById('casinoRulesHubList').querySelectorAll('button').forEach
   btn.addEventListener('click', () => openCasinoRules(btn.dataset.rulesKey));
 });
 
+// Every chip rail in the Casino works the same way: tapping a chip ADDS
+// its value to the current stake, so 250 tapped four times reaches 1000
+// with no extra step — there's no house-imposed ceiling on any game.
+// Roulette and Craps used to be an exception (each tap SET the amount
+// outright, meant to read as "pick a denomination for the next spot"),
+// but that made it impossible to stack past a single chip's value on one
+// spot without the chip-readout prompt — reverted back to plain
+// additive stacking, same as every other table, per direct request.
 function initChipRail(rail){
   const targetId = rail.dataset.target;
   rail.querySelectorAll('.table-chip').forEach(btn => {
@@ -8553,51 +8822,8 @@ function initChipRail(rail){
     input.dispatchEvent(new Event('input'));
   });
 }
-// Roulette-only chip behaviour: SELECT a denomination rather than ADD to a
-// running total. Every other game only ever places one bet per hand, so
-// stacking chips (10+25+50=85) to build up that single stake makes sense
-// there. Roulette places many separate bets per spin, and the chip amount
-// represents "which denomination am I placing right now" — tapping a chip
-// should set that value outright (like a real online table's chip tray),
-// not keep growing every tap, which is exactly what was confusing here.
-function initChipRailSelect(rail){
-  const targetId = rail.dataset.target;
-  const chips = rail.querySelectorAll('.table-chip');
-  chips.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const input = document.getElementById(targetId);
-      if(!input) return;
-      input.value = parseInt(btn.dataset.val, 10);
-      input.dispatchEvent(new Event('input'));
-      chips.forEach(c => c.classList.toggle('active-chip', c === btn));
-      bjPlayChipSound();
-      btn.classList.remove('pc-chip-tap'); void btn.offsetWidth; btn.classList.add('pc-chip-tap');
-    });
-  });
-  // Zeroes the staged chip amount AND drops the active-chip highlight —
-  // without this there was no way back to $0 once any chip had been
-  // tapped, since selecting always sets a positive denomination.
-  const clearBtn = rail.querySelector('.chip-clear-btn');
-  if(clearBtn) clearBtn.addEventListener('click', () => {
-    const input = document.getElementById(targetId);
-    if(!input) return;
-    input.value = 0;
-    input.dispatchEvent(new Event('input'));
-    chips.forEach(c => c.classList.remove('active-chip'));
-  });
-}
 document.querySelectorAll('.chip-rail').forEach(rail => {
-  if(rail.classList.contains('chip-rail-select')) initChipRailSelect(rail);
-  else initChipRail(rail);
-});
-// Mark the chip matching the input's starting value as active on load, so
-// there's always a clear "this is what I'm about to place" indicator.
-document.querySelectorAll('.chip-rail-select').forEach(rail => {
-  const input = document.getElementById(rail.dataset.target);
-  if(!input) return;
-  const startVal = parseInt(input.value, 10);
-  const match = rail.querySelector(`.table-chip[data-val="${startVal}"]`);
-  if(match) match.classList.add('active-chip');
+  initChipRail(rail);
 });
 
 // Perfect Pairs side bet is now a pill next to Deal rather than a checkbox
@@ -8633,6 +8859,7 @@ let bacDeck = [];
 let bacSelectedBet = 'player';
 let bacStep = 'start';
 let bacPlayerHand = [], bacBankerHand = [];
+let bacHistory = []; // 'P'/'B'/'T' per hand — the actual winner, regardless of what was bet on
 let bacBetAmountLocked = 0, bacBetTypeLocked = '';
 let bacPlayerDrew = false, bacPlayerThirdVal = null;
 
@@ -8776,6 +9003,17 @@ async function bacHit(){
     hitBtn.disabled = false;
   }
 }
+function bacRenderHistory(){
+  const el = document.getElementById('bacHistory');
+  if(!el) return;
+  // Traditional baccarat scoreboard colours — blue Player, red Banker,
+  // green Tie — not this app's usual win/loss green/red, since this
+  // strip tracks who WON the hand, not whether the player personally won.
+  el.innerHTML = bacHistory.slice(-10).reverse().map(r => {
+    const bg = r === 'P' ? 'rgb(91,141,190)' : (r === 'B' ? '#8c2a22' : '#1f7a4a');
+    return `<div class="roulette-history-chip" style="background:${bg};">${r}</div>`;
+  }).join('');
+}
 async function bacResolve(){
   const playerTotal = bacHandTotal(bacPlayerHand);
   const bankerTotal = bacHandTotal(bacBankerHand);
@@ -8801,6 +9039,9 @@ async function bacResolve(){
   outcomeEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)'));
   outcomeEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
   document.getElementById('bacNewHandBtn').style.display = 'inline-block';
+
+  bacHistory.push(winner === 'player' ? 'P' : (winner === 'banker' ? 'B' : 'T'));
+  bacRenderHistory();
 
   const tableEl = document.getElementById('bacTableArea');
   if(delta > 0){
@@ -9314,6 +9555,7 @@ async function rouletteSpinInner(){
   resultEl.textContent = '';
   resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
   bjPlayChipSound();
+  croupierSay('rouletteCroupierMsg', CROUPIER_LINES.rouletteNoMoreBets);
 
   const winningIndex = Math.floor(Math.random() * ROULETTE_WHEEL_ORDER.length);
   const winningPocket = ROULETTE_WHEEL_ORDER[winningIndex];
@@ -9350,6 +9592,7 @@ async function rouletteSpinInner(){
   resultEl.textContent = `${winningPocket} \u2014 ${colorLabel}  |  ${parts.join('  \u00b7  ')}  \u2014  Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`;
   resultEl.style.color = isJackpot ? '' : (totalDelta > 0 ? 'var(--win)' : (totalDelta < 0 ? 'var(--loss)' : 'var(--muted)'));
   resultEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+  croupierSay('rouletteCroupierMsg', isJackpot ? CROUPIER_LINES.rouletteBigWin : (totalDelta > 0 ? CROUPIER_LINES.rouletteWin : (totalDelta < 0 ? CROUPIER_LINES.rouletteLoss : CROUPIER_LINES.rouletteNoBet)));
 
   const panelEl = document.getElementById('casinoGameRoulette');
   const wheelPanelEl = document.getElementById('rouletteWheelPanel');
@@ -9391,6 +9634,7 @@ document.getElementById('rouletteSpinBtn').addEventListener('click', rouletteSpi
 let warDeck = [];
 let warOriginalBet = 0;
 let warPlayerCard = null, warDealerCard = null;
+let warHistory = []; // 'W'/'L'/'T' — T only ever appears if the same tie repeats through a full war exchange to a push
 function warCardValue(c){ if(c.rank === 'A') return 14; if(c.rank === 'K') return 13; if(c.rank === 'Q') return 12; if(c.rank === 'J') return 11; return Number(c.rank); }
 function warRenderSingle(containerId, card){
   const el = document.getElementById(containerId);
@@ -9471,6 +9715,14 @@ async function warDealInner(){
     await warResolve(pv > dv ? bet : -bet, pv > dv ? 'You win' : 'Dealer wins', false);
   }
 }
+function warRenderHistory(){
+  const el = document.getElementById('warHistory');
+  if(!el) return;
+  el.innerHTML = warHistory.slice(-10).reverse().map(r => {
+    const bg = r === 'W' ? 'var(--win)' : (r === 'L' ? 'var(--loss)' : 'rgb(91,141,190)');
+    return `<div class="roulette-history-chip" style="background:${bg};">${r}</div>`;
+  }).join('');
+}
 async function warResolve(delta, label, wasWar){
   const outcomeEl = document.getElementById('warOutcomeMsg');
   outcomeEl.textContent = `${label} (${delta >= 0 ? '+' : ''}${delta} XP)`;
@@ -9479,6 +9731,9 @@ async function warResolve(delta, label, wasWar){
   document.getElementById('warGoBtn').style.display = 'none';
   document.getElementById('warSurrenderBtn').style.display = 'none';
   document.getElementById('warNewHandBtn').style.display = 'inline-block';
+
+  warHistory.push(delta > 0 ? 'W' : (delta < 0 ? 'L' : 'T'));
+  warRenderHistory();
 
   const tableEl = document.getElementById('warTableArea');
   if(delta > 0){
@@ -9838,6 +10093,7 @@ async function crapsRollInner(){
 
   scrollIntoViewSmooth('crapsTableRail');
   bjPlayChipSound();
+  croupierSay('crapsCroupierMsg', crapsPoint == null ? CROUPIER_LINES.crapsComeOut : CROUPIER_LINES.crapsRolling);
 
   const a = 1 + Math.floor(Math.random() * 6);
   const b = 1 + Math.floor(Math.random() * 6);
@@ -9997,6 +10253,13 @@ async function crapsRollInner(){
   resultEl.textContent = `${msg}  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
   resultEl.style.color = delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)');
   resultEl.classList.remove('bj-outcome-pop'); void resultEl.offsetWidth; resultEl.classList.add('bj-outcome-pop');
+  const isPointJustMade = !isComeOut && crapsPoint == null && !isSevenOut;
+  const isPointJustSet = isComeOut && total !== 7 && total !== 11 && total !== 2 && total !== 3 && total !== 12;
+  if(isSevenOut) croupierSay('crapsCroupierMsg', CROUPIER_LINES.crapsSevenOut);
+  else if(isPointJustMade) croupierSay('crapsCroupierMsg', CROUPIER_LINES.crapsPointMade);
+  else if(isPointJustSet) croupierSay('crapsCroupierMsg', CROUPIER_LINES.crapsPointSet);
+  else if(delta >= 500) croupierSay('crapsCroupierMsg', CROUPIER_LINES.crapsBigRoll);
+  else if(wonSpots.some(s => s.startsWith('Field'))) croupierSay('crapsCroupierMsg', CROUPIER_LINES.crapsFieldWin);
 
   crapsHistory.push({ total, kind: isSevenOut ? 'sevenout' : ((!isComeOut && crapsPoint == null) ? 'point' : 'roll') });
   crapsRenderHistory();
@@ -10445,6 +10708,44 @@ function animateValue(id, newVal, formatFn){
   }
   el._animId = requestAnimationFrame(tick);
 }
+// ---- Croupier table-talk — a small dealer-voice caption that flashes
+// briefly at the right moments (bets closing, a shoe going out, a big
+// win). Purely cosmetic, no game logic depends on it — each game just
+// calls this with its own line pool at the moment that's actually
+// happening. Silently no-ops if the game doesn't have a caption element
+// (older/simpler games that never got one), rather than erroring. ----
+// Line pools per game/moment — kept short and in a plausible croupier
+// register (clipped, professional, never chatty) rather than trying to
+// be funny. Deliberately small pools; this is table atmosphere, not a
+// writing showcase, and a huge pool would just mean nobody ever hears
+// the same line twice enough to recognize the table's "voice".
+const CROUPIER_LINES = {
+  rouletteNoMoreBets: ["No more bets.", "Rien ne va plus.", "Bets are closed."],
+  rouletteWin: ["Winner, paying out.", "There it is — nice number.", "Congratulations."],
+  rouletteBigWin: ["Straight up! Well played.", "Right on the number — beautiful.", "That's a big one for the house to pay."],
+  rouletteLoss: ["Unlucky — house wins.", "Not this time.", "Better luck on the next spin."],
+  rouletteNoBet: ["No action on that number.", "Nothing riding on that one."],
+  crapsComeOut: ["Coming out.", "New shooter, new point.", "Here we go."],
+  crapsRolling: ["Point's working — roll away.", "Shooter's rolling.", "Dice are live."],
+  crapsPointSet: ["Point is set.", "Point's up — good luck.", "Point established."],
+  crapsPointMade: ["Winner! Pass line pays.", "Point made — nice roll.", "There's the number."],
+  crapsSevenOut: ["Seven out, line away.", "Seven out — new shooter coming.", "That's the seven."],
+  crapsFieldWin: ["Field wins!"],
+  crapsBigRoll: ["Big number — pay the table.", "That's a hot roll."],
+  bjShuffle: ["Fresh shoe, good luck.", "Cards are in — place your bet.", "New hand, good luck."],
+  bjBlackjack: ["Blackjack! Nice hand.", "21 — pays 3 to 2.", "Natural — well played."],
+  bjBust: ["Bust — house collects.", "Over 21, unlucky.", "That's a bust."],
+  bjDealerBust: ["Dealer busts, table wins.", "House goes over — pays out."],
+  bjPush: ["Push — bets stay.", "Same number, no action."],
+  bjWin: ["Nice hand.", "Winner, paying out."],
+  bjLoss: ["House wins this one.", "Not this time."]
+};
+function croupierSay(elId, lines){
+  const el = document.getElementById(elId);
+  if(!el || !lines || lines.length === 0) return;
+  el.textContent = lines[Math.floor(Math.random() * lines.length)];
+  el.classList.remove('croupier-flash'); void el.offsetWidth; el.classList.add('croupier-flash');
+}
 function showToast(msg){
   let host = document.getElementById('toastHost');
   if(!host){
@@ -10758,14 +11059,25 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     return;
   }
   try{
-    const [lifetimeRes, foundingRes] = await Promise.all([
+    const [lifetimeRes, foundingRes, tippingRes] = await Promise.all([
       authedFetch(`/xp/${linkedUid}/lifetimeEarned.json`),
-      authedFetch(`/xp/${linkedUid}/foundingNumber.json`)
+      authedFetch(`/xp/${linkedUid}/foundingNumber.json`),
+      authedFetch(`/tippingStats/${linkedUid}/seasonPoints.json`)
     ]);
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     const lifetime = (await lifetimeRes.json()) || 0;
     const lifetimeEl = document.getElementById('profileLifetimeXPVal');
     if(lifetimeEl) lifetimeEl.textContent = lifetime.toLocaleString();
+    const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
+    const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(linkedUid), tippingPoints);
+    // Same tier badge shown on the leaderboard/Hold'em seats/chat — this is
+    // the one place besides the leaderboard where it's cheap to add since
+    // lifetime XP is already being fetched for the stat cell above.
+    const nameHeading = document.getElementById('profileName');
+    if(nameHeading){
+      nameHeading.querySelectorAll('.tier-badge').forEach(el => el.remove());
+      nameHeading.insertAdjacentHTML('beforeend', casinoTierBadgeHtml(prestige));
+    }
     const founding = await foundingRes.json();
     const unlockedIds = [];
     if(founding) unlockedIds.push('founding-player');
@@ -11764,6 +12076,9 @@ async function refresh(){
 
 // ---------- Tabs ----------
 function setActiveTab(tab){
+  // Leaving Casino for another tab entirely — same recap-on-exit as
+  // switching games within Casino (see the game-bubble handler).
+  if(tab !== 'casino') casinoSessionShowRecapIfAny();
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   window.scrollTo(0,0);
@@ -14197,6 +14512,21 @@ async function renderTippingLadder(games){
     currentSeasonLeaders = new Set();
     area.innerHTML = '<div class="empty">No picks recorded yet.</div>';
     return;
+  }
+
+  // Self-reported cache of this person's own season points — Firebase
+  // rules only allow writing your own uid's data, so this can't cache
+  // everyone's totals from one client. Read cheaply elsewhere (composite
+  // tier score) instead of recomputing this whole live ladder per lookup;
+  // it just means the cached number is only as fresh as this person's own
+  // last visit to Tipping/Board, which is an acceptable tradeoff.
+  if(currentUserUid){
+    const myRow = rows.find(r => r.uid === currentUserUid);
+    if(myRow){
+      authedFetch(`/tippingStats/${currentUserUid}/seasonPoints.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(myRow.points)
+      }).catch(() => {});
+    }
   }
 
   // Round-by-round movement: rank as of the second-most-recent involved
