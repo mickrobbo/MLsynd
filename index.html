@@ -1543,6 +1543,26 @@
     background: linear-gradient(155deg, #eafdff, #7fd8ff 55%, #2a9dc9);
     box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.7), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 5px rgba(127,216,255,.7);
   }
+  /* Badges screen's own status card — a real card instead of a cramped
+     inline text line, since this is the one place someone specifically
+     comes to check where they stand. Big gem + tier name up top (the
+     headline), everything else demoted to one small secondary line. */
+  .tier-status-card{
+    background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; margin-bottom:14px;
+  }
+  .tier-status-main{ display:flex; align-items:center; gap:9px; }
+  .tier-status-gem{ width:18px; height:18px; margin:0; flex-shrink:0; }
+  .tier-status-name{
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:17px;
+    color:var(--brass-light); letter-spacing:.3px; flex:1;
+  }
+  .tier-status-info-btn{
+    flex-shrink:0; width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,.25);
+    border:1px solid var(--brass-dim); color:var(--muted); font-size:12px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tier-status-sub{ font-size:10.5px; color:var(--muted); margin-top:6px; }
 
   .lb-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .lb-table{
@@ -4532,7 +4552,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.69";
+const APP_VERSION = "2026-08-22.70";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5119,11 +5139,13 @@ async function renderCasinoBadgesView(){
     const boardScore = bettingBoardScoreFor(currentUserUid);
     const prestige = computePrestigeScore(lifetime, boardScore, tippingPoints);
     const myTier = casinoTierFor(prestige);
-    body.innerHTML = `<div class="hint" style="margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-        <span>Lifetime XP earned: <b style="color:var(--brass-light);">${lifetime.toLocaleString()}</b>${myTier ? ` — currently <b style="color:var(--brass-light);">${casinoTierBadgeHtml(prestige)} ${myTier.name}</b> tier` : ''}</span>
-        <button type="button" class="pill-btn" id="tiersInfoBtn" style="flex-shrink:0; padding:5px 10px; font-size:11px;">ⓘ How tiers work</button>
-      </div>
-      <div class="hint" style="margin-bottom:10px; font-size:10.5px;">Board Season Score ${boardScore.toFixed(2)} &middot; Tipping ${tippingPoints} pts</div>` + rows.join('');
+    body.innerHTML = `<div class="tier-status-card">
+        <div class="tier-status-main">
+          ${myTier ? `<span class="tier-badge tier-status-gem tier-${myTier.key}"></span><span class="tier-status-name">${myTier.name}</span>` : `<span class="tier-status-name" style="color:var(--muted);">Unranked</span>`}
+          <button type="button" class="tier-status-info-btn" id="tiersInfoBtn" title="How tiers work">ⓘ</button>
+        </div>
+        <div class="tier-status-sub">${lifetime.toLocaleString()} XP &middot; Season ${boardScore.toFixed(2)} &middot; Tipping ${tippingPoints}</div>
+      </div>` + rows.join('');
     const tiersInfoBtn = document.getElementById('tiersInfoBtn');
     if(tiersInfoBtn) tiersInfoBtn.addEventListener('click', () => openCasinoRules('tiers'));
   }catch(e){
