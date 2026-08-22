@@ -437,20 +437,20 @@
     box-shadow:0 4px 10px rgba(0,0,0,.55), inset 0 2px 3px rgba(255,255,255,.6), inset 0 -3px 5px rgba(0,0,0,.35); z-index:4;
   }
   .dailyspin-wheel.pc-winner-flash{ animation: roulettePocketFlash .5s ease 3; }
-  /* Big Wheel's per-segment markers — at 54 narrow wedges there's no room
-     for real text (see the comment in bigWheelBuildWheel), so each wedge
-     just gets a small dot; only the rare Joker wedge gets its own icon,
-     matching how a physical wheel's numbers sit on the rim, not crammed
-     into every panel. */
-  .bigwheel-segment-dot{
-    position:absolute; top:50%; left:50%; width:6px; height:6px; margin:-3px 0 0 -3px;
-    border-radius:50%; background:rgba(255,255,255,.55); box-shadow:0 1px 2px rgba(0,0,0,.5);
-    transition: transform 4s cubic-bezier(.1,.6,.15,1);
+  /* Big Wheel's per-segment labels — real text now that it's down to 24
+     wedges (same count/size Daily Spin already proved legible at), same
+     counter-rotation trick so the numbers stay upright through the spin. */
+  .bigwheel-segment-label{
+    position:absolute; top:50%; left:50%; width:32px; margin:-9px 0 0 -16px;
+    font-size:13px; font-weight:800; text-align:center; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.8);
+    transition: transform 6s cubic-bezier(.1,.6,.15,1);
   }
-  .bigwheel-segment-dot.joker-dot{
-    width:16px; height:16px; margin:-8px 0 0 -8px; background:none; box-shadow:none;
-    display:flex; align-items:center; justify-content:center; font-size:12px;
-  }
+  .bigwheel-segment-label.joker-label{ font-size:16px; }
+  /* Big Wheel spins noticeably longer than Daily Spin's free-spin wheel —
+     an ID-scoped override since #bigWheelWheel otherwise inherits the
+     shared .dailyspin-wheel class's 4s transition, and Daily Spin's own
+     timing shouldn't change. */
+  #bigWheelWheel{ transition-duration: 6s; }
 
   /* ---- Casino landing hub — Games / Rules / How to earn XP / Badges ---- */
   /* Grid, not a flex-wrap row — learned from the earlier 6-across game-
@@ -3511,7 +3511,7 @@
         <div class="sicbo-spot" data-wheel-bet="5"><div class="sicbo-spot-num">5</div><div class="sicbo-spot-odds">5:1</div><div class="craps-bet-spot-amt" data-wheel-amt="5"></div></div>
         <div class="sicbo-spot" data-wheel-bet="10"><div class="sicbo-spot-num">10</div><div class="sicbo-spot-odds">10:1</div><div class="craps-bet-spot-amt" data-wheel-amt="10"></div></div>
         <div class="sicbo-spot" data-wheel-bet="20"><div class="sicbo-spot-num">20</div><div class="sicbo-spot-odds">20:1</div><div class="craps-bet-spot-amt" data-wheel-amt="20"></div></div>
-        <div class="sicbo-spot" data-wheel-bet="joker"><div class="sicbo-spot-num">🃏</div><div class="sicbo-spot-odds">40:1</div><div class="craps-bet-spot-amt" data-wheel-amt="joker"></div></div>
+        <div class="sicbo-spot" data-wheel-bet="joker"><div class="sicbo-spot-num">🃏</div><div class="sicbo-spot-odds">18:1</div><div class="craps-bet-spot-amt" data-wheel-amt="joker"></div></div>
       </div>
       <div style="display:flex; justify-content:center; margin-top:12px;">
         <div class="bj-chip" id="bigWheelChipDisplay">50</div>
@@ -4717,7 +4717,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.74";
+const APP_VERSION = "2026-08-22.76";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9030,9 +9030,9 @@ const CASINO_RULES = {
   `},
   bigwheel: { title: '🛞 Big Wheel Rules', body: `
     <h3>The idea</h3>
-    <p>A real Big Six money wheel — 54 segments, each worth 1, 2, 5, 10, 20, or the rare Joker. Bet on which value the wheel lands on, tap Spin, it settles once and every staked bet resolves against that single outcome. Nothing carries over — place fresh bets each spin.</p>
+    <p>A money wheel with 24 segments, each worth 1, 2, 5, 10, 20, or the rare Joker — every wedge is labelled and colour-matched to its bet spot below, so it's always clear what you're looking at. Bet on which value the wheel lands on, tap Spin, it settles once and every staked bet resolves against that single outcome. Nothing carries over — place fresh bets each spin.</p>
     <h3>Odds</h3>
-    <p>The lower the value, the more common it is on the wheel — and the lower it pays. <b>1</b> pays 1:1 (24 of the 54 segments), <b>2</b> pays 2:1 (15 segments), <b>5</b> pays 5:1 (8 segments), <b>10</b> pays 10:1 (4 segments), <b>20</b> pays 20:1 (2 segments), and the single <b>Joker</b> segment — the rarest spot on the wheel — pays 40:1.</p>
+    <p>The lower the value, the more common it is on the wheel — and the lower it pays. <b>1</b> pays 1:1 (11 of the 24 segments), <b>2</b> pays 2:1 (6 segments), <b>5</b> pays 5:1 (3 segments), <b>10</b> pays 10:1 (2 segments), <b>20</b> pays 20:1 (1 segment), and the single <b>Joker</b> segment — the rarest spot on the wheel — pays 18:1.</p>
     <h3>Multiple bets</h3>
     <p>Just like the other tables, you can bet on more than one value at once. Only the value the wheel actually lands on pays out; everything else staked that spin loses.</p>
   `},
@@ -10865,23 +10865,35 @@ document.getElementById('sicBoRollBtn').addEventListener('click', sicBoRoll);
 // audio) since it's already a solid, tested build — this is the same
 // spinning-wheel physics wearing a betting-game ruleset instead of a
 // once-every-2-days free spin.
-const BIG_WHEEL_PAYOUT = { '1': 1, '2': 2, '5': 5, '10': 10, '20': 20, joker: 40 };
+// Dialled back from a "real" 54-segment Big Six wheel to 24 — the exact
+// segment count Daily Spin already proved legible with real text labels
+// at this size. 54 narrow wedges with nothing but colour-matched dots
+// looked cluttered and gave no way to actually read the wheel; this
+// version shows the real value on every wedge. Odds are recalculated for
+// the new counts (see the note on BIG_WHEEL_PAYOUT below) rather than
+// just scaling the old 54-wheel numbers down and hoping — every bet was
+// re-verified to still be a genuine loser on average, same as real Big
+// Six math, not just visually simplified.
+const BIG_WHEEL_PAYOUT = { '1': 1, '2': 2, '5': 5, '10': 10, '20': 20, joker: 18 };
 function buildBigWheelSegments(){
-  // Round-robin interleave guarantees the exact real-world segment counts
-  // (54 total) while spreading same-value wedges around the wheel rather
-  // than clumping them — order is purely cosmetic, every wedge is equally
-  // likely regardless of where it sits.
-  const queues = [['1', 24], ['2', 15], ['5', 8], ['10', 4], ['20', 2], ['joker', 1]].map(([val, count]) => ({ val, remaining: count }));
+  // Round-robin interleave spreads same-value wedges around the wheel
+  // rather than clumping them — order is purely cosmetic, every wedge is
+  // equally likely regardless of where it sits.
+  const queues = [['1', 11], ['2', 6], ['5', 3], ['10', 2], ['20', 1], ['joker', 1]].map(([val, count]) => ({ val, remaining: count }));
   const result = [];
-  while(result.length < 54){
+  while(result.length < 24){
     for(const q of queues){
-      if(q.remaining > 0 && result.length < 54){ result.push(q.val); q.remaining--; }
+      if(q.remaining > 0 && result.length < 24){ result.push(q.val); q.remaining--; }
     }
   }
   return result;
 }
 const BIG_WHEEL_SEGMENTS = buildBigWheelSegments();
-const BIG_WHEEL_COLORS = { '1': '#123626', '2': '#5a1a1f', '5': '#1c3a5e', '10': '#4a2a6b', '20': '#8a6620', joker: '#e0b23e' };
+// Same colour identity carried through to the bet spots below (see
+// bigWheelInit) so there's an actual visual link between "this wedge" and
+// "this is the spot to tap for it" — the wheel and the betting grid used
+// to share no colour language at all.
+const BIG_WHEEL_COLORS = { '1': '#1a4a33', '2': '#7a2a20', '5': '#2a5a8a', '10': '#6a3a9a', '20': '#b8862e', joker: '#e0b23e' };
 let bigWheelBuilt = false;
 let bigWheelRotation = 0;
 let bigWheelSpinning = false;
@@ -10896,20 +10908,25 @@ function bigWheelBuildWheel(){
   const anglePer = 360 / n;
   const stops = BIG_WHEEL_SEGMENTS.map((val, i) => `${BIG_WHEEL_COLORS[val]} ${(i * anglePer).toFixed(3)}deg ${((i + 1) * anglePer).toFixed(3)}deg`);
   wheel.style.background = `conic-gradient(${stops.join(',')})`;
-  // At 54 narrow wedges (~6.7° each) there's no room for real text on
-  // every single one without it overlapping its neighbours — same
-  // legibility wall Daily Spin hit with "JACKPOT" on its 24 wider
-  // segments, just worse here. A small dot per wedge, colour-matched,
-  // reads clearly at this density; the actual numbers live on the bet
-  // spots below where there's real room, same as a physical wheel's
-  // numbers are on the rim, not filling every wedge.
+  // Real text on every wedge now that there's actual room for it — same
+  // counter-rotation technique as Daily Spin, so labels stay upright and
+  // horizontal throughout the spin instead of spinning with the wheel.
   let piecesHtml = '';
   BIG_WHEEL_SEGMENTS.forEach((val, i) => {
     const angle = i * anglePer + anglePer / 2;
     const isJoker = val === 'joker';
-    piecesHtml += `<div class="bigwheel-segment-dot${isJoker ? ' joker-dot' : ''}" data-base-angle="${angle}" data-radius="98" style="transform: rotate(${angle}deg) translateY(-98px) rotate(${-angle}deg);">${isJoker ? '🃏' : ''}</div>`;
+    const displayText = isJoker ? '🃏' : val;
+    piecesHtml += `<div class="bigwheel-segment-label${isJoker ? ' joker-label' : ''}" data-base-angle="${angle}" data-radius="98" style="transform: rotate(${angle}deg) translateY(-98px) rotate(${-angle}deg);">${displayText}</div>`;
   });
   labelsLayer.innerHTML = piecesHtml;
+  // Colour each bet spot to match its wheel wedge — the missing link
+  // that made it impossible to tell at a glance which spot corresponded
+  // to which colour on the wheel.
+  document.querySelectorAll('#bigWheelBetGrid .sicbo-spot').forEach(spot => {
+    const val = spot.dataset.wheelBet;
+    spot.style.borderTopColor = BIG_WHEEL_COLORS[val];
+    spot.style.borderTopWidth = '4px';
+  });
 }
 function bigWheelSetSpotAmt(val, staged){
   const el = document.querySelector(`[data-wheel-amt="${val}"]`);
@@ -11001,15 +11018,15 @@ async function bigWheelSpinInner(){
   bigWheelRotation = bigWheelRotation - (bigWheelRotation % 360) + spins * 360 + (360 - targetAngle);
   const wheel = document.getElementById('bigWheelWheel');
   wheel.style.transform = `rotate(${bigWheelRotation}deg)`;
-  document.querySelectorAll('#bigWheelLabelsLayer .bigwheel-segment-dot').forEach(label => {
+  document.querySelectorAll('#bigWheelLabelsLayer .bigwheel-segment-label').forEach(label => {
     const baseAngle = parseFloat(label.dataset.baseAngle);
     const radius = parseFloat(label.dataset.radius);
     const liveAngle = baseAngle + bigWheelRotation;
     label.style.transform = `rotate(${liveAngle}deg) translateY(-${radius}px) rotate(${-liveAngle}deg)`;
   });
-  dailySpinSchedulePegTicks(4000, 55);
+  dailySpinSchedulePegTicks(6000, 70);
   bjPlaySpinSound();
-  await bjWait(4200);
+  await bjWait(6200);
   wheel.classList.remove('pc-winner-flash'); void wheel.offsetWidth; wheel.classList.add('pc-winner-flash');
 
   let delta = 0;
@@ -11996,11 +12013,11 @@ function computeHighlights(history){
 // streak, the standout betting result, and Casino Pot activity. Not a
 // scheduled/cached weekly digest (that would need a server-side cron this
 // app doesn't have) — it's computed fresh every time Home loads instead,
-// off data that's already being tracked elsewhere (tippingStats cache,
-// currentStreak, the same computeHighlights() the Highlights panel above
-// it already uses, and this month's Casino Pot activity). Runs once per
-// Home tab visit, not on a poll — this is "form" that's slow to shift day
-// to day, not something that needs to be live-ticking. ----
+// off data that's already being tracked elsewhere (currentStreak, the
+// same computeHighlights() the Highlights panel above it already uses,
+// and this month's Casino Pot activity). Runs once per Home tab visit,
+// not on a poll — this is "form" that's slow to shift day to day, not
+// something that needs to be live-ticking. ----
 let formGuideRenderedThisSession = false;
 async function renderFormGuide(){
   const area = document.getElementById('formGuideArea');
@@ -12009,20 +12026,27 @@ async function renderFormGuide(){
   const linked = currentState.members.filter(m => m.linkedUid);
   if(linked.length === 0){ area.innerHTML = '<div class="empty">Nobody\'s linked an account yet.</div>'; return; }
   try{
-    const rows = await Promise.all(linked.map(async m => {
-      try{
-        const [tipRes, streakRes] = await Promise.all([
-          authedFetch(`/tippingStats/${m.linkedUid}/seasonPoints.json`),
-          authedFetch(`/xp/${m.linkedUid}/currentStreak.json`)
-        ]);
-        const tippingPoints = tipRes.ok ? ((await tipRes.json()) || 0) : 0;
-        const streak = streakRes.ok ? ((await streakRes.json()) || 0) : 0;
-        return { name: m.name, uid: m.linkedUid, tippingPoints, streak };
-      }catch(e){ return { name: m.name, uid: m.linkedUid, tippingPoints: 0, streak: 0 }; }
-    }));
+    // Tipping leader MUST come from the real, live ladder — not the
+    // per-person tippingStats cache (that's only ever as fresh as
+    // whoever last happened to open Tipping/Board themselves, which
+    // produced a genuinely wrong "leader" here: someone who checks the
+    // app often but isn't actually leading can out-cache someone who
+    // genuinely is). Runs the same accurate computation the Tipping tab
+    // itself uses before reading the result, rather than guessing from
+    // a value that might be stale or never written at all.
+    try{
+      const games = await fetchTippingFixtures();
+      await renderTippingLadder(games);
+    }catch(e){}
 
-    const tippingLeader = rows.reduce((best, r) => (r.tippingPoints > (best ? best.tippingPoints : 0)) ? r : best, null);
-    const streakLeader = rows.reduce((best, r) => (r.streak > (best ? best.streak : 0)) ? r : best, null);
+    const streakRows = await Promise.all(linked.map(async m => {
+      try{
+        const streakRes = await authedFetch(`/xp/${m.linkedUid}/currentStreak.json`);
+        const streak = streakRes.ok ? ((await streakRes.json()) || 0) : 0;
+        return { name: m.name, uid: m.linkedUid, streak };
+      }catch(e){ return { name: m.name, uid: m.linkedUid, streak: 0 }; }
+    }));
+    const streakLeader = streakRows.reduce((best, r) => (r.streak > (best ? best.streak : 0)) ? r : best, null);
 
     const hl = computeHighlights(currentState.history || []);
 
@@ -12040,8 +12064,9 @@ async function renderFormGuide(){
     }catch(e){}
 
     const lines = [];
-    if(tippingLeader && tippingLeader.tippingPoints > 0){
-      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎯</span><span class="form-guide-text"><b>${escapeHtml(tippingLeader.name)}</b> leads the Tipping ladder — ${tippingLeader.tippingPoints} pts</span></div>`);
+    if(currentSeasonLeaders.size > 0 && currentSeasonTopScore != null){
+      const leaderNames = [...currentSeasonLeaders].map(n => `<b>${escapeHtml(n)}</b>`).join(currentSeasonLeaders.size > 1 ? ' & ' : '');
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎯</span><span class="form-guide-text">${leaderNames} ${currentSeasonLeaders.size > 1 ? 'lead' : 'leads'} the Tipping ladder — ${currentSeasonTopScore} pts</span></div>`);
     }
     if(streakLeader && streakLeader.streak >= 3){
       lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🔥</span><span class="form-guide-text"><b>${escapeHtml(streakLeader.name)}</b> is on a ${streakLeader.streak}-win Casino heater</span></div>`);
@@ -14098,6 +14123,7 @@ let tippingDraft = {}; // { [gameId]: { pick, margin } } — live selections bef
 let tippingRoundGameMeta = {}; // { [gameId]: { label, isMarginGame, round } } — only unlocked games in the current round view
 let tipCountdownIntervals = {}; // { [gameId]: intervalId } — live "until the opening bounce" clocks, cleared on every re-render
 let currentSeasonLeaders = new Set(); // names tied for #1 on the season ladder — refreshed by renderTippingLadder, read (not fetched) by game reveal cards
+let currentSeasonTopScore = null; // the actual points value currentSeasonLeaders are tied on — kept alongside so consumers (Form Guide) don't need to guess or re-derive it from a stale cache
 
 function getKickoffMs(g){
   return new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
@@ -15212,6 +15238,7 @@ async function renderTippingLadder(games){
   const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)) && g.round >= seasonStartRound);
   if(finishedGames.length === 0){
     currentSeasonLeaders = new Set();
+    currentSeasonTopScore = null;
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
@@ -15234,6 +15261,7 @@ async function renderTippingLadder(games){
   const involvedRounds = Object.keys(roundCounts).filter(r => roundCounts[r].done > 0).map(Number);
   if(involvedRounds.length === 0){
     currentSeasonLeaders = new Set();
+    currentSeasonTopScore = null;
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
@@ -15381,6 +15409,7 @@ async function renderTippingLadder(games){
   rows.sort((a, b) => b.points - a.points || a.marginDiff - b.marginDiff);
   if(rows.length === 0){
     currentSeasonLeaders = new Set();
+    currentSeasonTopScore = null;
     area.innerHTML = '<div class="empty">No picks recorded yet.</div>';
     return;
   }
@@ -15435,6 +15464,7 @@ async function renderTippingLadder(games){
   const bottomScore = rows[rows.length - 1].points;
   const hasSpread = topScore !== bottomScore;
   currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.points === topScore).map(r => r.name)) : new Set();
+  currentSeasonTopScore = hasSpread ? topScore : null;
 
   // Safety net: with several completed rounds and several tippers, everyone
   // landing on the exact same non-zero score is a strong anomaly signal
