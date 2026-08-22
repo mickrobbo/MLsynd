@@ -1023,6 +1023,10 @@
       conic-gradient(from -40deg, #f7e2a4, #b9903c, #6b4f1a, #b9903c, #f7e2a4, #b9903c, #6b4f1a, #b9903c, #f7e2a4);
     box-shadow: 0 8px 20px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,255,255,.45), inset 0 -3px 6px rgba(0,0,0,.5);
   }
+  /* Own ::after (not a .panel, so the generic .panel.pc-flash-gold rule
+     doesn't reach it) — used for the "Clear New Bets" confirmation flash. */
+  .craps-table-rail::after{ content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:2; }
+  .craps-table-rail.pc-flash-gold::after{ animation: tableFlashGold .6s ease; }
   .craps-table-felt{
     position:relative; border-radius:19px; overflow:hidden; padding:18px 12px 14px;
     background:
@@ -1056,13 +1060,17 @@
     border-color:var(--brass-light); color:#2a2005;
     box-shadow:0 4px 10px rgba(0,0,0,.5), inset 0 2px 3px rgba(255,255,255,.6), inset 0 -3px 5px rgba(0,0,0,.3), 0 0 14px rgba(255,214,120,.5);
   }
-  .craps-dice-row{ display:flex; gap:16px; justify-content:center; margin-bottom:12px; perspective:400px; }
+  .craps-dice-row{ display:flex; gap:22px; justify-content:center; margin-bottom:12px; perspective:700px; }
   /* Real dice: an ivory-bone gradient body (same family as the roulette
      ball's material), a beveled edge via layered inset shadows, a soft
      ambient shadow pooling underneath so it reads as sitting ON the felt
-     rather than pasted flat onto it. */
+     rather than pasted flat onto it. .craps-die is also reused flat (no
+     cube inside) for the small Big Win modal dice — the grid/pip rules
+     below apply directly to IT in that case, and are overridden by the
+     face-specific rules further down when a real .craps-die-cube is
+     nested inside for the live table dice. */
   .craps-die{
-    width:52px; height:52px; border-radius:9px;
+    width:52px; height:52px; border-radius:9px; position:relative;
     background: radial-gradient(circle at 30% 24%, #ffffff, #f2ede2 45%, #d8d0bd 85%);
     box-shadow:
       0 10px 14px rgba(0,0,0,.5),
@@ -1072,7 +1080,7 @@
       inset 3px 0 4px rgba(255,255,255,.35),
       inset -3px 0 5px rgba(0,0,0,.12);
     display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 1fr);
-    padding:8px; gap:2px; transform-style:preserve-3d;
+    padding:8px; gap:2px;
   }
   /* Carved-in pip look: a dark dished centre with a tiny bright rim catch,
      rather than a flat solid dot. */
@@ -1081,23 +1089,56 @@
     background: radial-gradient(circle at 35% 30%, #3a3a3a, #111 55%, #000 100%);
     box-shadow: inset 0 1px 1px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.4);
   }
-  /* Tumble: a genuine toss-and-settle — rotates on two axes with a bounce
-     arc (translateY dips like gravity, not just a flat spin) and eases
-     into a slightly-overshot settle at the end, matching the weight the
-     roulette ball's spin-down already has. */
+  /* ---- Real 3D cube (the live table dice only) ----
+     .craps-die (52x52, no grid/padding needed here — it becomes just a
+     perspective anchor) holds a .craps-die-cube with 6 actual faces
+     positioned in true 3D via translateZ, so side/top/bottom faces are
+     genuinely visible mid-tumble instead of a flat card flipping. Only
+     the FRONT face's pip content is ever authoritative (updated to the
+     real rolled value); the other 5 faces carry fixed decorative pip
+     counts purely so the cube reads as solid while spinning — nobody
+     freeze-frames a fast tumble to check that opposite faces sum to 7. */
+  .craps-die:has(.craps-die-cube), .craps-die.craps-die-3d{ background:none; box-shadow:none; display:block; padding:0; }
+  .craps-die-cube{
+    position:absolute; inset:0; transform-style:preserve-3d; will-change:transform;
+  }
+  .craps-die-face{
+    position:absolute; inset:0; border-radius:9px; backface-visibility:hidden;
+    background: radial-gradient(circle at 30% 24%, #ffffff, #f2ede2 45%, #d8d0bd 85%);
+    box-shadow:
+      inset 0 2px 2px rgba(255,255,255,.9), inset 0 -4px 6px rgba(0,0,0,.18),
+      inset 3px 0 4px rgba(255,255,255,.35), inset -3px 0 5px rgba(0,0,0,.12),
+      0 0 0 1px rgba(0,0,0,.06);
+    display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 1fr);
+    padding:8px; gap:2px;
+  }
+  .craps-die-face-front{ transform: translateZ(26px); }
+  .craps-die-face-back{ transform: rotateY(180deg) translateZ(26px); }
+  .craps-die-face-right{ transform: rotateY(90deg) translateZ(26px); }
+  .craps-die-face-left{ transform: rotateY(-90deg) translateZ(26px); }
+  .craps-die-face-top{ transform: rotateX(90deg) translateZ(26px); }
+  .craps-die-face-bottom{ transform: rotateX(-90deg) translateZ(26px); }
+  /* Tumble: a genuine toss-and-settle on a REAL cube — rotates on two
+     axes with a bounce arc (translateY dips like gravity, not just a
+     flat spin) and eases into a settle at the end. Critically, the FINAL
+     frame lands on exact multiples of 360° on every axis, so the cube
+     visually returns to true identity orientation (front face square-on
+     to the viewer) rather than resting at some arbitrary skewed angle —
+     the earlier flat-pip version got away with non-360 end values since
+     there was no real geometry to betray it; a genuine cube can't. */
   @keyframes crapsDieTumble{
     0%{ transform:translateY(0) rotateX(0) rotateY(0) rotateZ(0) scale(1); }
-    12%{ transform:translateY(-22px) rotateX(140deg) rotateY(80deg) rotateZ(40deg) scale(1.05); }
-    28%{ transform:translateY(-6px) rotateX(300deg) rotateY(220deg) rotateZ(160deg) scale(1); }
-    44%{ transform:translateY(-16px) rotateX(480deg) rotateY(340deg) rotateZ(260deg) scale(1.04); }
-    60%{ transform:translateY(-2px) rotateX(620deg) rotateY(460deg) rotateZ(340deg) scale(1); }
-    76%{ transform:translateY(-8px) rotateX(700deg) rotateY(540deg) rotateZ(400deg) scale(1.02); }
-    90%{ transform:translateY(0) rotateX(720deg) rotateY(600deg) rotateZ(430deg) scale(1); }
-    100%{ transform:translateY(0) rotateX(720deg) rotateY(600deg) rotateZ(440deg) scale(1); }
+    12%{ transform:translateY(-24px) rotateX(150deg) rotateY(90deg) rotateZ(40deg) scale(1.06); }
+    28%{ transform:translateY(-6px) rotateX(320deg) rotateY(240deg) rotateZ(140deg) scale(1); }
+    44%{ transform:translateY(-18px) rotateX(500deg) rotateY(380deg) rotateZ(220deg) scale(1.05); }
+    60%{ transform:translateY(-2px) rotateX(620deg) rotateY(520deg) rotateZ(300deg) scale(1); }
+    76%{ transform:translateY(-9px) rotateX(680deg) rotateY(620deg) rotateZ(340deg) scale(1.02); }
+    90%{ transform:translateY(0) rotateX(710deg) rotateY(690deg) rotateZ(355deg) scale(1); }
+    100%{ transform:translateY(0) rotateX(720deg) rotateY(720deg) rotateZ(360deg) scale(1); }
   }
-  .craps-die.tumbling{ animation: crapsDieTumble 1.36s cubic-bezier(.24,.85,.35,1) both; }
-  .craps-die:nth-child(2).tumbling{ animation-duration:1.44s; animation-delay:.06s; }
-  .craps-dice-shadow{ display:flex; gap:16px; justify-content:center; margin-top:-6px; margin-bottom:2px; }
+  .craps-die-cube.tumbling{ animation: crapsDieTumble 1.36s cubic-bezier(.24,.85,.35,1) both; }
+  #crapsDie2 .craps-die-cube.tumbling{ animation-duration:1.44s; animation-delay:.06s; }
+  .craps-dice-shadow{ display:flex; gap:22px; justify-content:center; margin-top:-6px; margin-bottom:2px; }
   .craps-dice-shadow-blob{
     width:38px; height:8px; border-radius:50%; background:radial-gradient(ellipse, rgba(0,0,0,.45), rgba(0,0,0,0) 72%);
   }
@@ -1113,9 +1154,28 @@
   .craps-bet-spot-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; color:var(--brass-light); }
   .craps-bet-spot-sub{ font-size:9.5px; color:var(--muted); margin-top:1px; }
   .craps-bet-spot-amt{
-    margin-top:4px; font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--chalk);
-    min-height:14px;
+    margin-top:5px; min-height:20px; display:flex; gap:4px; justify-content:center; align-items:center; flex-wrap:wrap;
   }
+  /* Chip-pill tokens — a solid gold coin for an already-riding bet, a
+     dashed "ghost" coin for chips staged this round but not yet rolled.
+     Replaces the old plain "100 XP new" text line the amounts used to
+     show. The ghost pill doubles as a tap target to remove just that
+     one staged bet (delegated click handler further down). */
+  .craps-chip-pill{
+    display:inline-flex; align-items:center; justify-content:center; gap:2px;
+    min-width:28px; height:19px; padding:0 7px; border-radius:999px;
+    font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700; line-height:1;
+    box-shadow:0 2px 4px rgba(0,0,0,.4);
+  }
+  .craps-chip-pill.craps-chip-live{
+    background: radial-gradient(circle at 32% 28%, var(--brass-light), var(--brass) 60%, var(--brass-dim) 100%);
+    color:#2a2005; box-shadow:0 2px 4px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.55);
+  }
+  .craps-chip-pill.craps-chip-new{
+    background:rgba(0,0,0,.25); border:1.5px dashed var(--brass-light); color:var(--brass-light);
+    cursor:pointer; box-shadow:none;
+  }
+  .craps-chip-pill.craps-chip-new:active{ transform:scale(.92); background:rgba(193,96,74,.25); border-color:var(--loss); }
   .craps-bet-spot.has-live::before{
     content:''; position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%;
     background:var(--brass-light); box-shadow:0 0 6px rgba(255,214,120,.7);
@@ -1362,6 +1422,12 @@
     padding:1px 5px; border-radius:999px; vertical-align:middle;
   }
   .pos{ color: var(--win); } .neg{ color: var(--loss); }
+  /* Small "telly" readout under a leaderboard balance — the lifetime total
+     never goes down, so it reads as the player's true all-time standing
+     even when their spendable balance has dipped from recent losses. */
+  .lb-lifetime-telly{
+    font-family:'IBM Plex Mono', monospace; font-size:9px; color:var(--muted); letter-spacing:.2px;
+  }
 
   .lb-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .lb-table{
@@ -2951,8 +3017,8 @@
           <div class="craps-puck off" id="crapsPuck">OFF</div>
         </div>
         <div class="craps-dice-row">
-          <div class="craps-die" id="crapsDie1"></div>
-          <div class="craps-die" id="crapsDie2"></div>
+          <div class="craps-die craps-die-3d" id="crapsDie1"></div>
+          <div class="craps-die craps-die-3d" id="crapsDie2"></div>
         </div>
         <div class="craps-dice-shadow"><div class="craps-dice-shadow-blob"></div><div class="craps-dice-shadow-blob"></div></div>
         <div class="craps-total-msg" id="crapsTotalMsg"></div>
@@ -4290,7 +4356,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.51";
+const APP_VERSION = "2026-08-22.53";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5392,6 +5458,7 @@ let holdemTableBackupPollHandle = null;
 // and chip sound, which reads as glitchy, not premium.
 let holdemLastSeatsSnapshot = {};
 let holdemSeatRingSeeded = false;
+let holdemLastActionsSignature = null; // guards the actions-area rebuild below — see renderHoldemSeatRing
 
 async function openHoldemTable(tableId){
   holdemCurrentTableId = tableId;
@@ -5571,56 +5638,81 @@ async function renderHoldemSeatRing(){
     } else {
       actionsHtml = `<div class="hint">Watching — sit down once this hand finishes to join in.</div>`;
     }
-    actionsArea.innerHTML = actionsHtml;
 
-    const viewHandBtn = document.getElementById('holdemViewHandBtn');
-    if(viewHandBtn) viewHandBtn.addEventListener('click', () => openHoldemHand(holdemCurrentTableId, table.currentHandId));
-    const sitBtn = document.getElementById('holdemSitBtn');
-    if(sitBtn) sitBtn.addEventListener('click', async () => {
-      const buyIn = Math.floor(Number(document.getElementById('holdemBuyInInput').value));
-      const statusEl = document.getElementById('holdemTableActionStatus');
-      if(!(buyIn > 0)){ statusEl.textContent = 'Enter a buy-in above 0.'; return; }
-      statusEl.textContent = 'Sitting down…';
-      try{ await holdemDealerCall(holdemCurrentTableId, 'sit', { buyIn }); statusEl.textContent = ''; renderHoldemSeatRing(); }
-      catch(e){ statusEl.textContent = e.message; }
-    });
-    const standBtn = document.getElementById('holdemStandBtn');
-    if(standBtn) standBtn.addEventListener('click', async () => {
-      const statusEl = document.getElementById('holdemTableActionStatus');
-      try{ await holdemDealerCall(holdemCurrentTableId, 'stand', {}); statusEl.textContent = ''; renderHoldemSeatRing(); }
-      catch(e){ statusEl.textContent = e.message; }
-    });
-    const sitOutBtn = document.getElementById('holdemSitOutBtn');
-    if(sitOutBtn) sitOutBtn.addEventListener('click', async () => {
-      const statusEl = document.getElementById('holdemTableActionStatus');
-      try{ await holdemDealerCall(holdemCurrentTableId, 'toggleSitOut', {}); statusEl.textContent = ''; renderHoldemSeatRing(); }
-      catch(e){ statusEl.textContent = e.message; }
-    });
-    const startBtn = document.getElementById('holdemStartHandBtn');
-    if(startBtn) startBtn.addEventListener('click', async () => {
-      const statusEl = document.getElementById('holdemTableActionStatus');
-      statusEl.textContent = 'Dealing…';
-      try{
-        const result = await holdemDealerCall(holdemCurrentTableId, 'startHand', {});
-        statusEl.textContent = '';
-        openHoldemHand(holdemCurrentTableId, result.handId);
-      }catch(e){ statusEl.textContent = e.message; }
-    });
-    const rebuyBtn = document.getElementById('holdemRebuyBtn');
-    if(rebuyBtn) rebuyBtn.addEventListener('click', async () => {
-      const statusEl = document.getElementById('holdemTableActionStatus');
-      const input = prompt('Add how many XP to your stack?');
-      const amount = Math.floor(Number(input));
-      if(!input || !(amount > 0)) return;
-      statusEl.textContent = 'Adding chips…';
-      try{ await holdemDealerCall(holdemCurrentTableId, 'rebuy', { amount }); statusEl.textContent = ''; renderHoldemSeatRing(); }
-      catch(e){ statusEl.textContent = e.message; }
-    });
-    const autoStartToggle = document.getElementById('holdemAutoStartToggle');
-    if(autoStartToggle) autoStartToggle.addEventListener('change', async () => {
-      try{ await holdemDealerCall(holdemCurrentTableId, 'toggleAutoStart', {}); }
-      catch(e){ document.getElementById('holdemTableActionStatus').textContent = e.message; renderHoldemSeatRing(); }
-    });
+    // Stand up / Sit out / etc were reported as "not working" — the real
+    // cause: this whole function re-runs on every realtime update from
+    // the table (ANY seat, not just yours), and used to unconditionally
+    // blow away and rebuild actionsArea's innerHTML every single time,
+    // tearing out and replacing the exact DOM node a finger might be
+    // mid-tap on. A touchstart-to-click gesture silently drops when the
+    // element under it gets swapped out from under it — so a perfectly
+    // real tap could just do nothing, unpredictably, whenever someone
+    // else at the table happened to act at the same moment. Only
+    // rebuilding when the actions actually need to look different fixes
+    // this at the root instead of racing it.
+    const actionsSignature = JSON.stringify([
+      table.status, table.currentHandId || null, mySeatIdx ?? null,
+      mySeatIdx != null ? seats[mySeatIdx].stack : null,
+      mySeatIdx != null ? !!seats[mySeatIdx].sittingOut : null,
+      seatedCount, !!table.autoStart
+    ]);
+    if(actionsSignature === holdemLastActionsSignature){
+      // Nothing the player would actually see differently — skip the
+      // rebuild entirely rather than tearing out and replacing the exact
+      // buttons a finger might be mid-tap on right now.
+    } else {
+      holdemLastActionsSignature = actionsSignature;
+      actionsArea.innerHTML = actionsHtml;
+
+      const viewHandBtn = document.getElementById('holdemViewHandBtn');
+      if(viewHandBtn) viewHandBtn.addEventListener('click', () => openHoldemHand(holdemCurrentTableId, table.currentHandId));
+      const sitBtn = document.getElementById('holdemSitBtn');
+      if(sitBtn) sitBtn.addEventListener('click', async () => {
+        const buyIn = Math.floor(Number(document.getElementById('holdemBuyInInput').value));
+        const statusEl = document.getElementById('holdemTableActionStatus');
+        if(!(buyIn > 0)){ statusEl.textContent = 'Enter a buy-in above 0.'; return; }
+        statusEl.textContent = 'Sitting down…';
+        try{ await holdemDealerCall(holdemCurrentTableId, 'sit', { buyIn }); statusEl.textContent = ''; holdemLastActionsSignature = null; renderHoldemSeatRing(); }
+        catch(e){ statusEl.textContent = e.message; }
+      });
+      const standBtn = document.getElementById('holdemStandBtn');
+      if(standBtn) standBtn.addEventListener('click', async () => {
+        const statusEl = document.getElementById('holdemTableActionStatus');
+        try{ await holdemDealerCall(holdemCurrentTableId, 'stand', {}); statusEl.textContent = ''; holdemLastActionsSignature = null; renderHoldemSeatRing(); }
+        catch(e){ statusEl.textContent = e.message; }
+      });
+      const sitOutBtn = document.getElementById('holdemSitOutBtn');
+      if(sitOutBtn) sitOutBtn.addEventListener('click', async () => {
+        const statusEl = document.getElementById('holdemTableActionStatus');
+        try{ await holdemDealerCall(holdemCurrentTableId, 'toggleSitOut', {}); statusEl.textContent = ''; holdemLastActionsSignature = null; renderHoldemSeatRing(); }
+        catch(e){ statusEl.textContent = e.message; }
+      });
+      const startBtn = document.getElementById('holdemStartHandBtn');
+      if(startBtn) startBtn.addEventListener('click', async () => {
+        const statusEl = document.getElementById('holdemTableActionStatus');
+        statusEl.textContent = 'Dealing…';
+        try{
+          const result = await holdemDealerCall(holdemCurrentTableId, 'startHand', {});
+          statusEl.textContent = '';
+          openHoldemHand(holdemCurrentTableId, result.handId);
+        }catch(e){ statusEl.textContent = e.message; }
+      });
+      const rebuyBtn = document.getElementById('holdemRebuyBtn');
+      if(rebuyBtn) rebuyBtn.addEventListener('click', async () => {
+        const statusEl = document.getElementById('holdemTableActionStatus');
+        const input = prompt('Add how many XP to your stack?');
+        const amount = Math.floor(Number(input));
+        if(!input || !(amount > 0)) return;
+        statusEl.textContent = 'Adding chips…';
+        try{ await holdemDealerCall(holdemCurrentTableId, 'rebuy', { amount }); statusEl.textContent = ''; holdemLastActionsSignature = null; renderHoldemSeatRing(); }
+        catch(e){ statusEl.textContent = e.message; }
+      });
+      const autoStartToggle = document.getElementById('holdemAutoStartToggle');
+      if(autoStartToggle) autoStartToggle.addEventListener('change', async () => {
+        try{ await holdemDealerCall(holdemCurrentTableId, 'toggleAutoStart', {}); }
+        catch(e){ document.getElementById('holdemTableActionStatus').textContent = e.message; holdemLastActionsSignature = null; renderHoldemSeatRing(); }
+      });
+    }
 
     renderHoldemHistory(holdemCurrentTableId);
 
@@ -8058,10 +8150,14 @@ async function renderXPLeaderboard(){
   try{
     const rows = await Promise.all(linked.map(async m => {
       try{
-        const res = await authedFetch(`/xp/${m.linkedUid}/balance.json`);
-        const bal = await res.json();
-        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0 };
-      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null }; }
+        const [balRes, lifetimeRes] = await Promise.all([
+          authedFetch(`/xp/${m.linkedUid}/balance.json`),
+          authedFetch(`/xp/${m.linkedUid}/lifetimeEarned.json`)
+        ]);
+        const bal = await balRes.json();
+        const lifetime = await lifetimeRes.json();
+        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0, lifetime: lifetime != null ? lifetime : 0 };
+      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null, lifetime: null }; }
     }));
     rows.sort((a,b) => (b.balance || 0) - (a.balance || 0));
     lastLeaderboardBalances = rows; // reused by refreshCasinoHeroExtras — avoids a duplicate full-roster fetch for "my rank"
@@ -8075,7 +8171,10 @@ async function renderXPLeaderboard(){
       return `<div style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '11px 8px' : '8px 4px'}; border-bottom:1px solid var(--line); ${bg}">
         <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
         <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</span>
-        <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${r.balance != null ? r.balance.toLocaleString() : '—'}</span>
+        <span style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${r.balance != null ? r.balance.toLocaleString() : '—'}</span>
+          <span class="lb-lifetime-telly">🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime</span>
+        </span>
       </div>`;
     }).join('');
   }catch(e){
@@ -9274,7 +9373,10 @@ function crapsRenderHistory(){
 function crapsInit(){
   crapsBuilt = true;
   crapsRenderBetSpots();
-  crapsRenderDice(1, 1);
+  crapsBuildDieCube('crapsDie1');
+  crapsBuildDieCube('crapsDie2');
+  crapsSetFrontFace('crapsDie1', 1);
+  crapsSetFrontFace('crapsDie2', 1);
   document.getElementById('crapsTotalMsg').textContent = '';
 }
 function crapsRenderPuck(){
@@ -9302,38 +9404,62 @@ function crapsDiePipLayout(n){
   const on = new Set(layouts[n] || []);
   return Array.from({ length: 9 }, (_, i) => `<div class="craps-die-pip${on.has(i) ? ' on' : ''}"></div>`).join('');
 }
-function crapsRenderDice(a, b){
-  const d1 = document.getElementById('crapsDie1'), d2 = document.getElementById('crapsDie2');
-  d1.innerHTML = crapsDiePipLayout(a); d2.innerHTML = crapsDiePipLayout(b);
+// Builds the actual 6-face cube once per die (front/back/left/right/top/
+// bottom, real translateZ geometry — see the .craps-die-face-* CSS). Only
+// the front face is ever authoritative; the other 5 get fixed decorative
+// pip counts (a valid opposite-faces-sum-7 arrangement built around
+// front=1) purely so the cube reads as solid mid-tumble.
+function crapsBuildDieCube(dieId){
+  const die = document.getElementById(dieId);
+  if(!die || die.querySelector('.craps-die-cube')) return; // already built
+  const faceDefs = [['front', 1], ['back', 6], ['right', 2], ['left', 5], ['top', 3], ['bottom', 4]];
+  die.innerHTML = `<div class="craps-die-cube">${
+    faceDefs.map(([name, n]) => `<div class="craps-die-face craps-die-face-${name}">${crapsDiePipLayout(n)}</div>`).join('')
+  }</div>`;
 }
-// A real toss: the CSS tumble (rotate + bounce, see .craps-die.tumbling)
-// runs for its own duration while the pip faces flicker through random
-// values every ~70ms, landing on the true result only right at the end —
-// same "reveal only at the last moment" feel as the roulette ball's spin
-// rather than an instant number swap under a spinning cube.
+function crapsSetFrontFace(dieId, n){
+  const front = document.querySelector(`#${dieId} .craps-die-face-front`);
+  if(front) front.innerHTML = crapsDiePipLayout(n);
+}
+// A real toss: the CSS tumble (genuine 3D cube rotation + bounce, see
+// .craps-die-cube.tumbling) runs for its own duration while the FRONT
+// face's pips flicker through random values every ~70ms, landing on the
+// true result only right at the end — same "reveal only at the last
+// moment" feel as the roulette ball's spin rather than an instant number
+// swap. The cube's own rotation is purely decorative motion; correctness
+// always comes from the front face's content, set directly.
 async function crapsAnimateRoll(finalA, finalB){
-  const d1 = document.getElementById('crapsDie1'), d2 = document.getElementById('crapsDie2');
-  [d1, d2].forEach(d => { d.classList.remove('tumbling'); void d.offsetWidth; d.classList.add('tumbling'); });
+  const c1 = document.querySelector('#crapsDie1 .craps-die-cube'), c2 = document.querySelector('#crapsDie2 .craps-die-cube');
+  [c1, c2].forEach(c => { c.classList.remove('tumbling'); void c.offsetWidth; c.classList.add('tumbling'); });
   const stepMs = 70, totalFlickerMs = 1120;
   const steps = Math.floor(totalFlickerMs / stepMs);
   for(let i = 0; i < steps; i++){
-    crapsRenderDice(1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6));
+    crapsSetFrontFace('crapsDie1', 1 + Math.floor(Math.random() * 6));
+    crapsSetFrontFace('crapsDie2', 1 + Math.floor(Math.random() * 6));
     await bjWait(stepMs);
   }
-  crapsRenderDice(finalA, finalB);
+  crapsSetFrontFace('crapsDie1', finalA);
+  crapsSetFrontFace('crapsDie2', finalB);
   await bjWait(300); // let the tumble's own settle tail finish before anything reads the result
-  [d1, d2].forEach(d => d.classList.remove('tumbling'));
+  [c1, c2].forEach(c => c.classList.remove('tumbling'));
 }
-function crapsFmtAmt(n){ return n > 0 ? `${n.toLocaleString()} XP` : ''; }
+function crapsFmtChip(n){ return n >= 1000 ? (n % 1000 === 0 ? (n / 1000) + 'k' : (n / 1000).toFixed(1) + 'k') : String(n); }
 // Generic setter — handles both simple spots (key === amt-id, e.g. "pass")
 // and per-number spots (amt-id is "place-4", live/staged looked up by
-// number within the relevant object).
+// number within the relevant object). Renders actual chip-pill tokens
+// (a solid gold "live" chip already riding, a dashed ghost "+N" chip for
+// this round's not-yet-rolled stake) instead of a plain text line — the
+// ghost chip doubles as a per-spot "remove this new bet" control, wired
+// once via delegation in the click handler below.
 function crapsSetSpotAmt(amtKey, spotSelector, live, staged){
   const el = document.querySelector(`[data-amt="${amtKey}"]`);
   const spot = document.querySelector(spotSelector);
   if(!el || !spot) return;
   const total = live + staged;
-  el.textContent = total > 0 ? `${crapsFmtAmt(live)}${staged > 0 ? `${live > 0 ? ' + ' : ''}${crapsFmtAmt(staged)} new` : ''}` : '';
+  let html = '';
+  if(live > 0) html += `<span class="craps-chip-pill craps-chip-live">${crapsFmtChip(live)}</span>`;
+  if(staged > 0) html += `<span class="craps-chip-pill craps-chip-new" data-clear-key="${amtKey}" title="Remove this bet">+${crapsFmtChip(staged)} ✕</span>`;
+  el.innerHTML = html;
   spot.classList.toggle('has-live', total > 0);
 }
 function crapsRenderBetSpots(){
@@ -9369,8 +9495,24 @@ function crapsRenderBetSpots(){
 // number from data-craps-num, so one listener covers every spot on the
 // table instead of one per bet type.
 document.querySelectorAll('#crapsBetGrid .craps-bet-spot, #crapsPlaceGrid .craps-place-spot, #crapsHardwayGrid .craps-hardway-spot, #crapsPropRow .craps-prop-spot').forEach(spot => {
-  spot.addEventListener('click', () => {
+  spot.addEventListener('click', (e) => {
     if(spot.classList.contains('disabled')) return;
+    // Tapping a "ghost" (staged-but-not-yet-rolled) chip pill removes just
+    // that one bet instead of adding another chip on top of it — checked
+    // first since the pill sits inside the spot and the click bubbles up.
+    const ghostPill = e.target.closest('.craps-chip-new');
+    if(ghostPill){
+      const amtKey = ghostPill.dataset.clearKey;
+      const [clearType, clearNum] = amtKey.includes('-') ? amtKey.split(/-(.+)/) : [amtKey, null];
+      if(clearType === 'place' || clearType === 'hardway' || clearType === 'prop'){
+        crapsStaged[clearType][clearNum] = 0;
+      } else {
+        crapsStaged[clearType] = 0;
+      }
+      crapsRenderBetSpots();
+      bjPlayChipSound();
+      return;
+    }
     const type = spot.dataset.crapsBet;
     const num = spot.dataset.crapsNum;
     const chip = parseInt(document.getElementById('crapsBetInput').value, 10) || 0;
@@ -9393,6 +9535,11 @@ document.getElementById('crapsClearStagedBtn').addEventListener('click', () => {
   };
   document.getElementById('crapsBetError').textContent = '';
   crapsRenderBetSpots();
+  // Unambiguous confirmation this actually did something — same brief
+  // gold flash the table already uses elsewhere for a state change, so
+  // "nothing visibly happened" can't be mistaken for "button's broken".
+  const railEl = document.getElementById('crapsTableRail');
+  if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); }
 });
 document.getElementById('crapsBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('crapsChipDisplay');
@@ -9401,7 +9548,31 @@ document.getElementById('crapsBetInput').addEventListener('input', (e) => {
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
 });
 
+let crapsRolling = false; // guards against a double-tap firing two overlapping rolls — the real cause of "bets only half-clear" reports (see crapsRoll)
 async function crapsRoll(){
+  // Everything above this line is synchronous — the button is disabled and
+  // the guard flag set BEFORE the first await, so a rapid double-tap can't
+  // start a second overlapping roll while the balance check or animation
+  // is still in flight. The previous version disabled the button only
+  // after awaiting the balance check, leaving a real window where two
+  // rolls could run concurrently and race on the same shared bet state —
+  // exactly the "place bets on 4 and 5, only one clears after rolling"
+  // symptom reported from live testing.
+  if(crapsRolling) return;
+  crapsRolling = true;
+  const rollBtn = document.getElementById('crapsRollBtn');
+  const clearBtn = document.getElementById('crapsClearStagedBtn');
+  rollBtn.disabled = true;
+  clearBtn.disabled = true;
+  try{
+    await crapsRollInner();
+  } finally {
+    rollBtn.disabled = false;
+    clearBtn.disabled = false;
+    crapsRolling = false;
+  }
+}
+async function crapsRollInner(){
   const errEl = document.getElementById('crapsBetError');
   errEl.textContent = '';
   const stagedTotal = crapsSumStaged();
@@ -9411,7 +9582,6 @@ async function crapsRoll(){
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(crapsTotalAtRisk() > balance){ errEl.textContent = `You only have ${balance} XP (at risk: ${crapsTotalAtRisk()}).`; return; }
 
-  document.getElementById('crapsRollBtn').disabled = true;
   scrollIntoViewSmooth('crapsTableRail');
   bjPlayChipSound();
 
@@ -9574,7 +9744,6 @@ async function crapsRoll(){
     setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
 
-  document.getElementById('crapsRollBtn').disabled = false;
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Craps win' : 'Craps loss', { silent: true, detail: { type: 'dice', a, b, total } });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
@@ -10300,6 +10469,7 @@ function openProfile(name){
     <div class="profile-stat-cell"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></div>
     <div class="profile-stat-cell"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></div>
     <div class="profile-stat-cell"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></div>
+    <div class="profile-stat-cell"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
   loadProfileXP(m.linkedUid, name);
@@ -10313,7 +10483,11 @@ function openProfile(name){
 // Renders in the exact same circular-badge format as manual/auto badges,
 // additively — the Casino tab's own Badges screen is untouched by this.
 async function loadProfileCasinoBadges(linkedUid, forName){
-  if(!linkedUid) return;
+  if(!linkedUid){
+    const lifetimeEl = document.getElementById('profileLifetimeXPVal');
+    if(lifetimeEl) lifetimeEl.textContent = '—';
+    return;
+  }
   try{
     const [lifetimeRes, foundingRes] = await Promise.all([
       authedFetch(`/xp/${linkedUid}/lifetimeEarned.json`),
@@ -10321,6 +10495,8 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     ]);
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     const lifetime = (await lifetimeRes.json()) || 0;
+    const lifetimeEl = document.getElementById('profileLifetimeXPVal');
+    if(lifetimeEl) lifetimeEl.textContent = lifetime.toLocaleString();
     const founding = await foundingRes.json();
     const unlockedIds = [];
     if(founding) unlockedIds.push('founding-player');
