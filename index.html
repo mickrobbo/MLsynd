@@ -1095,8 +1095,8 @@
     90%{ transform:translateY(0) rotateX(720deg) rotateY(600deg) rotateZ(430deg) scale(1); }
     100%{ transform:translateY(0) rotateX(720deg) rotateY(600deg) rotateZ(440deg) scale(1); }
   }
-  .craps-die.tumbling{ animation: crapsDieTumble .68s cubic-bezier(.24,.85,.35,1) both; }
-  .craps-die:nth-child(2).tumbling{ animation-duration:.72s; animation-delay:.03s; }
+  .craps-die.tumbling{ animation: crapsDieTumble 1.36s cubic-bezier(.24,.85,.35,1) both; }
+  .craps-die:nth-child(2).tumbling{ animation-duration:1.44s; animation-delay:.06s; }
   .craps-dice-shadow{ display:flex; gap:16px; justify-content:center; margin-top:-6px; margin-bottom:2px; }
   .craps-dice-shadow-blob{
     width:38px; height:8px; border-radius:50%; background:radial-gradient(ellipse, rgba(0,0,0,.45), rgba(0,0,0,0) 72%);
@@ -4290,7 +4290,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.50";
+const APP_VERSION = "2026-08-22.51";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9314,14 +9314,14 @@ function crapsRenderDice(a, b){
 async function crapsAnimateRoll(finalA, finalB){
   const d1 = document.getElementById('crapsDie1'), d2 = document.getElementById('crapsDie2');
   [d1, d2].forEach(d => { d.classList.remove('tumbling'); void d.offsetWidth; d.classList.add('tumbling'); });
-  const stepMs = 70, totalFlickerMs = 560;
+  const stepMs = 70, totalFlickerMs = 1120;
   const steps = Math.floor(totalFlickerMs / stepMs);
   for(let i = 0; i < steps; i++){
     crapsRenderDice(1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6));
     await bjWait(stepMs);
   }
   crapsRenderDice(finalA, finalB);
-  await bjWait(150); // let the tumble's own settle tail finish before anything reads the result
+  await bjWait(300); // let the tumble's own settle tail finish before anything reads the result
   [d1, d2].forEach(d => d.classList.remove('tumbling'));
 }
 function crapsFmtAmt(n){ return n > 0 ? `${n.toLocaleString()} XP` : ''; }

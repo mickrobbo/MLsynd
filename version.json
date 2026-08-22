@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-22.50",
+  "version": "2026-08-22.51",
   "date": "2026-08-22",
   "changes": [
+    "Tweak: Craps dice roll now takes roughly twice as long (~1.4s tumble, flickering through random faces before settling) — the previous roll felt too quick to actually watch.",
     "Fixed: Hold'em and Challenges were sharing icons with Craps (dice) and Casino War (crossed swords) after moving into the Games grid. Hold'em now has its own custom poker chip icon; Challenges now uses boxing gloves — every game tile has a distinct image.",
     "Moved: Challenges and Hold'em are no longer their own tiles on the Casino landing hub — they now live inside Games, alongside Blackjack/Roulette/Craps/etc, as regular game bubbles (badges for pending challenges/active hands still show). The landing hub is back down to Games/Rules/Earning XP/Badges.",
     "New: pressing Spin (Roulette) or Roll (Craps) now smoothly scrolls the wheel/dice into view first, so the animation is actually visible even if you tapped the button from further down the page on a small phone screen.",
