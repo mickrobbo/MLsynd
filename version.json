@@ -1,9 +1,7 @@
 {
-  "version": "2026-08-22.76",
+  "version": "2026-08-22.78",
   "date": "2026-08-22",
   "changes": [
-    "Fixed: the Home tab's Form Guide was showing a genuinely wrong Tipping leader — it was reading a per-person cache that's only as fresh as whoever last happened to open Tipping themselves, not the true live standings, so it could (and did) name the wrong person. It now runs the same real ladder computation the Tipping tab itself uses before displaying anything, and correctly shows every name if there's a tie at the top rather than picking one arbitrarily.",
-    "Tweak: Big Wheel's spin runs noticeably longer (roughly 50% more) — was using the same timing as Daily Spin's free-spin wheel, now has its own.",
-    "Carried over from the last pass: Big Wheel dialled back from 54 to 24 segments with real labels and bet-spot colour matching, and Sic Bo added to the Games list."
+    "Fixed: a leftover dead reference to the old Highlights panel (removed when it was merged into Form Guide) could throw an error and break the whole Home tab render in an edge case — cleaned up. The merge itself was already in place: Highlights and Form Guide are one panel, one row style, showing group leg highlights, best individual bet win, the Tipping ladder leader, a hot Casino streak, and Casino Pot activity together."
   ]
 }

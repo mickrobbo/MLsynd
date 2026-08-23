@@ -1601,6 +1601,7 @@
   .form-guide-icon{ font-size:16px; flex-shrink:0; width:20px; text-align:center; }
   .form-guide-text{ font-size:12.5px; color:var(--chalk); line-height:1.4; }
   .form-guide-text b{ color:var(--brass-light); }
+  .form-guide-week{ color:var(--muted); font-size:11px; margin-left:4px; }
 
   .lb-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .lb-table{
@@ -2542,11 +2543,6 @@
     <div class="panel">
       <h2>This week's individual bets</h2>
       <div id="weeklyIndividualBetsArea"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Highlights</h2>
-      <div id="highlightsArea"></div>
     </div>
 
     <div class="panel" id="formGuidePanel">
@@ -4717,7 +4713,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.76";
+const APP_VERSION = "2026-08-22.78";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -12009,15 +12005,16 @@ function computeHighlights(history){
   return { bestGroupWin, worstGroupLoss, bestIndWin };
 }
 
-// ---- Home tab's Form Guide — one line each for Tipping, a hot Casino
-// streak, the standout betting result, and Casino Pot activity. Not a
-// scheduled/cached weekly digest (that would need a server-side cron this
-// app doesn't have) — it's computed fresh every time Home loads instead,
-// off data that's already being tracked elsewhere (currentStreak, the
-// same computeHighlights() the Highlights panel above it already uses,
-// and this month's Casino Pot activity). Runs once per Home tab visit,
-// not on a poll — this is "form" that's slow to shift day to day, not
-// something that needs to be live-ticking. ----
+// ---- Home tab's Form Guide — merged with what used to be a separate
+// Highlights panel (best/worst group leg, best individual bet win) since
+// they were saying overlapping things in two different visual styles
+// right next to each other. One panel, one row style, for: group leg
+// highlights, Tipping ladder leader, a hot Casino streak, and Casino Pot
+// activity. Not a scheduled/cached weekly digest (that would need a
+// server-side cron this app doesn't have) — computed fresh every time
+// Home loads instead. Runs once per Home tab visit, not on a poll — this
+// is "form" that's slow to shift day to day, not something that needs to
+// be live-ticking. ----
 let formGuideRenderedThisSession = false;
 async function renderFormGuide(){
   const area = document.getElementById('formGuideArea');
@@ -12064,15 +12061,21 @@ async function renderFormGuide(){
     }catch(e){}
 
     const lines = [];
+    if(hl.bestGroupWin){
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">📈</span><span class="form-guide-text"><b>${escapeHtml(hl.bestGroupWin.name)}</b> holds the best group leg win — @ ${hl.bestGroupWin.odds.toFixed(2)}${hl.bestGroupWin.week ? ` <span class="form-guide-week">${escapeHtml(hl.bestGroupWin.week)}</span>` : ''}</span></div>`);
+    }
+    if(hl.worstGroupLoss){
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">📉</span><span class="form-guide-text"><b>${escapeHtml(hl.worstGroupLoss.name)}</b> took the worst group leg loss — @ ${hl.worstGroupLoss.odds.toFixed(2)}${hl.worstGroupLoss.week ? ` <span class="form-guide-week">${escapeHtml(hl.worstGroupLoss.week)}</span>` : ''}</span></div>`);
+    }
+    if(hl.bestIndWin){
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">💰</span><span class="form-guide-text"><b>${escapeHtml(hl.bestIndWin.name)}</b> holds the best individual bet win — ${fmtMoney(hl.bestIndWin.pl)}${hl.bestIndWin.week ? ` <span class="form-guide-week">${escapeHtml(hl.bestIndWin.week)}</span>` : ''}</span></div>`);
+    }
     if(currentSeasonLeaders.size > 0 && currentSeasonTopScore != null){
       const leaderNames = [...currentSeasonLeaders].map(n => `<b>${escapeHtml(n)}</b>`).join(currentSeasonLeaders.size > 1 ? ' & ' : '');
       lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎯</span><span class="form-guide-text">${leaderNames} ${currentSeasonLeaders.size > 1 ? 'lead' : 'leads'} the Tipping ladder — ${currentSeasonTopScore} pts</span></div>`);
     }
     if(streakLeader && streakLeader.streak >= 3){
       lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🔥</span><span class="form-guide-text"><b>${escapeHtml(streakLeader.name)}</b> is on a ${streakLeader.streak}-win Casino heater</span></div>`);
-    }
-    if(hl.bestIndWin){
-      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">💰</span><span class="form-guide-text"><b>${escapeHtml(hl.bestIndWin.name)}</b> holds the best individual bet win — ${fmtMoney(hl.bestIndWin.pl)}</span></div>`);
     }
     if(casinoLeaderName){
       lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎰</span><span class="form-guide-text"><b>${escapeHtml(casinoLeaderName)}</b> — most active at the tables this month (${casinoLeaderCount} plays)</span></div>`);
@@ -12683,7 +12686,6 @@ function render(state){
     document.getElementById('owedArea').innerHTML = '';
     document.getElementById('bankShareArea').innerHTML = '';
     document.getElementById('slipsArea').innerHTML = '';
-    document.getElementById('highlightsArea').innerHTML = '';
     document.getElementById('weeklyIndividualBetsArea').innerHTML = '';
     document.getElementById('groupMultiArea').innerHTML = '';
     document.getElementById('chartArea').innerHTML = '<div class="empty">No data yet — waiting for the first entry.</div>';
@@ -12758,18 +12760,10 @@ function render(state){
     }).join('');
   }
 
-  const hl = computeHighlights(history);
-  const hlRow = (label, data, fmt) => {
-    if(!data) return `<div class="highlight-row"><span class="hl-lbl">${label}</span><span class="hl-detail" style="color:var(--muted);">No data yet</span></div>`;
-    return `<div class="highlight-row">
-      <span class="hl-lbl">${label}</span>
-      <span class="hl-detail"><span class="hl-name">${escapeHtml(data.name)}</span> — ${fmt(data)}<span class="hl-week">${escapeHtml(data.week || '')}</span></span>
-    </div>`;
-  };
-  document.getElementById('highlightsArea').innerHTML =
-    hlRow('Best group leg win', hl.bestGroupWin, d => `@ ${d.odds.toFixed(2)}`) +
-    hlRow('Worst group leg loss', hl.worstGroupLoss, d => `@ ${d.odds.toFixed(2)}`) +
-    hlRow('Best individual bet win', hl.bestIndWin, d => fmtMoney(d.pl));
+  // Highlights merged into the Form Guide panel below (same icon+text row
+  // style, one panel instead of two saying similar things back to back —
+  // renderFormGuide computes this exact same computeHighlights() call
+  // itself, so nothing here needs to feed it separately anymore.
 
   // Once per session, not on every render() call (this fires often —
   // same reasoning as why the tier badges above are fetched after the
