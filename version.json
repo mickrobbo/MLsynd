@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-22.78",
+  "version": "2026-08-22.79",
   "date": "2026-08-22",
   "changes": [
-    "Fixed: a leftover dead reference to the old Highlights panel (removed when it was merged into Form Guide) could throw an error and break the whole Home tab render in an edge case — cleaned up. The merge itself was already in place: Highlights and Form Guide are one panel, one row style, showing group leg highlights, best individual bet win, the Tipping ladder leader, a hot Casino streak, and Casino Pot activity together."
+    "New: Mines added to the Games list — the one genuinely different game in the casino. A 5x5 grid, pick 1/3/5/10/15 mines, reveal safe gems for a growing multiplier, cash out whenever you like or keep pushing for more. Real combinatorial odds (not a made-up curve) at a genuine 97% RTP, same house-edge discipline as every other table. Same felt/rail treatment, chip stacking, croupier lines, and history strip as the rest of the casino."
   ]
 }

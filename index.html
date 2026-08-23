@@ -1430,6 +1430,37 @@
     80%{ transform:translateX(3px); }
   }
   .bj-table.pc-shake, .pc-shake{ animation: tableShake .4s ease; }
+  /* ---- Mines — a real 5x5 grid, not another single-reveal game. Gold
+     "unrevealed" tiles pop to a glowing gem on safe, or a red bomb flash
+     on a mine, same material language (radial gradients, inset shadows)
+     as the chips/dice/roulette ball throughout the rest of the casino. */
+  .mines-status-row{ display:flex; gap:10px; justify-content:center; margin-bottom:14px; }
+  .mines-status-cell{ background:rgba(0,0,0,.25); border:1px solid var(--brass-dim); border-radius:10px; padding:8px 16px; min-width:112px; }
+  .mines-status-cell .lbl{ display:block; font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:3px; }
+  .mines-status-cell .val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:17px; color:var(--brass-light); }
+  .mines-grid{ display:grid; grid-template-columns:repeat(5, 1fr); gap:7px; max-width:340px; margin:0 auto; }
+  .mines-tile{
+    position:relative; aspect-ratio:1; border-radius:10px; cursor:pointer;
+    background: radial-gradient(circle at 32% 28%, var(--brass-light), var(--brass) 55%, var(--brass-dim) 100%);
+    border:1px solid rgba(255,255,255,.25);
+    box-shadow: 0 3px 6px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.5), inset 0 -2px 3px rgba(0,0,0,.3);
+    display:flex; align-items:center; justify-content:center; font-size:0;
+    transition: transform .12s ease, box-shadow .2s ease;
+  }
+  .mines-tile:active{ transform:scale(.92); }
+  .mines-tile.disabled{ cursor:default; }
+  .mines-tile.revealed{ cursor:default; font-size:19px; animation: minesRevealPop .32s cubic-bezier(.34,1.6,.5,1); }
+  .mines-tile.revealed.safe{
+    background: radial-gradient(circle at 32% 28%, #baf5c8, #4fae6a 55%, #2e7a45 100%);
+    box-shadow: 0 0 12px rgba(90,220,130,.55), inset 0 1px 1px rgba(255,255,255,.5);
+  }
+  .mines-tile.revealed.mine{
+    background: radial-gradient(circle at 32% 28%, #e08070, #a8342a 55%, #6b1a14 100%);
+    box-shadow: 0 0 14px rgba(220,60,40,.65), inset 0 1px 1px rgba(255,255,255,.4);
+  }
+  .mines-tile.revealed.mine-dimmed{ background:rgba(80,30,25,.55); box-shadow:none; opacity:.65; animation:none; font-size:15px; }
+  @keyframes minesRevealPop{ 0%{ transform:scale(.55); opacity:0; } 65%{ transform:scale(1.15); } 100%{ transform:scale(1); opacity:1; } }
+
   @keyframes tableFlashRed{ 0%{ background-color:rgba(193,96,74,0); } 25%{ background-color:rgba(193,96,74,.28); } 100%{ background-color:rgba(193,96,74,0); } }
   .panel.pc-flash-red::after{ animation: tableFlashRed .5s ease; }
   @keyframes tableFlashGold{ 0%{ background-color:rgba(255,214,120,0); } 25%{ background-color:rgba(255,214,120,.22); } 100%{ background-color:rgba(255,214,120,0); } }
@@ -2989,6 +3020,7 @@
         <button type="button" class="game-bubble" data-game="craps"><span class="game-bubble-icon">🎲</span><span class="game-bubble-label">Craps</span></button>
         <button type="button" class="game-bubble" data-game="sicbo"><span class="game-bubble-icon">⚅</span><span class="game-bubble-label">Sic Bo</span></button>
         <button type="button" class="game-bubble" data-game="bigwheel"><span class="game-bubble-icon">🛞</span><span class="game-bubble-label">Big Wheel</span></button>
+        <button type="button" class="game-bubble" data-game="mines"><span class="game-bubble-icon">💣</span><span class="game-bubble-label">Mines</span></button>
         <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
         <button type="button" class="game-bubble" id="hubChallengesBtn" style="position:relative;"><span class="game-bubble-icon">🥊</span><span class="game-bubble-label">Challenges</span><span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span></button>
       </div>
@@ -3527,6 +3559,54 @@
         <button type="button" id="bigWheelSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
       </div>
       <div id="bigWheelBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameMines" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="mines">📜 Rules</button></div>
+    <div class="pc-table-rail" id="minesTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
+      <div class="craps-table-felt">
+        <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="mines-status-row">
+          <div class="mines-status-cell"><span class="lbl">Multiplier</span><span class="val" id="minesMultVal">1.00x</span></div>
+          <div class="mines-status-cell"><span class="lbl">Potential Payout</span><span class="val" id="minesPayoutVal">—</span></div>
+        </div>
+        <div class="mines-grid" id="minesGrid"></div>
+        <div class="craps-total-msg" id="minesResultMsg"></div>
+        <div class="croupier-caption" id="minesCroupierMsg"></div>
+        <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rounds</div>
+        <div class="craps-history" id="minesHistory"></div>
+      </div>
+    </div>
+    <div class="panel" id="minesBetPanel">
+      <div class="hint" style="margin-bottom:8px;" id="minesHint">Pick your bet and how many mines, then Start. Tap tiles to reveal gems — cash out anytime, or keep pushing for a bigger multiplier.</div>
+      <div class="craps-section-label">Mines <small>— more mines, bigger multiplier per gem, more risk</small></div>
+      <div class="craps-winmode-row" id="minesMineCountRow">
+        <button type="button" class="craps-winmode-btn" data-mines="1">1</button>
+        <button type="button" class="craps-winmode-btn active" data-mines="3">3</button>
+        <button type="button" class="craps-winmode-btn" data-mines="5">5</button>
+        <button type="button" class="craps-winmode-btn" data-mines="10">10</button>
+        <button type="button" class="craps-winmode-btn" data-mines="15">15</button>
+      </div>
+      <div style="display:flex; justify-content:center; margin-top:12px;">
+        <div class="bj-chip" id="minesChipDisplay">50</div>
+        <input type="number" id="minesBetInput" min="5" step="5" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="minesBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="minesBetInput">Clear Chips</button>
+      </div>
+      <div class="deal-row">
+        <button type="button" id="minesStartBtn" class="pill-btn pill-btn-primary">Start</button>
+        <button type="button" id="minesCashOutBtn" class="pill-btn pill-btn-action" style="display:none;">Cash Out</button>
+        <button type="button" id="minesNewGameBtn" class="pill-btn" style="display:none;">New Game</button>
+      </div>
+      <div id="minesBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
     </div>
 
@@ -4713,7 +4793,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.78";
+const APP_VERSION = "2026-08-22.79";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7135,7 +7215,7 @@ function updateXPBalanceDisplay(bal){
 // classifier rather than touching each of the six game functions
 // individually. Losses fund the pot; any casino play (win or lose) counts
 // toward the 20-play activity-eligibility threshold.
-const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Sic Bo|Big Wheel|Slots|Video Poker|Spin the Wheel)/i;
+const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Sic Bo|Big Wheel|Mines|Slots|Video Poker|Spin the Wheel)/i;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
@@ -8689,11 +8769,11 @@ document.getElementById('bjNewHandBtn').addEventListener('click', bjNewHand);
 const CASINO_GAME_PANEL_IDS = {
   blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
   war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin',
-  craps: 'casinoGameCraps', sicbo: 'casinoGameSicBo', bigwheel: 'casinoGameBigWheel'
+  craps: 'casinoGameCraps', sicbo: 'casinoGameSicBo', bigwheel: 'casinoGameBigWheel', mines: 'casinoGameMines'
 };
 const CASINO_GAME_LABELS = {
   blackjack: 'Blackjack', baccarat: 'Baccarat', roulette: 'Roulette', war: 'Casino War',
-  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', sicbo: 'Sic Bo', bigwheel: 'Big Wheel'
+  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', sicbo: 'Sic Bo', bigwheel: 'Big Wheel', mines: 'Mines'
 };
 // Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
 // computing "my rank" doesn't re-fetch every linked member's balance a
@@ -8762,6 +8842,7 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     if(btn.dataset.game === 'craps' && !crapsBuilt){ crapsInit(); }
     if(btn.dataset.game === 'sicbo' && !sicBoBuilt){ sicBoInit(); }
     if(btn.dataset.game === 'bigwheel' && !bigWheelBuilt){ bigWheelBuildWheel(); }
+    if(btn.dataset.game === 'mines' && !minesBuilt){ minesInit(); }
   });
 });
 
@@ -9032,6 +9113,16 @@ const CASINO_RULES = {
     <h3>Multiple bets</h3>
     <p>Just like the other tables, you can bet on more than one value at once. Only the value the wheel actually lands on pays out; everything else staked that spin loses.</p>
   `},
+  mines: { title: '💣 Mines Rules', body: `
+    <h3>The idea</h3>
+    <p>A 5x5 grid of 25 hidden tiles — some are safe gems, a chosen number are mines. Place your bet, pick how many mines are on the board, and start revealing tiles. Every safe tile grows your multiplier. Hit a mine and the round ends — you lose the bet. Cash out any time after your first safe reveal to lock in whatever multiplier you've reached.</p>
+    <h3>Choosing mine count</h3>
+    <p>More mines means a bigger multiplier per tile revealed, but a much higher chance the next tile you tap is one of them. Fewer mines is the safer, slower climb. 1, 3, 5, 10, or 15 mines — pick before you start, locked in for that round.</p>
+    <h3>The multiplier</h3>
+    <p>Genuine odds, not a made-up curve — the payout is calculated from the real probability of having safely picked that many tiles in a row out of the ones left, same maths as the odds on a real Mines table. A small house edge is applied on top (payouts run at 97% of the true fair odds), same discipline as every other game here.</p>
+    <h3>Cashing out</h3>
+    <p>You control it. Take a small sure thing early, or keep pushing for a bigger multiplier — the choice (and the risk) is entirely yours. Clear every safe tile on the board and it cashes out automatically, since there's nothing left to reveal.</p>
+  `},
   slots: { title: '🎰 Slots Rules', body: `
     <h3>Object</h3>
     <p>Tap Spin — all five reels spin and stop in sequence, left to right. Payouts follow the classic left-to-right payline: matching symbols have to run unbroken starting from reel 1. Two matching pays a small 1:1 consolation, three/four/five pay escalating multipliers per the table below. A broken run (e.g. reels 1 and 3 match but not 2) pays nothing.</p>
@@ -9100,7 +9191,7 @@ document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
 // the exact same modal used by each table's own "📜 Rules" button. ----
 const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
-  ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['sicbo', '⚅ Sic Bo'], ['bigwheel', '🛞 Big Wheel'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
+  ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['sicbo', '⚅ Sic Bo'], ['bigwheel', '🛞 Big Wheel'], ['mines', '💣 Mines'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
   ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot'], ['tiers', '🏅 Player Tiers']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
@@ -11074,6 +11165,230 @@ async function bigWheelSpinInner(){
 }
 document.getElementById('bigWheelSpinBtn').addEventListener('click', bigWheelSpin);
 // ================= /Big Wheel =================
+
+// ================= Mines =================
+// The one genuinely different game in the casino — every other table is
+// a single bet-and-reveal; this is the only one where the player decides
+// mid-round how far to push their luck. 5x5 grid, pick a mine count,
+// reveal safe tiles for a growing multiplier, cash out whenever — or
+// keep going and risk it all. True combinatorial odds (see
+// minesFairMultiplier), with the same house edge discipline as every
+// other game: a real, verified RTP, not a made-up number.
+const MINES_GRID_SIZE = 25;
+const MINES_RTP = 0.97; // 3% house edge — genuinely in line with how real Mines games are priced, lower than the wheel/dice games since the player carries more of the decision-making here
+function minesFairMultiplier(total, mineCount, revealed){
+  let mult = 1;
+  for(let i = 0; i < revealed; i++){ mult *= (total - i) / (total - mineCount - i); }
+  return mult;
+}
+let minesBuilt = false;
+let minesActionInFlight = false; // guards Start/Cash Out double-taps, same class of bug fixed everywhere else
+let minesRoundActive = false;
+let minesCount = 3;
+let minesBoard = [];
+let minesRevealedCount = 0;
+let minesBetAmount = 0;
+let minesHistory = [];
+
+function minesInit(){
+  minesBuilt = true;
+  const grid = document.getElementById('minesGrid');
+  grid.innerHTML = '';
+  for(let i = 0; i < MINES_GRID_SIZE; i++){
+    const tile = document.createElement('div');
+    tile.className = 'mines-tile disabled';
+    tile.dataset.idx = i;
+    tile.addEventListener('click', () => minesTapTile(i));
+    grid.appendChild(tile);
+  }
+}
+document.querySelectorAll('#minesMineCountRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if(minesRoundActive) return; // locked in for the round once Started
+    minesCount = parseInt(btn.dataset.mines, 10);
+    document.querySelectorAll('#minesMineCountRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+document.getElementById('minesBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('minesChipDisplay');
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+});
+document.getElementById('minesChipDisplay').addEventListener('click', () => {
+  if(minesRoundActive) return;
+  const input = document.getElementById('minesBetInput');
+  const entry = prompt('Bet amount (XP):', input.value || '50');
+  if(entry === null) return;
+  const amount = Math.floor(Number(entry));
+  if(!(amount > 0)) return;
+  input.value = amount;
+  input.dispatchEvent(new Event('input'));
+});
+
+const MINES_CROUPIER_LINES = {
+  start: ['Mines are live — good luck.', 'Board is set.'],
+  cashout: ['Cashed out — smart move.', 'Locking that in.'],
+  cleared: ['Every safe tile found — full clear!'],
+  bust: ['Boom — house wins this one.', 'Unlucky tile.']
+};
+
+async function minesStart(){
+  if(minesActionInFlight) return;
+  minesActionInFlight = true;
+  const startBtn = document.getElementById('minesStartBtn');
+  startBtn.disabled = true;
+  try{
+    await minesStartInner();
+  } finally {
+    startBtn.disabled = false;
+    minesActionInFlight = false;
+  }
+}
+async function minesStartInner(){
+  const errEl = document.getElementById('minesBetError');
+  errEl.textContent = '';
+  const bet = parseInt(document.getElementById('minesBetInput').value, 10) || 0;
+  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
+  const balance = await getXPBalance();
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+
+  scrollIntoViewSmooth('minesTableRail');
+  minesBetAmount = bet;
+  minesRevealedCount = 0;
+  minesRoundActive = true;
+
+  const positions = Array.from({ length: MINES_GRID_SIZE }, (_, i) => i);
+  for(let i = positions.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [positions[i], positions[j]] = [positions[j], positions[i]];
+  }
+  const mineSet = new Set(positions.slice(0, minesCount));
+  minesBoard = Array.from({ length: MINES_GRID_SIZE }, (_, i) => mineSet.has(i));
+
+  document.querySelectorAll('#minesGrid .mines-tile').forEach(tile => {
+    tile.className = 'mines-tile';
+    tile.innerHTML = '';
+  });
+  document.getElementById('minesMultVal').textContent = '1.00x';
+  document.getElementById('minesPayoutVal').textContent = `${bet.toLocaleString()} XP`;
+  document.getElementById('minesResultMsg').textContent = '';
+  document.getElementById('minesStartBtn').style.display = 'none';
+  document.getElementById('minesCashOutBtn').style.display = 'none';
+  document.getElementById('minesNewGameBtn').style.display = 'none';
+  document.getElementById('minesHint').textContent = 'Tap a tile to reveal it — cash out anytime after your first safe gem.';
+  croupierSay('minesCroupierMsg', MINES_CROUPIER_LINES.start);
+  bjPlayChipSound();
+}
+
+async function minesTapTile(idx){
+  if(!minesRoundActive || minesActionInFlight) return;
+  const tile = document.querySelector(`#minesGrid .mines-tile[data-idx="${idx}"]`);
+  if(!tile || tile.classList.contains('revealed')) return;
+
+  if(minesBoard[idx]){
+    minesActionInFlight = true;
+    minesRoundActive = false;
+    tile.classList.add('revealed', 'mine');
+    tile.innerHTML = '💣';
+    bjPlayChime(false);
+    croupierSay('minesCroupierMsg', MINES_CROUPIER_LINES.bust);
+    const railEl = document.getElementById('minesTableRail');
+    railEl.classList.add('pc-shake');
+    setTimeout(() => railEl.classList.remove('pc-shake'), 700);
+    minesBoard.forEach((isMine, i) => {
+      if(isMine && i !== idx){
+        const t = document.querySelector(`#minesGrid .mines-tile[data-idx="${i}"]`);
+        if(t){ t.classList.add('revealed', 'mine-dimmed'); t.innerHTML = '💣'; }
+      }
+    });
+    document.querySelectorAll('#minesGrid .mines-tile:not(.revealed)').forEach(t => t.classList.add('disabled'));
+    try{ await minesResolve(0); } finally { minesActionInFlight = false; }
+    return;
+  }
+
+  minesRevealedCount++;
+  tile.classList.add('revealed', 'safe');
+  tile.innerHTML = '💎';
+  bjPlayChipSound();
+  const payoutMult = minesFairMultiplier(MINES_GRID_SIZE, minesCount, minesRevealedCount) * MINES_RTP;
+  const payout = Math.round(minesBetAmount * payoutMult);
+  document.getElementById('minesMultVal').textContent = payoutMult.toFixed(2) + 'x';
+  document.getElementById('minesPayoutVal').textContent = payout.toLocaleString() + ' XP';
+  document.getElementById('minesCashOutBtn').style.display = 'inline-block';
+
+  if(minesRevealedCount === MINES_GRID_SIZE - minesCount){
+    croupierSay('minesCroupierMsg', MINES_CROUPIER_LINES.cleared);
+    await minesCashOut();
+  }
+}
+
+async function minesCashOut(){
+  if(minesActionInFlight || !minesRoundActive) return;
+  minesActionInFlight = true;
+  const cashBtn = document.getElementById('minesCashOutBtn');
+  cashBtn.disabled = true;
+  try{
+    minesRoundActive = false;
+    const payoutMult = minesFairMultiplier(MINES_GRID_SIZE, minesCount, minesRevealedCount) * MINES_RTP;
+    const payout = Math.round(minesBetAmount * payoutMult);
+    document.querySelectorAll('#minesGrid .mines-tile:not(.revealed)').forEach(t => t.classList.add('disabled'));
+    croupierSay('minesCroupierMsg', MINES_CROUPIER_LINES.cashout);
+    await minesResolve(payout);
+  } finally {
+    cashBtn.disabled = false;
+    minesActionInFlight = false;
+  }
+}
+
+async function minesResolve(payout){
+  const delta = payout - minesBetAmount;
+  const won = delta > 0;
+  const resultEl = document.getElementById('minesResultMsg');
+  resultEl.textContent = won
+    ? `Cashed out at ${(payout / minesBetAmount).toFixed(2)}x — +${delta} XP`
+    : `Hit a mine after ${minesRevealedCount} safe — -${minesBetAmount} XP`;
+  resultEl.style.color = won ? 'var(--win)' : 'var(--loss)';
+  resultEl.classList.remove('bj-outcome-pop'); void resultEl.offsetWidth; resultEl.classList.add('bj-outcome-pop');
+
+  minesHistory.push({ won, revealed: minesRevealedCount });
+  const histEl = document.getElementById('minesHistory');
+  if(histEl){
+    histEl.innerHTML = minesHistory.slice(-10).reverse().map(h => {
+      return `<div class="craps-history-chip" style="background:${h.won ? 'var(--win)' : 'var(--loss)'};">${h.won ? h.revealed : '✕'}</div>`;
+    }).join('');
+  }
+
+  if(won){
+    bjPlayChime(true);
+    bjLaunchConfetti(resultEl, minesRevealedCount >= 10 ? 42 : 20);
+    const railEl = document.getElementById('minesTableRail');
+    railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold');
+    setTimeout(() => railEl.classList.remove('pc-flash-gold'), 800);
+  }
+
+  document.getElementById('minesCashOutBtn').style.display = 'none';
+  document.getElementById('minesNewGameBtn').style.display = 'inline-block';
+  document.getElementById('minesHint').textContent = 'Round over — press New Game to play again.';
+
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Mines win' : 'Mines loss', { silent: true });
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+document.getElementById('minesStartBtn').addEventListener('click', minesStart);
+document.getElementById('minesCashOutBtn').addEventListener('click', minesCashOut);
+document.getElementById('minesNewGameBtn').addEventListener('click', () => {
+  document.getElementById('minesStartBtn').style.display = 'inline-block';
+  document.getElementById('minesNewGameBtn').style.display = 'none';
+  document.getElementById('minesMultVal').textContent = '1.00x';
+  document.getElementById('minesPayoutVal').textContent = '—';
+  document.getElementById('minesResultMsg').textContent = '';
+  document.getElementById('minesHint').textContent = 'Pick your bet and how many mines, then Start.';
+  document.querySelectorAll('#minesGrid .mines-tile').forEach(tile => { tile.className = 'mines-tile disabled'; tile.innerHTML = ''; });
+});
+// ================= /Mines =================
 
 // ---- Slots (5 reels, single payline) ----
 // Restored original polished implementation (recovered from an earlier
