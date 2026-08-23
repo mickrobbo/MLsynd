@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-22.79",
+  "version": "2026-08-22.80",
   "date": "2026-08-22",
   "changes": [
-    "New: Mines added to the Games list — the one genuinely different game in the casino. A 5x5 grid, pick 1/3/5/10/15 mines, reveal safe gems for a growing multiplier, cash out whenever you like or keep pushing for more. Real combinatorial odds (not a made-up curve) at a genuine 97% RTP, same house-edge discipline as every other table. Same felt/rail treatment, chip stacking, croupier lines, and history strip as the rest of the casino."
+    "Fixed: Mines' Cash Out button could be scrolled well out of view on a full 5x5 board, sitting all the way down in the bet panel below the grid. Added a second Cash Out button right at the top of the felt, above the Multiplier/Payout stats — a soft pulsing glow while it's live so it's impossible to miss. Both buttons stay in sync and do the exact same thing; tap whichever's actually on screen."
   ]
 }

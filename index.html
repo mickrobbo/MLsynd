@@ -1435,6 +1435,18 @@
      on a mine, same material language (radial gradients, inset shadows)
      as the chips/dice/roulette ball throughout the rest of the casino. */
   .mines-status-row{ display:flex; gap:10px; justify-content:center; margin-bottom:14px; }
+  /* Sits right at the top of the felt, above the stats, so it's always in
+     view without scrolling down to the bet panel below the grid — the
+     same Cash Out action as the button down there, just where you can
+     actually reach it mid-round on a full 5x5 board. */
+  .mines-cashout-top{
+    width:100%; max-width:280px; margin:0 auto 12px; display:block;
+    animation: minesCashoutPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes minesCashoutPulse{
+    0%,100%{ box-shadow:0 0 0 rgba(90,220,130,0); }
+    50%{ box-shadow:0 0 16px rgba(90,220,130,.55); }
+  }
   .mines-status-cell{ background:rgba(0,0,0,.25); border:1px solid var(--brass-dim); border-radius:10px; padding:8px 16px; min-width:112px; }
   .mines-status-cell .lbl{ display:block; font-size:9px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:3px; }
   .mines-status-cell .val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:17px; color:var(--brass-light); }
@@ -3567,6 +3579,7 @@
     <div class="pc-table-rail" id="minesTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
       <div class="craps-table-felt">
         <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <button type="button" id="minesCashOutTopBtn" class="pill-btn pill-btn-action mines-cashout-top" style="display:none;">💰 Cash Out</button>
         <div class="mines-status-row">
           <div class="mines-status-cell"><span class="lbl">Multiplier</span><span class="val" id="minesMultVal">1.00x</span></div>
           <div class="mines-status-cell"><span class="lbl">Potential Payout</span><span class="val" id="minesPayoutVal">—</span></div>
@@ -4793,7 +4806,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.79";
+const APP_VERSION = "2026-08-22.80";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -11190,6 +11203,16 @@ let minesRevealedCount = 0;
 let minesBetAmount = 0;
 let minesHistory = [];
 
+// Both Cash Out buttons (the one up top on the felt, and the one down in
+// the bet panel) always show/hide together — one helper so every call
+// site only has to remember there's a button, not that there are two.
+function minesSetCashOutVisible(visible){
+  const display = visible ? 'inline-block' : 'none';
+  const topBtn = document.getElementById('minesCashOutTopBtn');
+  const bottomBtn = document.getElementById('minesCashOutBtn');
+  if(topBtn) topBtn.style.display = visible ? 'block' : 'none';
+  if(bottomBtn) bottomBtn.style.display = display;
+}
 function minesInit(){
   minesBuilt = true;
   const grid = document.getElementById('minesGrid');
@@ -11275,7 +11298,7 @@ async function minesStartInner(){
   document.getElementById('minesPayoutVal').textContent = `${bet.toLocaleString()} XP`;
   document.getElementById('minesResultMsg').textContent = '';
   document.getElementById('minesStartBtn').style.display = 'none';
-  document.getElementById('minesCashOutBtn').style.display = 'none';
+  minesSetCashOutVisible(false);
   document.getElementById('minesNewGameBtn').style.display = 'none';
   document.getElementById('minesHint').textContent = 'Tap a tile to reveal it — cash out anytime after your first safe gem.';
   croupierSay('minesCroupierMsg', MINES_CROUPIER_LINES.start);
@@ -11316,7 +11339,7 @@ async function minesTapTile(idx){
   const payout = Math.round(minesBetAmount * payoutMult);
   document.getElementById('minesMultVal').textContent = payoutMult.toFixed(2) + 'x';
   document.getElementById('minesPayoutVal').textContent = payout.toLocaleString() + ' XP';
-  document.getElementById('minesCashOutBtn').style.display = 'inline-block';
+  minesSetCashOutVisible(true);
 
   if(minesRevealedCount === MINES_GRID_SIZE - minesCount){
     croupierSay('minesCroupierMsg', MINES_CROUPIER_LINES.cleared);
@@ -11328,7 +11351,9 @@ async function minesCashOut(){
   if(minesActionInFlight || !minesRoundActive) return;
   minesActionInFlight = true;
   const cashBtn = document.getElementById('minesCashOutBtn');
+  const cashBtnTop = document.getElementById('minesCashOutTopBtn');
   cashBtn.disabled = true;
+  if(cashBtnTop) cashBtnTop.disabled = true;
   try{
     minesRoundActive = false;
     const payoutMult = minesFairMultiplier(MINES_GRID_SIZE, minesCount, minesRevealedCount) * MINES_RTP;
@@ -11338,6 +11363,7 @@ async function minesCashOut(){
     await minesResolve(payout);
   } finally {
     cashBtn.disabled = false;
+    if(cashBtnTop) cashBtnTop.disabled = false;
     minesActionInFlight = false;
   }
 }
@@ -11368,7 +11394,7 @@ async function minesResolve(payout){
     setTimeout(() => railEl.classList.remove('pc-flash-gold'), 800);
   }
 
-  document.getElementById('minesCashOutBtn').style.display = 'none';
+  minesSetCashOutVisible(false);
   document.getElementById('minesNewGameBtn').style.display = 'inline-block';
   document.getElementById('minesHint').textContent = 'Round over — press New Game to play again.';
 
@@ -11379,6 +11405,7 @@ async function minesResolve(payout){
 }
 document.getElementById('minesStartBtn').addEventListener('click', minesStart);
 document.getElementById('minesCashOutBtn').addEventListener('click', minesCashOut);
+document.getElementById('minesCashOutTopBtn').addEventListener('click', minesCashOut);
 document.getElementById('minesNewGameBtn').addEventListener('click', () => {
   document.getElementById('minesStartBtn').style.display = 'inline-block';
   document.getElementById('minesNewGameBtn').style.display = 'none';
