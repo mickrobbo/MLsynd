@@ -1264,6 +1264,11 @@
      collecting. One shared mode applies to every Place/Hardway spot —
      switch it anytime, it only affects wins from here on. */
   .craps-winmode-row{ display:flex; gap:6px; justify-content:center; margin-bottom:4px; }
+  /* Diagnostics' Pulse/Money/Play submodes — same show-one-hide-rest
+     pattern as .tab-panel/.casino-game-panel, just scoped inside one tab
+     instead of switching the whole screen. */
+  .diag-submode{ display:none; }
+  .diag-submode.active{ display:block; }
   .craps-winmode-btn{
     flex:1; max-width:120px; padding:7px 4px; border-radius:999px; cursor:pointer;
     background:rgba(0,0,0,.22); border:1px solid var(--brass-dim); color:var(--muted);
@@ -3706,6 +3711,29 @@
       <h2>🔧 Diagnostics</h2>
       <div class="hint">Admin only. Not shown to anyone else — this tab doesn't even exist for other accounts.</div>
     </div>
+
+    <div class="craps-winmode-row" id="diagSubmodeRow" style="margin: 0 0 14px;">
+      <button type="button" class="craps-winmode-btn active" data-submode="pulse">🩺 Pulse</button>
+      <button type="button" class="craps-winmode-btn" data-submode="money">💰 Money</button>
+      <button type="button" class="craps-winmode-btn" data-submode="play">🎲 Play</button>
+    </div>
+
+    <div class="diag-submode active" data-submode-panel="pulse">
+    <div class="panel">
+      <div class="balance-grid" id="pulseToteCells">
+        <div class="toteboard-cell" id="pulseHealthCell"><span class="lbl">Health</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseOnlineCell"><span class="lbl">Online</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseSyndyCell"><span class="lbl">Syndy $ (mo)</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseRoundsCell"><span class="lbl">Rounds (7d)</span><span class="val">—</span></div>
+      </div>
+      <div class="hint" id="pulseLastRunHint" style="margin-top:10px; text-align:center;">Health score is from the last full check you ran — this fast view doesn't re-run it automatically.</div>
+      <div id="pulseLastFailuresArea" style="margin-top:8px;"></div>
+    </div>
+    <div class="panel">
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">Recent Errors</h3>
+      <div class="hint">Failed tip saves, failed health-check internals, and sampled client errors — across all linked members, not just this device.</div>
+      <div id="pulseErrorsArea" style="margin-top:8px;"><div class="empty">Loading…</div></div>
+    </div>
     <div class="panel">
       <button type="button" id="runHealthCheckBtn">🩺 Run Full System Check</button>
       <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data (including duplicate account links), season history, tipping reads, Joker validity, Casino XP/badge integrity, dues consistency, individual bet drafts, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
@@ -3713,11 +3741,22 @@
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
     </div>
     <div class="panel">
-      <h2>📡 API Call Tracker</h2>
-      <div class="hint">Tracks calls made from this device/browser only (localStorage) — not a shared count across all members, since instrumenting the actual Netlify functions server-side would need touching each one's own source directly.</div>
-      <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
-      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Reset stats</button>
+      <div id="diagTabArea">Loading…</div>
     </div>
+    <div class="panel">
+      <h2>🟢 Who's Online</h2>
+      <div class="hint">Based on a heartbeat each device sends every 60s while the app's open — not instant, but "active in the last few minutes" is a reasonable read on it. Won't show anyone until they've opened the app at least once since this shipped.</div>
+      <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>🔔 Test Push Notification</h2>
+      <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
+      <button type="button" id="testPushBtn">Send test notification</button>
+      <div class="status-msg" id="testPushStatus"></div>
+    </div>
+    </div>
+
+    <div class="diag-submode" data-submode-panel="money">
     <div class="panel">
       <h2>🔮 Syndy Usage (all members)</h2>
       <div class="hint">Real shared total — incremented server-side every time syndy-chat.js actually calls Perplexity, from any member's device. Cost figures are the exact per-call amount Perplexity's own response reports, not an estimate.</div>
@@ -3750,16 +3789,14 @@
       </div>
     </div>
     <div class="panel">
-      <h2>🔔 Test Push Notification</h2>
-      <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
-      <button type="button" id="testPushBtn">Send test notification</button>
-      <div class="status-msg" id="testPushStatus"></div>
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">This device</h3>
+      <div class="hint">Tracks calls made from this device/browser only (localStorage) — not a shared count across all members, since instrumenting the actual Netlify functions server-side would need touching each one's own source directly.</div>
+      <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
+      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Reset stats</button>
     </div>
-    <div class="panel">
-      <h2>🟢 Who's Online</h2>
-      <div class="hint">Based on a heartbeat each device sends every 60s while the app's open — not instant, but "active in the last few minutes" is a reasonable read on it. Won't show anyone until they've opened the app at least once since this shipped.</div>
-      <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
+
+    <div class="diag-submode" data-submode-panel="play">
     <div class="panel">
       <h2>🎲 Recent Casino Activity</h2>
       <div class="hint">Who played what, pulled straight from everyone's XP log — no separate tracking system, this is the same data every win/loss already writes.</div>
@@ -3779,11 +3816,11 @@
     </div>
     <div class="panel">
       <h2>📋 Weekly Report</h2>
-      <div class="hint">A rundown of the last 7 days — time spent, casino activity, and where to find the rest. Generated live each time you open this, not a saved snapshot or a pushed notification.</div>
+      <div class="hint">A rundown of the last 7 days — time spent, casino activity, and where to find the rest. Shows a saved snapshot for this week if one exists, otherwise a live compute (clearly labelled either way). No pushed notification — this only runs when you open it or tap the button below.</div>
+      <button type="button" id="snapshotWeekBtn" class="btn-secondary" style="width:100%; margin-top:8px;">📸 Snapshot this week</button>
+      <div class="status-msg" id="snapshotWeekStatus"></div>
       <div id="weeklyReportArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
-    <div class="panel">
-      <div id="diagTabArea">Loading…</div>
     </div>
   </div>
 
@@ -3994,11 +4031,22 @@ window.addEventListener('error', (e) => {
   const bar = document.getElementById('statusBar');
   if(bar) bar.textContent = 'Error: ' + e.message + ' (line ' + e.lineno + ')';
   console.error(e);
+  // ResizeObserver's own loop-limit warning and cross-origin script-load
+  // failures (browser extensions, ad blockers hitting third-party embeds)
+  // are noisy and never actionable — filtered out rather than burning
+  // through the write cap on things nobody can fix.
+  if(typeof logOpsError === 'function' && !/ResizeObserver|Script error/i.test(e.message || '')){
+    logOpsError('client-error', `${e.message} (${e.filename || 'unknown file'}:${e.lineno || '?'})`);
+  }
 });
 window.addEventListener('unhandledrejection', (e) => {
   const bar = document.getElementById('statusBar');
   if(bar) bar.textContent = 'Error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason);
   console.error(e.reason);
+  if(typeof logOpsError === 'function'){
+    const msg = e.reason && e.reason.message ? e.reason.message : String(e.reason);
+    if(!/ResizeObserver/i.test(msg)) logOpsError('unhandled-rejection', msg);
+  }
 });
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 
@@ -4078,6 +4126,8 @@ async function renderSyndyUsage(){
       <div class="api-tracker-row"><span class="api-tracker-name">Last call</span><span class="api-tracker-meta">${lastCallAt ? timeAgo(lastCallAt) : '—'}</span></div>
     `;
     window._syndyTotalCostUsd = totalCost; // read by renderRunningCosts, avoids a duplicate fetch
+    window._syndyMonthCostUsd = monthCost;
+    window._syndyTotalCalls = total;
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load Syndy usage right now.</div>';
   }
@@ -4085,6 +4135,26 @@ async function renderSyndyUsage(){
 function currentAestMonthKey(){
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
   return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+}
+// Same approach, day precision — used for every user-facing "which day did
+// this happen on" bucket (time-spent, activity index, health snapshots).
+// UTC's toISOString().slice(0,10) would put late-night Melbourne activity
+// on the wrong calendar day for a chunk of the evening — same class of bug
+// as the racing-meetings date fix earlier, just in a different spot.
+function currentAestDateKey(dateObj){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(dateObj || new Date());
+  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
+}
+// ISO 8601 week numbering, computed off the AEST calendar date rather than
+// whatever timezone the browser/server happens to be in — same reasoning
+// as currentAestDateKey, just week-grained.
+function currentAestWeekKey(){
+  const dateStr = currentAestDateKey();
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7)); // move to the Thursday of this ISO week
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
 }
 async function renderRunningCosts(){
   const area = document.getElementById('runningCostsArea');
@@ -4115,6 +4185,22 @@ async function renderRunningCosts(){
     }
     if(startingCredit > 0){
       html += `<div class="api-tracker-row" style="border-top:1px solid var(--brass-dim); margin-top:6px; padding-top:8px;"><span class="api-tracker-name">Perplexity trial credit remaining</span><span class="api-tracker-meta"><b>$${remainingCredit.toFixed(2)}</b> of $${startingCredit.toFixed(2)}</span></div>`;
+      // Projected days-to-empty from this month's actual burn rate so far
+      // (spend-to-date ÷ days elapsed this month = average $/day), not
+      // total-all-time spend — a slow first month and a fast second month
+      // should give a very different runway estimate, and only the current
+      // rate captures that.
+      const monthCost = window._syndyMonthCostUsd || 0;
+      const dayOfMonth = new Date().getDate();
+      if(monthCost > 0 && dayOfMonth > 0){
+        const dailyRate = monthCost / dayOfMonth;
+        const daysToEmpty = remainingCredit > 0 ? Math.round(remainingCredit / dailyRate) : 0;
+        html += `<div class="api-tracker-row"><span class="api-tracker-name">Projected runway</span><span class="api-tracker-meta">${remainingCredit > 0 ? `~${daysToEmpty} day${daysToEmpty === 1 ? '' : 's'} at this month's rate ($${dailyRate.toFixed(3)}/day)` : 'Credit already used up'}</span></div>`;
+      }
+    }
+    if(window._syndyTotalCalls > 0){
+      const perCall = (window._syndyTotalCostUsd || 0) / window._syndyTotalCalls;
+      html += `<div class="api-tracker-row"><span class="api-tracker-name">Average cost per Syndy call</span><span class="api-tracker-meta">$${perCall.toFixed(4)}</span></div>`;
     }
     html += `<div class="api-tracker-row" style="border-top:1px solid var(--brass-dim); margin-top:6px; padding-top:8px;"><span class="api-tracker-name">Estimated total (fixed costs, monthly)</span><span class="api-tracker-meta"><b>$${monthlyOtherTotal.toFixed(2)}/mo</b></span></div>`;
     area.innerHTML = html;
@@ -4915,7 +5001,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.91";
+const APP_VERSION = "2026-08-22.94";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7235,11 +7321,21 @@ async function getXPBalance(){
 // low-stakes risk for play money in a friendly group — same tradeoff
 // already made elsewhere in this app for real-money paths.
 let presenceHeartbeatHandle = null;
+// Set true while the tab is hidden/backgrounded — stops the periodic
+// heartbeat and time-flush from firing while nobody's actually looking,
+// so a phone left locked in a pocket doesn't keep counting as "online" or
+// silently accruing time against whatever tab happened to be open.
+let presenceFrozen = false;
 async function sendPresenceHeartbeat(){
-  if(!currentUserUid) return;
+  if(!currentUserUid || presenceFrozen) return;
+  // tab/game are read from the same state timeTrackSwitchTo already
+  // maintains, rather than a second parallel "what page am I on" variable
+  // that could drift out of sync with it.
+  const isCasino = timeTrackCurrentTab && timeTrackCurrentTab.startsWith('casino:');
   try{
     await authedFetch(`/presence/${currentUserUid}.json`, {
-      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(Date.now())
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ts: Date.now(), tab: isCasino ? 'casino' : timeTrackCurrentTab, game: isCasino ? timeTrackCurrentTab.slice(7) : null })
     });
   }catch(e){} // best-effort, never worth surfacing an error for
 }
@@ -7256,9 +7352,9 @@ async function sendPresenceHeartbeat(){
 let timeTrackCurrentTab = null;
 let timeTrackStart = null;
 let timeTrackFlushHandle = null;
-function timeTrackDateKey(){ return new Date().toISOString().slice(0, 10); }
+function timeTrackDateKey(){ return currentAestDateKey(); }
 async function flushTabTime(){
-  if(!currentUserUid || !timeTrackCurrentTab || !timeTrackStart) return;
+  if(presenceFrozen || !currentUserUid || !timeTrackCurrentTab || !timeTrackStart) return;
   const elapsedSec = Math.round((Date.now() - timeTrackStart) / 1000);
   timeTrackStart = Date.now(); // reset immediately so a slow request below doesn't double-count the gap
   if(elapsedSec < 1) return; // not worth a write for sub-second slivers
@@ -7276,6 +7372,23 @@ function timeTrackSwitchTo(tab){
   timeTrackCurrentTab = tab;
   timeTrackStart = Date.now();
 }
+// Backgrounding (phone locked, app switched away, tab minimised) is the
+// one case a tab-switch or a 60s interval can't catch on its own — without
+// this, a phone left open on Casino overnight would silently rack up eight
+// hours of "time spent" and look "online" the whole time. Flush what's
+// real before freezing; on return, don't count the frozen gap as time in
+// whatever tab was showing, and confirm we're actually back with one
+// immediate heartbeat rather than waiting up to 60s for the next tick.
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    flushTabTime();
+    presenceFrozen = true;
+  } else {
+    presenceFrozen = false;
+    timeTrackStart = Date.now();
+    sendPresenceHeartbeat();
+  }
+});
 
 async function awardXP(amount, reason, opts){
   if(!currentUserUid || !amount) return;
@@ -7318,6 +7431,18 @@ async function awardXP(amount, reason, opts){
     // threshold. Never allowed to block or fail the actual game outcome —
     // its own try/catch inside trackCasinoPotContribution keeps it silent.
     trackCasinoPotContribution(currentUserUid, amount, reason);
+    // Diagnostics activity feed/graph — a tiny per-day record (reason +
+    // amount + timestamp) instead of Diag ever having to pull every
+    // member's entire XP log to answer "who played what recently". Uses
+    // /xp/{uid} which everyone can already write to (no rules deploy
+    // needed), rather than a new shared /ops/activity path. Best-effort:
+    // never blocks or fails the actual game outcome.
+    if(CASINO_POT_REASON_PATTERN.test(reason || '')){
+      authedFetch(`/xp/${currentUserUid}/activityIndex/${currentAestDateKey()}.json`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ reason, amount, ts: Date.now() })
+      }).catch(() => {});
+    }
     // Win streak — same "is this a real casino game round" gate as the
     // Pot above, same reasoning: this function is the one place every
     // single-player game's result already passes through, so it's the
@@ -13588,6 +13713,31 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
 });
 document.getElementById('diagTabBtn').addEventListener('click', renderDiagTab);
+document.getElementById('snapshotWeekBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('snapshotWeekBtn');
+  const statusEl = document.getElementById('snapshotWeekStatus');
+  btn.disabled = true;
+  statusEl.className = 'status-msg';
+  statusEl.textContent = 'Snapshotting…';
+  try{
+    await snapshotThisWeek();
+    statusEl.className = 'status-msg ok';
+    statusEl.textContent = `Saved for ${currentAestWeekKey()}.`;
+    renderWeeklyReport(); // re-render to show the just-saved snapshot instead of the live view
+  }catch(e){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Could not save: ' + e.message;
+  }
+  btn.disabled = false;
+});
+document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.submode;
+    document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.diag-submode').forEach(panel => panel.classList.toggle('active', panel.dataset.submodePanel === target));
+    window.scrollTo(0, 0);
+  });
+});
 document.getElementById('testPushBtn').addEventListener('click', async () => {
   const btn = document.getElementById('testPushBtn');
   const status = document.getElementById('testPushStatus');
@@ -13634,9 +13784,12 @@ document.getElementById('runHealthCheckBtn').addEventListener('click', async () 
   btn.textContent = 'Running…';
   document.getElementById('healthCheckResults').innerHTML = '<div class="empty">Running checks…</div>';
   try{
-    const results = await runFullHealthCheck();
-    renderHealthCheckResults(results);
+    const { results, latencyMs } = await runFullHealthCheck();
+    renderHealthCheckResults(results, latencyMs);
     copyBtn.style.display = '';
+    renderDashboardDump(); // full season scan — deliberately only runs here, not on every Diag open
+    persistHealthSnapshot(results, latencyMs).then(renderPulseToteCells); // refresh the tote cells with the score that just came out of this run
+    results.filter(r => r.status === 'fail').forEach(r => logOpsError('health-check', `${r.label}: ${r.detail}`));
   }catch(e){
     document.getElementById('healthCheckResults').innerHTML = `<div class="empty">Check itself failed: ${escapeHtml(e.message)}</div>`;
   }
@@ -14947,6 +15100,7 @@ async function saveAllTippingPicks(auth){
 
       statusEl.className = 'status-msg error';
       statusEl.textContent = `${failed.length} of ${toWrite.length} pick(s) didn't actually save — ${uniqueReasons.join(' | ')}${diagLine}`;
+      logOpsError('tip-save', `${failed.length}/${toWrite.length} picks failed — ${uniqueReasons.join(' | ')}${diagLine}`);
       btn.disabled = false;
       return;
     }
@@ -15463,12 +15617,14 @@ async function computeDashboardHealthChecks(){
 async function runFullHealthCheck(){
   const results = [];
   const check = (label, status, detail) => results.push({ label, status, detail });
+  let firebaseLatencyMs = null; // captured here so the caller can factor it into a health score without re-parsing the detail string
 
   // 1. Firebase connectivity + latency
   try{
     const t0 = performance.now();
     const res = await authedFetch('/state/members.json');
     const ms = Math.round(performance.now() - t0);
+    firebaseLatencyMs = ms;
     if(res.ok){
       check('Firebase read', ms < 2000 ? 'pass' : 'warn', `Responded in ${ms}ms${ms >= 2000 ? ' — slower than expected' : ''}`);
     } else {
@@ -15681,33 +15837,203 @@ async function runFullHealthCheck(){
     }
   }
 
-  return results;
+  // 16. App version currency — a stale tab silently running old code is a
+  // real, quiet failure mode; this catches it explicitly instead of
+  // relying on the visitor noticing something looks off.
+  try{
+    const vres = await fetch('version.json?_=' + Date.now(), { cache: 'no-store' });
+    const vdata = await vres.json();
+    check('App version current', vdata.version === APP_VERSION ? 'pass' : 'warn',
+      vdata.version === APP_VERSION ? `Running ${APP_VERSION}, matches deployed` : `Running ${APP_VERSION}, deployed is ${vdata.version} — this tab is stale`);
+  }catch(e){
+    check('App version current', 'warn', 'Could not fetch version.json: ' + e.message);
+  }
+
+  // 17. State size / fetch speed — flags a genuinely large /state node
+  // before it becomes a "why does the app feel slow" complaint. No abort/
+  // timeout exists on authedFetch to enforce a hard cutoff (there isn't
+  // one anywhere in this codebase to reuse) — a truly hung request just
+  // makes this specific check take a while, which is an honest limit
+  // worth knowing about rather than a timeout worth faking.
+  try{
+    const t0 = performance.now();
+    const sres = await authedFetch('/state.json');
+    const sms = Math.round(performance.now() - t0);
+    const stext = await sres.text();
+    const sizeKb = Math.round(stext.length / 1024);
+    const big = sizeKb > 500 || sms > 3000;
+    check('State size / fetch speed', big ? 'warn' : 'pass', `${sizeKb}KB, fetched in ${sms}ms${big ? ' — larger/slower than expected; old season history may be worth trimming eventually' : ''}`);
+  }catch(e){
+    check('State size / fetch speed', 'fail', e.message);
+  }
+
+  // 18. Commence-time sync — reads each linked member's own persisted
+  // timestamp (see ensureCommenceTimesSynced) and reports the most recent
+  // one, since ANY member opening Tipping runs this, not just the admin.
+  try{
+    const syncMembers = (currentState.members || []).filter(m => m.linkedUid);
+    const timestamps = await Promise.all(syncMembers.map(async m => {
+      try{
+        const r = await authedFetch(`/analytics/${m.linkedUid}/lastCommenceTimesSyncAt.json`);
+        return (await r.json()) || 0;
+      }catch(e){ return 0; }
+    }));
+    const mostRecent = Math.max(0, ...timestamps);
+    if(mostRecent === 0){
+      check('Commence-time sync', 'warn', 'Never recorded on any linked member — open Tipping once to run it');
+    } else {
+      const hoursAgo = (Date.now() - mostRecent) / 3600000;
+      check('Commence-time sync', hoursAgo < 48 ? 'pass' : 'warn', `Last ran ${timeAgo(mostRecent)}${hoursAgo >= 48 ? ' — worth opening Tipping to refresh it' : ''}`);
+    }
+  }catch(e){
+    check('Commence-time sync', 'fail', e.message);
+  }
+
+  // 19. XP write access — a real GET+PUT+GET no-op cycle on the signed-in
+  // user's own balance leaf, same proof-not-assumption pattern as the
+  // Casino Pot check above, just covering /xp/{uid} instead of /casinoPot.
+  if(currentUserUid){
+    try{
+      const xpPath = `/xp/${currentUserUid}/balance.json`;
+      const xpGetRes = await authedFetch(xpPath);
+      if(!xpGetRes.ok){
+        check('XP write access', 'fail', `Read denied — HTTP ${xpGetRes.status}`);
+      } else {
+        const xpCurrent = (await xpGetRes.json()) || 0;
+        const xpPutRes = await authedFetch(xpPath, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(xpCurrent)
+        });
+        check('XP write access', xpPutRes.ok ? 'pass' : 'fail', xpPutRes.ok ? 'Read+write both OK' : `Write denied — HTTP ${xpPutRes.status}`);
+      }
+    }catch(e){
+      check('XP write access', 'fail', e.message);
+    }
+  }
+
+  return { results, latencyMs: firebaseLatencyMs };
 }
 
-function renderHealthCheckResults(results){
+// start 100, -15 per fail, -4 per warn, -5 if Firebase latency >= 2000ms,
+// clamped 0-100. Deliberately simple/linear rather than weighted per-check
+// — a scoring model subtle enough to need its own explanation defeats the
+// point of a number you can read in half a second.
+function computeHealthScore(results, latencyMs){
+  let score = 100;
+  results.forEach(r => {
+    if(r.status === 'fail') score -= 15;
+    else if(r.status === 'warn') score -= 4;
+  });
+  if(latencyMs != null && latencyMs >= 2000) score -= 5;
+  return Math.max(0, Math.min(100, score));
+}
+// One concrete "do this" per known warn/fail label — deliberately keyed by
+// label text, not by the specific detail message, since the label is the
+// stable part across runs and the detail varies with whatever's actually
+// wrong this time.
+const HEALTH_CHECK_ACTIONS = {
+  'Firebase read': 'If this keeps failing, check the Firebase console for an outage or a rules typo. If it\u2019s just slow, no action needed unless it stays \u2265 2s consistently.',
+  'Auth session': 'Sign out and back in \u2014 the token is close to expiring or already invalid.',
+  'Members linked to Tipping': 'Ask the unlinked member(s) to open the Tipping tab once \u2014 linking happens automatically on first visit.',
+  'Dues fields valid': 'Open Ledger and re-save that member\u2019s dues fields \u2014 a NaN usually means a blank input got saved.',
+  'Duplicate roster names': 'Rename one of the duplicates in the Ledger roster \u2014 sharing a name merges their stats and badges together.',
+  'Badge data shape': 'Open that member in Ledger and re-save \u2014 badges should be an array, something wrote it as a different type.',
+  'Season history entries': 'Open the affected week in Ledger and re-save it \u2014 group or entries data is missing.',
+  'Season-start-round config': 'Set the season-start round in Ledger if Round 1 isn\u2019t actually correct for this season.',
+  'Tipping picks reads': 'Open the Tipping tab once \u2014 this runs the commence-time sync, which usually fixes read denials caused by missing kickoff-time data.',
+  'Joker round validity': 'Ask the affected member to re-pick their Joker round in Tipping.',
+  'Browser storage': 'Turn off private/incognito browsing for this app \u2014 it needs localStorage to remember your session.',
+  'No two members share one account': 'Unlink the duplicate UID in Ledger \u2014 two roster members are pointing at the same Firebase account.',
+  'Casino XP balance shape': 'Usually self-heals on their next casino win/loss (awardXP re-initialises it) \u2014 only worth a manual look if it persists.',
+  'Casino lifetime-earned shape': 'Same as above \u2014 self-heals on their next casino win.',
+  'Balance vs lifetime-earned sanity': 'Worth a manual look at that member\u2019s XP log for a write that skipped crediting lifetimeEarned.',
+  'Founding Player number range': 'Check /xpMeta/foundingCount and that member\u2019s /xp/{uid}/foundingNumber directly in the Firebase console.',
+  'Founding Player counter': 'Check /xpMeta/foundingCount in the Firebase console \u2014 it should never exceed 11.',
+  'Dues owed within commitment': 'Not necessarily a bug \u2014 just means someone\u2019s ledger entries pushed them over their stated commitment. Worth a look if unexpected.',
+  'Group financial fields valid': 'Open Ledger and re-save the group financial fields \u2014 one is NaN or missing.',
+  'Individual bet drafts \u2014 $ amounts': 'Open Ledger\u2019s individual bets and fill in the missing $ amount before saving the week.',
+  'Individual bet drafts \u2014 SGM results': 'Open Ledger and set a result for the ticked SGM flag(s), or untick it.',
+  'Casino Pot rules access': 'Deploy the latest firebase-rules.json \u2014 the /casinoPot rules aren\u2019t live yet.',
+  'App version current': 'Hard-refresh this tab (or tap the update banner if it\u2019s showing) \u2014 it\u2019s running stale code.',
+  'State size / fetch speed': 'Not urgent, but if this keeps growing, old season history may be worth archiving eventually.',
+  'Commence-time sync': 'Open the Tipping tab once \u2014 this triggers the sync directly.',
+  'XP write access': 'Deploy the latest firebase-rules.json \u2014 the /xp write rules may be out of date.'
+};
+function aestHHmm(){
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Australia/Melbourne', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
+  return `${parts.find(p => p.type === 'hour').value}${parts.find(p => p.type === 'minute').value}`;
+}
+// Written under the ADMIN'S OWN uid path — /analytics/{uid} is already
+// self-writable by everyone, so the admin writing their own health
+// snapshots here needs zero new Firebase rules. A genuinely shared
+// /ops/health path would need its own rules deploy for no real benefit,
+// since only the admin ever looks at this. Falls back to localStorage if
+// the write fails for any reason (offline, etc) so Pulse still has
+// something to show.
+async function persistHealthSnapshot(results, latencyMs){
+  const failCount = results.filter(r => r.status === 'fail').length;
+  const warnCount = results.filter(r => r.status === 'warn').length;
+  const score = computeHealthScore(results, latencyMs);
+  const summary = failCount > 0 ? `${failCount} failure(s), ${warnCount} warning(s)` : (warnCount > 0 ? `${warnCount} warning(s)` : 'All clear');
+  const snapshot = { ts: Date.now(), score, failCount, warnCount, latencyMs, appVersion: APP_VERSION, summary, results };
+  try{ localStorage.setItem('mlsynd_health_latest', JSON.stringify(snapshot)); }catch(e){}
+  if(!currentUserUid) return snapshot;
+  try{
+    await authedFetch(`/analytics/${currentUserUid}/opsHealth/latest.json`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(snapshot)
+    });
+    await authedFetch(`/analytics/${currentUserUid}/opsHealth/byDate/${currentAestDateKey()}/${aestHHmm()}.json`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(snapshot)
+    });
+  }catch(e){}
+  return snapshot;
+}
+async function loadLatestHealthSnapshot(){
+  if(currentUserUid){
+    try{
+      const res = await authedFetch(`/analytics/${currentUserUid}/opsHealth/latest.json`);
+      const data = await res.json();
+      if(data) return data;
+    }catch(e){}
+  }
+  try{
+    const raw = localStorage.getItem('mlsynd_health_latest');
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+
+function renderHealthCheckResults(results, latencyMs){
   const area = document.getElementById('healthCheckResults');
   if(!area) return;
   const icon = { pass: '✅', warn: '⚠️', fail: '❌' };
   const color = { pass: 'var(--win)', warn: '#E8A15C', fail: 'var(--loss)' };
   const failCount = results.filter(r => r.status === 'fail').length;
   const warnCount = results.filter(r => r.status === 'warn').length;
+  const score = computeHealthScore(results, latencyMs);
   const summary = failCount > 0
     ? `${icon.fail} ${failCount} failure(s), ${warnCount} warning(s) — worth relaying back`
     : warnCount > 0
       ? `${icon.warn} All clear except ${warnCount} warning(s)`
       : `${icon.pass} Everything checks out`;
-  let html = `<div style="font-weight:700; margin-bottom:10px; color:${failCount > 0 ? 'var(--loss)' : (warnCount > 0 ? '#E8A15C' : 'var(--win)')};">${summary}</div>`;
+  let html = `<div style="font-weight:700; margin-bottom:2px; color:${failCount > 0 ? 'var(--loss)' : (warnCount > 0 ? '#E8A15C' : 'var(--win)')};">Score: ${score}/100</div>`;
+  html += `<div style="font-weight:700; margin-bottom:10px; color:${failCount > 0 ? 'var(--loss)' : (warnCount > 0 ? '#E8A15C' : 'var(--win)')};">${summary}</div>`;
   results.forEach(r => {
+    const action = r.status !== 'pass' ? HEALTH_CHECK_ACTIONS[r.label] : null;
     html += `<div style="padding:6px 0; border-bottom:1px solid var(--line); font-size:12px;">
       <span style="color:${color[r.status]};">${icon[r.status]}</span> <b>${escapeHtml(r.label)}</b><br>
       <span style="color:var(--muted); margin-left:20px;">${escapeHtml(r.detail)}</span>
+      ${action ? `<br><span style="margin-left:20px; color:var(--brass-light); font-style:italic;">→ ${escapeHtml(action)}</span>` : ''}
     </div>`;
   });
   area.innerHTML = html;
 
   const timestamp = new Date().toLocaleString();
-  const reportText = `MLSynd Health Check — ${timestamp}\n${summary}\n\n` +
-    results.map(r => `[${r.status.toUpperCase()}] ${r.label}: ${r.detail}`).join('\n');
+  const actionRows = results.filter(r => r.status !== 'pass' && HEALTH_CHECK_ACTIONS[r.label]);
+  const reportText = `MLSynd Health Check — ${timestamp}\nScore: ${score}/100\n${summary}\n\n` +
+    results.map(r => `[${r.status.toUpperCase()}] ${r.label}: ${r.detail}`).join('\n') +
+    (actionRows.length > 0
+      ? `\n\n## Actions\n` + actionRows.map(r => `- **${r.label}**: ${HEALTH_CHECK_ACTIONS[r.label]}`).join('\n')
+      : '');
   window.__lastHealthReport = reportText;
 }
 
@@ -15725,25 +16051,25 @@ function formatDuration(totalSec){
   if(h === 0) return `${m}m`;
   return `${h}h ${m}m`;
 }
-// Fetches the whole /analytics node once and reduces it into two totals
-// maps — top-level tabs, and casino games broken out separately — summed
-// across every member, restricted to the last `days` calendar days.
+// Fetches each linked member's timeSpent node individually rather than the
+// whole /analytics tree — same reasoning as loadActivityData: one member's
+// timeSpent node is small, every member's balance/log/etc bundled together
+// isn't. Filtered to the last `days` AEST days client-side.
 async function loadTimeSpentData(days){
-  try{
-    const res = await authedFetch('/analytics.json');
-    const all = (await res.json()) || {};
-    const cutoffKeys = new Set();
-    const now = new Date();
-    for(let i = 0; i < days; i++){
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      cutoffKeys.add(d.toISOString().slice(0, 10));
-    }
-    const tabTotals = {};
-    const gameTotals = {};
-    Object.values(all).forEach(userNode => {
-      const timeSpent = (userNode || {}).timeSpent;
-      if(!timeSpent) return;
+  const members = (currentState.members || []).filter(m => m.linkedUid);
+  const cutoffKeys = new Set();
+  const now = new Date();
+  for(let i = 0; i < days; i++){
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    cutoffKeys.add(currentAestDateKey(d));
+  }
+  const tabTotals = {};
+  const gameTotals = {};
+  await Promise.all(members.map(async m => {
+    try{
+      const res = await authedFetch(`/analytics/${m.linkedUid}/timeSpent.json`);
+      const timeSpent = (await res.json()) || {};
       Object.keys(timeSpent).forEach(dateKey => {
         if(!cutoffKeys.has(dateKey)) return;
         Object.entries(timeSpent[dateKey] || {}).forEach(([key, seconds]) => {
@@ -15756,11 +16082,9 @@ async function loadTimeSpentData(days){
           }
         });
       });
-    });
-    return { tabTotals, gameTotals };
-  }catch(e){
-    return { tabTotals: {}, gameTotals: {} };
-  }
+    }catch(e){}
+  }));
+  return { tabTotals, gameTotals };
 }
 function renderTimeSpentBars(container, totals, nameMap){
   const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
@@ -15778,55 +16102,114 @@ function renderTimeSpentBars(container, totals, nameMap){
     </div>
   `).join('');
 }
-async function renderWeeklyReport(){
-  const area = document.getElementById('weeklyReportArea');
-  if(!area) return;
-  area.innerHTML = '<div class="empty">Building report…</div>';
-  const [timeData, activityEntries] = await Promise.all([loadTimeSpentData(7), loadActivityData()]);
-  const weekCutoff = Date.now() - 7 * 86400000;
-  const weekActivity = activityEntries.filter(e => e.ts >= weekCutoff);
-
-  const totalTimeSec = Object.values(timeData.tabTotals).reduce((a, b) => a + b, 0) + Object.values(timeData.gameTotals).reduce((a, b) => a + b, 0);
-  const topTab = Object.entries(timeData.tabTotals).sort((a, b) => b[1] - a[1])[0];
-  const topGame = Object.entries(timeData.gameTotals).sort((a, b) => b[1] - a[1])[0];
-  const roundsPlayed = weekActivity.length;
-  const totalWagerNet = weekActivity.reduce((sum, e) => sum + e.amount, 0);
-  const playerCounts = {};
-  weekActivity.forEach(e => { playerCounts[e.name] = (playerCounts[e.name] || 0) + 1; });
-  const mostActivePlayer = Object.entries(playerCounts).sort((a, b) => b[1] - a[1])[0];
-  const biggestWin = weekActivity.reduce((best, e) => (e.amount > (best ? best.amount : -Infinity) ? e : best), null);
-
-  let html = `<div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Covering the last 7 days, generated just now — not a saved snapshot, re-run this any time by reopening Diagnostics.</div>`;
+// Shared between the live report and the saved snapshot so the two can
+// never drift into different HTML structures — only the data feeding it
+// (and the "is this live or saved" label above it) differs.
+function renderWeeklyReportHtml(data, isLive){
+  let html = isLive
+    ? `<div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Live — covering the last 7 days, generated just now. Not saved; tap "Snapshot this week" below to keep a permanent copy of these numbers.</div>`
+    : `<div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Saved snapshot from ${new Date(data.ts).toLocaleString()} (${timeAgo(data.ts)}) — not necessarily today's live numbers.</div>`;
 
   html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:10px 0 6px;">⏱ Time Across the Group</h3>`;
   html += `<div style="font-size:12px; line-height:1.8;">
-    Total tracked time this week: <b>${formatDuration(totalTimeSec)}</b><br>
-    Busiest section: <b>${topTab ? escapeHtml(TAB_DISPLAY_NAMES[topTab[0]] || topTab[0]) + ' — ' + formatDuration(topTab[1]) : '—'}</b><br>
-    Most-played casino game: <b>${topGame ? escapeHtml(CASINO_GAME_LABELS[topGame[0]] || topGame[0]) + ' — ' + formatDuration(topGame[1]) : '—'}</b>
+    Total tracked time this week: <b>${formatDuration(data.totalTimeSec)}</b><br>
+    Busiest section: <b>${data.topTab ? escapeHtml(TAB_DISPLAY_NAMES[data.topTab] || data.topTab) + (data.topTabSec ? ' — ' + formatDuration(data.topTabSec) : '') : '—'}</b><br>
+    Most-played casino game: <b>${data.topGame ? escapeHtml(CASINO_GAME_LABELS[data.topGame] || data.topGame) + (data.topGameSec ? ' — ' + formatDuration(data.topGameSec) : '') : '—'}</b>
   </div>`;
 
   html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🎲 Casino Activity</h3>`;
   html += `<div style="font-size:12px; line-height:1.8;">
-    Rounds played: <b>${roundsPlayed}</b><br>
-    Net XP across everyone (wins minus losses): <b style="color:${totalWagerNet >= 0 ? 'var(--win)' : 'var(--loss)'};">${totalWagerNet >= 0 ? '+' : ''}${totalWagerNet.toLocaleString()}</b><br>
-    Most active player: <b>${mostActivePlayer ? escapeHtml(mostActivePlayer[0]) + ' (' + mostActivePlayer[1] + ' rounds)' : '—'}</b><br>
-    Biggest single win: <b>${biggestWin && biggestWin.amount > 0 ? escapeHtml(biggestWin.name) + ' +' + biggestWin.amount + ' XP (' + escapeHtml(biggestWin.reason) + ')' : '—'}</b>
+    Rounds played: <b>${data.rounds}</b><br>
+    Net XP across everyone (wins minus losses): <b style="color:${data.netXp >= 0 ? 'var(--win)' : 'var(--loss)'};">${data.netXp >= 0 ? '+' : ''}${data.netXp.toLocaleString()}</b><br>
+    Most active player: <b>${data.mostActive ? escapeHtml(data.mostActive) + (data.mostActiveCount ? ' (' + data.mostActiveCount + ' rounds)' : '') : '—'}</b><br>
+    Biggest single win: <b>${data.biggestWin ? escapeHtml(data.biggestWin.name) + ' +' + data.biggestWin.amount + ' XP (' + escapeHtml(data.biggestWin.reason) + ')' : '—'}</b>
   </div>`;
 
-  html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🔮 Syndy &amp; API (context, not strictly weekly)</h3>`;
+  html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🔮 Syndy, API &amp; Health</h3>`;
   html += `<div style="font-size:11.5px; color:var(--muted); line-height:1.7;">
-    Syndy is tracked by calendar month, not week — see the Syndy panel above for this month's real figure.<br>
-    API call counts are per-device (this phone/browser only, since instrumenting the actual server functions would need touching each one) — see the API tracker panel above for this device's running total.
+    Syndy this month (not strictly this week — tracked by calendar month only): <b>${data.syndyCalls != null ? data.syndyCalls + ' calls, $' + (data.syndyCost || 0).toFixed(2) : 'see Money tab'}</b><br>
+    Health score at time of report: <b>${data.healthScore != null ? data.healthScore + '/100' : 'no check run yet'}</b><br>
+    API call counts are per-device (this phone/browser only) — see the Money tab for this device's running total.
   </div>`;
+  return html;
+}
+async function computeWeeklyReportData(){
+  const [timeData, activityEntries, healthSnap] = await Promise.all([loadTimeSpentData(7), loadActivityData(), loadLatestHealthSnapshot()]);
+  const weekCutoff = Date.now() - 7 * 86400000;
+  const weekActivity = activityEntries.filter(e => e.ts >= weekCutoff);
+  const totalTimeSec = Object.values(timeData.tabTotals).reduce((a, b) => a + b, 0) + Object.values(timeData.gameTotals).reduce((a, b) => a + b, 0);
+  const topTab = Object.entries(timeData.tabTotals).sort((a, b) => b[1] - a[1])[0];
+  const topGame = Object.entries(timeData.gameTotals).sort((a, b) => b[1] - a[1])[0];
+  const playerCounts = {};
+  weekActivity.forEach(e => { playerCounts[e.name] = (playerCounts[e.name] || 0) + 1; });
+  const mostActive = Object.entries(playerCounts).sort((a, b) => b[1] - a[1])[0];
+  const biggestWinEntry = weekActivity.reduce((best, e) => (e.amount > (best ? best.amount : -Infinity) ? e : best), null);
 
-  area.innerHTML = html;
+  let syndyCalls = null, syndyCost = null;
+  try{
+    const monthKey = currentAestMonthKey();
+    const [callsRes, costRes] = await Promise.all([
+      authedFetch(`/apiUsage/perplexity/byMonth/${monthKey}.json`),
+      authedFetch(`/apiUsage/perplexity/byMonthCostUsd/${monthKey}.json`)
+    ]);
+    syndyCalls = (await callsRes.json()) || 0;
+    syndyCost = (await costRes.json()) || 0;
+  }catch(e){}
+
+  return {
+    ts: Date.now(),
+    totalTimeSec,
+    topTab: topTab ? topTab[0] : null, topTabSec: topTab ? topTab[1] : null,
+    topGame: topGame ? topGame[0] : null, topGameSec: topGame ? topGame[1] : null,
+    rounds: weekActivity.length,
+    netXp: weekActivity.reduce((sum, e) => sum + e.amount, 0),
+    mostActive: mostActive ? mostActive[0] : null, mostActiveCount: mostActive ? mostActive[1] : null,
+    biggestWin: (biggestWinEntry && biggestWinEntry.amount > 0) ? { name: biggestWinEntry.name, amount: biggestWinEntry.amount, reason: biggestWinEntry.reason } : null,
+    syndyCalls, syndyCost,
+    healthScore: healthSnap ? healthSnap.score : null
+  };
+}
+// Written under the admin's own uid (see the health/error-ring comments
+// above for why) — /analytics/{adminUid}/opsWeekly/{week}, no rules
+// deploy needed.
+async function snapshotThisWeek(){
+  const data = await computeWeeklyReportData();
+  if(currentUserUid){
+    try{
+      await authedFetch(`/analytics/${currentUserUid}/opsWeekly/${currentAestWeekKey()}.json`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
+      });
+    }catch(e){}
+  }
+  try{ localStorage.setItem('mlsynd_weekly_latest', JSON.stringify(data)); }catch(e){}
+  return data;
+}
+async function renderWeeklyReport(){
+  const area = document.getElementById('weeklyReportArea');
+  if(!area) return;
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  // Prefer this week's saved snapshot if one exists — falls back to a
+  // live compute (clearly labelled as such) otherwise.
+  let saved = null;
+  if(currentUserUid){
+    try{
+      const res = await authedFetch(`/analytics/${currentUserUid}/opsWeekly/${currentAestWeekKey()}.json`);
+      saved = await res.json();
+    }catch(e){}
+  }
+  if(saved){
+    area.innerHTML = renderWeeklyReportHtml(saved, false);
+  } else {
+    const live = await computeWeeklyReportData();
+    area.innerHTML = renderWeeklyReportHtml(live, true);
+  }
 }
 
-
-// playing what" tracker — presence is a new lightweight heartbeat (see
-// sendPresenceHeartbeat), but the feed/graph need zero new instrumentation:
-// every casino win/loss already writes a reason + timestamp to XP log, this
-// just reads that data across every member at once instead of one at a time.
+// Presence, and the activity feed/graph below it, are the "who's online,
+// who's playing what" tracker. Presence is a lightweight heartbeat (see
+// sendPresenceHeartbeat) written to /presence/{uid}; the activity feed
+// reads a small per-day index awardXP writes at /xp/{uid}/activityIndex
+// (see loadActivityData) rather than pulling anyone's full XP log.
 async function renderPresence(){
   const area = document.getElementById('presenceArea');
   if(!area) return;
@@ -15835,55 +16218,72 @@ async function renderPresence(){
     const presence = (await res.json()) || {};
     const members = (currentState.members || []).filter(m => m.linkedUid);
     const rows = members.map(m => {
-      const ts = presence[m.linkedUid] || null;
+      const raw = presence[m.linkedUid] || null;
+      // Backward-compatible: earlier heartbeats wrote a bare timestamp
+      // number instead of {ts, tab, game} — treat that shape as ts-only
+      // rather than erroring out or showing nothing for it.
+      const ts = raw && typeof raw === 'object' ? raw.ts : raw;
+      const tab = (raw && typeof raw === 'object') ? raw.tab : null;
+      const game = (raw && typeof raw === 'object') ? raw.game : null;
       const online = ts && (Date.now() - ts) < 3 * 60000; // heartbeat every 60s, so 3min of silence is a safe "gone" cutoff without being trigger-happy on a single missed beat
-      return { name: m.name, ts, online };
+      return { name: m.name, ts, tab, game, online };
     });
     rows.sort((a, b) => {
       if(a.online !== b.online) return a.online ? -1 : 1;
       return (b.ts || 0) - (a.ts || 0);
     });
     if(rows.length === 0){ area.innerHTML = '<div class="empty">No members linked to a Tipping account yet.</div>'; return; }
-    area.innerHTML = rows.map(r => `
+    area.innerHTML = rows.map(r => {
+      const whereText = r.online
+        ? [TAB_DISPLAY_NAMES[r.tab] || (r.tab ? r.tab : null), r.game ? (CASINO_GAME_LABELS[r.game] || r.game) : null].filter(Boolean).join(' · ')
+        : '';
+      return `
       <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:12px;">
-        <span>${r.online ? '🟢' : '⚪'} ${escapeHtml(r.name)}</span>
-        <span style="color:var(--muted);">${r.online ? 'Online now' : (r.ts ? 'Last seen ' + timeAgo(r.ts) : 'Never seen')}</span>
+        <span>${r.online ? '🟢' : '⚪'} ${escapeHtml(r.name)}${whereText ? ' · ' + escapeHtml(whereText) : ''}</span>
+        <span style="color:var(--muted);">${r.online ? timeAgo(r.ts) : (r.ts ? 'Last seen ' + timeAgo(r.ts) : 'Never seen')}</span>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }catch(e){
     area.innerHTML = '<div class="empty">Could not load presence data.</div>';
   }
 }
 
-// Fetches every member's XP log in ONE request (the whole /xp node) rather
-// than one fetch per member, filters down to real casino-game entries using
-// the same pattern the Monthly Pot already uses, and returns them merged
-// and sorted newest-first. Shared by both the feed and the graph below so
-// this only has to run once per Diagnostics visit.
+// Reads each linked member's small activityIndex node individually
+// (11-ish requests, one per member) instead of the whole /xp tree — the
+// old version pulled every member's full balance/log/lifetime-earned/
+// badges just to find a handful of recent casino rows. This only ever
+// touches the tiny activityIndex leaf awardXP writes to. Filtered to the
+// last 14 AEST days client-side since Firebase REST doesn't have a cheap
+// per-member date-range query without adding an indexOn rule.
 async function loadActivityData(){
-  try{
-    const res = await authedFetch('/xp.json');
-    const allXp = (await res.json()) || {};
-    const uidToName = {};
-    (currentState.members || []).forEach(m => { if(m.linkedUid) uidToName[m.linkedUid] = m.name; });
-
-    const entries = [];
-    Object.keys(allXp).forEach(uid => {
-      const log = (allXp[uid] || {}).log;
-      if(!log) return;
-      Object.values(log).forEach(entry => {
-        if(!entry || !entry.reason || !CASINO_POT_REASON_PATTERN.test(entry.reason)) return;
-        entries.push({
-          uid, name: uidToName[uid] || 'Unknown', reason: entry.reason,
-          amount: entry.amount || 0, ts: entry.ts || 0
+  const members = (currentState.members || []).filter(m => m.linkedUid);
+  const cutoffKeys = new Set();
+  for(let i = 0; i < 14; i++){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    cutoffKeys.add(currentAestDateKey(d));
+  }
+  const perMember = await Promise.all(members.map(async m => {
+    try{
+      const res = await authedFetch(`/xp/${m.linkedUid}/activityIndex.json`);
+      const node = (await res.json()) || {};
+      const out = [];
+      Object.keys(node).forEach(dateKey => {
+        if(!cutoffKeys.has(dateKey)) return;
+        Object.values(node[dateKey] || {}).forEach(entry => {
+          if(!entry || !entry.reason) return;
+          out.push({ uid: m.linkedUid, name: m.name, reason: entry.reason, amount: entry.amount || 0, ts: entry.ts || 0 });
         });
       });
-    });
-    entries.sort((a, b) => b.ts - a.ts);
-    return entries;
-  }catch(e){
-    return [];
-  }
+      return out;
+    }catch(e){
+      return [];
+    }
+  }));
+  const entries = perMember.flat();
+  entries.sort((a, b) => b.ts - a.ts);
+  return entries; // full 14-day set — renderActivityFeed caps its own display to 30, but the Weekly Report needs the true 7-day total, not a possibly-truncated one
 }
 function renderActivityFeed(entries){
   const area = document.getElementById('activityFeedArea');
@@ -15907,13 +16307,17 @@ function renderActivityGraph(entries){
   for(let i = 13; i >= 0; i--){
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    days.push({ key: d.toDateString(), label: d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }), count: 0 });
+    // AEST key, not the viewing device's own local date — the data
+    // itself is written on Melbourne days (see currentAestDateKey), so
+    // bucketing by whatever timezone the admin's phone happens to be set
+    // to would silently misalign entries near midnight.
+    days.push({ key: currentAestDateKey(d), label: d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', timeZone: 'Australia/Melbourne' }), count: 0 });
   }
   const dayByKey = {};
   days.forEach(d => { dayByKey[d.key] = d; });
   entries.forEach(e => {
     if(!e.ts) return;
-    const key = new Date(e.ts).toDateString();
+    const key = currentAestDateKey(new Date(e.ts));
     if(dayByKey[key]) dayByKey[key].count++;
   });
   const maxCount = Math.max(1, ...days.map(d => d.count));
@@ -15932,7 +16336,129 @@ function renderActivityGraph(entries){
   `;
 }
 
+// Deliberately light — a handful of small reads, not a season scan. This
+// is what should be safe to run every time Pulse opens, unlike the
+// tipping/casino dump (see renderDashboardDump) or the full 20-check
+// system check, both of which stay behind an explicit button tap.
+// ---- Error ring ----
+// A capped rolling log of real failures — failed tip saves, failed
+// health-check internals, and sampled uncaught client errors — so the
+// admin can see what's actually gone wrong lately without digging through
+// browser consoles on multiple people's phones. Everyone writes to their
+// OWN /analytics/{uid}/opsErrors (already self-writable, no rules deploy
+// needed) — the admin's reader fetches every linked member's node
+// individually, same per-member pattern as the activity feed and
+// time-spent data, so this genuinely covers anyone's session, not just
+// the admin's own.
+let opsErrorWriteCount = 0;
+const OPS_ERROR_WRITE_CAP_PER_SESSION = 20; // hard ceiling so a genuine error loop (the same failure firing repeatedly) can't hammer Firebase with writes
+async function logOpsError(area, message, status){
+  if(opsErrorWriteCount >= OPS_ERROR_WRITE_CAP_PER_SESSION) return;
+  opsErrorWriteCount++;
+  const entry = { ts: Date.now(), uid: currentUserUid, area, status: status || 'fail', message: String(message).slice(0, 300), appVersion: APP_VERSION };
+  try{
+    const ring = JSON.parse(localStorage.getItem('mlsynd_ops_errors') || '[]');
+    ring.unshift(entry);
+    localStorage.setItem('mlsynd_ops_errors', JSON.stringify(ring.slice(0, 50)));
+  }catch(e){}
+  if(!currentUserUid) return;
+  try{
+    await authedFetch(`/analytics/${currentUserUid}/opsErrors.json`, {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(entry)
+    });
+  }catch(e){}
+}
+async function loadOpsErrors(){
+  const members = (currentState.members || []).filter(m => m.linkedUid);
+  const perMember = await Promise.all(members.map(async m => {
+    try{
+      const res = await authedFetch(`/analytics/${m.linkedUid}/opsErrors.json`);
+      const node = (await res.json()) || {};
+      return Object.values(node).map(e => ({ ...e, name: m.name }));
+    }catch(e){ return []; }
+  }));
+  const entries = perMember.flat();
+  entries.sort((a, b) => b.ts - a.ts);
+  return entries.slice(0, 50);
+}
+
+async function renderPulseToteCells(){
+  const healthCell = document.getElementById('pulseHealthCell');
+  const onlineCell = document.getElementById('pulseOnlineCell');
+  const syndyCell = document.getElementById('pulseSyndyCell');
+  const roundsCell = document.getElementById('pulseRoundsCell');
+  const lastRunHint = document.getElementById('pulseLastRunHint');
+  if(!healthCell) return;
+
+  loadLatestHealthSnapshot().then(snap => {
+    const valEl = healthCell.querySelector('.val');
+    healthCell.classList.remove('pos', 'neg');
+    const failuresArea = document.getElementById('pulseLastFailuresArea');
+    if(!snap){
+      valEl.textContent = '—';
+      if(lastRunHint) lastRunHint.textContent = 'No health check has ever been run on this account — tap the button below to run the first one.';
+      if(failuresArea) failuresArea.innerHTML = '';
+      return;
+    }
+    valEl.textContent = `${snap.score}/100`;
+    healthCell.classList.add(snap.score >= 80 ? 'pos' : (snap.score < 50 ? 'neg' : ''));
+    if(lastRunHint) lastRunHint.textContent = `Last full check ${timeAgo(snap.ts)} — ${snap.summary}.`;
+    if(failuresArea){
+      const bad = (snap.results || []).filter(r => r.status !== 'pass').slice(0, 5);
+      if(bad.length === 0){
+        failuresArea.innerHTML = '';
+      } else {
+        const icon = { warn: '⚠️', fail: '❌' };
+        const color = { warn: '#E8A15C', fail: 'var(--loss)' };
+        failuresArea.innerHTML = `<div class="hint" style="margin-bottom:4px;">Last 5 warn/fail from that run:</div>` + bad.map(r => `
+          <div style="padding:4px 0; font-size:11.5px;">
+            <span style="color:${color[r.status]};">${icon[r.status]}</span> <b>${escapeHtml(r.label)}</b> — <span style="color:var(--muted);">${escapeHtml(r.detail)}</span>
+          </div>
+        `).join('');
+      }
+    }
+  });
+
+  authedFetch('/presence.json').then(res => res.json()).then(presence => {
+    presence = presence || {};
+    const members = (currentState.members || []).filter(m => m.linkedUid);
+    const onlineCount = members.filter(m => {
+      const raw = presence[m.linkedUid];
+      const ts = raw && typeof raw === 'object' ? raw.ts : raw;
+      return ts && (Date.now() - ts) < 3 * 60000;
+    }).length;
+    onlineCell.querySelector('.val').textContent = `${onlineCount} / ${members.length}`;
+  }).catch(() => { onlineCell.querySelector('.val').textContent = '—'; });
+
+  authedFetch(`/apiUsage/perplexity/byMonthCostUsd/${currentAestMonthKey()}.json`).then(res => res.json()).then(cost => {
+    syndyCell.querySelector('.val').textContent = `$${(cost || 0).toFixed(2)}`;
+  }).catch(() => { syndyCell.querySelector('.val').textContent = '—'; });
+
+  loadActivityData().then(entries => {
+    const cutoff = Date.now() - 7 * 86400000;
+    roundsCell.querySelector('.val').textContent = String(entries.filter(e => e.ts >= cutoff).length);
+  }).catch(() => { roundsCell.querySelector('.val').textContent = '—'; });
+}
+
+function renderPulseErrors(){
+  const area = document.getElementById('pulseErrorsArea');
+  if(!area) return;
+  loadOpsErrors().then(entries => {
+    const recent = entries.slice(0, 5);
+    if(recent.length === 0){ area.innerHTML = '<div class="empty">Nothing recorded — good sign.</div>'; return; }
+    area.innerHTML = recent.map(e => `
+      <div style="padding:4px 0; font-size:11.5px; border-bottom:1px solid var(--line);">
+        <span style="color:var(--loss);">❌</span> <b>${escapeHtml(e.name || 'Unknown')}</b> — ${escapeHtml(e.area || '?')}
+        <span style="color:var(--muted);"> · ${timeAgo(e.ts)}</span><br>
+        <span style="color:var(--muted); margin-left:20px;">${escapeHtml((e.message || '').slice(0, 140))}</span>
+      </div>
+    `).join('');
+  }).catch(() => { area.innerHTML = '<div class="empty">Could not load.</div>'; });
+}
+
 function renderDiagTab(){
+  renderPulseToteCells();
+  renderPulseErrors();
   renderApiCallTracker();
   renderSyndyUsage().then(renderRunningCosts); // running costs reads window._syndyTotalCostUsd, set by renderSyndyUsage — sequenced, not parallel, to avoid reading it before it's set
   renderPresence();
@@ -15945,6 +16471,18 @@ function renderDiagTab(){
     renderTimeSpentBars(document.getElementById('timeSpentGamesArea'), gameTotals, CASINO_GAME_LABELS);
   });
   renderWeeklyReport();
+  // Deliberately NOT calling renderDashboardDump() here — it runs
+  // computeTippingDiagnostics, a full season scan across every game, and
+  // shouldn't be a cost every single Diag open pays. It only runs from the
+  // Run Full System Check button now (see that button's click handler).
+  const area = document.getElementById('diagTabArea');
+  if(area) area.innerHTML = '<div class="empty">Included in 🩺 Run Full System Check, above — a full season scan isn\'t worth re-running every time this tab opens.</div>';
+}
+// The tipping/casino/dashboard-health dump that used to fire automatically
+// on every Diag open — extracted so it can be triggered on demand instead
+// (from Run Full System Check) rather than paying a full season scan's
+// cost just to look at Diagnostics.
+function renderDashboardDump(){
   const area = document.getElementById('diagTabArea');
   if(!area) return;
   area.innerHTML = '<div class="empty">Loading…</div>';
@@ -16032,6 +16570,16 @@ async function ensureCommenceTimesSynced(finishedGames){
   commenceTimesSyncedThisSession = true;
   try{
     await processInBatches(finishedGames, 15, g => syncGameMeta(g));
+    // Persisted (not just the session flag above) so the health check can
+    // answer "when did this last actually run, by anyone" rather than only
+    // "did it run in the current tab" — written under /analytics/{uid},
+    // which is already self-writable, rather than needing a new shared
+    // path and another rules deploy just for this one timestamp.
+    if(currentUserUid){
+      authedFetch(`/analytics/${currentUserUid}/lastCommenceTimesSyncAt.json`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(Date.now())
+      }).catch(() => {});
+    }
   }catch(e){}
 }
 
