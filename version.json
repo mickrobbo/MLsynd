@@ -1,8 +1,8 @@
 {
-  "version": "2026-08-22.88",
+  "version": "2026-08-22.89",
   "date": "2026-08-22",
   "changes": [
-    "Fixed: Plinko balls still weren't landing dead-centre in their slot after the previous attempt. Switched approach entirely — instead of calculating the slot's centre from outside it (getBoundingClientRect math across two separate elements, which was mathematically sound but still wasn't producing a centred result in practice), the ball now reparents directly into its landed slot and uses simple 50%/50% centring relative to the slot's own box. The browser's layout engine does the centring natively rather than a cross-element coordinate calculation.",
-    "Fixed: balls appearing too close together — reduced ball size from 20px to 16px, giving real breathing room between balls landing in neighbouring slots on a multi-ball drop."
+    "New: 🔁 Same Bet button added to Big Wheel, Blackjack, Baccarat, Casino War, Video Poker, Mines, and Plinko — restores your exact last bet in one tap (including Perfect Pairs / Pairs side bets where relevant, bet type on Baccarat, mine count on Mines, ball count on Plinko). Roulette and Slots already had this; every other single-round game in the casino now matches. Never auto-plays the round — you still tap Deal/Spin/Start/Drop yourself.",
+    "Not added to Craps — its bets (Pass Line, Come, Place, Hardways) can stay live across many rolls simultaneously with no clean single-round boundary to repeat, unlike every other game here."
   ]
 }

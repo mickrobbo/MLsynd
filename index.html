@@ -3144,6 +3144,7 @@
       </div>
       <div class="deal-row">
         <button type="button" id="bjPerfectPairsToggle" class="pill-btn pp-toggle-pill"><span class="pp-pill-icon"><span>♥</span></span>Perfect Pairs</button>
+        <button type="button" id="bjSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
         <button type="button" id="bjDealBtn" class="pill-btn pill-btn-primary">Deal</button>
       </div>
       <div id="bjBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
@@ -3209,7 +3210,10 @@
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
         <button type="button" class="chip-clear-btn" data-target="bacBetInput">Clear Chips</button>
       </div>
-      <button type="button" id="bacDealBtn" class="pill-btn pill-btn-primary" style="margin-top:10px;">Deal</button>
+      <div class="deal-row" style="margin-top:10px;">
+        <button type="button" id="bacSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+        <button type="button" id="bacDealBtn" class="pill-btn pill-btn-primary">Deal</button>
+      </div>
       <div id="bacBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
 
@@ -3309,6 +3313,7 @@
       </div>
       <div class="deal-row">
         <button type="button" id="warPerfectPairsToggle" class="pill-btn pp-toggle-pill"><span class="pp-pill-icon"><span>♥</span></span>Pairs bet</button>
+        <button type="button" id="warSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
         <button type="button" id="warDealBtn" class="pill-btn pill-btn-primary">Deal</button>
       </div>
       <div id="warBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
@@ -3514,6 +3519,7 @@
         <button type="button" class="chip-clear-btn" data-target="vpBetInput">Clear Chips</button>
       </div>
       <div class="deal-row">
+        <button type="button" id="vpSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
         <button type="button" id="vpDealBtn" class="pill-btn pill-btn-primary">Deal</button>
         <button type="button" id="vpDrawBtn" class="pill-btn pill-btn-primary" style="display:none;">Draw</button>
       </div>
@@ -3578,6 +3584,7 @@
       </div>
       <div class="hint" id="plinkoTotalStakeHint" style="margin-top:6px;">Total stake: 50 XP</div>
       <div class="deal-row">
+        <button type="button" id="plinkoSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
         <button type="button" id="plinkoDropBtn" class="pill-btn pill-btn-primary">Drop Ball</button>
       </div>
       <div id="plinkoBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
@@ -3629,6 +3636,7 @@
       </div>
       <div class="deal-row">
         <button type="button" id="bigWheelClearBtn" class="pill-btn pill-btn-action">Clear Bets</button>
+        <button type="button" id="bigWheelSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
         <button type="button" id="bigWheelSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
       </div>
       <div id="bigWheelBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
@@ -3676,6 +3684,7 @@
         <button type="button" class="chip-clear-btn" data-target="minesBetInput">Clear Chips</button>
       </div>
       <div class="deal-row">
+        <button type="button" id="minesSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
         <button type="button" id="minesStartBtn" class="pill-btn pill-btn-primary">Start</button>
         <button type="button" id="minesCashOutBtn" class="pill-btn pill-btn-action" style="display:none;">Cash Out</button>
         <button type="button" id="minesNewGameBtn" class="pill-btn" style="display:none;">New Game</button>
@@ -4867,7 +4876,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.88";
+const APP_VERSION = "2026-08-22.89";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8189,6 +8198,7 @@ async function checkAndAwardTippingXP(){
 
 // ---- Blackjack ----
 let bjDeck = [], bjPlayerHand = [], bjDealerHand = [], bjCurrentBet = 0, bjHandActive = false;
+let bjLastBet = null; // snapshot of the last hand's bet (+ Perfect Pairs), for the Same Bet button
 let bjHistory = []; // 'W'/'L'/'P' per completed hand — net result, not per-split-hand
 let bjAudioCtx = null;
 function bjGetAudioCtx(){
@@ -8791,6 +8801,12 @@ async function bjResolveHand(){
   void outcomeEl.offsetWidth;
   outcomeEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
   document.getElementById('bjNewHandBtn').style.display = 'inline-block';
+  // Snapshot the bet just played (main bet + Perfect Pairs, if it was on)
+  // so Same Bet can restore the whole combo in one tap next hand, rather
+  // than the player having to re-toggle the side bet and re-set its
+  // amount by hand.
+  bjLastBet = { amount: bjCurrentBet, ppOn: document.getElementById('bjPerfectPairsCheck').checked, ppAmount: parseInt(document.getElementById('bjPerfectPairsAmount').value, 10) || 0 };
+  document.getElementById('bjSameBetBtn').disabled = false;
 
   bjHistory.push(totalDelta > 0 ? 'W' : (totalDelta < 0 ? 'L' : 'P'));
   bjRenderHistory();
@@ -8833,6 +8849,25 @@ document.getElementById('bjBetInput').addEventListener('input', (e) => {
   chip.classList.add('pc-chip-pulse');
 });
 document.getElementById('bjDealBtn').addEventListener('click', bjStartHand);
+// Restores the exact bet + Perfect Pairs combo from the last hand in one
+// tap — sets the input values and simulates the real toggle click rather
+// than just flipping the checkbox, so the pill's own active styling and
+// the amount row's visibility stay in sync the same way they would from
+// a real tap.
+document.getElementById('bjSameBetBtn').addEventListener('click', () => {
+  if(!bjLastBet) return;
+  const betInput = document.getElementById('bjBetInput');
+  betInput.value = bjLastBet.amount;
+  betInput.dispatchEvent(new Event('input'));
+  const ppCheck = document.getElementById('bjPerfectPairsCheck');
+  if(ppCheck.checked !== bjLastBet.ppOn) document.getElementById('bjPerfectPairsToggle').click();
+  if(bjLastBet.ppOn){
+    const ppInput = document.getElementById('bjPerfectPairsAmount');
+    ppInput.value = bjLastBet.ppAmount;
+    ppInput.dispatchEvent(new Event('input'));
+  }
+  bjPlayChipSound();
+});
 document.getElementById('bjHitBtn').addEventListener('click', bjHit);
 document.getElementById('bjDoubleBtn').addEventListener('click', bjDoubleDown);
 document.getElementById('bjSplitBtn').addEventListener('click', bjSplit);
@@ -9330,6 +9365,7 @@ wirePPTogglePill('warPerfectPairsToggle', 'warPerfectPairsCheck', 'warPPAmountRo
 // never actually Blackjack-specific under the hood.
 let bacDeck = [];
 let bacSelectedBet = 'player';
+let bacLastBet = null; // snapshot of the last hand's bet type + amount, for the Same Bet button
 let bacStep = 'start';
 let bacPlayerHand = [], bacBankerHand = [];
 let bacHistory = []; // 'P'/'B'/'T' per hand — the actual winner, regardless of what was bet on
@@ -9512,6 +9548,8 @@ async function bacResolve(){
   outcomeEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)'));
   outcomeEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
   document.getElementById('bacNewHandBtn').style.display = 'inline-block';
+  bacLastBet = { betType, amount: bet };
+  document.getElementById('bacSameBetBtn').disabled = false;
 
   bacHistory.push(winner === 'player' ? 'P' : (winner === 'banker' ? 'B' : 'T'));
   bacRenderHistory();
@@ -9538,6 +9576,18 @@ function bacNewHand(){
   document.getElementById('bacTableArea').style.display = 'none';
 }
 document.getElementById('bacDealBtn').addEventListener('click', bacDeal);
+// Restores both the last bet TYPE (Player/Banker/Tie) and amount in one
+// tap — real-clicks the correct spot button so its active styling and
+// bacSelectedBet stay in sync the same way a manual tap would.
+document.getElementById('bacSameBetBtn').addEventListener('click', () => {
+  if(!bacLastBet) return;
+  const targetBtn = document.querySelector(`.bet-spot-btn[data-bac-bet="${bacLastBet.betType}"]`);
+  if(targetBtn) targetBtn.click();
+  const betInput = document.getElementById('bacBetInput');
+  betInput.value = bacLastBet.amount;
+  betInput.dispatchEvent(new Event('input'));
+  bjPlayChipSound();
+});
 document.getElementById('bacHitBtn').addEventListener('click', bacHit);
 document.getElementById('bacNewHandBtn').addEventListener('click', bacNewHand);
 document.getElementById('bacBetInput').addEventListener('input', (e) => {
@@ -10106,6 +10156,7 @@ document.getElementById('rouletteSpinBtn').addEventListener('click', rouletteSpi
 // A second tie during the war is a full push (everything returned).
 let warDeck = [];
 let warOriginalBet = 0;
+let warLastBet = null; // snapshot of the last hand's bet + Pairs side bet, for the Same Bet button
 let warPlayerCard = null, warDealerCard = null;
 let warHistory = []; // 'W'/'L'/'T' — T only ever appears if the same tie repeats through a full war exchange to a push
 function warCardValue(c){ if(c.rank === 'A') return 14; if(c.rank === 'K') return 13; if(c.rank === 'Q') return 12; if(c.rank === 'J') return 11; return Number(c.rank); }
@@ -10204,6 +10255,8 @@ async function warResolve(delta, label, wasWar){
   document.getElementById('warGoBtn').style.display = 'none';
   document.getElementById('warSurrenderBtn').style.display = 'none';
   document.getElementById('warNewHandBtn').style.display = 'inline-block';
+  warLastBet = { amount: warOriginalBet, ppOn: document.getElementById('warPerfectPairsCheck').checked, ppAmount: parseInt(document.getElementById('warPerfectPairsAmount').value, 10) || 0 };
+  document.getElementById('warSameBetBtn').disabled = false;
 
   warHistory.push(delta > 0 ? 'W' : (delta < 0 ? 'L' : 'T'));
   warRenderHistory();
@@ -10267,6 +10320,20 @@ function warNewHand(){
   document.getElementById('warTableArea').style.display = 'none';
 }
 document.getElementById('warDealBtn').addEventListener('click', warDeal);
+document.getElementById('warSameBetBtn').addEventListener('click', () => {
+  if(!warLastBet) return;
+  const betInput = document.getElementById('warBetInput');
+  betInput.value = warLastBet.amount;
+  betInput.dispatchEvent(new Event('input'));
+  const ppCheck = document.getElementById('warPerfectPairsCheck');
+  if(ppCheck.checked !== warLastBet.ppOn) document.getElementById('warPerfectPairsToggle').click();
+  if(warLastBet.ppOn){
+    const ppInput = document.getElementById('warPerfectPairsAmount');
+    ppInput.value = warLastBet.ppAmount;
+    ppInput.dispatchEvent(new Event('input'));
+  }
+  bjPlayChipSound();
+});
 document.getElementById('warGoBtn').addEventListener('click', warGoToWar);
 document.getElementById('warSurrenderBtn').addEventListener('click', warSurrender);
 document.getElementById('warNewHandBtn').addEventListener('click', warNewHand);
@@ -10775,6 +10842,7 @@ function plinkoSlotTier(i){
 let plinkoBuilt = false;
 let plinkoDropping = false;
 let plinkoBallCount = 1;
+let plinkoLastBet = null; // snapshot of the last drop's bet amount + ball count, for the Same Bet button
 let plinkoHistory = [];
 
 function plinkoInit(){
@@ -10945,6 +11013,8 @@ async function plinkoDropInner(){
     plinkoHistory.push(mult);
   });
   const delta = totalPayout - totalStake;
+  plinkoLastBet = { amount: betPerBall, ballCount: plinkoBallCount };
+  document.getElementById('plinkoSameBetBtn').disabled = false;
 
   Object.keys(landedSlotCounts).forEach(slotIdx => {
     const slotEl = document.querySelector(`#plinkoSlots .plinko-slot[data-slot="${slotIdx}"]`);
@@ -10994,6 +11064,19 @@ async function plinkoDropInner(){
   renderXPLog();
 }
 document.getElementById('plinkoDropBtn').addEventListener('click', plinkoDrop);
+// Restores both the bet-per-ball amount and the ball count from the last
+// completed drop — real-clicks the correct ball-count pill so its active
+// styling and the stake hint both stay in sync, same as every other
+// repeat-bet button in the casino.
+document.getElementById('plinkoSameBetBtn').addEventListener('click', () => {
+  if(!plinkoLastBet || plinkoDropping) return;
+  const targetBtn = document.querySelector(`#plinkoBallCountRow .craps-winmode-btn[data-balls="${plinkoLastBet.ballCount}"]`);
+  if(targetBtn) targetBtn.click();
+  const betInput = document.getElementById('plinkoBetInput');
+  betInput.value = plinkoLastBet.amount;
+  betInput.dispatchEvent(new Event('input'));
+  bjPlayChipSound();
+});
 // ================= /Plinko =================
 
 
@@ -11044,6 +11127,7 @@ let bigWheelRotation = 0;
 let bigWheelSpinning = false;
 let bigWheelHistory = [];
 let bigWheelStaged = { '1': 0, '2': 0, '5': 0, '10': 0, '20': 0, joker: 0 };
+let bigWheelLastStaged = null; // snapshot of the last completed spin's bets, for the Same Bet button
 
 function bigWheelBuildWheel(){
   bigWheelBuilt = true;
@@ -11107,6 +11191,15 @@ document.getElementById('bigWheelClearBtn').addEventListener('click', () => {
   bigWheelRenderBetSpots();
   const railEl = document.getElementById('bigWheelTableRail');
   if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); }
+});
+// Re-places every spot from the last completed spin exactly as it was —
+// replaces whatever's currently staged rather than stacking on top, same
+// pattern as Roulette's Same Bet button.
+document.getElementById('bigWheelSameBetBtn').addEventListener('click', () => {
+  if(!bigWheelLastStaged) return;
+  bigWheelStaged = { ...bigWheelLastStaged };
+  bigWheelRenderBetSpots();
+  bjPlayChipSound();
 });
 document.getElementById('bigWheelBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('bigWheelChipDisplay');
@@ -11182,6 +11275,10 @@ async function bigWheelSpinInner(){
     if(val === winVal){ delta += amt * BIG_WHEEL_PAYOUT[val]; wonSpots.push(label); }
     else { delta -= amt; lostSpots.push(label); }
   });
+  // Bets are consumed by the spin — snapshot them first so Same Bet can
+  // re-place this exact spread next round, same pattern as Roulette.
+  bigWheelLastStaged = { ...bigWheelStaged };
+  document.getElementById('bigWheelSameBetBtn').disabled = Object.values(bigWheelLastStaged).every(v => v === 0);
   bigWheelStaged = { '1': 0, '2': 0, '5': 0, '10': 0, '20': 0, joker: 0 };
   bigWheelRenderBetSpots();
 
@@ -11243,6 +11340,7 @@ let minesBuilt = false;
 let minesActionInFlight = false; // guards Start/Cash Out double-taps, same class of bug fixed everywhere else
 let minesRoundActive = false;
 let minesCount = 3;
+let minesLastBet = null; // snapshot of the last round's bet amount + mine count, for the Same Bet button
 let minesBoard = [];
 let minesRevealedCount = 0;
 let minesBetAmount = 0;
@@ -11442,6 +11540,8 @@ async function minesResolve(payout){
   minesSetCashOutVisible(false);
   document.getElementById('minesNewGameBtn').style.display = 'inline-block';
   document.getElementById('minesHint').textContent = 'Round over — press New Game to play again.';
+  minesLastBet = { amount: minesBetAmount, count: minesCount };
+  document.getElementById('minesSameBetBtn').disabled = false;
 
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Mines win' : 'Mines loss', { silent: true });
   const bal = await getXPBalance();
@@ -11449,6 +11549,18 @@ async function minesResolve(payout){
   renderXPLog();
 }
 document.getElementById('minesStartBtn').addEventListener('click', minesStart);
+// Restores both the bet amount and mine count from the last completed
+// round — real-clicks the correct mine-count pill so its active styling
+// stays in sync, same as every other repeat-bet button in the casino.
+document.getElementById('minesSameBetBtn').addEventListener('click', () => {
+  if(!minesLastBet || minesRoundActive) return;
+  const betInput = document.getElementById('minesBetInput');
+  betInput.value = minesLastBet.amount;
+  betInput.dispatchEvent(new Event('input'));
+  const targetBtn = document.querySelector(`#minesMineCountRow .craps-winmode-btn[data-mines="${minesLastBet.count}"]`);
+  if(targetBtn) targetBtn.click();
+  bjPlayChipSound();
+});
 document.getElementById('minesCashOutBtn').addEventListener('click', minesCashOut);
 document.getElementById('minesCashOutTopBtn').addEventListener('click', minesCashOut);
 document.getElementById('minesNewGameBtn').addEventListener('click', () => {
@@ -11666,6 +11778,7 @@ let vpDeck = [];
 let vpHand = [];
 let vpHeld = [false, false, false, false, false];
 let vpStage = 'idle'; // idle | dealt
+let vpLastBet = null; // snapshot of the last hand's bet amount, for the Same Bet button
 function vpBuildPaytable(){
   const table = document.getElementById('vpPaytable');
   table.innerHTML = VP_PAYTABLE.map(p => `<tr id="vpPayRow_${p.key}"><td>${p.label}</td><td style="text-align:right;">${p.mult}:1</td></tr>`).join('');
@@ -11822,8 +11935,17 @@ async function vpDraw(){
   document.getElementById('vpDealBtn').style.display = 'inline-block';
   document.getElementById('vpChipRail').style.pointerEvents = '';
   document.getElementById('vpChipRail').style.opacity = '';
+  vpLastBet = amount;
+  document.getElementById('vpSameBetBtn').disabled = false;
 }
 document.getElementById('vpDealBtn').addEventListener('click', vpDeal);
+document.getElementById('vpSameBetBtn').addEventListener('click', () => {
+  if(!vpLastBet) return;
+  const betInput = document.getElementById('vpBetInput');
+  betInput.value = vpLastBet;
+  betInput.dispatchEvent(new Event('input'));
+  bjPlayChipSound();
+});
 document.getElementById('vpDrawBtn').addEventListener('click', vpDraw);
 document.getElementById('vpBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('vpChipDisplay');
