@@ -2137,7 +2137,7 @@
   .auth-title{
     text-align:center; font-family:'Barlow Condensed', sans-serif; font-weight:700; letter-spacing:5px;
     font-size:33px; margin:2px 0 3px;
-    background: linear-gradient(155deg, #F5E8A8 10%, #CBB166 55%, #9c8248 100%);
+    background: linear-gradient(155deg, var(--brass-light) 10%, var(--brass) 55%, #9c8248 100%);
     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:var(--brass);
   }
   .auth-tagline{
@@ -3740,19 +3740,13 @@
       <div id="healthCheckResults" style="margin-top:10px;"></div>
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
     </div>
-    <div class="panel">
+    <div class="panel" id="diagTabAreaPanel" style="display:none;">
       <div id="diagTabArea">Loading…</div>
     </div>
     <div class="panel">
       <h2>🟢 Who's Online</h2>
-      <div class="hint">Based on a heartbeat each device sends every 60s while the app's open — not instant, but "active in the last few minutes" is a reasonable read on it. Won't show anyone until they've opened the app at least once since this shipped.</div>
+      <div class="hint">Based on a heartbeat each device sends every 60s while the app's open — not instant, but "active in the last few minutes" is a reasonable read on it. Won't show anyone until they've opened the app at least once since this shipped. A locked/backgrounded phone stops sending these and won't show as online.</div>
       <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>🔔 Test Push Notification</h2>
-      <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
-      <button type="button" id="testPushBtn">Send test notification</button>
-      <div class="status-msg" id="testPushStatus"></div>
     </div>
     </div>
 
@@ -3794,12 +3788,18 @@
       <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
       <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Reset stats</button>
     </div>
+    <div class="panel">
+      <h2>🔔 Test Push Notification</h2>
+      <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
+      <button type="button" id="testPushBtn">Send test notification</button>
+      <div class="status-msg" id="testPushStatus"></div>
+    </div>
     </div>
 
     <div class="diag-submode" data-submode-panel="play">
     <div class="panel">
       <h2>🎲 Recent Casino Activity</h2>
-      <div class="hint">Who played what, pulled straight from everyone's XP log — no separate tracking system, this is the same data every win/loss already writes.</div>
+      <div class="hint">Who played what, pulled from a small per-day index written the moment each game resolves (see awardXP) — not everyone's full XP log. History only exists from the day this shipped; older casino rounds aren't backfilled into it.</div>
       <div id="activityFeedArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
     <div class="panel">
@@ -3809,7 +3809,7 @@
     </div>
     <div class="panel">
       <h2>⏱ Time Spent by Section</h2>
-      <div class="hint">Best-effort, not a precise stopwatch — flushed every time you switch tabs, plus every 60s while sitting on one. A hard browser close can lose up to ~60s of the very last tab. Across all members, last 7 days.</div>
+      <div class="hint">Best-effort, not a precise stopwatch — flushed every time you switch tabs, plus every 60s while sitting on one. A locked or backgrounded phone stops accruing time and won't show as online (see visibilitychange handling) — only genuinely active time counts. Across all members, last 7 days.</div>
       <div id="timeSpentTabsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
       <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">By casino game</h3>
       <div id="timeSpentGamesArea"><div class="empty">Loading…</div></div>
@@ -4146,8 +4146,14 @@ function currentAestDateKey(dateObj){
   return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
 }
 // ISO 8601 week numbering, computed off the AEST calendar date rather than
-// whatever timezone the browser/server happens to be in — same reasoning
-// as currentAestDateKey, just week-grained.
+// whatever timezone the browser/server happens to be in. Tested against 4
+// device timezones spanning UTC-11 to UTC+14 (including the tricky Dec
+// 28/Jan 3 year-boundary week) — all identical. This works regardless of
+// the viewing device's own timezone because currentAestDateKey() already
+// resolved the correct Melbourne Y/M/D first; everything below operates
+// purely on that fixed calendar date string, never touching the device's
+// actual current moment again — there's no local-vs-AEST mixing left to
+// go wrong.
 function currentAestWeekKey(){
   const dateStr = currentAestDateKey();
   const d = new Date(dateStr + 'T00:00:00');
@@ -4191,7 +4197,11 @@ async function renderRunningCosts(){
       // should give a very different runway estimate, and only the current
       // rate captures that.
       const monthCost = window._syndyMonthCostUsd || 0;
-      const dayOfMonth = new Date().getDate();
+      // Melbourne's day-of-month, not the viewing device's — this genuinely
+      // does drift (unlike the week-key above): someone checking from a
+      // different timezone late at night could be on a different calendar
+      // day entirely, which would silently skew the whole burn rate.
+      const dayOfMonth = Number(currentAestDateKey().slice(8, 10));
       if(monthCost > 0 && dayOfMonth > 0){
         const dailyRate = monthCost / dayOfMonth;
         const daysToEmpty = remainingCredit > 0 ? Math.round(remainingCredit / dailyRate) : 0;
@@ -5001,7 +5011,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.94";
+const APP_VERSION = "2026-08-22.96";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -13603,7 +13613,7 @@ function render(state){
         ? `<a href="#" class="slip-open" data-added-at="${s.addedAt}">${escapeHtml(s.label || 'Bet slip')}</a>`
         : `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label || s.url)}</a>`;
       slipHtml += `<div class="slip-card">
-        <div class="slip-thumb${isDataUrl ? ' slip-open' : ''}" ${isDataUrl ? `data-added-at="${s.addedAt}"` : ''}>${isImage ? `<img src="${escapeHtml(s.url)}" alt="${escapeHtml(s.label)}">` : `<span class="slip-icon">🔗</span>`}</div>
+        <div class="slip-thumb${isDataUrl ? ' slip-open' : ''}" ${isDataUrl ? `data-added-at="${s.addedAt}"` : ''}>${isImage ? `<img src="${escapeHtml(s.url)}" alt="${escapeHtml(s.label)}" loading="lazy">` : `<span class="slip-icon">🔗</span>`}</div>
         <div class="slip-info">
           ${labelMarkup}
           <span class="slip-date">${new Date(s.addedAt).toLocaleDateString()}</span>
@@ -13730,14 +13740,6 @@ document.getElementById('snapshotWeekBtn').addEventListener('click', async () =>
   }
   btn.disabled = false;
 });
-document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const target = btn.dataset.submode;
-    document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
-    document.querySelectorAll('.diag-submode').forEach(panel => panel.classList.toggle('active', panel.dataset.submodePanel === target));
-    window.scrollTo(0, 0);
-  });
-});
 document.getElementById('testPushBtn').addEventListener('click', async () => {
   const btn = document.getElementById('testPushBtn');
   const status = document.getElementById('testPushStatus');
@@ -13788,10 +13790,14 @@ document.getElementById('runHealthCheckBtn').addEventListener('click', async () 
     renderHealthCheckResults(results, latencyMs);
     copyBtn.style.display = '';
     renderDashboardDump(); // full season scan — deliberately only runs here, not on every Diag open
-    persistHealthSnapshot(results, latencyMs).then(renderPulseToteCells); // refresh the tote cells with the score that just came out of this run
-    results.filter(r => r.status === 'fail').forEach(r => logOpsError('health-check', `${r.label}: ${r.detail}`));
+    persistHealthSnapshot(results, latencyMs).then(() => renderPulseToteCells()); // refresh the tote cells with the score that just came out of this run — deliberately not passing the resolved snapshot straight into renderPulseToteCells, which expects an activity-data promise (or nothing), not a plain object
+    // Individual warn/fail rows already show under Pulse's "last 5 from
+    // that run" (read straight from the persisted snapshot above) — logging
+    // each one again here would just duplicate them in the error ring.
+    // Only a genuine exception from the check itself belongs in the ring.
   }catch(e){
     document.getElementById('healthCheckResults').innerHTML = `<div class="empty">Check itself failed: ${escapeHtml(e.message)}</div>`;
+    logOpsError('health-check', e.message);
   }
   btn.disabled = false;
   btn.textContent = '🩺 Run Full System Check';
@@ -16039,9 +16045,12 @@ function renderHealthCheckResults(results, latencyMs){
 
 // ---- Time Spent + Weekly Report ----
 // TAB_DISPLAY_NAMES covers both top-level tabs and the casino:{game} keys
-// tracked separately above, so one lookup covers both breakdowns.
+// tracked separately above, so one lookup covers both breakdowns. Keyed by
+// the REAL data-tab values (balance/owed/afl — see the nav buttons), not
+// the more readable names they display as; home/cash/sport kept as
+// fallback aliases in case anything elsewhere ever passes those instead.
 const TAB_DISPLAY_NAMES = {
-  home: 'Home', board: 'Board', cash: 'Cash', slips: 'Slips', sport: 'Sport',
+  balance: 'Home', home: 'Home', board: 'Board', owed: 'Cash', cash: 'Cash', slips: 'Slips', afl: 'Sport', sport: 'Sport',
   tipping: 'Tipping', casino: 'Casino (hub/menu)', diag: 'Diagnostics'
 };
 function formatDuration(totalSec){
@@ -16133,8 +16142,16 @@ function renderWeeklyReportHtml(data, isLive){
   </div>`;
   return html;
 }
-async function computeWeeklyReportData(){
-  const [timeData, activityEntries, healthSnap] = await Promise.all([loadTimeSpentData(7), loadActivityData(), loadLatestHealthSnapshot()]);
+// Accepts already-fetched data when the caller has it (renderDiagTab
+// shares one set of reads across every panel that needs them — see
+// there), otherwise fetches fresh. Keeps this independently callable
+// (snapshotThisWeek wants a genuinely fresh read, not whatever was
+// loaded when Diag first opened) without forcing every caller to
+// duplicate the same ~20 requests this function used to make on its own.
+async function computeWeeklyReportData(preloaded){
+  const timeData = (preloaded && preloaded.timeData) || await loadTimeSpentData(7);
+  const activityEntries = (preloaded && preloaded.activityEntries) || await loadActivityData();
+  const healthSnap = (preloaded && 'healthSnap' in preloaded) ? preloaded.healthSnap : await loadLatestHealthSnapshot();
   const weekCutoff = Date.now() - 7 * 86400000;
   const weekActivity = activityEntries.filter(e => e.ts >= weekCutoff);
   const totalTimeSec = Object.values(timeData.tabTotals).reduce((a, b) => a + b, 0) + Object.values(timeData.gameTotals).reduce((a, b) => a + b, 0);
@@ -16184,7 +16201,7 @@ async function snapshotThisWeek(){
   try{ localStorage.setItem('mlsynd_weekly_latest', JSON.stringify(data)); }catch(e){}
   return data;
 }
-async function renderWeeklyReport(){
+async function renderWeeklyReport(preloaded){
   const area = document.getElementById('weeklyReportArea');
   if(!area) return;
   area.innerHTML = '<div class="empty">Loading…</div>';
@@ -16200,7 +16217,7 @@ async function renderWeeklyReport(){
   if(saved){
     area.innerHTML = renderWeeklyReportHtml(saved, false);
   } else {
-    const live = await computeWeeklyReportData();
+    const live = await computeWeeklyReportData(preloaded);
     area.innerHTML = renderWeeklyReportHtml(live, true);
   }
 }
@@ -16336,10 +16353,6 @@ function renderActivityGraph(entries){
   `;
 }
 
-// Deliberately light — a handful of small reads, not a season scan. This
-// is what should be safe to run every time Pulse opens, unlike the
-// tipping/casino dump (see renderDashboardDump) or the full 20-check
-// system check, both of which stay behind an explicit button tap.
 // ---- Error ring ----
 // A capped rolling log of real failures — failed tip saves, failed
 // health-check internals, and sampled uncaught client errors — so the
@@ -16382,7 +16395,11 @@ async function loadOpsErrors(){
   return entries.slice(0, 50);
 }
 
-async function renderPulseToteCells(){
+// Deliberately light — a handful of small reads, not a season scan. This
+// is what should be safe to run every time Pulse opens, unlike the
+// tipping/casino dump (see renderDashboardDump) or the full 20-check
+// system check, both of which stay behind an explicit button tap.
+async function renderPulseToteCells(activityPromise){
   const healthCell = document.getElementById('pulseHealthCell');
   const onlineCell = document.getElementById('pulseOnlineCell');
   const syndyCell = document.getElementById('pulseSyndyCell');
@@ -16434,7 +16451,12 @@ async function renderPulseToteCells(){
     syndyCell.querySelector('.val').textContent = `$${(cost || 0).toFixed(2)}`;
   }).catch(() => { syndyCell.querySelector('.val').textContent = '—'; });
 
-  loadActivityData().then(entries => {
+  // Accepts the SAME activity-data promise renderDiagTab already kicked
+  // off for the feed/graph, rather than starting its own — this used to
+  // independently call loadActivityData() (11 per-member reads) a second
+  // time on every single Diag open, purely for this one "rounds this
+  // week" count. Falls back to fetching fresh if called on its own.
+  (activityPromise || loadActivityData()).then(entries => {
     const cutoff = Date.now() - 7 * 86400000;
     roundsCell.querySelector('.val').textContent = String(entries.filter(e => e.ts >= cutoff).length);
   }).catch(() => { roundsCell.querySelector('.val').textContent = '—'; });
@@ -16456,28 +16478,50 @@ function renderPulseErrors(){
   }).catch(() => { area.innerHTML = '<div class="empty">Could not load.</div>'; });
 }
 
+let diagMoneyLoaded = false;
+let diagPlayLoaded = false;
 function renderDiagTab(){
-  renderPulseToteCells();
+  // Pulse only on open — Money and Play load lazily the first time their
+  // pill is actually tapped (see the submode click handler below), not on
+  // every Diag open. This used to unconditionally fetch Syndy costs,
+  // running costs, the API tracker, the full activity feed/graph,
+  // time-spent bars, and the weekly report regardless of which submode
+  // was even being looked at — expensive for a tab that defaults to Pulse.
+  // Re-opening Diag later in the same page session only refreshes Pulse;
+  // Money/Play keep whatever they last rendered rather than re-fetching.
+  renderPulseToteCells(); // still touches loadActivityData() for the 7-day rounds cell — a handful of small reads, not the full feed/graph, so this one's fine to run every time
   renderPulseErrors();
-  renderApiCallTracker();
-  renderSyndyUsage().then(renderRunningCosts); // running costs reads window._syndyTotalCostUsd, set by renderSyndyUsage — sequenced, not parallel, to avoid reading it before it's set
   renderPresence();
-  loadActivityData().then(entries => {
-    renderActivityFeed(entries);
-    renderActivityGraph(entries);
-  });
-  loadTimeSpentData(7).then(({ tabTotals, gameTotals }) => {
-    renderTimeSpentBars(document.getElementById('timeSpentTabsArea'), tabTotals, TAB_DISPLAY_NAMES);
-    renderTimeSpentBars(document.getElementById('timeSpentGamesArea'), gameTotals, CASINO_GAME_LABELS);
-  });
-  renderWeeklyReport();
-  // Deliberately NOT calling renderDashboardDump() here — it runs
-  // computeTippingDiagnostics, a full season scan across every game, and
-  // shouldn't be a cost every single Diag open pays. It only runs from the
-  // Run Full System Check button now (see that button's click handler).
-  const area = document.getElementById('diagTabArea');
-  if(area) area.innerHTML = '<div class="empty">Included in 🩺 Run Full System Check, above — a full season scan isn\'t worth re-running every time this tab opens.</div>';
 }
+document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.submode;
+    document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.diag-submode').forEach(panel => panel.classList.toggle('active', panel.dataset.submodePanel === target));
+    window.scrollTo(0, 0);
+    if(target === 'money' && !diagMoneyLoaded){
+      diagMoneyLoaded = true;
+      renderApiCallTracker();
+      renderSyndyUsage().then(renderRunningCosts); // running costs reads window._syndyTotalCostUsd, set by renderSyndyUsage — sequenced, not parallel, to avoid reading it before it's set
+    }
+    if(target === 'play' && !diagPlayLoaded){
+      diagPlayLoaded = true;
+      const activityPromise = loadActivityData();
+      const timeSpentPromise = loadTimeSpentData(7);
+      activityPromise.then(entries => {
+        renderActivityFeed(entries);
+        renderActivityGraph(entries);
+      });
+      timeSpentPromise.then(({ tabTotals, gameTotals }) => {
+        renderTimeSpentBars(document.getElementById('timeSpentTabsArea'), tabTotals, TAB_DISPLAY_NAMES);
+        renderTimeSpentBars(document.getElementById('timeSpentGamesArea'), gameTotals, CASINO_GAME_LABELS);
+      });
+      Promise.all([timeSpentPromise, activityPromise, loadLatestHealthSnapshot()]).then(([timeData, activityEntries, healthSnap]) => {
+        renderWeeklyReport({ timeData, activityEntries, healthSnap });
+      });
+    }
+  });
+});
 // The tipping/casino/dashboard-health dump that used to fire automatically
 // on every Diag open — extracted so it can be triggered on demand instead
 // (from Run Full System Check) rather than paying a full season scan's
@@ -16485,6 +16529,8 @@ function renderDiagTab(){
 function renderDashboardDump(){
   const area = document.getElementById('diagTabArea');
   if(!area) return;
+  const panelWrap = document.getElementById('diagTabAreaPanel');
+  if(panelWrap) panelWrap.style.display = 'block'; // hidden until there's real content — an empty "included in full check" placeholder shouldn't occupy Pulse before this has ever run
   area.innerHTML = '<div class="empty">Loading…</div>';
   Promise.all([computeTippingDiagnostics(), computeDashboardHealthChecks(), computeCasinoDiagnostics()]).then(([tip, health, casino]) => {
     let html = '<div class="panel" style="margin:0; padding:0; border:none; background:none;">';
