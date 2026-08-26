@@ -3756,6 +3756,33 @@
       <div class="status-msg" id="testPushStatus"></div>
     </div>
     <div class="panel">
+      <h2>🟢 Who's Online</h2>
+      <div class="hint">Based on a heartbeat each device sends every 60s while the app's open — not instant, but "active in the last few minutes" is a reasonable read on it. Won't show anyone until they've opened the app at least once since this shipped.</div>
+      <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>🎲 Recent Casino Activity</h2>
+      <div class="hint">Who played what, pulled straight from everyone's XP log — no separate tracking system, this is the same data every win/loss already writes.</div>
+      <div id="activityFeedArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>📈 Activity — Last 14 Days</h2>
+      <div class="hint">Count of casino rounds played per day across everyone, same source as the feed above.</div>
+      <div id="activityGraphArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>⏱ Time Spent by Section</h2>
+      <div class="hint">Best-effort, not a precise stopwatch — flushed every time you switch tabs, plus every 60s while sitting on one. A hard browser close can lose up to ~60s of the very last tab. Across all members, last 7 days.</div>
+      <div id="timeSpentTabsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">By casino game</h3>
+      <div id="timeSpentGamesArea"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>📋 Weekly Report</h2>
+      <div class="hint">A rundown of the last 7 days — time spent, casino activity, and where to find the rest. Generated live each time you open this, not a saved snapshot or a pushed notification.</div>
+      <div id="weeklyReportArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
       <div id="diagTabArea">Loading…</div>
     </div>
   </div>
@@ -4561,6 +4588,18 @@ async function checkApprovalAndProceed(){
         applyRoleTabRestrictions();
         startApp();
       }
+      // Presence heartbeat — a plain "I was last active at this timestamp"
+      // write, not true real-time presence (this app talks to Firebase over
+      // REST, not the SDK's websocket connection, so there's no reliable
+      // onDisconnect() to detect a closed tab instantly). Fires once now,
+      // then every 60s while this tab stays open — good enough to show
+      // "online" as "active in the last few minutes" in Diagnostics without
+      // needing a persistent connection.
+      sendPresenceHeartbeat();
+      if(!presenceHeartbeatHandle) presenceHeartbeatHandle = setInterval(sendPresenceHeartbeat, 60000);
+      // Same 60s cadence as presence — flushes whatever tab/game has been
+      // open that long without requiring the user to actually switch away.
+      if(!timeTrackFlushHandle) timeTrackFlushHandle = setInterval(flushTabTime, 60000);
     } else {
       showAuthGate('pending');
       if(!approvalPollFn){
@@ -4876,7 +4915,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.89";
+const APP_VERSION = "2026-08-22.91";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7195,6 +7234,49 @@ async function getXPBalance(){
 // of the SAME account at the exact same instant, but that's an accepted,
 // low-stakes risk for play money in a friendly group — same tradeoff
 // already made elsewhere in this app for real-money paths.
+let presenceHeartbeatHandle = null;
+async function sendPresenceHeartbeat(){
+  if(!currentUserUid) return;
+  try{
+    await authedFetch(`/presence/${currentUserUid}.json`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(Date.now())
+    });
+  }catch(e){} // best-effort, never worth surfacing an error for
+}
+
+// ---- Time-spent-per-section tracking ----
+// Best-effort, not a stopwatch — accumulates elapsed time in the current
+// tab and flushes it to Firebase (read-then-write increment, same pattern
+// as awardXP) every time the tab changes, plus every 60s while sitting on
+// one tab, so a browser force-close only ever loses at most ~60s rather
+// than the whole session. There's no reliable way to catch "tab closed"
+// with guaranteed delivery over plain REST calls (no sendBeacon-friendly
+// auth path), so this is the realistic ceiling on accuracy — good enough
+// for "roughly how much time goes where," not a precise audit.
+let timeTrackCurrentTab = null;
+let timeTrackStart = null;
+let timeTrackFlushHandle = null;
+function timeTrackDateKey(){ return new Date().toISOString().slice(0, 10); }
+async function flushTabTime(){
+  if(!currentUserUid || !timeTrackCurrentTab || !timeTrackStart) return;
+  const elapsedSec = Math.round((Date.now() - timeTrackStart) / 1000);
+  timeTrackStart = Date.now(); // reset immediately so a slow request below doesn't double-count the gap
+  if(elapsedSec < 1) return; // not worth a write for sub-second slivers
+  try{
+    const path = `/analytics/${currentUserUid}/timeSpent/${timeTrackDateKey()}/${timeTrackCurrentTab}.json`;
+    const res = await authedFetch(path);
+    const current = (await res.json()) || 0;
+    await authedFetch(path, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(current + elapsedSec)
+    });
+  }catch(e){}
+}
+function timeTrackSwitchTo(tab){
+  flushTabTime(); // fire-and-forget: flushes whatever tab we're leaving before switching the pointer
+  timeTrackCurrentTab = tab;
+  timeTrackStart = Date.now();
+}
+
 async function awardXP(amount, reason, opts){
   if(!currentUserUid || !amount) return;
   try{
@@ -8937,6 +9019,10 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     // for the one being opened now.
     casinoSessionShowRecapIfAny();
     casinoSessionGame = CASINO_GAME_LABELS[btn.dataset.game] || null;
+    // Prefixed so it lands in its own bucket separate from the top-level
+    // "casino" tab time — lets the report break down not just "how long
+    // in Casino overall" but which specific game ate that time.
+    timeTrackSwitchTo(`casino:${btn.dataset.game}`);
     document.querySelectorAll('.game-bubble').forEach(b => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
     document.getElementById('casinoGamesEmptyState').style.display = 'none';
@@ -13478,6 +13564,7 @@ function setActiveTab(tab){
   // Leaving Casino for another tab entirely — same recap-on-exit as
   // switching games within Casino (see the game-bubble handler).
   if(tab !== 'casino') casinoSessionShowRecapIfAny();
+  timeTrackSwitchTo(tab);
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   window.scrollTo(0,0);
@@ -15624,9 +15711,240 @@ function renderHealthCheckResults(results){
   window.__lastHealthReport = reportText;
 }
 
+// ---- Time Spent + Weekly Report ----
+// TAB_DISPLAY_NAMES covers both top-level tabs and the casino:{game} keys
+// tracked separately above, so one lookup covers both breakdowns.
+const TAB_DISPLAY_NAMES = {
+  home: 'Home', board: 'Board', cash: 'Cash', slips: 'Slips', sport: 'Sport',
+  tipping: 'Tipping', casino: 'Casino (hub/menu)', diag: 'Diagnostics'
+};
+function formatDuration(totalSec){
+  if(totalSec < 60) return `${totalSec}s`;
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.round((totalSec % 3600) / 60);
+  if(h === 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+// Fetches the whole /analytics node once and reduces it into two totals
+// maps — top-level tabs, and casino games broken out separately — summed
+// across every member, restricted to the last `days` calendar days.
+async function loadTimeSpentData(days){
+  try{
+    const res = await authedFetch('/analytics.json');
+    const all = (await res.json()) || {};
+    const cutoffKeys = new Set();
+    const now = new Date();
+    for(let i = 0; i < days; i++){
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      cutoffKeys.add(d.toISOString().slice(0, 10));
+    }
+    const tabTotals = {};
+    const gameTotals = {};
+    Object.values(all).forEach(userNode => {
+      const timeSpent = (userNode || {}).timeSpent;
+      if(!timeSpent) return;
+      Object.keys(timeSpent).forEach(dateKey => {
+        if(!cutoffKeys.has(dateKey)) return;
+        Object.entries(timeSpent[dateKey] || {}).forEach(([key, seconds]) => {
+          if(typeof seconds !== 'number') return;
+          if(key.startsWith('casino:')){
+            const game = key.slice(7);
+            gameTotals[game] = (gameTotals[game] || 0) + seconds;
+          } else {
+            tabTotals[key] = (tabTotals[key] || 0) + seconds;
+          }
+        });
+      });
+    });
+    return { tabTotals, gameTotals };
+  }catch(e){
+    return { tabTotals: {}, gameTotals: {} };
+  }
+}
+function renderTimeSpentBars(container, totals, nameMap){
+  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  if(entries.length === 0){ container.innerHTML = '<div class="empty">No time tracked yet.</div>'; return; }
+  const max = Math.max(...entries.map(e => e[1]));
+  container.innerHTML = entries.map(([key, sec]) => `
+    <div style="margin-bottom:7px;">
+      <div style="display:flex; justify-content:space-between; font-size:11.5px; margin-bottom:2px;">
+        <span>${escapeHtml((nameMap && nameMap[key]) || key)}</span>
+        <span style="color:var(--muted);">${formatDuration(sec)}</span>
+      </div>
+      <div style="height:6px; background:var(--line); border-radius:3px; overflow:hidden;">
+        <div style="height:100%; width:${Math.max(3, Math.round((sec / max) * 100))}%; background:linear-gradient(90deg, var(--brass), var(--brass-light));"></div>
+      </div>
+    </div>
+  `).join('');
+}
+async function renderWeeklyReport(){
+  const area = document.getElementById('weeklyReportArea');
+  if(!area) return;
+  area.innerHTML = '<div class="empty">Building report…</div>';
+  const [timeData, activityEntries] = await Promise.all([loadTimeSpentData(7), loadActivityData()]);
+  const weekCutoff = Date.now() - 7 * 86400000;
+  const weekActivity = activityEntries.filter(e => e.ts >= weekCutoff);
+
+  const totalTimeSec = Object.values(timeData.tabTotals).reduce((a, b) => a + b, 0) + Object.values(timeData.gameTotals).reduce((a, b) => a + b, 0);
+  const topTab = Object.entries(timeData.tabTotals).sort((a, b) => b[1] - a[1])[0];
+  const topGame = Object.entries(timeData.gameTotals).sort((a, b) => b[1] - a[1])[0];
+  const roundsPlayed = weekActivity.length;
+  const totalWagerNet = weekActivity.reduce((sum, e) => sum + e.amount, 0);
+  const playerCounts = {};
+  weekActivity.forEach(e => { playerCounts[e.name] = (playerCounts[e.name] || 0) + 1; });
+  const mostActivePlayer = Object.entries(playerCounts).sort((a, b) => b[1] - a[1])[0];
+  const biggestWin = weekActivity.reduce((best, e) => (e.amount > (best ? best.amount : -Infinity) ? e : best), null);
+
+  let html = `<div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Covering the last 7 days, generated just now — not a saved snapshot, re-run this any time by reopening Diagnostics.</div>`;
+
+  html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:10px 0 6px;">⏱ Time Across the Group</h3>`;
+  html += `<div style="font-size:12px; line-height:1.8;">
+    Total tracked time this week: <b>${formatDuration(totalTimeSec)}</b><br>
+    Busiest section: <b>${topTab ? escapeHtml(TAB_DISPLAY_NAMES[topTab[0]] || topTab[0]) + ' — ' + formatDuration(topTab[1]) : '—'}</b><br>
+    Most-played casino game: <b>${topGame ? escapeHtml(CASINO_GAME_LABELS[topGame[0]] || topGame[0]) + ' — ' + formatDuration(topGame[1]) : '—'}</b>
+  </div>`;
+
+  html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🎲 Casino Activity</h3>`;
+  html += `<div style="font-size:12px; line-height:1.8;">
+    Rounds played: <b>${roundsPlayed}</b><br>
+    Net XP across everyone (wins minus losses): <b style="color:${totalWagerNet >= 0 ? 'var(--win)' : 'var(--loss)'};">${totalWagerNet >= 0 ? '+' : ''}${totalWagerNet.toLocaleString()}</b><br>
+    Most active player: <b>${mostActivePlayer ? escapeHtml(mostActivePlayer[0]) + ' (' + mostActivePlayer[1] + ' rounds)' : '—'}</b><br>
+    Biggest single win: <b>${biggestWin && biggestWin.amount > 0 ? escapeHtml(biggestWin.name) + ' +' + biggestWin.amount + ' XP (' + escapeHtml(biggestWin.reason) + ')' : '—'}</b>
+  </div>`;
+
+  html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🔮 Syndy &amp; API (context, not strictly weekly)</h3>`;
+  html += `<div style="font-size:11.5px; color:var(--muted); line-height:1.7;">
+    Syndy is tracked by calendar month, not week — see the Syndy panel above for this month's real figure.<br>
+    API call counts are per-device (this phone/browser only, since instrumenting the actual server functions would need touching each one) — see the API tracker panel above for this device's running total.
+  </div>`;
+
+  area.innerHTML = html;
+}
+
+
+// playing what" tracker — presence is a new lightweight heartbeat (see
+// sendPresenceHeartbeat), but the feed/graph need zero new instrumentation:
+// every casino win/loss already writes a reason + timestamp to XP log, this
+// just reads that data across every member at once instead of one at a time.
+async function renderPresence(){
+  const area = document.getElementById('presenceArea');
+  if(!area) return;
+  try{
+    const res = await authedFetch('/presence.json');
+    const presence = (await res.json()) || {};
+    const members = (currentState.members || []).filter(m => m.linkedUid);
+    const rows = members.map(m => {
+      const ts = presence[m.linkedUid] || null;
+      const online = ts && (Date.now() - ts) < 3 * 60000; // heartbeat every 60s, so 3min of silence is a safe "gone" cutoff without being trigger-happy on a single missed beat
+      return { name: m.name, ts, online };
+    });
+    rows.sort((a, b) => {
+      if(a.online !== b.online) return a.online ? -1 : 1;
+      return (b.ts || 0) - (a.ts || 0);
+    });
+    if(rows.length === 0){ area.innerHTML = '<div class="empty">No members linked to a Tipping account yet.</div>'; return; }
+    area.innerHTML = rows.map(r => `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:12px;">
+        <span>${r.online ? '🟢' : '⚪'} ${escapeHtml(r.name)}</span>
+        <span style="color:var(--muted);">${r.online ? 'Online now' : (r.ts ? 'Last seen ' + timeAgo(r.ts) : 'Never seen')}</span>
+      </div>
+    `).join('');
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load presence data.</div>';
+  }
+}
+
+// Fetches every member's XP log in ONE request (the whole /xp node) rather
+// than one fetch per member, filters down to real casino-game entries using
+// the same pattern the Monthly Pot already uses, and returns them merged
+// and sorted newest-first. Shared by both the feed and the graph below so
+// this only has to run once per Diagnostics visit.
+async function loadActivityData(){
+  try{
+    const res = await authedFetch('/xp.json');
+    const allXp = (await res.json()) || {};
+    const uidToName = {};
+    (currentState.members || []).forEach(m => { if(m.linkedUid) uidToName[m.linkedUid] = m.name; });
+
+    const entries = [];
+    Object.keys(allXp).forEach(uid => {
+      const log = (allXp[uid] || {}).log;
+      if(!log) return;
+      Object.values(log).forEach(entry => {
+        if(!entry || !entry.reason || !CASINO_POT_REASON_PATTERN.test(entry.reason)) return;
+        entries.push({
+          uid, name: uidToName[uid] || 'Unknown', reason: entry.reason,
+          amount: entry.amount || 0, ts: entry.ts || 0
+        });
+      });
+    });
+    entries.sort((a, b) => b.ts - a.ts);
+    return entries;
+  }catch(e){
+    return [];
+  }
+}
+function renderActivityFeed(entries){
+  const area = document.getElementById('activityFeedArea');
+  if(!area) return;
+  if(entries.length === 0){ area.innerHTML = '<div class="empty">No casino activity recorded yet.</div>'; return; }
+  area.innerHTML = entries.slice(0, 30).map(e => {
+    const color = e.amount > 0 ? 'var(--win)' : (e.amount < 0 ? 'var(--loss)' : 'var(--muted)');
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid var(--line); font-size:12px;">
+        <span><b>${escapeHtml(e.name)}</b> — ${escapeHtml(e.reason)}</span>
+        <span style="color:${color}; white-space:nowrap; margin-left:8px;">${e.amount >= 0 ? '+' : ''}${e.amount} <span style="color:var(--muted);">· ${timeAgo(e.ts)}</span></span>
+      </div>
+    `;
+  }).join('');
+}
+function renderActivityGraph(entries){
+  const area = document.getElementById('activityGraphArea');
+  if(!area) return;
+  const days = [];
+  const now = new Date();
+  for(let i = 13; i >= 0; i--){
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    days.push({ key: d.toDateString(), label: d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }), count: 0 });
+  }
+  const dayByKey = {};
+  days.forEach(d => { dayByKey[d.key] = d; });
+  entries.forEach(e => {
+    if(!e.ts) return;
+    const key = new Date(e.ts).toDateString();
+    if(dayByKey[key]) dayByKey[key].count++;
+  });
+  const maxCount = Math.max(1, ...days.map(d => d.count));
+  area.innerHTML = `
+    <div style="display:flex; align-items:flex-end; gap:3px; height:90px; padding-top:6px;">
+      ${days.map(d => `
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%;" title="${escapeHtml(d.label)}: ${d.count}">
+          <div style="font-size:9px; color:var(--muted); margin-bottom:2px;">${d.count || ''}</div>
+          <div style="width:100%; min-height:2px; height:${Math.round((d.count / maxCount) * 66)}px; background:${d.count > 0 ? 'linear-gradient(180deg, var(--brass-light), var(--brass))' : 'var(--line)'}; border-radius:3px 3px 0 0;"></div>
+        </div>
+      `).join('')}
+    </div>
+    <div style="display:flex; gap:3px; margin-top:4px;">
+      ${days.map((d, i) => `<div style="flex:1; text-align:center; font-size:8px; color:var(--muted); transform:rotate(0deg);">${i % 2 === 0 ? d.label.split(' ')[0] : ''}</div>`).join('')}
+    </div>
+  `;
+}
+
 function renderDiagTab(){
   renderApiCallTracker();
   renderSyndyUsage().then(renderRunningCosts); // running costs reads window._syndyTotalCostUsd, set by renderSyndyUsage — sequenced, not parallel, to avoid reading it before it's set
+  renderPresence();
+  loadActivityData().then(entries => {
+    renderActivityFeed(entries);
+    renderActivityGraph(entries);
+  });
+  loadTimeSpentData(7).then(({ tabTotals, gameTotals }) => {
+    renderTimeSpentBars(document.getElementById('timeSpentTabsArea'), tabTotals, TAB_DISPLAY_NAMES);
+    renderTimeSpentBars(document.getElementById('timeSpentGamesArea'), gameTotals, CASINO_GAME_LABELS);
+  });
+  renderWeeklyReport();
   const area = document.getElementById('diagTabArea');
   if(!area) return;
   area.innerHTML = '<div class="empty">Loading…</div>';
