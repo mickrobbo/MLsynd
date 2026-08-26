@@ -12,7 +12,7 @@
 // was made) — No-Limit multi-way with side pots is a real future step
 // up, not a first version.
 
-import { evaluateBestHand, compareHands } from './hand-evaluator.mjs';
+const { evaluateBestHand, compareHands } = require('./hand-evaluator.js');
 
 const STREETS = ['preflop', 'flop', 'turn', 'river', 'showdown'];
 const MAX_BETS_PER_STREET = 4;
@@ -125,20 +125,8 @@ function legalActions(hand, uid){
   return actions;
 }
 
-// Fixed-limit, not no-limit — there's no player choice of raise size,
-// only whether to bet/raise at all, so this isn't really a "pick
-// anywhere in this range" control the way it would be in a no-limit
-// game. It exists purely to tell the client the one exact amount a
-// bet/raise will commit if made, computed with the identical formula
-// applyAction's own bet/raise branch uses (toCall + the fixed bet size
-// for this street, capped by the player's stack for an all-in-for-less)
-// — deliberately the same calculation, not a separate one that could
-// drift out of sync with what actually happens on submit. min and max
-// are equal by design; the shape is kept as {min, max} only because
-// that's what the client already expects to receive and render.
-// Returns null if the player can't currently bet/raise at all (not
-// their turn, already folded/all-in, or the street's betting cap is
-// already reached).
+// Fixed-limit, not no-limit — see the .mjs version of this file for the
+// full reasoning. Kept identical between both so they can't drift.
 function raiseRange(hand, uid){
   if(hand.result || hand.toAct !== uid) return null;
   const p = hand.players[uid];
@@ -345,4 +333,4 @@ function deepClone(hand){
   return cloned;
 }
 
-export { createHand, applyAction, legalActions, raiseRange, betSizes, freshDeck, computeSidePots, STREETS, MAX_SEATS };
+module.exports = { createHand, applyAction, legalActions, raiseRange, betSizes, freshDeck, computeSidePots, STREETS, MAX_SEATS };
