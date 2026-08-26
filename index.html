@@ -1487,7 +1487,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,.5), 0 0 4px rgba(255,214,120,.4);
   }
   .plinko-ball{
-    position:absolute; top:0; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px;
+    position:absolute; top:0; left:50%; width:16px; height:16px; margin:-8px 0 0 -8px;
     border-radius:50%; display:none; z-index:5;
     background: radial-gradient(circle at 32% 28%, #ff8a7a, #d8342a 55%, #7a1810 100%);
     box-shadow: 0 3px 6px rgba(0,0,0,.6), inset 0 1px 2px rgba(255,255,255,.6), 0 0 10px rgba(216,52,42,.6);
@@ -4867,7 +4867,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.85";
+const APP_VERSION = "2026-08-22.88";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10851,6 +10851,7 @@ async function plinkoAnimateOneBall(startDelayMs){
     path.push(x);
   }
   const finalSlot = Math.round(path[path.length - 1]);
+  const targetSlotEl = document.querySelector(`#plinkoSlots .plinko-slot[data-slot="${finalSlot}"]`);
 
   const ball = document.createElement('div');
   ball.className = 'plinko-ball';
@@ -10875,11 +10876,23 @@ async function plinkoAnimateOneBall(startDelayMs){
     dailySpinPlayPegTick();
     await bjWait(190);
   }
-  // Board is 420px tall with a 68px slot band pinned to the bottom (the
-  // band spans 352-420px), so its vertical centre sits at 386px = 92% of
-  // total height — settling here actually centres the ball in the slot
-  // instead of leaving it sitting at the slot's upper edge.
-  ball.style.top = '92%';
+  // Final settle: reparent the ball directly INTO its landed slot, and
+  // let simple 50%/50% centering (relative to the slot itself) place it.
+  // The previous approach computed the slot's centre from OUTSIDE it via
+  // getBoundingClientRect on two separate elements — mathematically
+  // sound, but it still wasn't landing dead centre in practice. Having
+  // the slot centre the ball within its own box removes that cross-
+  // element calculation entirely; the browser's layout engine does the
+  // centring natively, the same reliable way it centres content inside
+  // any other box in this app, instead of a coordinate calculation that
+  // has to account for every bit of padding/gap perfectly.
+  ball.style.transition = 'none';
+  targetSlotEl.appendChild(ball);
+  ball.style.position = 'absolute';
+  ball.style.left = '50%';
+  ball.style.top = '50%';
+  ball.style.margin = '-8px 0 0 -8px'; // half the ball's own 16px size
+  void ball.offsetWidth;
   await bjWait(160);
   return finalSlot;
 }
@@ -10915,11 +10928,11 @@ async function plinkoDropInner(){
   document.querySelectorAll('#plinkoBoardWrap .plinko-ball').forEach(b => b.remove());
 
   // Every ball runs its own independent animation concurrently, staggered
-  // by 90ms each so a multi-ball drop cascades down the board rather than
-  // every ball moving in perfect lockstep.
+  // by 500ms each so a multi-ball drop reads as a clear sequence of
+  // individual drops rather than everything happening in one hit.
   const drops = [];
   for(let n = 0; n < plinkoBallCount; n++){
-    drops.push(plinkoAnimateOneBall(n * 90));
+    drops.push(plinkoAnimateOneBall(n * 500));
   }
   const finalSlots = await Promise.all(drops);
 
