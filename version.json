@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-22.80",
+  "version": "2026-08-22.81",
   "date": "2026-08-22",
   "changes": [
-    "Fixed: Mines' Cash Out button could be scrolled well out of view on a full 5x5 board, sitting all the way down in the bet panel below the grid. Added a second Cash Out button right at the top of the felt, above the Multiplier/Payout stats — a soft pulsing glow while it's live so it's impossible to miss. Both buttons stay in sync and do the exact same thing; tap whichever's actually on screen."
+    "Replaced: Sic Bo removed, Plinko added in its place. 8-row peg board, 9 payout slots, same felt/rail table, chip stacking, and croupier lines as the rest of the casino. The multiplier curve is computed from the real binomial probability of a peg board (a genuine random walk, not a made-up curve) and verified to a real 97% RTP — edge slots pay 27.59x, the middle slots pay below 1x, so landing near the centre is a genuine loss, same tension as a real Plinko board.",
+    "Fixed along the way: Big Wheel's bet grid quietly depended on Sic Bo's CSS classes and a shared chip-formatting helper — both renamed to neutral, standalone names instead of being deleted outright, so Big Wheel wasn't broken by Sic Bo's removal."
   ]
 }

@@ -1289,22 +1289,22 @@
   .craps-place-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 14px rgba(255,214,120,.4); background:radial-gradient(circle at 35% 30%, var(--brass-dim), var(--felt-3) 75%); }
   .craps-place-spot.has-live .craps-place-num{ color:#2a2005; }
   .craps-place-spot .craps-bet-spot-amt{ font-size:9px; margin-top:1px; }
-  /* Sic Bo — Totals (4-17) and the Single/Double/Triple number spots.
+  /* Shared small numbered-spot tile — used by Big Wheel's bet grid.
      auto-fill rather than a fixed column count so it lays out sensibly
      regardless of screen width instead of guessing a column count. */
-  .sicbo-total-grid, .sicbo-number-grid{
+  .casino-num-grid{
     display:grid; grid-template-columns:repeat(auto-fill, minmax(56px, 1fr)); gap:6px; margin-bottom:4px;
   }
-  .sicbo-spot{
+  .casino-num-spot{
     position:relative; background:var(--felt-2); border:2px solid var(--brass-dim); border-radius:9px;
     padding:7px 4px; text-align:center; cursor:pointer; transition: all .15s ease;
   }
-  .sicbo-spot:active{ transform:scale(.94); }
-  .sicbo-spot-num{ font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:17px; color:var(--brass-light); line-height:1; }
-  .sicbo-spot-odds{ font-size:8px; color:var(--muted); margin-top:1px; }
-  .sicbo-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 12px rgba(255,214,120,.4); background:var(--brass-dim); }
-  .sicbo-spot.has-live .sicbo-spot-num, .sicbo-spot.has-live .sicbo-spot-odds{ color:#2a2005; }
-  .sicbo-spot .craps-bet-spot-amt{ margin-top:3px; min-height:0; }
+  .casino-num-spot:active{ transform:scale(.94); }
+  .casino-num-spot-value{ font-family:'Barlow Condensed', sans-serif; font-weight:800; font-size:17px; color:var(--brass-light); line-height:1; }
+  .casino-num-spot-odds{ font-size:8px; color:var(--muted); margin-top:1px; }
+  .casino-num-spot.has-live{ border-color:var(--brass-light); box-shadow:0 0 12px rgba(255,214,120,.4); background:var(--brass-dim); }
+  .casino-num-spot.has-live .casino-num-spot-value, .casino-num-spot.has-live .casino-num-spot-odds{ color:#2a2005; }
+  .casino-num-spot .craps-bet-spot-amt{ margin-top:3px; min-height:0; }
   /* Hardways — diamond tiles, the traditional shape for this bet on a real
      felt, with the dice-pair callout baked into the tile. */
   .craps-hardway-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:7px; }
@@ -1472,6 +1472,40 @@
   }
   .mines-tile.revealed.mine-dimmed{ background:rgba(80,30,25,.55); box-shadow:none; opacity:.65; animation:none; font-size:15px; }
   @keyframes minesRevealPop{ 0%{ transform:scale(.55); opacity:0; } 65%{ transform:scale(1.15); } 100%{ transform:scale(1); opacity:1; } }
+  /* ---- Plinko — a triangular peg board with a ball that random-walks
+     down through it, landing in one of 9 slots at the bottom. The pegs
+     are decorative (this isn't a literal physics/collision sim), but the
+     ball's path is driven by the exact same random sequence that decides
+     the real outcome, so what you watch happen IS the real result, not a
+     disconnected animation layered on top of it. */
+  .plinko-board-wrap{ position:relative; width:100%; max-width:340px; height:230px; margin:10px auto 4px; }
+  .plinko-pegs{ position:absolute; inset:0; display:flex; flex-direction:column; justify-content:space-evenly; padding:6px 10px 0; }
+  .plinko-peg-row{ display:flex; justify-content:center; gap:0; }
+  .plinko-peg{
+    width:6px; height:6px; border-radius:50%; margin:0 13px;
+    background: radial-gradient(circle at 35% 30%, #fff2c8, var(--brass) 60%, var(--brass-dim) 100%);
+    box-shadow: 0 1px 2px rgba(0,0,0,.5), 0 0 3px rgba(255,214,120,.35);
+  }
+  .plinko-ball{
+    position:absolute; top:0; left:50%; width:16px; height:16px; margin:-8px 0 0 -8px;
+    border-radius:50%; display:none; z-index:5;
+    background: radial-gradient(circle at 32% 28%, #ff8a7a, #d8342a 55%, #7a1810 100%);
+    box-shadow: 0 2px 5px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.6), 0 0 8px rgba(216,52,42,.6);
+    transition: left .22s cubic-bezier(.42,0,.58,1), top .22s linear;
+  }
+  .plinko-slots{ position:absolute; left:0; right:0; bottom:0; display:flex; gap:3px; padding:0 4px; }
+  .plinko-slot{
+    flex:1; border-radius:6px 6px 3px 3px; padding:5px 1px; text-align:center;
+    font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:10px; color:#fff;
+    box-shadow: inset 0 2px 3px rgba(255,255,255,.25), inset 0 -2px 3px rgba(0,0,0,.35), 0 2px 4px rgba(0,0,0,.4);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .plinko-slot.tier-edge{ background: linear-gradient(160deg, #ffcf6b, #c9871f); }
+  .plinko-slot.tier-high{ background: linear-gradient(160deg, #e8a35c, #a85f24); }
+  .plinko-slot.tier-mid{ background: linear-gradient(160deg, #6f8fae, #3f5c78); }
+  .plinko-slot.tier-low{ background: linear-gradient(160deg, #5a6670, #38424b); }
+  .plinko-slot.landed{ animation: plinkoSlotHit .5s ease; }
+  @keyframes plinkoSlotHit{ 0%{ transform:translateY(0); } 35%{ transform:translateY(3px) scale(1.12); box-shadow:0 0 10px rgba(255,214,120,.7); } 100%{ transform:translateY(0); } }
 
   @keyframes tableFlashRed{ 0%{ background-color:rgba(193,96,74,0); } 25%{ background-color:rgba(193,96,74,.28); } 100%{ background-color:rgba(193,96,74,0); } }
   .panel.pc-flash-red::after{ animation: tableFlashRed .5s ease; }
@@ -3030,7 +3064,7 @@
         <button type="button" class="game-bubble" data-game="slots"><span class="game-bubble-icon">🎰</span><span class="game-bubble-label">Slots</span></button>
         <button type="button" class="game-bubble" data-game="videopoker"><span class="vp-icon-cards"><span class="vp-icon-card vp-icon-card-1"><span class="vp-icon-pip vp-pip-black">A♠</span></span><span class="vp-icon-card vp-icon-card-2"><span class="vp-icon-pip vp-pip-red">A♥</span></span></span><span class="game-bubble-label">Video Poker</span></button>
         <button type="button" class="game-bubble" data-game="craps"><span class="game-bubble-icon">🎲</span><span class="game-bubble-label">Craps</span></button>
-        <button type="button" class="game-bubble" data-game="sicbo"><span class="game-bubble-icon">⚅</span><span class="game-bubble-label">Sic Bo</span></button>
+        <button type="button" class="game-bubble" data-game="plinko"><span class="game-bubble-icon">🔴</span><span class="game-bubble-label">Plinko</span></button>
         <button type="button" class="game-bubble" data-game="bigwheel"><span class="game-bubble-icon">🛞</span><span class="game-bubble-label">Big Wheel</span></button>
         <button type="button" class="game-bubble" data-game="mines"><span class="game-bubble-icon">💣</span><span class="game-bubble-label">Mines</span></button>
         <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
@@ -3378,63 +3412,6 @@
     </div>
     </div>
 
-    <div class="casino-game-panel" id="casinoGameSicBo" style="display:none;">
-    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="sicbo">📜 Rules</button></div>
-    <div class="pc-table-rail" id="sicBoTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
-      <div class="craps-table-felt">
-        <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
-        <div class="craps-dice-row" id="sicBoDiceRow">
-          <div class="craps-die craps-die-3d" id="sicDie1"></div>
-          <div class="craps-die craps-die-3d" id="sicDie2"></div>
-          <div class="craps-die craps-die-3d" id="sicDie3"></div>
-        </div>
-        <div class="craps-dice-shadow"><div class="craps-dice-shadow-blob"></div><div class="craps-dice-shadow-blob"></div><div class="craps-dice-shadow-blob"></div></div>
-        <div class="craps-total-msg" id="sicBoTotalMsg"></div>
-        <div class="croupier-caption" id="sicBoCroupierMsg"></div>
-        <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rolls</div>
-        <div class="craps-history" id="sicBoHistory"></div>
-      </div>
-    </div>
-    <div class="panel" id="sicBoBetPanel">
-      <div class="hint" style="margin-bottom:8px;">Pick a chip below (or tap the chip readout to type any amount — no limit), then tap a spot to place it. Every bet resolves fresh each roll — nothing carries over.</div>
-      <div class="craps-bet-grid" id="sicBoBetGrid">
-        <div class="craps-bet-spot" data-sic-bet="big"><div class="craps-bet-spot-label">Big</div><div class="craps-bet-spot-sub">11-17, no triples · 1:1</div><div class="craps-bet-spot-amt" data-sic-amt="big"></div></div>
-        <div class="craps-bet-spot" data-sic-bet="small"><div class="craps-bet-spot-label">Small</div><div class="craps-bet-spot-sub">4-10, no triples · 1:1</div><div class="craps-bet-spot-amt" data-sic-amt="small"></div></div>
-        <div class="craps-bet-spot full-row" data-sic-bet="anytriple"><div class="craps-bet-spot-label">Any Triple</div><div class="craps-bet-spot-sub">All three dice match · 30:1</div><div class="craps-bet-spot-amt" data-sic-amt="anytriple"></div></div>
-      </div>
-
-      <div class="craps-section-label">Totals <small>— exact sum of all three dice</small></div>
-      <div class="sicbo-total-grid" id="sicBoTotalGrid"></div>
-
-      <div class="craps-section-label">Single Number <small>— pays per matching die (1/2/3)</small></div>
-      <div class="sicbo-number-grid" id="sicBoSingleGrid"></div>
-
-      <div class="craps-section-label">Specific Double <small>— any two dice show this number · 10:1</small></div>
-      <div class="sicbo-number-grid" id="sicBoDoubleGrid"></div>
-
-      <div class="craps-section-label">Specific Triple <small>— all three dice show this number · 180:1</small></div>
-      <div class="sicbo-number-grid" id="sicBoTripleGrid"></div>
-
-      <div style="display:flex; justify-content:center; margin-top:12px;">
-        <div class="bj-chip" id="sicBoChipDisplay">50</div>
-        <input type="number" id="sicBoBetInput" min="5" step="5" value="50" readonly style="width:0; opacity:0; position:absolute;">
-      </div>
-      <div class="chip-rail" data-target="sicBoBetInput">
-        <button type="button" class="table-chip chip-5" data-val="5">5</button>
-        <button type="button" class="table-chip chip-10" data-val="10">10</button>
-        <button type="button" class="table-chip chip-25" data-val="25">25</button>
-        <button type="button" class="table-chip chip-50" data-val="50">50</button>
-        <button type="button" class="table-chip chip-100" data-val="100">100</button>
-        <button type="button" class="table-chip chip-250" data-val="250">250</button>
-        <button type="button" class="chip-clear-btn" data-target="sicBoBetInput">Clear Chips</button>
-      </div>
-      <div class="deal-row">
-        <button type="button" id="sicBoClearBtn" class="pill-btn pill-btn-action">Clear Bets</button>
-        <button type="button" id="sicBoRollBtn" class="pill-btn pill-btn-primary">Roll</button>
-      </div>
-      <div id="sicBoBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
-    </div>
-    </div>
 
     <div class="casino-game-panel" id="casinoGameSlots" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="slots">📜 Rules</button></div>
@@ -3523,6 +3500,44 @@
     </div>
     </div>
 
+    <div class="casino-game-panel" id="casinoGamePlinko" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="plinko">📜 Rules</button></div>
+    <div class="pc-table-rail" id="plinkoTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
+      <div class="craps-table-felt">
+        <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="plinko-board-wrap" id="plinkoBoardWrap">
+          <div class="plinko-pegs" id="plinkoPegs"></div>
+          <div class="plinko-ball" id="plinkoBall"></div>
+          <div class="plinko-slots" id="plinkoSlots"></div>
+        </div>
+        <div class="craps-total-msg" id="plinkoResultMsg"></div>
+        <div class="croupier-caption" id="plinkoCroupierMsg"></div>
+        <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent drops</div>
+        <div class="craps-history" id="plinkoHistory"></div>
+      </div>
+    </div>
+    <div class="panel" id="plinkoBetPanel">
+      <div class="hint" style="margin-bottom:8px;">Pick a chip below (or tap the chip readout to type any amount — no limit), then drop the ball. Every drop is independent — nothing carries over.</div>
+      <div style="display:flex; justify-content:center; margin-top:4px;">
+        <div class="bj-chip" id="plinkoChipDisplay">50</div>
+        <input type="number" id="plinkoBetInput" min="5" step="5" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="plinkoBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="plinkoBetInput">Clear Chips</button>
+      </div>
+      <div class="deal-row">
+        <button type="button" id="plinkoDropBtn" class="pill-btn pill-btn-primary">Drop Ball</button>
+      </div>
+      <div id="plinkoBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    </div>
+
     <div class="casino-game-panel" id="casinoGameBigWheel" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="bigwheel">📜 Rules</button></div>
     <div class="pc-table-rail" id="bigWheelTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
@@ -3545,13 +3560,13 @@
     </div>
     <div class="panel" id="bigWheelBetPanel">
       <div class="hint" style="margin-bottom:8px;">Pick a chip below (or tap the chip readout to type any amount — no limit), then tap a value to bet on it. Every bet resolves fresh each spin — nothing carries over.</div>
-      <div class="sicbo-number-grid" id="bigWheelBetGrid">
-        <div class="sicbo-spot" data-wheel-bet="1"><div class="sicbo-spot-num">1</div><div class="sicbo-spot-odds">1:1</div><div class="craps-bet-spot-amt" data-wheel-amt="1"></div></div>
-        <div class="sicbo-spot" data-wheel-bet="2"><div class="sicbo-spot-num">2</div><div class="sicbo-spot-odds">2:1</div><div class="craps-bet-spot-amt" data-wheel-amt="2"></div></div>
-        <div class="sicbo-spot" data-wheel-bet="5"><div class="sicbo-spot-num">5</div><div class="sicbo-spot-odds">5:1</div><div class="craps-bet-spot-amt" data-wheel-amt="5"></div></div>
-        <div class="sicbo-spot" data-wheel-bet="10"><div class="sicbo-spot-num">10</div><div class="sicbo-spot-odds">10:1</div><div class="craps-bet-spot-amt" data-wheel-amt="10"></div></div>
-        <div class="sicbo-spot" data-wheel-bet="20"><div class="sicbo-spot-num">20</div><div class="sicbo-spot-odds">20:1</div><div class="craps-bet-spot-amt" data-wheel-amt="20"></div></div>
-        <div class="sicbo-spot" data-wheel-bet="joker"><div class="sicbo-spot-num">🃏</div><div class="sicbo-spot-odds">18:1</div><div class="craps-bet-spot-amt" data-wheel-amt="joker"></div></div>
+      <div class="casino-num-grid" id="bigWheelBetGrid">
+        <div class="casino-num-spot" data-wheel-bet="1"><div class="casino-num-spot-value">1</div><div class="casino-num-spot-odds">1:1</div><div class="craps-bet-spot-amt" data-wheel-amt="1"></div></div>
+        <div class="casino-num-spot" data-wheel-bet="2"><div class="casino-num-spot-value">2</div><div class="casino-num-spot-odds">2:1</div><div class="craps-bet-spot-amt" data-wheel-amt="2"></div></div>
+        <div class="casino-num-spot" data-wheel-bet="5"><div class="casino-num-spot-value">5</div><div class="casino-num-spot-odds">5:1</div><div class="craps-bet-spot-amt" data-wheel-amt="5"></div></div>
+        <div class="casino-num-spot" data-wheel-bet="10"><div class="casino-num-spot-value">10</div><div class="casino-num-spot-odds">10:1</div><div class="craps-bet-spot-amt" data-wheel-amt="10"></div></div>
+        <div class="casino-num-spot" data-wheel-bet="20"><div class="casino-num-spot-value">20</div><div class="casino-num-spot-odds">20:1</div><div class="craps-bet-spot-amt" data-wheel-amt="20"></div></div>
+        <div class="casino-num-spot" data-wheel-bet="joker"><div class="casino-num-spot-value">🃏</div><div class="casino-num-spot-odds">18:1</div><div class="craps-bet-spot-amt" data-wheel-amt="joker"></div></div>
       </div>
       <div style="display:flex; justify-content:center; margin-top:12px;">
         <div class="bj-chip" id="bigWheelChipDisplay">50</div>
@@ -4806,7 +4821,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.80";
+const APP_VERSION = "2026-08-22.81";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7228,7 +7243,7 @@ function updateXPBalanceDisplay(bal){
 // classifier rather than touching each of the six game functions
 // individually. Losses fund the pot; any casino play (win or lose) counts
 // toward the 20-play activity-eligibility threshold.
-const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Sic Bo|Big Wheel|Mines|Slots|Video Poker|Spin the Wheel)/i;
+const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Plinko|Big Wheel|Mines|Slots|Video Poker|Spin the Wheel)/i;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
@@ -8782,11 +8797,11 @@ document.getElementById('bjNewHandBtn').addEventListener('click', bjNewHand);
 const CASINO_GAME_PANEL_IDS = {
   blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
   war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin',
-  craps: 'casinoGameCraps', sicbo: 'casinoGameSicBo', bigwheel: 'casinoGameBigWheel', mines: 'casinoGameMines'
+  craps: 'casinoGameCraps', plinko: 'casinoGamePlinko', bigwheel: 'casinoGameBigWheel', mines: 'casinoGameMines'
 };
 const CASINO_GAME_LABELS = {
   blackjack: 'Blackjack', baccarat: 'Baccarat', roulette: 'Roulette', war: 'Casino War',
-  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', sicbo: 'Sic Bo', bigwheel: 'Big Wheel', mines: 'Mines'
+  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', plinko: 'Plinko', bigwheel: 'Big Wheel', mines: 'Mines'
 };
 // Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
 // computing "my rank" doesn't re-fetch every linked member's balance a
@@ -8853,7 +8868,7 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
       dailySpinRefreshCooldown();
     }
     if(btn.dataset.game === 'craps' && !crapsBuilt){ crapsInit(); }
-    if(btn.dataset.game === 'sicbo' && !sicBoBuilt){ sicBoInit(); }
+    if(btn.dataset.game === 'plinko' && !plinkoBuilt){ plinkoInit(); }
     if(btn.dataset.game === 'bigwheel' && !bigWheelBuilt){ bigWheelBuildWheel(); }
     if(btn.dataset.game === 'mines' && !minesBuilt){ minesInit(); }
   });
@@ -9102,21 +9117,13 @@ const CASINO_RULES = {
     <h3>One-Roll Props</h3>
     <p>Decided by the very next roll only, regardless of come-out or point state. Any 7 pays 4:1. Any Craps (2, 3, or 12) pays 7:1. A specific 2 or 12 pays 30:1; a specific 3 or 11 pays 15:1.</p>
   `},
-  sicbo: { title: '🎲 Sic Bo Rules', body: `
+  plinko: { title: '🔴 Plinko Rules', body: `
     <h3>The idea</h3>
-    <p>Three dice, one roll, every bet on the table resolves fresh each time — nothing carries over between rolls the way it does in Craps. Place as many bets as you like, tap Roll, everything settles at once.</p>
-    <h3>Big / Small</h3>
-    <p><b>Big</b> wins if the three dice total 11-17; <b>Small</b> wins on 4-10. Either way, a triple (all three dice matching) always loses both, regardless of the total. Pays 1:1.</p>
-    <h3>Totals</h3>
-    <p>Bet the exact sum of all three dice, 4 through 17. The further from the middle, the rarer it is and the bigger it pays — 6:1 on 9-12 up to 60:1 on a 4 or 17.</p>
-    <h3>Single Number</h3>
-    <p>Bet a number 1-6 appears on any of the three dice. Pays per matching die — one die pays 1:1, two dice pay 2:1, all three pay 3:1.</p>
-    <h3>Specific Double</h3>
-    <p>Bet that a chosen number shows on at least two of the three dice. Pays 10:1.</p>
-    <h3>Specific Triple</h3>
-    <p>Bet all three dice come up the exact same chosen number. The rarest bet on the table — pays 180:1.</p>
-    <h3>Any Triple</h3>
-    <p>Bet all three dice match, any number. Pays 30:1.</p>
+    <p>Drop a ball from the top of a 9-slot peg board — it bounces down through 8 rows, landing in one of 9 slots at the bottom. Each slot pays a different multiplier. Place your bet, tap Drop Ball, watch where it lands.</p>
+    <h3>The odds</h3>
+    <p>Genuine probability, not a made-up curve — a peg board is a real random walk, so the two edge slots (the rarest, hardest to land in) pay the most at <b>27.59x</b>, the slots next to them pay <b>3.45x</b>, then <b>0.99x</b>, and the middle three slots — the most likely place for the ball to land — pay <b>0.49x</b> and <b>0.39x</b> at dead centre. Landing near the middle is a genuine loss, same as a real Plinko board; only the edges pay big.</p>
+    <h3>House edge</h3>
+    <p>Same discipline as every other game here — a real, verified 97% RTP across every slot, checked by summing the probability-weighted payout of the whole board back to 0.97 before this ever went live.</p>
   `},
   bigwheel: { title: '🛞 Big Wheel Rules', body: `
     <h3>The idea</h3>
@@ -9204,7 +9211,7 @@ document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
 // the exact same modal used by each table's own "📜 Rules" button. ----
 const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
-  ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['sicbo', '⚅ Sic Bo'], ['bigwheel', '🛞 Big Wheel'], ['mines', '💣 Mines'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
+  ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['plinko', '🔴 Plinko'], ['bigwheel', '🛞 Big Wheel'], ['mines', '💣 Mines'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
   ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot'], ['tiers', '🏅 Player Tiers']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
@@ -10701,108 +10708,66 @@ async function crapsRollInner(){
 }
 document.getElementById('crapsRollBtn').addEventListener('click', crapsRoll);
 
-// ================= Sic Bo =================
-// Single-round game — every bet resolves fresh each roll, nothing carries
-// over the way Craps' Pass Line does, so this is structurally much closer
-// to Roulette (stage several bets, spin/roll once, settle everything at
-// once) than to Craps. Reuses crapsBuildDieCube/crapsSetFrontFace/
-// crapsDiePipLayout as-is (already parameterised by die id) rather than
-// duplicating the whole 3D cube system for a third time.
-let sicBoBuilt = false;
-let sicBoRolling = false;
-const SICBO_TOTAL_PAYOUT = { 4: 60, 5: 30, 6: 17, 7: 12, 8: 8, 9: 6, 10: 6, 11: 6, 12: 6, 13: 8, 14: 12, 15: 17, 16: 30, 17: 60 };
-let sicStaged = {
-  big: 0, small: 0, anytriple: 0,
-  total: { 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0 },
-  single: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
-  double: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
-  triple: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
-};
-let sicBoHistory = [];
-function sicBoInit(){
-  sicBoBuilt = true;
-  crapsBuildDieCube('sicDie1'); crapsBuildDieCube('sicDie2'); crapsBuildDieCube('sicDie3');
-  crapsSetFrontFace('sicDie1', 3); crapsSetFrontFace('sicDie2', 4); crapsSetFrontFace('sicDie3', 5);
-  document.getElementById('sicBoTotalGrid').innerHTML = Object.keys(SICBO_TOTAL_PAYOUT).map(n =>
-    `<div class="sicbo-spot" data-sic-bet="total" data-sic-num="${n}"><div class="sicbo-spot-num">${n}</div><div class="sicbo-spot-odds">${SICBO_TOTAL_PAYOUT[n]}:1</div><div class="craps-bet-spot-amt" data-sic-amt="total-${n}"></div></div>`
-  ).join('');
-  document.getElementById('sicBoSingleGrid').innerHTML = [1,2,3,4,5,6].map(n =>
-    `<div class="sicbo-spot" data-sic-bet="single" data-sic-num="${n}"><div class="sicbo-spot-num">${n}</div><div class="sicbo-spot-odds">1-2-3:1</div><div class="craps-bet-spot-amt" data-sic-amt="single-${n}"></div></div>`
-  ).join('');
-  document.getElementById('sicBoDoubleGrid').innerHTML = [1,2,3,4,5,6].map(n =>
-    `<div class="sicbo-spot" data-sic-bet="double" data-sic-num="${n}"><div class="sicbo-spot-num">${n}${n}</div><div class="sicbo-spot-odds">10:1</div><div class="craps-bet-spot-amt" data-sic-amt="double-${n}"></div></div>`
-  ).join('');
-  document.getElementById('sicBoTripleGrid').innerHTML = [1,2,3,4,5,6].map(n =>
-    `<div class="sicbo-spot" data-sic-bet="triple" data-sic-num="${n}"><div class="sicbo-spot-num">${n}${n}${n}</div><div class="sicbo-spot-odds">180:1</div><div class="craps-bet-spot-amt" data-sic-amt="triple-${n}"></div></div>`
-  ).join('');
-  sicBoRenderBetSpots();
-  document.querySelectorAll('#sicBoBetGrid .craps-bet-spot, #sicBoTotalGrid .sicbo-spot, #sicBoSingleGrid .sicbo-spot, #sicBoDoubleGrid .sicbo-spot, #sicBoTripleGrid .sicbo-spot').forEach(spot => {
-    spot.addEventListener('click', (e) => {
-      const ghostPill = e.target.closest('.craps-chip-new');
-      const type = spot.dataset.sicBet;
-      const num = spot.dataset.sicNum;
-      if(ghostPill){
-        if(num){ sicStaged[type][num] = 0; } else { sicStaged[type] = 0; }
-        sicBoRenderBetSpots();
-        bjPlayChipSound();
-        return;
-      }
-      const chip = parseInt(document.getElementById('sicBoBetInput').value, 10) || 0;
-      if(chip <= 0) return;
-      if(num){ sicStaged[type][num] += chip; } else { sicStaged[type] += chip; }
-      sicBoRenderBetSpots();
-      bjPlayChipSound();
-      spot.classList.remove('pc-chip-tap'); void spot.offsetWidth; spot.classList.add('pc-chip-tap');
-    });
-  });
+
+// ================= Plinko =================
+// 8 rows, 9 slots. Multipliers are computed from the true binomial
+// probability of each slot (a peg board is exactly a random walk — each
+// row is an independent 50/50 left/right choice), scaled by a single
+// constant so every slot carries the exact same 97% RTP, verified by
+// summing P(slot)*payout(slot) back to 0.97 before ever shipping this
+// (see the math check done alongside this build) — same discipline as
+// every other game here, not a guessed curve.
+const PLINKO_ROWS = 8;
+const PLINKO_SLOTS = PLINKO_ROWS + 1; // 9
+const PLINKO_RTP = 0.97;
+function plinkoChoose(n, k){
+  let r = 1;
+  for(let i = 0; i < k; i++){ r = r * (n - i) / (i + 1); }
+  return r;
 }
-function sicBoFmtChip(n){ return n >= 1000 ? (n % 1000 === 0 ? (n / 1000) + 'k' : (n / 1000).toFixed(1) + 'k') : String(n); }
-function sicBoSetSpotAmt(amtKey, spotSelector, staged){
-  const el = document.querySelector(`[data-sic-amt="${amtKey}"]`);
-  const spot = document.querySelector(spotSelector);
-  if(!el || !spot) return;
-  el.innerHTML = staged > 0 ? `<span class="craps-chip-pill craps-chip-new" data-clear-key="${amtKey}" title="Remove this bet">${sicBoFmtChip(staged)} ✕</span>` : '';
-  spot.classList.toggle('has-live', staged > 0);
+function buildPlinkoMultipliers(){
+  const total2n = Math.pow(2, PLINKO_ROWS);
+  const C = PLINKO_RTP / PLINKO_SLOTS;
+  const mults = [];
+  for(let k = 0; k <= PLINKO_ROWS; k++){
+    const Pk = plinkoChoose(PLINKO_ROWS, k) / total2n;
+    mults.push(C / Pk);
+  }
+  return mults;
 }
-function sicBoRenderBetSpots(){
-  sicBoSetSpotAmt('big', '[data-sic-bet="big"]', sicStaged.big);
-  sicBoSetSpotAmt('small', '[data-sic-bet="small"]', sicStaged.small);
-  sicBoSetSpotAmt('anytriple', '[data-sic-bet="anytriple"]', sicStaged.anytriple);
-  Object.keys(SICBO_TOTAL_PAYOUT).forEach(n => sicBoSetSpotAmt(`total-${n}`, `[data-sic-bet="total"][data-sic-num="${n}"]`, sicStaged.total[n]));
-  [1,2,3,4,5,6].forEach(n => {
-    sicBoSetSpotAmt(`single-${n}`, `[data-sic-bet="single"][data-sic-num="${n}"]`, sicStaged.single[n]);
-    sicBoSetSpotAmt(`double-${n}`, `[data-sic-bet="double"][data-sic-num="${n}"]`, sicStaged.double[n]);
-    sicBoSetSpotAmt(`triple-${n}`, `[data-sic-bet="triple"][data-sic-num="${n}"]`, sicStaged.triple[n]);
-  });
+const PLINKO_MULTIPLIERS = buildPlinkoMultipliers();
+function plinkoSlotTier(i){
+  const distFromCenter = Math.abs(i - PLINKO_ROWS / 2);
+  if(distFromCenter >= 4) return 'tier-edge';
+  if(distFromCenter >= 3) return 'tier-high';
+  if(distFromCenter >= 1.5) return 'tier-mid';
+  return 'tier-low';
 }
-function sicBoSumStaged(){
-  let s = sicStaged.big + sicStaged.small + sicStaged.anytriple;
-  [sicStaged.total, sicStaged.single, sicStaged.double, sicStaged.triple].forEach(obj => {
-    s += Object.values(obj).reduce((a, b) => a + b, 0);
-  });
-  return s;
+let plinkoBuilt = false;
+let plinkoDropping = false;
+let plinkoHistory = [];
+
+function plinkoInit(){
+  plinkoBuilt = true;
+  const pegsEl = document.getElementById('plinkoPegs');
+  let pegsHtml = '';
+  for(let row = 0; row < PLINKO_ROWS; row++){
+    pegsHtml += '<div class="plinko-peg-row">' + '<div class="plinko-peg"></div>'.repeat(row + 2) + '</div>';
+  }
+  pegsEl.innerHTML = pegsHtml;
+  document.getElementById('plinkoSlots').innerHTML = PLINKO_MULTIPLIERS.map((m, i) =>
+    `<div class="plinko-slot ${plinkoSlotTier(i)}" data-slot="${i}"><span>${m.toFixed(2)}x</span></div>`
+  ).join('');
 }
-document.getElementById('sicBoClearBtn').addEventListener('click', () => {
-  sicStaged = {
-    big: 0, small: 0, anytriple: 0,
-    total: { 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0 },
-    single: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
-    double: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
-    triple: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
-  };
-  document.getElementById('sicBoBetError').textContent = '';
-  sicBoRenderBetSpots();
-  const railEl = document.getElementById('sicBoTableRail');
-  if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); }
-});
-document.getElementById('sicBoBetInput').addEventListener('input', (e) => {
-  const chip = document.getElementById('sicBoChipDisplay');
+document.getElementById('plinkoBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('plinkoChipDisplay');
   if(!chip) return;
   chip.textContent = e.target.value || '0';
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
 });
-document.getElementById('sicBoChipDisplay').addEventListener('click', () => {
-  const input = document.getElementById('sicBoBetInput');
+document.getElementById('plinkoChipDisplay').addEventListener('click', () => {
+  if(plinkoDropping) return;
+  const input = document.getElementById('plinkoBetInput');
   const entry = prompt('Bet amount (XP):', input.value || '50');
   if(entry === null) return;
   const amount = Math.floor(Number(entry));
@@ -10811,151 +10776,115 @@ document.getElementById('sicBoChipDisplay').addEventListener('click', () => {
   input.dispatchEvent(new Event('input'));
 });
 
-async function sicBoAnimateRoll(a, b, c){
-  const cubes = ['sicDie1', 'sicDie2', 'sicDie3'].map(id => document.querySelector(`#${id} .craps-die-cube`));
-  cubes.forEach(cube => { if(cube){ cube.classList.remove('tumbling'); void cube.offsetWidth; cube.classList.add('tumbling'); } });
-  const stepMs = 70, totalFlickerMs = 1680;
-  const steps = Math.floor(totalFlickerMs / stepMs);
-  for(let i = 0; i < steps; i++){
-    crapsSetFrontFace('sicDie1', 1 + Math.floor(Math.random() * 6));
-    crapsSetFrontFace('sicDie2', 1 + Math.floor(Math.random() * 6));
-    crapsSetFrontFace('sicDie3', 1 + Math.floor(Math.random() * 6));
-    await bjWait(stepMs);
-  }
-  crapsSetFrontFace('sicDie1', a); crapsSetFrontFace('sicDie2', b); crapsSetFrontFace('sicDie3', c);
-  await bjWait(420);
-  cubes.forEach(cube => { if(cube) cube.classList.remove('tumbling'); });
-}
-const SICBO_CROUPIER_LINES = {
-  roll: ['No more bets — rolling.', 'Dice are live.', 'Here we go.'],
-  triple: ['Triple! Big number for the house to pay.', "That's a triple — nice catch if you had it."],
-  bigWin: ['Big payout on that one!', 'Well played.'],
-  loss: ['House wins this roll.', 'Not this time.']
+const PLINKO_CROUPIER_LINES = {
+  drop: ['Ball is live.', 'Here we go.', 'Watch it fall.'],
+  edge: ['Right on the edge! Huge payout.', "That's the rarest drop on the board."],
+  loss: ['Landed in the middle — house wins this one.', 'Not this time.']
 };
-let sicBoRolling2 = false; // named distinctly from sicBoRolling (the outer guard) — this one just tracks whether the button should stay disabled
-async function sicBoRoll(){
-  if(sicBoRolling) return;
-  sicBoRolling = true;
-  const rollBtn = document.getElementById('sicBoRollBtn');
-  const clearBtn = document.getElementById('sicBoClearBtn');
-  rollBtn.disabled = true; clearBtn.disabled = true;
+
+async function plinkoDrop(){
+  if(plinkoDropping) return;
+  plinkoDropping = true;
+  const btn = document.getElementById('plinkoDropBtn');
+  btn.disabled = true;
   try{
-    await sicBoRollInner();
+    await plinkoDropInner();
   } finally {
-    rollBtn.disabled = false; clearBtn.disabled = false;
-    sicBoRolling = false;
+    btn.disabled = false;
+    plinkoDropping = false;
   }
 }
-async function sicBoRollInner(){
-  const errEl = document.getElementById('sicBoBetError');
+async function plinkoDropInner(){
+  const errEl = document.getElementById('plinkoBetError');
   errEl.textContent = '';
-  const totalStaked = sicBoSumStaged();
-  if(totalStaked === 0){ errEl.textContent = 'Place at least one bet first.'; return; }
+  const bet = parseInt(document.getElementById('plinkoBetInput').value, 10) || 0;
+  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(totalStaked > balance){ errEl.textContent = `You only have ${balance} XP (staked: ${totalStaked}).`; return; }
+  if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
-  scrollIntoViewSmooth('sicBoTableRail');
+  scrollIntoViewSmooth('plinkoTableRail');
   bjPlayChipSound();
-  croupierSay('sicBoCroupierMsg', SICBO_CROUPIER_LINES.roll);
+  croupierSay('plinkoCroupierMsg', PLINKO_CROUPIER_LINES.drop);
+  document.getElementById('plinkoResultMsg').textContent = '';
+  document.querySelectorAll('#plinkoSlots .plinko-slot').forEach(s => s.classList.remove('landed'));
 
-  const a = 1 + Math.floor(Math.random() * 6);
-  const b = 1 + Math.floor(Math.random() * 6);
-  const c = 1 + Math.floor(Math.random() * 6);
+  // The random walk that decides BOTH the visual path and the real
+  // outcome — starting at slot-space x=4 (dead centre of 9), each of the
+  // 8 rows nudges it ±0.5. After 8 steps x always lands exactly on an
+  // integer 0-8, which is the actual slot index — no separate "pick a
+  // result then animate toward it" step; the animation IS the result.
+  let x = (PLINKO_SLOTS - 1) / 2;
+  const path = [x];
+  for(let i = 0; i < PLINKO_ROWS; i++){
+    x += (Math.random() < 0.5) ? -0.5 : 0.5;
+    path.push(x);
+  }
+  const finalSlot = Math.round(path[path.length - 1]);
+
+  const ball = document.getElementById('plinkoBall');
+  ball.style.transition = 'none';
+  ball.style.left = `${(path[0] / (PLINKO_SLOTS - 1)) * 100}%`;
+  ball.style.top = '0%';
+  ball.style.display = 'block';
+  void ball.offsetWidth;
+  ball.style.transition = '';
   bjPlaySpinSound();
-  await sicBoAnimateRoll(a, b, c);
-
-  const total = a + b + c;
-  const isTriple = a === b && b === c;
-  const counts = {}; [a, b, c].forEach(d => { counts[d] = (counts[d] || 0) + 1; });
-
-  let delta = 0;
-  const wonSpots = [], lostSpots = [];
-
-  if(sicStaged.big > 0){
-    if(!isTriple && total >= 11 && total <= 17){ delta += sicStaged.big; wonSpots.push('Big'); }
-    else { delta -= sicStaged.big; lostSpots.push('Big'); }
+  for(let i = 1; i < path.length; i++){
+    const leftPct = (path[i] / (PLINKO_SLOTS - 1)) * 100;
+    const topPct = (i / PLINKO_ROWS) * 88; // stops just above the slot row, not on top of it
+    ball.style.left = `${leftPct}%`;
+    ball.style.top = `${topPct}%`;
+    await bjWait(230);
   }
-  if(sicStaged.small > 0){
-    if(!isTriple && total >= 4 && total <= 10){ delta += sicStaged.small; wonSpots.push('Small'); }
-    else { delta -= sicStaged.small; lostSpots.push('Small'); }
-  }
-  if(sicStaged.anytriple > 0){
-    if(isTriple){ delta += sicStaged.anytriple * 30; wonSpots.push('Any Triple'); }
-    else { delta -= sicStaged.anytriple; lostSpots.push('Any Triple'); }
-  }
-  Object.keys(SICBO_TOTAL_PAYOUT).forEach(n => {
-    const amt = sicStaged.total[n]; if(!(amt > 0)) return;
-    if(Number(n) === total){ delta += amt * SICBO_TOTAL_PAYOUT[n]; wonSpots.push(`Total ${n}`); }
-    else { delta -= amt; lostSpots.push(`Total ${n}`); }
-  });
-  [1,2,3,4,5,6].forEach(n => {
-    const singleAmt = sicStaged.single[n];
-    if(singleAmt > 0){
-      const matches = counts[n] || 0;
-      if(matches > 0){ delta += singleAmt * matches; wonSpots.push(`Number ${n} (x${matches})`); }
-      else { delta -= singleAmt; lostSpots.push(`Number ${n}`); }
-    }
-    const doubleAmt = sicStaged.double[n];
-    if(doubleAmt > 0){
-      if((counts[n] || 0) >= 2){ delta += doubleAmt * 10; wonSpots.push(`Double ${n}`); }
-      else { delta -= doubleAmt; lostSpots.push(`Double ${n}`); }
-    }
-    const tripleAmt = sicStaged.triple[n];
-    if(tripleAmt > 0){
-      if(isTriple && a === n){ delta += tripleAmt * 180; wonSpots.push(`Triple ${n}`); }
-      else { delta -= tripleAmt; lostSpots.push(`Triple ${n}`); }
-    }
-  });
+  ball.style.top = '92%';
+  await bjWait(180);
 
-  sicStaged = {
-    big: 0, small: 0, anytriple: 0,
-    total: { 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0, 13: 0, 14: 0, 15: 0, 16: 0, 17: 0 },
-    single: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
-    double: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 },
-    triple: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 }
-  };
-  sicBoRenderBetSpots();
+  const mult = PLINKO_MULTIPLIERS[finalSlot];
+  const payout = Math.round(bet * mult);
+  const delta = payout - bet;
+  const won = delta > 0;
 
-  const resultEl = document.getElementById('sicBoTotalMsg');
-  let msg = `${a} + ${b} + ${c} = ${total}${isTriple ? ' — TRIPLE!' : ''}`;
-  if(wonSpots.length || lostSpots.length){
-    msg += `  |  ${[...wonSpots.map(s => `${s} won`), ...lostSpots.map(s => `${s} lost`)].join(', ')}`;
-  }
-  resultEl.textContent = `${msg}  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
-  resultEl.style.color = delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)');
+  const slotEl = document.querySelector(`#plinkoSlots .plinko-slot[data-slot="${finalSlot}"]`);
+  if(slotEl){ slotEl.classList.remove('landed'); void slotEl.offsetWidth; slotEl.classList.add('landed'); }
+
+  const resultEl = document.getElementById('plinkoResultMsg');
+  resultEl.textContent = `Landed at ${mult.toFixed(2)}x  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
+  resultEl.style.color = won ? 'var(--win)' : 'var(--loss)';
   resultEl.classList.remove('bj-outcome-pop'); void resultEl.offsetWidth; resultEl.classList.add('bj-outcome-pop');
 
-  if(isTriple) croupierSay('sicBoCroupierMsg', SICBO_CROUPIER_LINES.triple);
-  else if(delta >= 500) croupierSay('sicBoCroupierMsg', SICBO_CROUPIER_LINES.bigWin);
-  else if(delta < 0) croupierSay('sicBoCroupierMsg', SICBO_CROUPIER_LINES.loss);
+  const isEdge = finalSlot === 0 || finalSlot === PLINKO_SLOTS - 1;
+  if(isEdge) croupierSay('plinkoCroupierMsg', PLINKO_CROUPIER_LINES.edge);
+  else if(!won) croupierSay('plinkoCroupierMsg', PLINKO_CROUPIER_LINES.loss);
 
-  sicBoHistory.push({ total, isTriple });
-  const histEl = document.getElementById('sicBoHistory');
+  plinkoHistory.push(mult);
+  const histEl = document.getElementById('plinkoHistory');
   if(histEl){
-    histEl.innerHTML = sicBoHistory.slice(-10).reverse().map(h => {
-      const bg = h.isTriple ? '#8c2a22' : (h.total >= 11 ? '#1f7a4a' : '#3a3a3a');
-      return `<div class="craps-history-chip" style="background:${bg};">${h.total}</div>`;
+    histEl.innerHTML = plinkoHistory.slice(-10).reverse().map(m => {
+      const bg = m >= 1 ? 'var(--win)' : 'var(--loss)';
+      return `<div class="craps-history-chip" style="background:${bg};">${m.toFixed(2)}x</div>`;
     }).join('');
   }
 
-  const railEl = document.getElementById('sicBoTableRail');
-  if(delta > 0){
+  const railEl = document.getElementById('plinkoTableRail');
+  if(won){
     bjPlayChime(true);
-    bjLaunchConfetti(resultEl, 22);
-    if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); setTimeout(() => railEl.classList.remove('pc-flash-gold'), 700); }
-  } else if(delta < 0){
+    bjLaunchConfetti(resultEl, isEdge ? 44 : 20);
+    railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold');
+    setTimeout(() => railEl.classList.remove('pc-flash-gold'), 800);
+  } else {
     bjPlayChime(false);
-    if(railEl){ railEl.classList.add('pc-shake'); setTimeout(() => railEl.classList.remove('pc-shake'), 700); }
+    railEl.classList.add('pc-shake');
+    setTimeout(() => railEl.classList.remove('pc-shake'), 700);
   }
 
-  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Sic Bo win' : 'Sic Bo loss', { silent: true, detail: { type: 'dice', a, b, c } });
+  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Plinko win' : 'Plinko loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
 }
-document.getElementById('sicBoRollBtn').addEventListener('click', sicBoRoll);
-// ================= /Sic Bo =================
+document.getElementById('plinkoDropBtn').addEventListener('click', plinkoDrop);
+// ================= /Plinko =================
 
 // ================= Big Wheel =================
 // A real Big Six money wheel — 54 segments at true casino odds (24x "1",
@@ -10974,6 +10903,10 @@ document.getElementById('sicBoRollBtn').addEventListener('click', sicBoRoll);
 // just scaling the old 54-wheel numbers down and hoping — every bet was
 // re-verified to still be a genuine loser on average, same as real Big
 // Six math, not just visually simplified.
+// Shared chip-pill formatter — "1.2k" instead of "1200" once a staged
+// amount gets big, used by every game with a chip-pill display (Craps,
+// Big Wheel, Mines).
+function casinoFmtChip(n){ return n >= 1000 ? (n % 1000 === 0 ? (n / 1000) + 'k' : (n / 1000).toFixed(1) + 'k') : String(n); }
 const BIG_WHEEL_PAYOUT = { '1': 1, '2': 2, '5': 5, '10': 10, '20': 20, joker: 18 };
 function buildBigWheelSegments(){
   // Round-robin interleave spreads same-value wedges around the wheel
@@ -11022,7 +10955,7 @@ function bigWheelBuildWheel(){
   // Colour each bet spot to match its wheel wedge — the missing link
   // that made it impossible to tell at a glance which spot corresponded
   // to which colour on the wheel.
-  document.querySelectorAll('#bigWheelBetGrid .sicbo-spot').forEach(spot => {
+  document.querySelectorAll('#bigWheelBetGrid .casino-num-spot').forEach(spot => {
     const val = spot.dataset.wheelBet;
     spot.style.borderTopColor = BIG_WHEEL_COLORS[val];
     spot.style.borderTopWidth = '4px';
@@ -11032,13 +10965,13 @@ function bigWheelSetSpotAmt(val, staged){
   const el = document.querySelector(`[data-wheel-amt="${val}"]`);
   const spot = document.querySelector(`[data-wheel-bet="${val}"]`);
   if(!el || !spot) return;
-  el.innerHTML = staged > 0 ? `<span class="craps-chip-pill craps-chip-new" data-clear-key="${val}" title="Remove this bet">${sicBoFmtChip(staged)} ✕</span>` : '';
+  el.innerHTML = staged > 0 ? `<span class="craps-chip-pill craps-chip-new" data-clear-key="${val}" title="Remove this bet">${casinoFmtChip(staged)} ✕</span>` : '';
   spot.classList.toggle('has-live', staged > 0);
 }
 function bigWheelRenderBetSpots(){
   Object.keys(bigWheelStaged).forEach(val => bigWheelSetSpotAmt(val, bigWheelStaged[val]));
 }
-document.querySelectorAll('#bigWheelBetGrid .sicbo-spot').forEach(spot => {
+document.querySelectorAll('#bigWheelBetGrid .casino-num-spot').forEach(spot => {
   spot.addEventListener('click', (e) => {
     const val = spot.dataset.wheelBet;
     const ghostPill = e.target.closest('.craps-chip-new');
