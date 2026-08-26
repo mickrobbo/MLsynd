@@ -1,0 +1,7 @@
+{
+  "version": "2026-08-22.87",
+  "date": "2026-08-22",
+  "changes": [
+    "Tweak: multi-ball Plinko drops now stagger each ball's start by 0.5s (was 90ms) — reads as a clear sequence of individual drops instead of everything happening at once."
+  ]
+}
