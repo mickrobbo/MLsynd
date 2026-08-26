@@ -1478,31 +1478,70 @@
      ball's path is driven by the exact same random sequence that decides
      the real outcome, so what you watch happen IS the real result, not a
      disconnected animation layered on top of it. */
-  .plinko-board-wrap{ position:relative; width:100%; max-width:340px; height:230px; margin:10px auto 4px; }
-  .plinko-pegs{ position:absolute; inset:0; display:flex; flex-direction:column; justify-content:space-evenly; padding:6px 10px 0; }
+  .plinko-board-wrap{ position:relative; width:100%; max-width:440px; height:420px; margin:14px auto 6px; }
+  .plinko-pegs{ position:absolute; top:0; left:0; right:0; bottom:68px; display:flex; flex-direction:column; justify-content:space-evenly; padding:10px 8px 0; }
   .plinko-peg-row{ display:flex; justify-content:center; gap:0; }
   .plinko-peg{
-    width:6px; height:6px; border-radius:50%; margin:0 13px;
+    width:8px; height:8px; border-radius:50%; margin:0 7px;
     background: radial-gradient(circle at 35% 30%, #fff2c8, var(--brass) 60%, var(--brass-dim) 100%);
-    box-shadow: 0 1px 2px rgba(0,0,0,.5), 0 0 3px rgba(255,214,120,.35);
+    box-shadow: 0 1px 3px rgba(0,0,0,.5), 0 0 4px rgba(255,214,120,.4);
   }
   .plinko-ball{
-    position:absolute; top:0; left:50%; width:16px; height:16px; margin:-8px 0 0 -8px;
+    position:absolute; top:0; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px;
     border-radius:50%; display:none; z-index:5;
     background: radial-gradient(circle at 32% 28%, #ff8a7a, #d8342a 55%, #7a1810 100%);
-    box-shadow: 0 2px 5px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.6), 0 0 8px rgba(216,52,42,.6);
-    transition: left .22s cubic-bezier(.42,0,.58,1), top .22s linear;
+    box-shadow: 0 3px 6px rgba(0,0,0,.6), inset 0 1px 2px rgba(255,255,255,.6), 0 0 10px rgba(216,52,42,.6);
+    /* A little overshoot on the fall itself (not a flat linear drop), plus
+       a quick squash-and-recover pulse triggered at every peg-row landing
+       (see .plinko-ball.bounce-hit below) — together they're what read as
+       an actual bounce off each peg rather than the ball just gliding
+       smoothly between fixed points. */
+    transition: left .19s cubic-bezier(.42,0,.58,1), top .19s cubic-bezier(.3,1.6,.5,1);
   }
-  .plinko-slots{ position:absolute; left:0; right:0; bottom:0; display:flex; gap:3px; padding:0 4px; }
+  .plinko-ball.bounce-hit{ animation: plinkoBallBounce .19s ease; }
+  @keyframes plinkoBallBounce{
+    0%{ transform:scale(1,1); }
+    40%{ transform:scale(1.25,.72); }
+    70%{ transform:scale(.9,1.15); }
+    100%{ transform:scale(1,1); }
+  }
+  /* Slots get their own fixed-height band at the bottom, laid out as a
+     real 13-column grid (matches the 12-row board) rather than flex — the
+     peg triangle above and this grid used to have zero shared alignment
+     logic between them, which is exactly what read as clunky. A grid
+     gives every slot the same guaranteed width, with real room for the
+     number instead of squeezing it into a pill. */
+  .plinko-slots{
+    position:absolute; left:0; right:0; bottom:0; height:64px;
+    display:grid; grid-template-columns:repeat(13, 1fr); gap:2px; padding:0 3px;
+  }
   .plinko-slot{
-    flex:1; border-radius:6px 6px 3px 3px; padding:5px 1px; text-align:center;
-    font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:10px; color:#fff;
-    box-shadow: inset 0 2px 3px rgba(255,255,255,.25), inset 0 -2px 3px rgba(0,0,0,.35), 0 2px 4px rgba(0,0,0,.4);
+    border-radius:999px; display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono', monospace; font-weight:800; font-size:10px; color:#fff;
+    border:1px solid rgba(255,255,255,.28);
+    box-shadow: inset 0 3px 4px rgba(255,255,255,.32), inset 0 -3px 5px rgba(0,0,0,.4), 0 3px 6px rgba(0,0,0,.5);
     transition: transform .2s ease, box-shadow .2s ease;
+    position:relative; overflow:hidden;
   }
-  .plinko-slot.tier-edge{ background: linear-gradient(160deg, #ffcf6b, #c9871f); }
-  .plinko-slot.tier-high{ background: linear-gradient(160deg, #e8a35c, #a85f24); }
+  /* Glossy top-third highlight sweep — the bit of "flair" that reads as
+     a real polished capsule rather than a flat coloured rectangle. */
+  .plinko-slot::after{
+    content:''; position:absolute; top:3px; left:14%; right:14%; height:32%; border-radius:999px;
+    background: linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,0));
+    pointer-events:none;
+  }
+  /* Six distinct tiers now (was four) matching the six distinct payout
+     values — a genuinely wider colour spread for a genuinely wider odds
+     spread, gold at the rare 180x edges fading all the way through to
+     grey at the always-zero centre. */
+  .plinko-slot.tier-edge{
+    background: linear-gradient(160deg, #ffd67a, #c9871f); font-size:9px;
+    box-shadow: inset 0 3px 4px rgba(255,255,255,.32), inset 0 -3px 5px rgba(0,0,0,.4), 0 0 8px rgba(255,214,120,.55), 0 3px 6px rgba(0,0,0,.5);
+  }
+  .plinko-slot.tier-high{ background: linear-gradient(160deg, #e8a35c, #a85f24); font-size:9px; }
+  .plinko-slot.tier-upper-mid{ background: linear-gradient(160deg, #c9a25c, #8a6620); }
   .plinko-slot.tier-mid{ background: linear-gradient(160deg, #6f8fae, #3f5c78); }
+  .plinko-slot.tier-low-mid{ background: linear-gradient(160deg, #5a7684, #354a54); }
   .plinko-slot.tier-low{ background: linear-gradient(160deg, #5a6670, #38424b); }
   .plinko-slot.landed{ animation: plinkoSlotHit .5s ease; }
   @keyframes plinkoSlotHit{ 0%{ transform:translateY(0); } 35%{ transform:translateY(3px) scale(1.12); box-shadow:0 0 10px rgba(255,214,120,.7); } 100%{ transform:translateY(0); } }
@@ -3507,7 +3546,6 @@
         <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
         <div class="plinko-board-wrap" id="plinkoBoardWrap">
           <div class="plinko-pegs" id="plinkoPegs"></div>
-          <div class="plinko-ball" id="plinkoBall"></div>
           <div class="plinko-slots" id="plinkoSlots"></div>
         </div>
         <div class="craps-total-msg" id="plinkoResultMsg"></div>
@@ -3517,8 +3555,15 @@
       </div>
     </div>
     <div class="panel" id="plinkoBetPanel">
-      <div class="hint" style="margin-bottom:8px;">Pick a chip below (or tap the chip readout to type any amount — no limit), then drop the ball. Every drop is independent — nothing carries over.</div>
-      <div style="display:flex; justify-content:center; margin-top:4px;">
+      <div class="hint" style="margin-bottom:8px;">Pick a chip below (or tap the chip readout to type any amount — no limit), then drop. Every drop is independent — nothing carries over.</div>
+      <div class="craps-section-label">Balls <small>— drop more than one at once, each at your bet price</small></div>
+      <div class="craps-winmode-row" id="plinkoBallCountRow">
+        <button type="button" class="craps-winmode-btn active" data-balls="1">1</button>
+        <button type="button" class="craps-winmode-btn" data-balls="2">2</button>
+        <button type="button" class="craps-winmode-btn" data-balls="5">5</button>
+        <button type="button" class="craps-winmode-btn" data-balls="10">10</button>
+      </div>
+      <div style="display:flex; justify-content:center; margin-top:12px;">
         <div class="bj-chip" id="plinkoChipDisplay">50</div>
         <input type="number" id="plinkoBetInput" min="5" step="5" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
@@ -3531,6 +3576,7 @@
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
         <button type="button" class="chip-clear-btn" data-target="plinkoBetInput">Clear Chips</button>
       </div>
+      <div class="hint" id="plinkoTotalStakeHint" style="margin-top:6px;">Total stake: 50 XP</div>
       <div class="deal-row">
         <button type="button" id="plinkoDropBtn" class="pill-btn pill-btn-primary">Drop Ball</button>
       </div>
@@ -4821,7 +4867,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.81";
+const APP_VERSION = "2026-08-22.85";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9119,11 +9165,11 @@ const CASINO_RULES = {
   `},
   plinko: { title: '🔴 Plinko Rules', body: `
     <h3>The idea</h3>
-    <p>Drop a ball from the top of a 9-slot peg board — it bounces down through 8 rows, landing in one of 9 slots at the bottom. Each slot pays a different multiplier. Place your bet, tap Drop Ball, watch where it lands.</p>
+    <p>Drop a ball from the top of a 13-slot peg board — it bounces down through 12 rows, landing in one of 13 slots at the bottom. Each slot pays a different whole-number multiplier. Place your bet, tap Drop Ball, watch where it lands.</p>
     <h3>The odds</h3>
-    <p>Genuine probability, not a made-up curve — a peg board is a real random walk, so the two edge slots (the rarest, hardest to land in) pay the most at <b>27.59x</b>, the slots next to them pay <b>3.45x</b>, then <b>0.99x</b>, and the middle three slots — the most likely place for the ball to land — pay <b>0.49x</b> and <b>0.39x</b> at dead centre. Landing near the middle is a genuine loss, same as a real Plinko board; only the edges pay big.</p>
+    <p>Clean whole numbers, moving out from the middle: the three centre slots — where the ball is most likely to land (about 61% of drops) — pay <b>0x</b>, a straight loss. Moving outward from there: <b>1x</b> (an exact push — bet back, no more), then <b>2x</b>, <b>7x</b>, <b>35x</b>, and the two rare edge slots — the hardest to land in — pay <b>180x</b>. A peg board is a genuine random walk, so these aren't made-up numbers; they're weighted by the real binomial probability of landing in each slot.</p>
     <h3>House edge</h3>
-    <p>Same discipline as every other game here — a real, verified 97% RTP across every slot, checked by summing the probability-weighted payout of the whole board back to 0.97 before this ever went live.</p>
+    <p>Same discipline as every other game here — a real, verified 97.51% RTP (a 2.49% house edge) across the whole board, checked by summing the probability-weighted payout of every slot before this ever went live.</p>
   `},
   bigwheel: { title: '🛞 Big Wheel Rules', body: `
     <h3>The idea</h3>
@@ -10708,43 +10754,27 @@ async function crapsRollInner(){
 }
 document.getElementById('crapsRollBtn').addEventListener('click', crapsRoll);
 
-
 // ================= Plinko =================
-// 8 rows, 9 slots. Multipliers are computed from the true binomial
-// probability of each slot (a peg board is exactly a random walk — each
-// row is an independent 50/50 left/right choice), scaled by a single
-// constant so every slot carries the exact same 97% RTP, verified by
-// summing P(slot)*payout(slot) back to 0.97 before ever shipping this
-// (see the math check done alongside this build) — same discipline as
-// every other game here, not a guessed curve.
-const PLINKO_ROWS = 8;
-const PLINKO_SLOTS = PLINKO_ROWS + 1; // 9
-const PLINKO_RTP = 0.97;
-function plinkoChoose(n, k){
-  let r = 1;
-  for(let i = 0; i < k; i++){ r = r * (n - i) / (i + 1); }
-  return r;
-}
-function buildPlinkoMultipliers(){
-  const total2n = Math.pow(2, PLINKO_ROWS);
-  const C = PLINKO_RTP / PLINKO_SLOTS;
-  const mults = [];
-  for(let k = 0; k <= PLINKO_ROWS; k++){
-    const Pk = plinkoChoose(PLINKO_ROWS, k) / total2n;
-    mults.push(C / Pk);
-  }
-  return mults;
-}
-const PLINKO_MULTIPLIERS = buildPlinkoMultipliers();
+// 12 rows, 13 slots. Whole-number payouts, symmetric around a 0x centre —
+// the three middle slots (~61% combined chance) pay nothing, then 1x, 2x,
+// 7x, 35x, and 180x moving outward to the two rare edges. Verified to a
+// real 97.51% RTP by summing the actual binomial probability of every
+// slot against its payout before ever shipping this.
+const PLINKO_ROWS = 12;
+const PLINKO_SLOTS = PLINKO_ROWS + 1; // 13
+const PLINKO_MULTIPLIERS = [180, 35, 7, 2, 1, 0, 0, 0, 1, 2, 7, 35, 180];
 function plinkoSlotTier(i){
   const distFromCenter = Math.abs(i - PLINKO_ROWS / 2);
-  if(distFromCenter >= 4) return 'tier-edge';
-  if(distFromCenter >= 3) return 'tier-high';
-  if(distFromCenter >= 1.5) return 'tier-mid';
-  return 'tier-low';
+  if(distFromCenter >= 6) return 'tier-edge';       // 180x
+  if(distFromCenter >= 5) return 'tier-high';        // 35x
+  if(distFromCenter >= 4) return 'tier-upper-mid';   // 7x
+  if(distFromCenter >= 3) return 'tier-mid';         // 2x
+  if(distFromCenter >= 2) return 'tier-low-mid';     // 1x
+  return 'tier-low';                                 // 0x
 }
 let plinkoBuilt = false;
 let plinkoDropping = false;
+let plinkoBallCount = 1;
 let plinkoHistory = [];
 
 function plinkoInit(){
@@ -10756,19 +10786,37 @@ function plinkoInit(){
   }
   pegsEl.innerHTML = pegsHtml;
   document.getElementById('plinkoSlots').innerHTML = PLINKO_MULTIPLIERS.map((m, i) =>
-    `<div class="plinko-slot ${plinkoSlotTier(i)}" data-slot="${i}"><span>${m.toFixed(2)}x</span></div>`
+    `<div class="plinko-slot ${plinkoSlotTier(i)}" data-slot="${i}"><span>${m}x</span></div>`
   ).join('');
+  plinkoUpdateStakeHint();
 }
+function plinkoUpdateStakeHint(){
+  const bet = parseInt(document.getElementById('plinkoBetInput').value, 10) || 0;
+  const hint = document.getElementById('plinkoTotalStakeHint');
+  if(hint) hint.textContent = `Total stake: ${(bet * plinkoBallCount).toLocaleString()} XP${plinkoBallCount > 1 ? ` (${bet} XP × ${plinkoBallCount} balls)` : ''}`;
+  const btn = document.getElementById('plinkoDropBtn');
+  if(btn && !plinkoDropping) btn.textContent = plinkoBallCount === 1 ? 'Drop Ball' : `Drop ${plinkoBallCount} Balls`;
+}
+document.querySelectorAll('#plinkoBallCountRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if(plinkoDropping) return;
+    plinkoBallCount = parseInt(btn.dataset.balls, 10);
+    document.querySelectorAll('#plinkoBallCountRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    plinkoUpdateStakeHint();
+  });
+});
 document.getElementById('plinkoBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('plinkoChipDisplay');
-  if(!chip) return;
-  chip.textContent = e.target.value || '0';
-  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+  if(chip){
+    chip.textContent = e.target.value || '0';
+    chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+  }
+  plinkoUpdateStakeHint();
 });
 document.getElementById('plinkoChipDisplay').addEventListener('click', () => {
   if(plinkoDropping) return;
   const input = document.getElementById('plinkoBetInput');
-  const entry = prompt('Bet amount (XP):', input.value || '50');
+  const entry = prompt('Bet amount per ball (XP):', input.value || '50');
   if(entry === null) return;
   const amount = Math.floor(Number(entry));
   if(!(amount > 0)) return;
@@ -10781,6 +10829,60 @@ const PLINKO_CROUPIER_LINES = {
   edge: ['Right on the edge! Huge payout.', "That's the rarest drop on the board."],
   loss: ['Landed in the middle — house wins this one.', 'Not this time.']
 };
+
+// One ball's full journey — its own random walk, its own DOM element, its
+// own independent animation loop. startDelayMs lets multiple balls be
+// kicked off with a slight stagger (see plinkoDropInner) so a 5- or
+// 10-ball drop visually cascades down the board rather than every ball
+// perfectly overlapping on an identical clock. Returns the landed slot
+// index once this ball has settled.
+async function plinkoAnimateOneBall(startDelayMs){
+  if(startDelayMs > 0) await bjWait(startDelayMs);
+
+  // The random walk that decides BOTH the visual path and the real
+  // outcome — starting at slot-space x=6 (dead centre of 13), each of the
+  // 12 rows nudges it ±0.5. After 12 steps x always lands exactly on an
+  // integer 0-12, which is the actual slot index — no separate "pick a
+  // result then animate toward it" step; the animation IS the result.
+  let x = (PLINKO_SLOTS - 1) / 2;
+  const path = [x];
+  for(let i = 0; i < PLINKO_ROWS; i++){
+    x += (Math.random() < 0.5) ? -0.5 : 0.5;
+    path.push(x);
+  }
+  const finalSlot = Math.round(path[path.length - 1]);
+
+  const ball = document.createElement('div');
+  ball.className = 'plinko-ball';
+  document.getElementById('plinkoBoardWrap').appendChild(ball);
+  ball.style.transition = 'none';
+  ball.style.left = `${(path[0] / (PLINKO_SLOTS - 1)) * 100}%`;
+  ball.style.top = '0%';
+  ball.style.display = 'block';
+  void ball.offsetWidth;
+  ball.style.transition = '';
+
+  for(let i = 1; i < path.length; i++){
+    const leftPct = (path[i] / (PLINKO_SLOTS - 1)) * 100;
+    const topPct = (i / PLINKO_ROWS) * 81; // stops just above the slot row, not on top of it
+    ball.style.left = `${leftPct}%`;
+    ball.style.top = `${topPct}%`;
+    // Squash-and-recover pulse plus a real peg-tick sound on every row —
+    // this, together with the overshoot easing on the CSS transition
+    // itself, is what actually reads as bouncing off each peg rather
+    // than gliding smoothly between fixed points.
+    ball.classList.remove('bounce-hit'); void ball.offsetWidth; ball.classList.add('bounce-hit');
+    dailySpinPlayPegTick();
+    await bjWait(190);
+  }
+  // Board is 420px tall with a 68px slot band pinned to the bottom (the
+  // band spans 352-420px), so its vertical centre sits at 386px = 92% of
+  // total height — settling here actually centres the ball in the slot
+  // instead of leaving it sitting at the slot's upper edge.
+  ball.style.top = '92%';
+  await bjWait(160);
+  return finalSlot;
+}
 
 async function plinkoDrop(){
   if(plinkoDropping) return;
@@ -10797,82 +10899,77 @@ async function plinkoDrop(){
 async function plinkoDropInner(){
   const errEl = document.getElementById('plinkoBetError');
   errEl.textContent = '';
-  const bet = parseInt(document.getElementById('plinkoBetInput').value, 10) || 0;
-  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
+  const betPerBall = parseInt(document.getElementById('plinkoBetInput').value, 10) || 0;
+  if(!betPerBall || betPerBall < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
+  const totalStake = betPerBall * plinkoBallCount;
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+  if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP (stake: ${totalStake}).`; return; }
 
   scrollIntoViewSmooth('plinkoTableRail');
   bjPlayChipSound();
+  bjPlaySpinSound();
   croupierSay('plinkoCroupierMsg', PLINKO_CROUPIER_LINES.drop);
   document.getElementById('plinkoResultMsg').textContent = '';
   document.querySelectorAll('#plinkoSlots .plinko-slot').forEach(s => s.classList.remove('landed'));
+  document.querySelectorAll('#plinkoBoardWrap .plinko-ball').forEach(b => b.remove());
 
-  // The random walk that decides BOTH the visual path and the real
-  // outcome — starting at slot-space x=4 (dead centre of 9), each of the
-  // 8 rows nudges it ±0.5. After 8 steps x always lands exactly on an
-  // integer 0-8, which is the actual slot index — no separate "pick a
-  // result then animate toward it" step; the animation IS the result.
-  let x = (PLINKO_SLOTS - 1) / 2;
-  const path = [x];
-  for(let i = 0; i < PLINKO_ROWS; i++){
-    x += (Math.random() < 0.5) ? -0.5 : 0.5;
-    path.push(x);
+  // Every ball runs its own independent animation concurrently, staggered
+  // by 90ms each so a multi-ball drop cascades down the board rather than
+  // every ball moving in perfect lockstep.
+  const drops = [];
+  for(let n = 0; n < plinkoBallCount; n++){
+    drops.push(plinkoAnimateOneBall(n * 90));
   }
-  const finalSlot = Math.round(path[path.length - 1]);
+  const finalSlots = await Promise.all(drops);
 
-  const ball = document.getElementById('plinkoBall');
-  ball.style.transition = 'none';
-  ball.style.left = `${(path[0] / (PLINKO_SLOTS - 1)) * 100}%`;
-  ball.style.top = '0%';
-  ball.style.display = 'block';
-  void ball.offsetWidth;
-  ball.style.transition = '';
-  bjPlaySpinSound();
-  for(let i = 1; i < path.length; i++){
-    const leftPct = (path[i] / (PLINKO_SLOTS - 1)) * 100;
-    const topPct = (i / PLINKO_ROWS) * 88; // stops just above the slot row, not on top of it
-    ball.style.left = `${leftPct}%`;
-    ball.style.top = `${topPct}%`;
-    await bjWait(230);
-  }
-  ball.style.top = '92%';
-  await bjWait(180);
+  let totalPayout = 0;
+  const landedSlotCounts = {};
+  finalSlots.forEach(finalSlot => {
+    const mult = PLINKO_MULTIPLIERS[finalSlot];
+    totalPayout += Math.round(betPerBall * mult);
+    landedSlotCounts[finalSlot] = (landedSlotCounts[finalSlot] || 0) + 1;
+    plinkoHistory.push(mult);
+  });
+  const delta = totalPayout - totalStake;
 
-  const mult = PLINKO_MULTIPLIERS[finalSlot];
-  const payout = Math.round(bet * mult);
-  const delta = payout - bet;
-  const won = delta > 0;
-
-  const slotEl = document.querySelector(`#plinkoSlots .plinko-slot[data-slot="${finalSlot}"]`);
-  if(slotEl){ slotEl.classList.remove('landed'); void slotEl.offsetWidth; slotEl.classList.add('landed'); }
+  Object.keys(landedSlotCounts).forEach(slotIdx => {
+    const slotEl = document.querySelector(`#plinkoSlots .plinko-slot[data-slot="${slotIdx}"]`);
+    if(slotEl){ slotEl.classList.remove('landed'); void slotEl.offsetWidth; slotEl.classList.add('landed'); }
+  });
 
   const resultEl = document.getElementById('plinkoResultMsg');
-  resultEl.textContent = `Landed at ${mult.toFixed(2)}x  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
-  resultEl.style.color = won ? 'var(--win)' : 'var(--loss)';
+  resultEl.textContent = plinkoBallCount === 1
+    ? `Landed at ${PLINKO_MULTIPLIERS[finalSlots[0]]}x  —  ${delta >= 0 ? '+' : ''}${delta} XP`
+    : `${plinkoBallCount} balls dropped  —  ${delta >= 0 ? '+' : ''}${delta} XP`;
+  // A push (net delta 0) is neither a win nor a loss — gets its own
+  // neutral colour and skips the "house wins" line, rather than being
+  // folded into loss red/messaging the way a non-positive check alone
+  // would do.
+  resultEl.style.color = delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)');
   resultEl.classList.remove('bj-outcome-pop'); void resultEl.offsetWidth; resultEl.classList.add('bj-outcome-pop');
 
-  const isEdge = finalSlot === 0 || finalSlot === PLINKO_SLOTS - 1;
-  if(isEdge) croupierSay('plinkoCroupierMsg', PLINKO_CROUPIER_LINES.edge);
-  else if(!won) croupierSay('plinkoCroupierMsg', PLINKO_CROUPIER_LINES.loss);
+  const anyEdge = finalSlots.some(s => s === 0 || s === PLINKO_SLOTS - 1);
+  if(anyEdge) croupierSay('plinkoCroupierMsg', PLINKO_CROUPIER_LINES.edge);
+  else if(delta < 0) croupierSay('plinkoCroupierMsg', PLINKO_CROUPIER_LINES.loss);
 
-  plinkoHistory.push(mult);
   const histEl = document.getElementById('plinkoHistory');
   if(histEl){
     histEl.innerHTML = plinkoHistory.slice(-10).reverse().map(m => {
-      const bg = m >= 1 ? 'var(--win)' : 'var(--loss)';
-      return `<div class="craps-history-chip" style="background:${bg};">${m.toFixed(2)}x</div>`;
+      // With whole-number payouts, 1x is an exact push — its own neutral
+      // colour instead of being lumped in with genuine wins.
+      const bg = m > 1 ? 'var(--win)' : (m === 1 ? 'var(--muted)' : 'var(--loss)');
+      return `<div class="craps-history-chip" style="background:${bg};">${m}x</div>`;
     }).join('');
   }
 
   const railEl = document.getElementById('plinkoTableRail');
-  if(won){
+  if(delta > 0){
     bjPlayChime(true);
-    bjLaunchConfetti(resultEl, isEdge ? 44 : 20);
+    bjLaunchConfetti(resultEl, anyEdge ? 44 : 20);
     railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold');
     setTimeout(() => railEl.classList.remove('pc-flash-gold'), 800);
-  } else {
+  } else if(delta < 0){
     bjPlayChime(false);
     railEl.classList.add('pc-shake');
     setTimeout(() => railEl.classList.remove('pc-shake'), 700);
@@ -10885,6 +10982,8 @@ async function plinkoDropInner(){
 }
 document.getElementById('plinkoDropBtn').addEventListener('click', plinkoDrop);
 // ================= /Plinko =================
+
+
 
 // ================= Big Wheel =================
 // A real Big Six money wheel — 54 segments at true casino odds (24x "1",

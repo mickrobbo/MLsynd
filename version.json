@@ -1,8 +1,9 @@
 {
-  "version": "2026-08-22.81",
+  "version": "2026-08-22.85",
   "date": "2026-08-22",
   "changes": [
-    "Replaced: Sic Bo removed, Plinko added in its place. 8-row peg board, 9 payout slots, same felt/rail table, chip stacking, and croupier lines as the rest of the casino. The multiplier curve is computed from the real binomial probability of a peg board (a genuine random walk, not a made-up curve) and verified to a real 97% RTP — edge slots pay 27.59x, the middle slots pay below 1x, so landing near the centre is a genuine loss, same tension as a real Plinko board.",
-    "Fixed along the way: Big Wheel's bet grid quietly depended on Sic Bo's CSS classes and a shared chip-formatting helper — both renamed to neutral, standalone names instead of being deleted outright, so Big Wheel wasn't broken by Sic Bo's removal."
+    "New: Plinko can now drop multiple balls at once — pick 1, 2, 5, or 10, each at your set bet price, with a live 'Total stake' readout. Every ball runs its own fully independent random walk (staggered slightly so a multi-ball drop cascades down the board rather than every ball moving in lockstep) — RTP is unaffected by ball count, only the variance per round changes.",
+    "Fixed: the ball was settling near the top edge of its landed slot instead of centred in it — recalculated the resting position against the actual slot band height.",
+    "Polish: payout slots redesigned as proper glossy pills (full rounded capsules with a highlight sweep) instead of flat rounded rectangles, with a soft glow added to the rare 180x edge tier."
   ]
 }
