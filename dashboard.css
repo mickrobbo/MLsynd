@@ -2500,8 +2500,41 @@
     0%{ transform:translateY(28px); opacity:0; }
     100%{ transform:translateY(0); opacity:1; }
   }
+  /* Staggered cascade for the major sections — a premium reveal instead
+     of everything snapping in flat at once. Sections that populate
+     asynchronously (prestige bar, head-to-head, game breakdown — all
+     start display:none and get shown once their own fetch resolves)
+     still get this same fade whenever THEY become visible, since a CSS
+     animation on an element restarts cleanly the moment display leaves
+     none — so it naturally reads as "revealing as data arrives" rather
+     than needing to be perfectly synced to one single moment. */
+  .profile-modal.open .profile-header,
+  .profile-modal.open .profile-prestige-bar-wrap,
+  .profile-modal.open .profile-headtohead,
+  .profile-modal.open .profile-action-row,
+  .profile-modal.open .profile-stat-grid,
+  .profile-modal.open .profile-game-breakdown-section,
+  .profile-modal.open .profile-form-section{
+    animation: profileSectionIn .4s ease both;
+  }
+  .profile-modal.open .profile-header{ animation-delay:.04s; }
+  .profile-modal.open .profile-prestige-bar-wrap{ animation-delay:.09s; }
+  .profile-modal.open .profile-headtohead{ animation-delay:.13s; }
+  .profile-modal.open .profile-action-row{ animation-delay:.16s; }
+  .profile-modal.open .profile-stat-grid{ animation-delay:.19s; }
+  @keyframes profileSectionIn{
+    0%{ opacity:0; transform:translateY(6px); }
+    100%{ opacity:1; transform:translateY(0); }
+  }
   @media (prefers-reduced-motion: reduce){
-    .profile-modal.open .profile-sheet{ animation:none; }
+    .profile-modal.open .profile-sheet,
+    .profile-modal.open .profile-header,
+    .profile-modal.open .profile-prestige-bar-wrap,
+    .profile-modal.open .profile-headtohead,
+    .profile-modal.open .profile-action-row,
+    .profile-modal.open .profile-stat-grid,
+    .profile-modal.open .profile-game-breakdown-section,
+    .profile-modal.open .profile-form-section{ animation:none; }
   }
   .profile-sheet{
     width:100%; max-width:720px; max-height:88vh; overflow-y:auto; overflow-x:hidden; position:relative;
@@ -2519,12 +2552,27 @@
     color:var(--brass-light); margin:0; text-shadow:0 0 18px rgba(199,162,72,.3);
   }
   .profile-badges{ display:flex; justify-content:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
-  .profile-badge{ display:flex; flex-direction:column; align-items:center; gap:5px; width:76px; cursor:pointer; position:relative; z-index:1; }
-  .profile-badge:active{ transform:scale(0.94); }
-  /* A subtle shine sweep across each badge, staggered slightly per badge
-     via nth-child so a whole row doesn't flash in perfect unison — same
-     "catching the light" idea the coin/chip cosmetics already use. */
-  .profile-badge svg{ filter: drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
+  /* Tap-to-flip badge — replaces the old shared info-bubble popup with an
+     actual per-badge flip (matching how a real trading card reveals its
+     back), each one flipping independently rather than one popup jumping
+     between positions. */
+  .profile-badge{ width:76px; height:96px; perspective:600px; cursor:pointer; position:relative; z-index:1; }
+  .profile-badge:active .profile-badge-flip-inner{ transform:scale(.94) rotateY(var(--flip-deg, 0deg)); }
+  .profile-badge-flip-inner{
+    position:relative; width:100%; height:100%; transform-style:preserve-3d;
+    transition:transform .5s cubic-bezier(.4,.2,.15,1);
+  }
+  .profile-badge.flipped .profile-badge-flip-inner{ --flip-deg:180deg; transform:rotateY(180deg); }
+  .profile-badge-face{
+    position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+  }
+  .profile-badge-face svg{ filter: drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
+  .profile-badge-back{
+    transform:rotateY(180deg); background:rgba(0,0,0,.32); border:1px solid var(--brass-dim);
+    border-radius:12px; padding:8px 6px; text-align:center;
+  }
+  .profile-badge-back-text{ font-size:9px; color:var(--chalk); line-height:1.35; }
 
   /* ---- Profile sheet tier tint — a real, unmistakable colour wash (not
      a faint hint) behind the header: a radial glow spotlight plus a
@@ -2611,6 +2659,32 @@
   .profile-action-row{ display:flex; gap:8px; margin:14px 0 4px; }
   .profile-action-row .pill-btn{ flex:1; font-size:12.5px; }
 
+  /* ---- Small icon-affordance treatment — replaces what used to be
+     three stacked labelled pill buttons (Add photo / Edit name / Re-sync
+     picks) right under the avatar on your own profile. A premium profile
+     doesn't announce every action with a labelled button; a camera badge
+     on the photo and a pencil by your name are enough, and read as far
+     less cluttered. ---- */
+  .profile-avatar-wrap{ position:relative; display:inline-block; }
+  .profile-avatar-camera-badge{
+    position:absolute; bottom:0; right:0; width:28px; height:28px; border-radius:50%;
+    background:linear-gradient(155deg, var(--brass-light), var(--brass) 60%, var(--brass-dim));
+    border:2px solid var(--felt); display:flex; align-items:center; justify-content:center;
+    font-size:13px; cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.5); transition:transform .12s ease;
+  }
+  .profile-avatar-camera-badge:active{ transform:scale(.9); }
+  .profile-name-edit-slot{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:2px; min-height:18px; }
+  .profile-icon-btn{
+    width:24px; height:24px; border-radius:50%; border:1px solid var(--brass-dim); background:rgba(0,0,0,.25);
+    color:var(--brass-light); font-size:11px; display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform .12s ease, background .12s ease; flex-shrink:0;
+  }
+  .profile-icon-btn:active{ transform:scale(.88); background:rgba(0,0,0,.4); }
+  .profile-resync-link{
+    font-size:10px; color:var(--muted); text-decoration:underline; text-decoration-style:dotted;
+    background:none; border:none; cursor:pointer; padding:0;
+  }
+
   /* Swipe-to-switch-profile — a small hint arrow pair, and a light
      directional flash on the sheet so the gesture has *some* visual
      acknowledgement even without a full custom transition per swipe. */
@@ -2622,6 +2696,23 @@
   .profile-sheet.swiping-prev{ animation: profileSwipePrev .3s ease; }
   @keyframes profileSwipeNext{ 0%{ transform:translateX(0); opacity:1; } 50%{ transform:translateX(-14px); opacity:.5; } 100%{ transform:translateX(0); opacity:1; } }
   @keyframes profileSwipePrev{ 0%{ transform:translateX(0); opacity:1; } 50%{ transform:translateX(14px); opacity:.5; } 100%{ transform:translateX(0); opacity:1; } }
+
+  /* ---- Flex moment — a one-time celebration banner when opening your
+     OWN profile right after a fresh milestone (tier-up, new casino
+     badge). Tracked per-browser via localStorage (see
+     checkAndTriggerFlexMoment), same lightweight "have I already shown
+     this" technique the changelog banner already uses elsewhere. */
+  .profile-flex-banner{
+    text-align:center; padding:10px 14px; margin-bottom:10px; border-radius:12px;
+    background:linear-gradient(120deg, rgba(245,232,168,.22), rgba(203,177,102,.12));
+    border:1px solid var(--brass); font-family:'Barlow Condensed', sans-serif; font-weight:700;
+    font-size:13px; color:var(--brass-light); letter-spacing:.3px;
+    animation: profileFlexBannerIn .5s cubic-bezier(.22,.9,.32,1.15) both;
+  }
+  @keyframes profileFlexBannerIn{
+    0%{ opacity:0; transform:translateY(-10px) scale(.96); }
+    100%{ opacity:1; transform:translateY(0) scale(1); }
+  }
 
   /* ---- Recent form strip — last several weeks' group-multi results as
      a compact dot sequence, oldest to newest (reads left-to-right like a
@@ -2636,6 +2727,34 @@
   .profile-form-dot.win{ background:rgba(111,169,138,.25); color:var(--win); border:1px solid rgba(111,169,138,.5); }
   .profile-form-dot.loss{ background:rgba(193,96,74,.25); color:var(--loss); border:1px solid rgba(193,96,74,.5); }
   .profile-form-dot.void{ background:rgba(255,255,255,.06); color:var(--muted); border:1px solid var(--line); }
+  .profile-form-dot{ transition:transform .12s ease; }
+  .profile-form-dot:active{ transform:scale(.85); }
+  .profile-form-dot.selected{ box-shadow:0 0 0 2px var(--brass-light); }
+  .profile-form-detail{
+    margin-top:10px; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,.22);
+    border:1px solid var(--line); font-size:11.5px; text-align:center; color:var(--chalk);
+    animation: profileBreakdownOpen .2s ease both;
+  }
+  .profile-form-detail b{ display:block; font-family:'Barlow Condensed', sans-serif; font-size:13px; letter-spacing:.3px; margin-bottom:3px; color:var(--brass-light); }
+
+  /* ---- Live status — reuses the same /presence data + 3min "online"
+     cutoff the Home tab's presence feed already uses. ---- */
+  .profile-live-status{ font-size:11.5px; text-align:center; margin-top:5px; }
+  .profile-live-status .dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+  .profile-live-status.online{ color:var(--win); }
+  .profile-live-status.online .dot{ background:var(--win); box-shadow:0 0 6px rgba(111,169,138,.7); animation:profileLiveDotPulse 1.8s ease-in-out infinite; }
+  .profile-live-status.offline{ color:var(--muted); }
+  .profile-live-status.offline .dot{ background:var(--muted); }
+  @keyframes profileLiveDotPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.4; } }
+
+  /* ---- XP-by-game breakdown — compact horizontal bars, one per game,
+     widest (most-played) first. Same info Most Played hints at, in full. */
+  .profile-game-breakdown-section{ margin-top:16px; }
+  .profile-game-bar-row{ display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:11px; }
+  .profile-game-bar-name{ width:84px; flex-shrink:0; color:var(--chalk); text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .profile-game-bar-track{ flex:1; height:14px; border-radius:4px; background:rgba(0,0,0,.3); overflow:hidden; position:relative; }
+  .profile-game-bar-fill{ height:100%; border-radius:4px; background:linear-gradient(90deg, var(--brass-dim), var(--brass)); transition:width .5s ease; }
+  .profile-game-bar-count{ width:28px; flex-shrink:0; color:var(--muted); font-family:'IBM Plex Mono', monospace; }
 
   /* ---- Photo crop/position tool ---- */
   .avatar-crop-viewport{
@@ -2652,25 +2771,31 @@
   .avatar-crop-zoom-icon{ font-size:16px; color:var(--muted); flex-shrink:0; width:16px; text-align:center; }
   .avatar-crop-zoom-row input[type="range"]{ flex:1; accent-color:var(--brass); }
   .profile-badge-label{ font-size:9px; color:var(--muted); text-align:center; line-height:1.3; }
-  .badge-info-bubble{
-    margin-top:12px; padding:11px 14px; background:rgba(0,0,0,.3); border:1px solid var(--brass-dim);
-    border-radius:10px; font-size:12px; color:var(--chalk); text-align:center; line-height:1.4;
-  }
-  .badge-info-bubble b{
-    display:block; margin-bottom:4px; font-family:'Barlow Condensed', sans-serif; letter-spacing:.5px;
-    text-transform:uppercase; font-size:11px; color:var(--brass-light);
-  }
-  .profile-stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
-  .rules-body{ font-size:13px; line-height:1.55; color:var(--chalk); }
+  .profile-stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }  .rules-body{ font-size:13px; line-height:1.55; color:var(--chalk); }
   .rules-body h3{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); margin:18px 0 6px; }
   .rules-body h3:first-child{ margin-top:0; }
   .rules-body p{ margin:0 0 8px; color:var(--chalk); opacity:.92; }
   .profile-stat-cell{ background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; transition: transform .12s ease, background .12s ease; }
   .profile-stat-cell:active{ transform:scale(.96); background:rgba(0,0,0,.32); }
+  .profile-stat-cell.comparing{ background:rgba(203,177,102,.14); border-color:var(--brass-dim); animation:profileCompareIn .2s ease both; }
+  @keyframes profileCompareIn{ 0%{ transform:scale(.95); opacity:.6; } 100%{ transform:scale(1); opacity:1; } }
+  .profile-stat-compare-row{ display:flex; justify-content:space-around; margin-top:4px; }
+  .profile-stat-compare-side{ display:flex; flex-direction:column; align-items:center; }
+  .profile-stat-compare-val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; color:var(--brass-light); }
+  .profile-stat-compare-lbl{ font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
   .profile-stat-cell .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
   .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:700; color:var(--chalk); }
   .profile-stat-cell.wide{ grid-column:1 / -1; display:flex; align-items:center; justify-content:space-around; text-align:center; padding:12px 8px; }
   .profile-stat-cell.wide .profile-stat-sub{ display:flex; flex-direction:column; align-items:center; }
+  /* Section labels — same small-caps, muted, letter-spaced treatment
+     Recent Form/Where the XP Goes already use, so the whole profile
+     reads as one consistent visual language rather than each addition
+     inventing its own header style. Spans both grid columns. */
+  .profile-stat-group-label{
+    grid-column:1 / -1; font-size:10.5px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:1.5px; margin:8px 0 -2px; padding-top:6px; border-top:1px solid var(--line);
+  }
+  .profile-stat-group-label:first-child{ border-top:none; padding-top:0; margin-top:0; }
   .profile-stat-cell .val.pos{ color:var(--win); }
   .profile-stat-cell .val.neg{ color:var(--loss); }
   .prize-split-row{ display:flex; gap:8px; margin-top:12px; }

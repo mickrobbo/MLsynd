@@ -1,7 +1,11 @@
 {
-  "version": "2026-08-24.22",
+  "version": "2026-08-24.25",
   "date": "2026-08-27",
   "changes": [
-    "Nudge now shows the actual reason it failed instead of a generic 'try again' message, and Diagnostics has a new check confirming send-nudge.mjs is actually deployed and reachable \u2014 catches exactly the 'forgot to add the new function file' failure mode."
+    "\ud83c\udfb4 Tap a badge to flip it \u2014 shows the real qualifying condition (e.g. '10,000+ Lifetime XP') on the back, replacing the old popup bubble.",
+    "\u23f3 Prestige bar now projects '~3 weeks at this pace' based on your actual recent XP earn rate.",
+    "\ud83c\udf89 A one-time flex-moment celebration when you open your own profile right after a fresh tier-up or new badge.",
+    "\ud83d\udcc5 Tap a Recent Form dot to see that week's actual odds, not just win/loss.",
+    "\ud83d\udc46 Long-press any Board stat to compare yours vs theirs inline, without leaving the profile."
   ]
 }

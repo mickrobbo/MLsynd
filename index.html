@@ -1557,12 +1557,14 @@
   <div class="profile-sheet" id="profileSheet">
     <button type="button" class="profile-close" id="profileCloseBtn">✕</button>
     <div class="profile-swipe-hint" id="profileSwipeHint" style="display:none;">‹ swipe to browse ›</div>
+    <div class="profile-flex-banner" id="profileFlexBanner" style="display:none;"></div>
     <div class="profile-header">
       <div id="profileAvatarArea" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
       <h2 id="profileName">Name</h2>
+      <div class="profile-name-edit-slot" id="profileNameEditSlot"></div>
       <div class="profile-flair" id="profileFlair" style="display:none;"></div>
+      <div class="profile-live-status" id="profileLiveStatus" style="display:none;"></div>
       <div class="profile-badges" id="profileBadges"></div>
-      <div class="badge-info-bubble" id="badgeInfoBubble" style="display:none;"></div>
     </div>
     <div class="profile-prestige-bar-wrap" id="profilePrestigeBarWrap" style="display:none;">
       <div class="profile-prestige-bar-track"><div class="profile-prestige-bar-fill" id="profilePrestigeBarFill"></div></div>
@@ -1575,9 +1577,14 @@
       <button type="button" class="pill-btn pill-btn-action" id="profileNudgeBtn">👋 Nudge</button>
     </div>
     <div class="profile-stat-grid" id="profileStats"></div>
+    <div class="profile-game-breakdown-section" id="profileGameBreakdownSection" style="display:none;">
+      <div class="profile-form-label">Where the XP Goes</div>
+      <div id="profileGameBreakdownBars"></div>
+    </div>
     <div class="profile-form-section" id="profileFormSection" style="display:none;">
       <div class="profile-form-label">Recent Form</div>
       <div class="profile-form-strip" id="profileFormStrip"></div>
+      <div class="profile-form-detail" id="profileFormDetail" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -2663,7 +2670,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.22"; // Nudge now surfaces the real error instead of a generic message, plus a Diagnostics check confirming send-nudge.mjs is actually deployed — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.25"; // 5 interactive profile features: badge flip, prestige countdown, flex moment, form-strip expand, long-press stat compare — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4707,108 +4714,110 @@ document.getElementById('avatarCropSaveBtn').addEventListener('click', async () 
 // read-only, same as their stats/badges already are.
 async function renderProfileAvatarSection(m){
   const area = document.getElementById('profileAvatarArea');
+  const nameSlot = document.getElementById('profileNameEditSlot');
   if(!area) return;
   const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
   const canEdit = isMe && currentUserRole !== 'readonly'; // guests can view their own row but never write — same guard the old account-bar buttons used
   const uidForAvatar = m.linkedUid || (isMe ? currentUserUid : null);
   const existing = uidForAvatar ? await getAvatarDataUri(uidForAvatar) : null;
   if(document.getElementById('profileModal').dataset.openName !== m.name) return; // profile moved on while this was in flight
-  let html = `<div style="display:flex; flex-direction:column; align-items:center;">${avatarHtml(m.name, existing, 84)}`;
-  if(canEdit){
-    html += `
-      <label for="profileAvatarInput" class="pill-btn" style="display:inline-block; cursor:pointer; font-size:11px; padding:6px 12px; margin-top:8px;">📷 ${existing ? 'Change photo' : 'Add a photo'}</label>
-      <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;">
-      <div class="status-msg" id="profileAvatarStatus" style="margin-top:6px; font-size:11px;"></div>
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <button type="button" class="pill-btn" id="profileEditNameBtn" style="font-size:11px; padding:6px 12px;" title="Change your name">✎ Edit name</button>
-        <button type="button" class="pill-btn" id="profileResyncNameBtn" style="font-size:11px; padding:6px 12px;" title="Re-sync your name onto past Tipping picks">🔄 Re-sync picks</button>
-      </div>
-      <div class="status-msg" id="profileNameStatus" style="margin-top:6px; font-size:11px;"></div>
-    `;
-  }
-  html += '</div>';
-  area.innerHTML = html;
-  if(canEdit){
-    document.getElementById('profileAvatarInput').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      e.target.value = ''; // reset now so choosing the same file again still fires 'change', even if the crop tool gets cancelled
-      if(!file) return;
-      const statusEl = document.getElementById('profileAvatarStatus');
-      if(!file.type || !file.type.startsWith('image/')){
-        statusEl.textContent = 'Please choose an image file.';
-        return;
-      }
-      statusEl.textContent = '';
-      try{
-        await openAvatarCropModal(file, m);
-      }catch(err){
-        statusEl.textContent = err.message || "Couldn't read that image.";
-      }
-    });
-    document.getElementById('profileEditNameBtn').addEventListener('click', async () => {
-      const statusEl = document.getElementById('profileNameStatus');
-      statusEl.textContent = '';
-      // Once a month, to stop members repeatedly renaming themselves as a joke
-      try{
-        const lastChangeRes = await authedFetch(`/users/${currentUserUid}/lastNameChange.json`);
-        const lastChange = await lastChangeRes.json();
-        if(lastChange){
-          const daysSince = (Date.now() - lastChange) / (1000*60*60*24);
-          if(daysSince < 30){
-            const daysLeft = Math.ceil(30 - daysSince);
-            alert(`You can change your name again in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — once a month, to stop funny buggers.`);
-            return;
-          }
-        }
-      }catch(e){}
 
-      const newName = prompt('Change your name to:', currentUserName || '');
-      if(!newName || !newName.trim() || newName.trim() === currentUserName) return;
-      const trimmed = newName.trim();
-      const oldName = currentUserName;
-      try{
-        await authedFetch(`/users/${currentUserUid}/name.json`, {
+  // Photo editing now lives as a small camera badge on the avatar itself
+  // rather than a labelled pill underneath it — same trigger (the same
+  // hidden file input, same crop-tool flow), just a quieter affordance.
+  area.innerHTML = canEdit
+    ? `<div class="profile-avatar-wrap">${avatarHtml(m.name, existing, 84)}<span class="profile-avatar-camera-badge" id="profileAvatarCameraBadge" title="${existing ? 'Change photo' : 'Add a photo'}">📷</span></div><input type="file" id="profileAvatarInput" accept="image/*" style="display:none;">`
+    : avatarHtml(m.name, existing, 84);
+
+  // Name editing is a small pencil icon next to the name, and re-sync (a
+  // genuinely rare maintenance action — only ever needed right after a
+  // rename) is a quiet text link rather than a second full button
+  // competing for attention with it.
+  if(nameSlot){
+    nameSlot.innerHTML = canEdit
+      ? `<button type="button" class="profile-icon-btn" id="profileEditNameBtn" title="Change your name">✎</button><button type="button" class="profile-resync-link" id="profileResyncNameBtn">re-sync picks</button>`
+      : '';
+  }
+
+  if(!canEdit) return;
+
+  document.getElementById('profileAvatarCameraBadge').addEventListener('click', () => {
+    document.getElementById('profileAvatarInput').click();
+  });
+  document.getElementById('profileAvatarInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = ''; // reset now so choosing the same file again still fires 'change', even if the crop tool gets cancelled
+    if(!file) return;
+    if(!file.type || !file.type.startsWith('image/')){
+      showToast('Please choose an image file');
+      return;
+    }
+    try{
+      await openAvatarCropModal(file, m);
+    }catch(err){
+      showToast(err.message || "Couldn't read that image");
+    }
+  });
+  document.getElementById('profileEditNameBtn').addEventListener('click', async () => {
+    // Once a month, to stop members repeatedly renaming themselves as a joke
+    try{
+      const lastChangeRes = await authedFetch(`/users/${currentUserUid}/lastNameChange.json`);
+      const lastChange = await lastChangeRes.json();
+      if(lastChange){
+        const daysSince = (Date.now() - lastChange) / (1000*60*60*24);
+        if(daysSince < 30){
+          const daysLeft = Math.ceil(30 - daysSince);
+          alert(`You can change your name again in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — once a month, to stop funny buggers.`);
+          return;
+        }
+      }
+    }catch(e){}
+
+    const newName = prompt('Change your name to:', currentUserName || '');
+    if(!newName || !newName.trim() || newName.trim() === currentUserName) return;
+    const trimmed = newName.trim();
+    const oldName = currentUserName;
+    try{
+      await authedFetch(`/users/${currentUserUid}/name.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
+      });
+      await authedFetch(`/users/${currentUserUid}/lastNameChange.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
+      });
+      currentUserName = trimmed;
+      renderAccountBar();
+      showToast('Updating your name everywhere…');
+
+      // Also update the matching Board/Ledger roster entry (Board, Profile, badges
+      // all read from here). Uses a persisted link rather than fragile name
+      // matching, which was the actual bug — Tipping and Board names had
+      // already drifted apart from an earlier rename, so a simple name==name
+      // check found nothing and silently skipped the Board side.
+      const memberIdx = await resolveMyMemberIndex(oldName);
+      if(memberIdx !== null && memberIdx !== -1){
+        await authedFetch(`/state/members/${memberIdx}/name.json`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
         });
-        await authedFetch(`/users/${currentUserUid}/lastNameChange.json`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
-        });
-        currentUserName = trimmed;
-        renderAccountBar();
-        statusEl.textContent = 'Updating everywhere…';
-
-        // Also update the matching Board/Ledger roster entry (Board, Profile, badges
-        // all read from here). Uses a persisted link rather than fragile name
-        // matching, which was the actual bug — Tipping and Board names had
-        // already drifted apart from an earlier rename, so a simple name==name
-        // check found nothing and silently skipped the Board side.
-        const memberIdx = await resolveMyMemberIndex(oldName);
-        if(memberIdx !== null && memberIdx !== -1){
-          await authedFetch(`/state/members/${memberIdx}/name.json`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
-          });
-          currentState.members[memberIdx].name = trimmed;
-          render(currentState);
-        }
-
-        await renameOnAllMyPicks(trimmed);
-        statusEl.textContent = 'Name updated everywhere.';
-        // The profile modal was opened under the old name — close it rather
-        // than leave it open on a name that no longer matches any member,
-        // since re-opening from wherever they tapped in will show the new one.
-        document.getElementById('profileCloseBtn').click();
-      }catch(e){
-        statusEl.textContent = 'Could not save your name — try again.';
+        currentState.members[memberIdx].name = trimmed;
+        render(currentState);
       }
-    });
-    document.getElementById('profileResyncNameBtn').addEventListener('click', async () => {
-      const statusEl = document.getElementById('profileNameStatus');
-      if(!currentUserName){ statusEl.textContent = 'Sign-in still loading — try again in a moment.'; return; }
-      statusEl.textContent = 'Re-syncing your name onto past picks…';
-      await renameOnAllMyPicks(currentUserName);
-      statusEl.textContent = 'Done — check the Tipping ladder.';
-    });
-  }
+
+      await renameOnAllMyPicks(trimmed);
+      showToast('Name updated everywhere');
+      // The profile modal was opened under the old name — close it rather
+      // than leave it open on a name that no longer matches any member,
+      // since re-opening from wherever they tapped in will show the new one.
+      document.getElementById('profileCloseBtn').click();
+    }catch(e){
+      showToast('Could not save your name — try again');
+    }
+  });
+  document.getElementById('profileResyncNameBtn').addEventListener('click', async () => {
+    if(!currentUserName){ showToast('Sign-in still loading — try again in a moment'); return; }
+    showToast('Re-syncing your name onto past picks…');
+    await renameOnAllMyPicks(currentUserName);
+    showToast('Done — check the Tipping ladder');
+  });
 }
 
 async function renderHoldemHistory(tableId){
@@ -7122,6 +7131,127 @@ function computeDerived(m){
   const dataScore = Math.round(((m.pl/25) + (winPct*10) + (indWinPct*5) + (m.legs*0.5)) * 100) / 100;
   return { winPct, avgLeg, indWinPct, dataScore };
 }
+// Tap-to-flip badge — front shows the icon/label as always; back shows
+// the description and, for XP milestone badges specifically (the ones
+// with a real, checkable threshold), the actual qualifying amount rather
+// than a made-up date — this app doesn't store a per-badge earned-at
+// timestamp for anything, so showing the real qualifying condition is
+// the honest version of "why you have this" rather than inventing one.
+function profileBadgeFlipHtml(id, def){
+  const milestone = XP_MILESTONE_BADGES.find(b => b.key === id);
+  const backText = milestone
+    ? `${escapeHtml(def.desc)}<br><span style="color:var(--brass-light); font-weight:700;">${milestone.threshold.toLocaleString()}+ Lifetime XP</span>`
+    : escapeHtml(def.desc);
+  return `<div class="profile-badge" data-badge-id="${id}">
+    <div class="profile-badge-flip-inner">
+      <div class="profile-badge-face profile-badge-front">${badgeSvg(id, 60)}<span class="profile-badge-label">${escapeHtml(def.label)}</span></div>
+      <div class="profile-badge-face profile-badge-back"><span class="profile-badge-back-text">${backText}</span></div>
+    </div>
+  </div>`;
+}
+function wireProfileBadgeFlip(el){
+  el.addEventListener('click', () => el.classList.toggle('flipped'));
+}
+
+// ---- Long-press a stat cell to compare yours vs theirs inline ----
+function profileStatCompareValue(key, lifetime, dataScore){
+  switch(key){
+    case 'pl': return fmtMoney(lifetime.pl);
+    case 'record': return `${lifetime.wins}-${lifetime.losses}-${lifetime.voids}`;
+    case 'winPct': return `${(lifetime.winPct * 100).toFixed(0)}%`;
+    case 'avgLeg': return lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—';
+    case 'seasonScore': return dataScore.toFixed(2);
+    case 'indRecord': return `${lifetime.indWin}-${lifetime.indLoss}`;
+    case 'indWinPct': return `${(lifetime.indWinPct * 100).toFixed(0)}%`;
+    case 'legs': return String(lifetime.legs);
+    default: return '—';
+  }
+}
+const PROFILE_LONG_PRESS_MS = 500;
+const PROFILE_LONG_PRESS_MOVE_CANCEL_PX = 10; // a real long-press shouldn't drift — this far means it's a scroll, not a hold
+function wireProfileStatLongPress(myLifetime, myDataScore){
+  document.querySelectorAll('#profileStats [data-compare-key]').forEach(cell => {
+    let timer = null;
+    let startX = 0, startY = 0;
+    const cancel = () => { if(timer) clearTimeout(timer); timer = null; };
+    cell.addEventListener('pointerdown', (e) => {
+      startX = e.clientX; startY = e.clientY;
+      cancel();
+      timer = setTimeout(() => showProfileStatCompare(cell, myLifetime, myDataScore), PROFILE_LONG_PRESS_MS);
+    });
+    cell.addEventListener('pointermove', (e) => {
+      if(!timer) return;
+      if(Math.abs(e.clientX - startX) > PROFILE_LONG_PRESS_MOVE_CANCEL_PX || Math.abs(e.clientY - startY) > PROFILE_LONG_PRESS_MOVE_CANCEL_PX) cancel();
+    });
+    cell.addEventListener('pointerup', cancel);
+    cell.addEventListener('pointerleave', cancel);
+    cell.addEventListener('pointercancel', cancel);
+  });
+}
+function showProfileStatCompare(cell, myLifetime, myDataScore){
+  if(cell.classList.contains('comparing')) return; // already showing — a second long-press on the same cell while it's up does nothing rather than re-trigger
+  const key = cell.dataset.compareKey;
+  const myVal = profileStatCompareValue(key, myLifetime, myDataScore);
+  const labelText = cell.querySelector('.lbl') ? cell.querySelector('.lbl').textContent : '';
+  const theirVal = cell.querySelector('.val') ? cell.querySelector('.val').textContent : '—'; // whatever's already displayed for the viewed person — no separate lookup needed
+  cell.dataset.originalHtml = cell.innerHTML;
+  cell.classList.add('comparing');
+  cell.innerHTML = `
+    <span class="lbl">${escapeHtml(labelText)}</span>
+    <div class="profile-stat-compare-row">
+      <span class="profile-stat-compare-side"><span class="profile-stat-compare-val">${escapeHtml(myVal)}</span><span class="profile-stat-compare-lbl">You</span></span>
+      <span class="profile-stat-compare-side"><span class="profile-stat-compare-val">${escapeHtml(theirVal)}</span><span class="profile-stat-compare-lbl">Them</span></span>
+    </div>
+  `;
+  bjPlayChipSound();
+  setTimeout(() => {
+    if(cell.dataset.originalHtml) cell.innerHTML = cell.dataset.originalHtml;
+    cell.classList.remove('comparing');
+  }, 2500);
+}
+
+// ---- Flex moment — a one-time celebration when opening your OWN profile
+// right after a fresh tier-up or new casino badge. Tracked per-browser in
+// localStorage (same lightweight technique the changelog "seen" banner
+// already uses) rather than anything server-side, since this is purely a
+// "have I already shown you this" UI nicety, not data that needs to sync
+// across devices.
+const PROFILE_FLEX_SEEN_KEY = 'mlsynd-profile-flex-seen';
+function checkAndTriggerFlexMoment(tierKey, badgeIds){
+  try{
+    const raw = localStorage.getItem(PROFILE_FLEX_SEEN_KEY);
+    const prev = raw ? JSON.parse(raw) : null;
+    localStorage.setItem(PROFILE_FLEX_SEEN_KEY, JSON.stringify({ tierKey: tierKey || null, badgeIds: badgeIds || [] }));
+    if(!prev) return null; // first time this has ever been recorded on this browser — no baseline to compare against, so nothing to celebrate yet (avoids every brand-new browser session "celebrating" a tier the person has had for weeks)
+
+    // CASINO_TIERS is ordered Diamond-first (index 0) down through
+    // Bronze (highest index) — a LOWER index is a BETTER tier, so
+    // "improved" means the new index is smaller than the old one.
+    if(tierKey){
+      const prevIdx = prev.tierKey ? CASINO_TIERS.findIndex(x => x.key === prev.tierKey) : -1;
+      const curIdx = CASINO_TIERS.findIndex(x => x.key === tierKey);
+      if(curIdx !== -1 && (prevIdx === -1 || curIdx < prevIdx)){
+        return { type: 'tier', text: `🎉 New tier reached — ${CASINO_TIERS[curIdx].name}!` };
+      }
+    }
+    const prevBadgeIds = prev.badgeIds || [];
+    const newBadgeId = (badgeIds || []).find(id => !prevBadgeIds.includes(id));
+    if(newBadgeId && BADGE_DEFS[newBadgeId]){
+      return { type: 'badge', text: `🎉 New badge unlocked — ${BADGE_DEFS[newBadgeId].label}!` };
+    }
+    return null;
+  }catch(e){ return null; }
+}
+function triggerProfileFlexBanner(text){
+  const banner = document.getElementById('profileFlexBanner');
+  if(!banner) return;
+  banner.textContent = text;
+  banner.style.display = 'block';
+  banner.classList.remove('profile-flex-banner'); void banner.offsetWidth; banner.classList.add('profile-flex-banner'); // restart the entrance animation if it's somehow already been shown once this render
+  bjLaunchConfetti(banner, 34);
+  bjPlayChime(true);
+  setTimeout(() => { banner.style.display = 'none'; }, 5000);
+}
 const BADGE_DEFS = {
   'first-xi': {
     label: 'First XI',
@@ -7341,6 +7471,9 @@ function openProfile(name){
   document.getElementById('profileAvatarArea').innerHTML = ''; // clear immediately so the previous profile's photo can't flash before the new one loads
   document.getElementById('profileFlair').style.display = 'none'; // these two are static HTML (exist since page load) so a synchronous reset here is safe — clears the previous profile's value before the new async fetch lands
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
+  document.getElementById('profileLiveStatus').style.display = 'none'; // also static HTML — same reasoning
+  document.getElementById('profileGameBreakdownSection').style.display = 'none';
+  document.getElementById('profileFlexBanner').style.display = 'none';
   // profileBiggestWinCell is NOT reset here — unlike the two above, it's
   // only created later in this same function (inside profileStats'
   // innerHTML) and doesn't exist in the DOM yet at this point on a fresh
@@ -7354,38 +7487,26 @@ function openProfile(name){
   const autoBadges = computeAutoBadges(m, currentState);
   const badges = [...new Set([...manualBadges, ...autoBadges])];
   const badgesArea = document.getElementById('profileBadges');
-  const infoBubble = document.getElementById('badgeInfoBubble');
-  infoBubble.style.display = 'none';
-  infoBubble.dataset.currentBadge = '';
   badgesArea.innerHTML = badges.length
-    ? badges.map(id => BADGE_DEFS[id] ? `<div class="profile-badge" data-badge-id="${id}">${badgeSvg(id, 60)}<span class="profile-badge-label">${escapeHtml(BADGE_DEFS[id].label)}</span></div>` : '').join('')
+    ? badges.map(id => BADGE_DEFS[id] ? profileBadgeFlipHtml(id, BADGE_DEFS[id]) : '').join('')
     : '<div style="font-size:11px; color:var(--muted);">No badges yet</div>';
-  badgesArea.querySelectorAll('.profile-badge').forEach(el => {
-    el.addEventListener('click', () => {
-      const id = el.dataset.badgeId;
-      const def = BADGE_DEFS[id];
-      if(!def) return;
-      if(infoBubble.dataset.currentBadge === id && infoBubble.style.display !== 'none'){
-        infoBubble.style.display = 'none';
-        infoBubble.dataset.currentBadge = '';
-        return;
-      }
-      infoBubble.innerHTML = `<b>${escapeHtml(def.label)}</b>${escapeHtml(def.desc)}`;
-      infoBubble.style.display = 'block';
-      infoBubble.dataset.currentBadge = id;
-    });
-  });
+  badgesArea.querySelectorAll('.profile-badge').forEach(wireProfileBadgeFlip);
 
   const lifetime = getLifetimeStats(name, currentState);
   document.getElementById('profileStats').innerHTML = `
-    <div class="profile-stat-cell"><span class="lbl">Lifetime P/L</span><span class="val ${lifetime.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(lifetime.pl)}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Multi Record</span><span class="val">${lifetime.wins}-${lifetime.losses}-${lifetime.voids}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Multi Win%</span><span class="val">${(lifetime.winPct*100).toFixed(0)}%</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Avg Leg Price</span><span class="val">${lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—'}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Individual Bets</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Individual Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></div>
-    <div class="profile-stat-cell"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></div>
+    <div class="profile-stat-group-label">Multis</div>
+    <div class="profile-stat-cell" data-compare-key="pl"><span class="lbl">Lifetime P/L</span><span class="val ${lifetime.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(lifetime.pl)}</span></div>
+    <div class="profile-stat-cell" data-compare-key="record"><span class="lbl">Record</span><span class="val">${lifetime.wins}-${lifetime.losses}-${lifetime.voids}</span></div>
+    <div class="profile-stat-cell" data-compare-key="winPct"><span class="lbl">Win%</span><span class="val">${(lifetime.winPct*100).toFixed(0)}%</span></div>
+    <div class="profile-stat-cell" data-compare-key="avgLeg"><span class="lbl">Avg Leg Price</span><span class="val">${lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—'}</span></div>
+    <div class="profile-stat-cell wide" data-compare-key="seasonScore"><span class="profile-stat-sub"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></span></div>
+
+    <div class="profile-stat-group-label">Individual Bets</div>
+    <div class="profile-stat-cell" data-compare-key="indRecord"><span class="lbl">Record</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div>
+    <div class="profile-stat-cell" data-compare-key="indWinPct"><span class="lbl">Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
+    <div class="profile-stat-cell wide" data-compare-key="legs"><span class="profile-stat-sub"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></span></div>
+
+    <div class="profile-stat-group-label">Casino</div>
     <div class="profile-stat-cell wide">
       <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
       <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
@@ -7409,10 +7530,10 @@ function openProfile(name){
   // silently showing $0.00 for "you" whenever the two didn't match.
   const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
   const h2hEl = document.getElementById('profileHeadToHead');
+  const myMember = currentState.members.find(mm => mm.linkedUid === currentUserUid);
+  const myLifetime = myMember ? getLifetimeStats(myMember.name, currentState) : null;
   if(h2hEl){
-    const myMember = currentState.members.find(mm => mm.linkedUid === currentUserUid);
     if(!isMe && myMember){
-      const myLifetime = getLifetimeStats(myMember.name, currentState);
       h2hEl.style.display = 'flex';
       h2hEl.innerHTML = `
         <div class="profile-h2h-side ${myLifetime.pl > lifetime.pl ? 'ahead' : ''}"><span class="val">${fmtMoney(myLifetime.pl)}</span><span class="lbl">You</span></div>
@@ -7422,6 +7543,15 @@ function openProfile(name){
     } else {
       h2hEl.style.display = 'none';
     }
+  }
+
+  // Long-press any Board stat cell to split it and show yours next to
+  // theirs, inline — same "yours vs theirs" idea the head-to-head strip
+  // above already gives for P/L specifically, extended to every
+  // comparable stat. Only meaningful on someone ELSE's profile.
+  if(!isMe && myMember){
+    const myDataScore = computeDerived(myMember).dataScore;
+    wireProfileStatLongPress(myLifetime, myDataScore);
   }
 
   // Challenge/Nudge quick-actions — same "someone else, and they're
@@ -7443,17 +7573,38 @@ function openProfile(name){
   // computeAutoBadges already reads for the win/loss-streak badges above.
   const formSection = document.getElementById('profileFormSection');
   const formStrip = document.getElementById('profileFormStrip');
+  const formDetail = document.getElementById('profileFormDetail');
+  if(formDetail){ formDetail.style.display = 'none'; }
   if(formSection && formStrip){
     const history = currentState.history || [];
     const weeks = history.filter(w => w.groupEntries && w.groupEntries[name] && w.groupEntries[name].result).slice(-10);
     if(weeks.length > 0){
       formSection.style.display = 'block';
-      formStrip.innerHTML = weeks.map(w => {
-        const r = w.groupEntries[name].result;
+      formStrip.innerHTML = weeks.map((w, i) => {
+        const entry = w.groupEntries[name];
+        const r = entry.result;
         const cls = r === 'Win' ? 'win' : (r === 'Loss' ? 'loss' : 'void');
         const letter = r === 'Win' ? 'W' : (r === 'Loss' ? 'L' : (r === 'MIA' ? '?' : '–'));
-        return `<span class="profile-form-dot ${cls}" title="${escapeHtml(w.label || '')}: ${escapeHtml(r)}">${letter}</span>`;
+        return `<span class="profile-form-dot ${cls}" data-week-idx="${i}" title="${escapeHtml(w.label || '')}: ${escapeHtml(r)}">${letter}</span>`;
       }).join('');
+      // Tap a dot to expand what actually happened that week — the odds
+      // on the leg placed, not just the W/L/void the dot itself shows.
+      formStrip.querySelectorAll('.profile-form-dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+          const wasSelected = dot.classList.contains('selected');
+          formStrip.querySelectorAll('.profile-form-dot.selected').forEach(d => d.classList.remove('selected'));
+          if(wasSelected){
+            formDetail.style.display = 'none';
+            return;
+          }
+          dot.classList.add('selected');
+          const w = weeks[Number(dot.dataset.weekIdx)];
+          const entry = w.groupEntries[name];
+          const oddsText = entry.odds != null ? `@ ${Number(entry.odds).toFixed(2)}` : 'no odds recorded';
+          formDetail.innerHTML = `<b>${escapeHtml(w.label || 'That week')}</b>${escapeHtml(entry.result)} — ${oddsText}`;
+          formDetail.style.display = 'block';
+        });
+      });
     } else {
       formSection.style.display = 'none';
     }
@@ -7462,6 +7613,7 @@ function openProfile(name){
   loadProfileXP(m.linkedUid, name);
   loadProfileCasinoBadges(m.linkedUid, name);
   loadProfileGameStats(m.linkedUid, name);
+  loadProfileLiveStatus(m.linkedUid, name);
   renderProfileAvatarSection(m);
   document.getElementById('profileModal').classList.add('open');
 }
@@ -7480,6 +7632,29 @@ async function loadProfileGameStats(linkedUid, forName){
     const entries = (data && typeof data === 'object' ? Object.values(data) : []).filter(e => e && typeof e === 'object');
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     if(entries.length === 0) return;
+
+    // Prestige countdown — a rough "at this pace" projection using the
+    // last 14 days of actual XP earned, handed off to the prestige bar
+    // via the dataset attribute it left behind (see loadProfileCasinoBadges).
+    // An approximation, not exact — prestige also includes Board Score and
+    // Tipping Points, which move far slower and less predictably than XP
+    // day-to-day, so this tracks XP earn rate only rather than trying to
+    // model all three inputs.
+    const countdownEl = document.getElementById('profilePrestigeCountdown');
+    const barLabelEl = document.getElementById('profilePrestigeBarLabel');
+    if(countdownEl && barLabelEl && barLabelEl.dataset.gapToNext){
+      const gap = Number(barLabelEl.dataset.gapToNext);
+      const cutoffMs = Date.now() - 14 * 24 * 60 * 60 * 1000;
+      const recentEarned = entries.filter(e => typeof e.amount === 'number' && e.amount > 0 && e.ts >= cutoffMs).reduce((s, e) => s + e.amount, 0);
+      const dailyRate = recentEarned / 14;
+      if(dailyRate > 0 && gap > 0){
+        const daysNeeded = gap / dailyRate;
+        const projected = daysNeeded < 1 ? 'today at this pace'
+          : daysNeeded < 14 ? `~${Math.round(daysNeeded)}d at this pace`
+          : `~${Math.round(daysNeeded / 7)}w at this pace`;
+        countdownEl.textContent = ` · ${projected}`;
+      }
+    }
 
     let biggest = null;
     entries.forEach(e => {
@@ -7516,7 +7691,63 @@ async function loadProfileGameStats(linkedUid, forName){
         }
       }
     }
+
+    // Full per-game breakdown — Most Played above only ever shows the #1
+    // game; this is the fuller picture, reusing the exact same perGame
+    // data already computed above rather than a second pass over the log.
+    const breakdownSection = document.getElementById('profileGameBreakdownSection');
+    const breakdownBars = document.getElementById('profileGameBreakdownBars');
+    if(breakdownSection && breakdownBars){
+      const allGames = Object.entries(perGame).sort((a, b) => b[1].count - a[1].count);
+      if(allGames.length > 0){
+        const maxCount = allGames[0][1].count;
+        breakdownSection.style.display = 'block';
+        breakdownBars.innerHTML = allGames.map(([gname, stats]) => {
+          const pct = maxCount > 0 ? Math.max(6, (stats.count / maxCount) * 100) : 6; // 6% floor so even a single-play game shows a visible sliver, not nothing
+          return `<div class="profile-game-bar-row">
+            <span class="profile-game-bar-name">${escapeHtml(gname)}</span>
+            <span class="profile-game-bar-track"><span class="profile-game-bar-fill" style="width:${pct.toFixed(0)}%;"></span></span>
+            <span class="profile-game-bar-count">${stats.count}</span>
+          </div>`;
+        }).join('');
+      } else {
+        breakdownSection.style.display = 'none';
+      }
+    }
   }catch(e){}
+}
+
+// Live status — "at the tables now" / "last seen 2h ago", reusing the
+// exact same /presence data and 3-minute online cutoff the Home tab's
+// presence feed already uses (see renderPresence), just for one person
+// instead of the whole roster.
+async function loadProfileLiveStatus(linkedUid, forName){
+  const el = document.getElementById('profileLiveStatus');
+  if(!el) return;
+  if(!linkedUid){ el.style.display = 'none'; return; }
+  try{
+    const res = await authedFetch(`/presence/${linkedUid}.json`);
+    if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
+    if(!res.ok){ el.style.display = 'none'; return; }
+    const raw = await res.json();
+    const ts = raw && typeof raw === 'object' ? raw.ts : raw; // backward-compatible with the bare-timestamp shape renderPresence already handles
+    const tab = (raw && typeof raw === 'object') ? raw.tab : null;
+    const game = (raw && typeof raw === 'object') ? raw.game : null;
+    if(!ts){ el.style.display = 'none'; return; }
+    const online = (Date.now() - ts) < 3 * 60000;
+    el.classList.remove('online', 'offline');
+    if(online){
+      el.classList.add('online');
+      const whereText = [TAB_DISPLAY_NAMES[tab] || tab, game ? (CASINO_GAME_LABELS[game] || game) : null].filter(Boolean).join(' · ');
+      el.innerHTML = `<span class="dot"></span>At the tables now${whereText ? ' — ' + escapeHtml(whereText) : ''}`;
+    } else {
+      el.classList.add('offline');
+      el.innerHTML = `<span class="dot"></span>Last seen ${timeAgo(ts)}`;
+    }
+    el.style.display = 'block';
+  }catch(e){
+    el.style.display = 'none';
+  }
 }
 
 // ---- Challenge / Nudge quick-actions, launched straight from a profile ----
@@ -7686,6 +7917,7 @@ async function loadProfileCasinoBadges(linkedUid, forName){
       if(t && t.key === 'diamond'){
         barFill.style.width = '100%';
         barLabel.innerHTML = `${Math.round(prestige).toLocaleString()} prestige — top tier reached <span class="tap-hint">(tap for breakdown)</span>`;
+        delete barLabel.dataset.gapToNext;
       } else {
         const tierIdx = t ? CASINO_TIERS.findIndex(x => x.key === t.key) : CASINO_TIERS.length;
         const next = CASINO_TIERS[tierIdx - 1] || CASINO_TIERS[CASINO_TIERS.length - 1];
@@ -7693,7 +7925,14 @@ async function loadProfileCasinoBadges(linkedUid, forName){
         const span = next.threshold - floor;
         const pct = span > 0 ? Math.max(0, Math.min(100, ((prestige - floor) / span) * 100)) : 100;
         barFill.style.width = pct.toFixed(1) + '%';
-        barLabel.innerHTML = `${Math.round(prestige).toLocaleString()} / ${next.threshold.toLocaleString()} to ${next.name} <span class="tap-hint">(tap for breakdown)</span>`;
+        barLabel.innerHTML = `${Math.round(prestige).toLocaleString()} / ${next.threshold.toLocaleString()} to ${next.name}<span id="profilePrestigeCountdown"></span> <span class="tap-hint">(tap for breakdown)</span>`;
+        // Left for loadProfileGameStats to read once it's worked out this
+        // person's recent earn rate from their XP log — the two run in
+        // parallel and don't share state any other way, so the gap
+        // (how much more prestige is actually needed) is handed off via
+        // the DOM rather than a second, duplicate log fetch just to
+        // recompute what this function already knows.
+        barLabel.dataset.gapToNext = Math.max(0, next.threshold - prestige);
       }
       // Tap to reveal what actually makes up that prestige number — the
       // three weighted inputs computePrestigeScore combines, otherwise
@@ -7751,30 +7990,28 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     const unlockedIds = [];
     if(founding) unlockedIds.push('founding-player');
     XP_MILESTONE_BADGES.forEach(b => { if(lifetime >= b.threshold) unlockedIds.push(b.key); });
+
+    // Flex moment — own profile only, checked here since this is the one
+    // place both the tier and the casino-badge unlock list are known
+    // together. See checkAndTriggerFlexMoment for the actual comparison.
+    if(linkedUid === currentUserUid){
+      const flex = checkAndTriggerFlexMoment(t ? t.key : null, unlockedIds);
+      if(flex) triggerProfileFlexBanner(flex.text);
+    }
+
     if(unlockedIds.length === 0) return;
 
     const badgesArea = document.getElementById('profileBadges');
     if(badgesArea.textContent.trim() === 'No badges yet') badgesArea.innerHTML = '';
-    const infoBubble = document.getElementById('badgeInfoBubble');
     unlockedIds.forEach(id => {
       if(badgesArea.querySelector(`[data-badge-id="${id}"]`)) return;
       const def = BADGE_DEFS[id];
       if(!def) return;
-      const el = document.createElement('div');
-      el.className = 'profile-badge';
-      el.dataset.badgeId = id;
-      el.innerHTML = `${badgeSvg(id, 60)}<span class="profile-badge-label">${escapeHtml(def.label)}</span>`;
-      el.addEventListener('click', () => {
-        if(infoBubble.dataset.currentBadge === id && infoBubble.style.display !== 'none'){
-          infoBubble.style.display = 'none';
-          infoBubble.dataset.currentBadge = '';
-          return;
-        }
-        infoBubble.innerHTML = `<b>${escapeHtml(def.label)}</b>${escapeHtml(def.desc)}`;
-        infoBubble.style.display = 'block';
-        infoBubble.dataset.currentBadge = id;
-      });
+      const wrap = document.createElement('div');
+      wrap.innerHTML = profileBadgeFlipHtml(id, def);
+      const el = wrap.firstElementChild;
       badgesArea.appendChild(el);
+      wireProfileBadgeFlip(el);
     });
   }catch(e){}
 }
