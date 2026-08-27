@@ -2697,7 +2697,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.11"; // fixed a real double-tap race bug in Crash and Double or Nothing (guard flag was set after the balance-check await, not before — a fast double-tap could start two overlapping rounds) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.12"; // Double or Nothing coin bigger/slower/blended, Crash rocket now genuinely directional (found and fixed a real CSS/JS conflict causing the stutter) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

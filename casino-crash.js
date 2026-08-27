@@ -32,10 +32,11 @@ let crashCrashPoint = 1.00;
 let crashBetAmount = 0;
 let crashLastBet = null; // { amount }
 let crashHistory = [];
-let crashIntervalHandle = null;
+let crashRafHandle = null;
 let crashSparkIntervalHandle = null;
 let crashStartTime = 0;
 let crashPathPoints = [];
+let crashPrevPlotPoint = null; // { x, y } in 0-100 left%/bottom% space — used to work out which way the rocket's actually pointing
 
 function crashSetStartVisible(visible){
   const bottomBtn = document.getElementById('crashStartBtn');
@@ -103,14 +104,38 @@ function crashUpdateGraph(mult, elapsed){
   const normX = Math.min(elapsed / CRASH_VISUAL_WINDOW, 1);
   const normY = 1 - 1 / mult;
   const px = normX * 100;
-  const pyTop = 100 - normY * 100; // SVG y grows downward; flip so "up" reads as climbing
+  const pyBottom = normY * 100; // matches the rocket's own `bottom` positioning
+  const pyTop = 100 - pyBottom; // SVG y grows downward; flip so "up" reads as climbing
   crashPathPoints.push(`${px.toFixed(2)},${pyTop.toFixed(2)}`);
   const line = document.getElementById('crashGraphLine');
   if(line) line.setAttribute('points', crashPathPoints.join(' '));
+
   const rocket = document.getElementById('crashRocket');
   if(rocket){
+    // Directional heading — the actual angle of travel from the last
+    // plotted point to this one, not a fixed guess. atan2(dx, dpy) is
+    // 0° for straight-up movement and turns clockwise as dx grows, which
+    // matches the 🚀 glyph's own default artwork (nose pointing up and
+    // already tilted right ~45° in most renderers) once that base tilt
+    // is subtracted back out — same -45 the old fixed rotation used,
+    // just as a baseline now instead of the whole answer.
+    let angleDeg = 0; // first frame of a round: no previous point yet, use the glyph's natural heading as-is
+    if(crashPrevPlotPoint){
+      const dx = px - crashPrevPlotPoint.x;
+      const dpy = pyBottom - crashPrevPlotPoint.y;
+      if(Math.abs(dx) > 0.0005 || Math.abs(dpy) > 0.0005){
+        angleDeg = Math.atan2(dx, dpy) * (180 / Math.PI) - 45;
+      }
+    }
+    crashPrevPlotPoint = { x: px, y: pyBottom };
+    // A gentle synthetic wobble while flying, computed here instead of a
+    // separate CSS keyframe — a keyframe animating `transform` would
+    // silently win over any rotation set from JS the instant it played,
+    // which is why the rocket never actually turned before this.
+    const bobScale = crashRunning ? 1 + Math.sin(elapsed * 9) * 0.05 : 1;
     rocket.style.left = px + '%';
-    rocket.style.bottom = (normY * 100) + '%';
+    rocket.style.bottom = pyBottom + '%';
+    rocket.style.transform = `translate(-50%,50%) rotate(${angleDeg.toFixed(1)}deg) scale(${bobScale.toFixed(3)})`;
   }
 }
 function crashSpawnSpark(){
@@ -189,12 +214,13 @@ async function crashStart(){
   crashCurrentMult = 1.00;
   crashCashedOut = false;
   crashPathPoints = ['0,100'];
+  crashPrevPlotPoint = null; // fresh round — don't let the new round's first frame compute a heading off last round's leftover point
   crashSetCashOutVisible(true);
   document.getElementById('crashResultMsg').textContent = '';
   const rocketEl = document.getElementById('crashRocket');
   const lineEl = document.getElementById('crashGraphLine');
   const numEl = document.getElementById('crashMultiplierVal');
-  if(rocketEl){ rocketEl.style.opacity = '1'; rocketEl.classList.remove('crash-busted'); rocketEl.classList.add('crash-flying'); rocketEl.style.left = '0%'; rocketEl.style.bottom = '0%'; }
+  if(rocketEl){ rocketEl.style.opacity = '1'; rocketEl.classList.remove('crash-busted'); rocketEl.style.left = '0%'; rocketEl.style.bottom = '0%'; rocketEl.style.transform = 'translate(-50%,50%) rotate(0deg) scale(1)'; }
   if(lineEl){ lineEl.classList.remove('crash-line-mid', 'crash-line-hot', 'crash-line-busted'); lineEl.setAttribute('points', '0,100'); }
   if(numEl){ numEl.classList.remove('crash-busted'); numEl.classList.add('crash-flying'); }
   crashUpdateDisplay(1.00, 0);
@@ -202,10 +228,18 @@ async function crashStart(){
   bjPlayChipSound();
   bjPlaySpinSound();
   crashStartTime = Date.now();
-  crashIntervalHandle = setInterval(crashTick, 60);
+  crashRafHandle = requestAnimationFrame(crashTick);
   crashSparkIntervalHandle = setInterval(crashSpawnSpark, 130);
 }
+// requestAnimationFrame instead of a fixed setInterval — browser-synced
+// to the actual display refresh (typically ~60fps) rather than an
+// approximate timer that mobile browsers are free to throttle or jitter,
+// which is what was reading as stutter/jank before. Position is still
+// computed from real elapsed wall-clock time (Date.now()), so the actual
+// speed of the climb doesn't depend on frame rate either way — this only
+// changes how smoothly it's drawn, not the underlying pace.
 function crashTick(){
+  if(!crashRunning) return; // guards a stray frame landing after resolution already ran
   const elapsed = (Date.now() - crashStartTime) / 1000;
   const mult = Math.exp(elapsed / CRASH_GROWTH_T);
   if(mult >= crashCrashPoint){
@@ -217,23 +251,23 @@ function crashTick(){
   }
   crashCurrentMult = mult;
   crashUpdateDisplay(mult, elapsed);
+  crashRafHandle = requestAnimationFrame(crashTick);
 }
 async function crashCashOut(){
   if(!crashRunning || crashCashedOut) return;
   crashCashedOut = true;
   crashRunning = false;
-  clearInterval(crashIntervalHandle);
+  cancelAnimationFrame(crashRafHandle);
   clearInterval(crashSparkIntervalHandle);
   const rocketEl = document.getElementById('crashRocket');
   const numEl = document.getElementById('crashMultiplierVal');
-  if(rocketEl) rocketEl.classList.remove('crash-flying');
   if(numEl) numEl.classList.remove('crash-flying');
   const payout = Math.round(crashBetAmount * crashCurrentMult);
   await crashResolve(payout, crashCurrentMult, true);
 }
 async function crashHandleBust(){
   crashRunning = false;
-  clearInterval(crashIntervalHandle);
+  cancelAnimationFrame(crashRafHandle);
   clearInterval(crashSparkIntervalHandle);
   const rocketEl = document.getElementById('crashRocket');
   const numEl = document.getElementById('crashMultiplierVal');
@@ -241,7 +275,7 @@ async function crashHandleBust(){
   if(numEl){ numEl.classList.remove('crash-flying'); numEl.classList.add('crash-busted'); }
   if(lineEl){ lineEl.classList.remove('crash-line-mid', 'crash-line-hot'); lineEl.classList.add('crash-line-busted'); }
   crashExplode();
-  if(rocketEl){ rocketEl.classList.remove('crash-flying'); rocketEl.classList.add('crash-busted'); }
+  if(rocketEl) rocketEl.classList.add('crash-busted');
   await crashResolve(0, crashCrashPoint, false);
 }
 async function crashResolve(payout, atMult, won){
@@ -294,12 +328,13 @@ async function crashResolve(payout, atMult, won){
     const numEl = document.getElementById('crashMultiplierVal');
     const box = document.getElementById('crashGraphBox');
     const cashBtn = document.getElementById('crashCashOutTopBtn');
-    if(rocketEl){ rocketEl.classList.remove('crash-busted'); rocketEl.style.opacity = '1'; rocketEl.style.left = '0%'; rocketEl.style.bottom = '0%'; }
+    if(rocketEl){ rocketEl.classList.remove('crash-busted'); rocketEl.style.opacity = '1'; rocketEl.style.left = '0%'; rocketEl.style.bottom = '0%'; rocketEl.style.transform = 'translate(-50%,50%) rotate(0deg) scale(1)'; }
     if(lineEl){ lineEl.classList.remove('crash-line-busted', 'crash-line-mid', 'crash-line-hot'); lineEl.setAttribute('points', ''); }
     if(numEl) numEl.classList.remove('crash-busted', 'crash-mid', 'crash-hot');
     if(box) box.classList.remove('crash-danger-1', 'crash-danger-2');
     if(cashBtn) cashBtn.classList.remove('crash-cashout-warm', 'crash-cashout-hot');
     crashPathPoints = [];
+    crashPrevPlotPoint = null;
   }, won ? 200 : 550);
 }
 document.getElementById('crashStartBtn').addEventListener('click', crashStart);

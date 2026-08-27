@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-24.11",
+  "version": "2026-08-24.12",
   "date": "2026-08-27",
   "changes": [
-    "Fixed a real bug in Crash and Double or Nothing: the guard that stops a double-tap from starting two rounds at once was only being set AFTER the balance check finished, not before it. A fast double-tap on Start or Heads/Tails could slip a second round in during that gap and corrupt the game state. Both now lock immediately on tap, before any check runs."
+    "\ud83e\ude99 Double or Nothing: coin is bigger (130px, was 78px) and the tumble is genuinely slower (1.5s, was 0.75s). The portrait/logo now feather into the coin's own gold background with a warm colour grade instead of looking like a cutout pasted on top.",
+    "\ud83d\ude80 Crash: found and fixed the real cause of the stutter \u2014 a CSS animation was silently overriding any rotation set from JS, and a position transition was fighting with the frequent updates. Rewrote the whole animation loop on requestAnimationFrame (smooth, browser-synced) and the rocket now genuinely points the direction it's travelling, recalculated every frame instead of a fixed angle."
   ]
 }
