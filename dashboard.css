@@ -2495,8 +2495,16 @@
     align-items:flex-end; justify-content:center;
   }
   .profile-modal.open{ display:flex; }
+  .profile-modal.open .profile-sheet{ animation: profileSheetIn .35s cubic-bezier(.22,.9,.32,1.15) both; }
+  @keyframes profileSheetIn{
+    0%{ transform:translateY(28px); opacity:0; }
+    100%{ transform:translateY(0); opacity:1; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .profile-modal.open .profile-sheet{ animation:none; }
+  }
   .profile-sheet{
-    width:100%; max-width:720px; max-height:88vh; overflow-y:auto;
+    width:100%; max-width:720px; max-height:88vh; overflow-y:auto; overflow-x:hidden; position:relative;
     background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--line);
     border-radius:18px 18px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom, 0));
     box-shadow:0 -10px 40px rgba(0,0,0,.5);
@@ -2511,19 +2519,44 @@
     color:var(--brass-light); margin:0; text-shadow:0 0 18px rgba(199,162,72,.3);
   }
   .profile-badges{ display:flex; justify-content:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
-  .profile-badge{ display:flex; flex-direction:column; align-items:center; gap:5px; width:76px; cursor:pointer; }
+  .profile-badge{ display:flex; flex-direction:column; align-items:center; gap:5px; width:76px; cursor:pointer; position:relative; z-index:1; }
   .profile-badge:active{ transform:scale(0.94); }
+  /* A subtle shine sweep across each badge, staggered slightly per badge
+     via nth-child so a whole row doesn't flash in perfect unison — same
+     "catching the light" idea the coin/chip cosmetics already use. */
+  .profile-badge svg{ filter: drop-shadow(0 3px 6px rgba(0,0,0,.4)); }
 
-  /* ---- Profile sheet tier tint — the whole sheet picks up a faint wash
-     of the VIEWED person's tier colour, same escalating-tiers language
-     the table cosmetics already use, so a Diamond profile actually looks
-     different from a Bronze one rather than just a different gem icon. */
-  .profile-sheet{ transition: background .4s ease, box-shadow .4s ease; }
-  .profile-sheet.tier-bronze{ background:linear-gradient(165deg, #2a1f12, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(224,164,105,.12); }
-  .profile-sheet.tier-silver{ background:linear-gradient(165deg, #232726, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(184,184,184,.14); }
-  .profile-sheet.tier-gold{ background:linear-gradient(165deg, #2c2612, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(212,175,55,.16); }
-  .profile-sheet.tier-platinum{ background:linear-gradient(165deg, #172428, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(111,147,168,.16); }
-  .profile-sheet.tier-diamond{ background:linear-gradient(165deg, #0d2831, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(42,157,201,.22), 0 0 30px -10px rgba(42,157,201,.35); }
+  /* ---- Profile sheet tier tint — a real, unmistakable colour wash (not
+     a faint hint) behind the header: a radial glow spotlight plus a
+     genuinely coloured top edge, same escalating-tiers language the
+     table cosmetics (felt/card-backs/chip-rims) already use. Diamond
+     gets its own slow ambient pulse on top, same as everywhere else in
+     the casino that a Diamond distinction shows up. */
+  .profile-sheet{ transition: background .4s ease, box-shadow .4s ease, border-color .4s ease; }
+  .profile-sheet::before{
+    content:''; position:absolute; top:-30px; left:50%; transform:translateX(-50%);
+    width:340px; height:280px; border-radius:50%; pointer-events:none; z-index:0;
+    background: radial-gradient(circle, var(--tier-glow, transparent) 0%, transparent 72%);
+    opacity:0; transition: opacity .5s ease;
+  }
+  .profile-sheet > *{ position:relative; z-index:1; } /* keep real content above the glow layer */
+  .profile-sheet.tier-bronze{ background:linear-gradient(180deg, #3d2914 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(224,164,105,.55); }
+  .profile-sheet.tier-bronze::before{ opacity:1; --tier-glow: rgba(224,164,105,.3); }
+  .profile-sheet.tier-silver{ background:linear-gradient(180deg, #2e3230 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(220,220,220,.55); }
+  .profile-sheet.tier-silver::before{ opacity:1; --tier-glow: rgba(220,220,220,.26); }
+  .profile-sheet.tier-gold{ background:linear-gradient(180deg, #3d3413 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(212,175,55,.6); }
+  .profile-sheet.tier-gold::before{ opacity:1; --tier-glow: rgba(255,224,120,.32); }
+  .profile-sheet.tier-platinum{ background:linear-gradient(180deg, #17323a 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(111,147,168,.6); }
+  .profile-sheet.tier-platinum::before{ opacity:1; --tier-glow: rgba(160,200,220,.3); }
+  .profile-sheet.tier-diamond{ background:linear-gradient(180deg, #0e3644 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(42,157,201,.65); box-shadow:0 -10px 40px rgba(0,0,0,.5), 0 0 40px -8px rgba(42,157,201,.4); }
+  .profile-sheet.tier-diamond::before{ opacity:1; --tier-glow: rgba(127,216,255,.4); animation: profileDiamondGlowPulse 3s ease-in-out infinite; }
+  @keyframes profileDiamondGlowPulse{
+    0%,100%{ opacity:.85; transform:translateX(-50%) scale(1); }
+    50%{ opacity:1; transform:translateX(-50%) scale(1.1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .profile-sheet.tier-diamond::before{ animation:none; }
+  }
 
   /* ---- Flair line — one auto-generated fact string under the name. ---- */
   .profile-flair{
@@ -2532,16 +2565,35 @@
   }
 
   /* ---- Prestige progress bar — how far toward the next tier up. ---- */
-  .profile-prestige-bar-wrap{ margin:14px 0 4px; }
+  .profile-prestige-bar-wrap{ margin:14px 0 4px; cursor:pointer; }
   .profile-prestige-bar-track{
-    width:100%; height:8px; border-radius:5px; background:rgba(0,0,0,.35);
-    overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,.5);
+    width:100%; height:10px; border-radius:6px; background:rgba(0,0,0,.35);
+    overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,.5); position:relative;
   }
   .profile-prestige-bar-fill{
-    height:100%; border-radius:5px; background:linear-gradient(90deg, var(--brass-dim), var(--brass-light));
-    transition:width .6s ease;
+    height:100%; border-radius:6px; background:linear-gradient(90deg, var(--brass-dim), var(--brass-light));
+    transition:width 1s cubic-bezier(.16,.9,.2,1); position:relative; overflow:hidden;
   }
+  /* A light sweep animates across the filled portion once, right after it
+     grows in — same idle-shine language the nav coin/premium coin use,
+     here as a one-shot "just filled" flourish rather than a loop. */
+  .profile-prestige-bar-fill::after{
+    content:''; position:absolute; top:0; left:-60%; width:40%; height:100%;
+    background:linear-gradient(75deg, transparent, rgba(255,255,255,.6), transparent);
+    animation: prestigeBarShine 1.4s ease-out .5s 1;
+  }
+  @keyframes prestigeBarShine{ 0%{ left:-60%; } 100%{ left:140%; } }
   .profile-prestige-bar-label{ font-size:10.5px; color:var(--muted); text-align:center; margin-top:5px; }
+  .profile-prestige-bar-label .tap-hint{ color:var(--brass-dim); font-size:9.5px; }
+  .profile-prestige-breakdown{
+    margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(0,0,0,.22);
+    border:1px solid var(--line); font-size:11px; display:none;
+  }
+  .profile-prestige-breakdown.open{ display:block; animation: profileBreakdownOpen .25s ease both; }
+  @keyframes profileBreakdownOpen{ 0%{ opacity:0; transform:translateY(-4px); } 100%{ opacity:1; transform:translateY(0); } }
+  .profile-prestige-breakdown-row{ display:flex; justify-content:space-between; padding:3px 0; color:var(--chalk); }
+  .profile-prestige-breakdown-row .lbl{ color:var(--muted); }
+  .profile-prestige-breakdown-row .val{ font-family:'IBM Plex Mono', monospace; color:var(--brass); }
 
   /* ---- Head-to-head vs you — only shown on someone ELSE'S profile. ---- */
   .profile-headtohead{
@@ -2550,10 +2602,26 @@
     background:rgba(0,0,0,.18); border:1px solid var(--line);
   }
   .profile-h2h-side{ flex:1; text-align:center; }
-  .profile-h2h-side .val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:14px; display:block; }
-  .profile-h2h-side .lbl{ font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
-  .profile-h2h-side.ahead .val{ color:var(--win); }
+  .profile-h2h-side .val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:16px; display:block; }
+  .profile-h2h-side .lbl{ font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:2px; display:block; }
+  .profile-h2h-side.ahead .val{ color:var(--win); text-shadow:0 0 12px rgba(111,169,138,.5); }
+  .profile-h2h-side.ahead .lbl::before{ content:'👑 '; }
   .profile-h2h-vs{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:11px; color:var(--muted); flex-shrink:0; }
+
+  .profile-action-row{ display:flex; gap:8px; margin:14px 0 4px; }
+  .profile-action-row .pill-btn{ flex:1; font-size:12.5px; }
+
+  /* Swipe-to-switch-profile — a small hint arrow pair, and a light
+     directional flash on the sheet so the gesture has *some* visual
+     acknowledgement even without a full custom transition per swipe. */
+  .profile-swipe-hint{
+    display:flex; justify-content:center; gap:5px; margin-top:2px; margin-bottom:-6px;
+    font-size:10px; color:var(--muted); opacity:.6;
+  }
+  .profile-sheet.swiping-next{ animation: profileSwipeNext .3s ease; }
+  .profile-sheet.swiping-prev{ animation: profileSwipePrev .3s ease; }
+  @keyframes profileSwipeNext{ 0%{ transform:translateX(0); opacity:1; } 50%{ transform:translateX(-14px); opacity:.5; } 100%{ transform:translateX(0); opacity:1; } }
+  @keyframes profileSwipePrev{ 0%{ transform:translateX(0); opacity:1; } 50%{ transform:translateX(14px); opacity:.5; } 100%{ transform:translateX(0); opacity:1; } }
 
   /* ---- Recent form strip — last several weeks' group-multi results as
      a compact dot sequence, oldest to newest (reads left-to-right like a
@@ -2597,7 +2665,8 @@
   .rules-body h3{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); margin:18px 0 6px; }
   .rules-body h3:first-child{ margin-top:0; }
   .rules-body p{ margin:0 0 8px; color:var(--chalk); opacity:.92; }
-  .profile-stat-cell{ background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; }
+  .profile-stat-cell{ background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; transition: transform .12s ease, background .12s ease; }
+  .profile-stat-cell:active{ transform:scale(.96); background:rgba(0,0,0,.32); }
   .profile-stat-cell .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
   .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:700; color:var(--chalk); }
   .profile-stat-cell.wide{ grid-column:1 / -1; display:flex; align-items:center; justify-content:space-around; text-align:center; padding:12px 8px; }

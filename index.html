@@ -1556,6 +1556,7 @@
 <div id="profileModal" class="profile-modal">
   <div class="profile-sheet" id="profileSheet">
     <button type="button" class="profile-close" id="profileCloseBtn">✕</button>
+    <div class="profile-swipe-hint" id="profileSwipeHint" style="display:none;">‹ swipe to browse ›</div>
     <div class="profile-header">
       <div id="profileAvatarArea" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
       <h2 id="profileName">Name</h2>
@@ -1566,8 +1567,13 @@
     <div class="profile-prestige-bar-wrap" id="profilePrestigeBarWrap" style="display:none;">
       <div class="profile-prestige-bar-track"><div class="profile-prestige-bar-fill" id="profilePrestigeBarFill"></div></div>
       <div class="profile-prestige-bar-label" id="profilePrestigeBarLabel"></div>
+      <div class="profile-prestige-breakdown" id="profilePrestigeBreakdown"></div>
     </div>
     <div class="profile-headtohead" id="profileHeadToHead" style="display:none;"></div>
+    <div class="profile-action-row" id="profileActionRow" style="display:none;">
+      <button type="button" class="pill-btn pill-btn-action" id="profileChallengeBtn">⚔️ Challenge</button>
+      <button type="button" class="pill-btn pill-btn-action" id="profileNudgeBtn">👋 Nudge</button>
+    </div>
     <div class="profile-stat-grid" id="profileStats"></div>
     <div class="profile-form-section" id="profileFormSection" style="display:none;">
       <div class="profile-form-label">Recent Form</div>
@@ -2657,7 +2663,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.19"; // CRITICAL FIX: openProfile() threw on every single call — a reset line referenced an element that didn't exist in the DOM yet, breaking all profile access since .18 — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.21"; // Challenge/Nudge quick-actions and swipe-to-browse on profiles — new send-nudge.mjs function needs deploying too — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7396,11 +7402,17 @@ function openProfile(name){
   document.getElementById('profileModal').dataset.openName = name;
 
   // Head-to-head vs you — only makes sense on someone ELSE's profile.
+  // Resolved via linkedUid, not currentUserName — account display name
+  // and Board roster name are two genuinely separate, driftable fields
+  // in this app (that's the whole reason resolveMyMemberIndex/linkedUid
+  // exists at all), so matching by name here was returning nobody and
+  // silently showing $0.00 for "you" whenever the two didn't match.
   const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
   const h2hEl = document.getElementById('profileHeadToHead');
   if(h2hEl){
-    if(!isMe && currentUserName){
-      const myLifetime = getLifetimeStats(currentUserName, currentState);
+    const myMember = currentState.members.find(mm => mm.linkedUid === currentUserUid);
+    if(!isMe && myMember){
+      const myLifetime = getLifetimeStats(myMember.name, currentState);
       h2hEl.style.display = 'flex';
       h2hEl.innerHTML = `
         <div class="profile-h2h-side ${myLifetime.pl > lifetime.pl ? 'ahead' : ''}"><span class="val">${fmtMoney(myLifetime.pl)}</span><span class="lbl">You</span></div>
@@ -7411,6 +7423,20 @@ function openProfile(name){
       h2hEl.style.display = 'none';
     }
   }
+
+  // Challenge/Nudge quick-actions — same "someone else, and they're
+  // actually linked to a real account" gate the head-to-head strip uses,
+  // since both need a real toUid to act on.
+  const actionRow = document.getElementById('profileActionRow');
+  if(actionRow){
+    actionRow.style.display = (!isMe && m.linkedUid && currentUserRole !== 'readonly') ? 'flex' : 'none';
+    if(!isMe && m.linkedUid){
+      actionRow.dataset.targetUid = m.linkedUid;
+      actionRow.dataset.targetName = m.name;
+    }
+  }
+  const swipeHintEl = document.getElementById('profileSwipeHint');
+  if(swipeHintEl) swipeHintEl.style.display = currentState.members.length > 1 ? 'block' : 'none';
 
   // Recent form — last several weeks' group-multi results as a compact
   // dot strip, oldest to newest. Pure local computation, same source
@@ -7492,6 +7518,99 @@ async function loadProfileGameStats(linkedUid, forName){
     }
   }catch(e){}
 }
+
+// ---- Challenge / Nudge quick-actions, launched straight from a profile ----
+document.getElementById('profileChallengeBtn').addEventListener('click', () => {
+  const actionRow = document.getElementById('profileActionRow');
+  const toUid = actionRow.dataset.targetUid;
+  const toName = actionRow.dataset.targetName;
+  if(!toUid) return;
+  document.getElementById('profileModal').classList.remove('open');
+  setActiveTab('casino');
+  showCasinoView('casinoChallengesView');
+  renderChallengesList();
+  // Same "open the new-challenge form" logic newChallengeBtn's own click
+  // handler runs, just with the opponent pre-selected instead of left on
+  // whatever the dropdown's first option happens to be.
+  const form = document.getElementById('newChallengeForm');
+  const select = document.getElementById('challengeOpponentSelect');
+  const linked = (currentState && currentState.members || []).filter(m => m.linkedUid && m.linkedUid !== currentUserUid);
+  select.innerHTML = linked.map(m => `<option value="${m.linkedUid}" data-name="${escapeHtml(m.name)}">${escapeHtml(m.name)}</option>`).join('');
+  select.value = toUid;
+  document.getElementById('challengeStakeInput').value = '';
+  document.getElementById('newChallengeStatus').textContent = '';
+  form.style.display = linked.length > 0 ? 'block' : 'none';
+  showToast(`⚔️ Ready to challenge ${toName}`);
+});
+document.getElementById('profileNudgeBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('profileNudgeBtn');
+  if(btn.disabled) return;
+  const actionRow = document.getElementById('profileActionRow');
+  const toUid = actionRow.dataset.targetUid;
+  const toName = actionRow.dataset.targetName;
+  if(!toUid) return;
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = 'Nudging…';
+  try{
+    const auth = await getValidAuth();
+    if(!auth) throw new Error('Not signed in');
+    trackApiCall('send-nudge');
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-nudge', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: auth.idToken, toUid })
+    });
+    const data = await res.json().catch(() => ({}));
+    if(res.ok){
+      showToast(`👋 Nudged ${toName}`);
+    } else if(res.status === 429){
+      showToast(data.error || `Already nudged ${toName} recently — give it a bit`);
+    } else if(res.status === 404){
+      showToast(`${toName} hasn't turned on notifications`);
+    } else {
+      showToast("Couldn't send nudge — try again");
+    }
+  }catch(e){
+    showToast("Couldn't send nudge — try again");
+  }
+  btn.disabled = false;
+  btn.textContent = originalText;
+});
+
+// ---- Swipe left/right on an open profile to browse the leaderboard ----
+// touchstart/touchend only (no preventDefault, no touchmove tracking) —
+// deliberately lightweight so it can never fight the sheet's own
+// overflow-y:auto vertical scroll. A real ~60px horizontal gesture,
+// clearly more horizontal than vertical, is the only thing that counts;
+// a tap on a badge or button inside the sheet won't move that far.
+let profileSwipeStartX = null, profileSwipeStartY = null;
+const profileSheetSwipeEl = document.getElementById('profileSheet');
+profileSheetSwipeEl.addEventListener('touchstart', (e) => {
+  if(e.touches.length !== 1) return;
+  profileSwipeStartX = e.touches[0].clientX;
+  profileSwipeStartY = e.touches[0].clientY;
+}, { passive: true });
+profileSheetSwipeEl.addEventListener('touchend', (e) => {
+  if(profileSwipeStartX == null) return;
+  const touch = e.changedTouches[0];
+  const dx = touch.clientX - profileSwipeStartX;
+  const dy = touch.clientY - profileSwipeStartY;
+  profileSwipeStartX = null;
+  profileSwipeStartY = null;
+  if(Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  const currentName = document.getElementById('profileModal').dataset.openName;
+  if(!currentName || !currentState || !currentState.members) return;
+  const ranked = rankedMembers(currentState.members);
+  const idx = ranked.findIndex(m => m.name === currentName);
+  if(idx === -1) return;
+  const target = dx < 0 ? ranked[idx + 1] : ranked[idx - 1];
+  if(!target) return; // already at either end of the list
+  profileSheetSwipeEl.classList.remove('swiping-next', 'swiping-prev');
+  void profileSheetSwipeEl.offsetWidth;
+  profileSheetSwipeEl.classList.add(dx < 0 ? 'swiping-next' : 'swiping-prev');
+  openProfile(target.name);
+}, { passive: true });
+
 // Casino badges (Founding Player + XP milestones) live under the linked
 // account's Firebase uid, not on the member record, so they're fetched
 // and appended separately/async — same guard pattern as loadProfileXP,
@@ -7556,7 +7675,7 @@ async function loadProfileCasinoBadges(linkedUid, forName){
       barWrap.style.display = 'block';
       if(t && t.key === 'diamond'){
         barFill.style.width = '100%';
-        barLabel.textContent = `${Math.round(prestige).toLocaleString()} prestige — top tier reached`;
+        barLabel.innerHTML = `${Math.round(prestige).toLocaleString()} prestige — top tier reached <span class="tap-hint">(tap for breakdown)</span>`;
       } else {
         const tierIdx = t ? CASINO_TIERS.findIndex(x => x.key === t.key) : CASINO_TIERS.length;
         const next = CASINO_TIERS[tierIdx - 1] || CASINO_TIERS[CASINO_TIERS.length - 1];
@@ -7564,8 +7683,25 @@ async function loadProfileCasinoBadges(linkedUid, forName){
         const span = next.threshold - floor;
         const pct = span > 0 ? Math.max(0, Math.min(100, ((prestige - floor) / span) * 100)) : 100;
         barFill.style.width = pct.toFixed(1) + '%';
-        barLabel.textContent = `${Math.round(prestige).toLocaleString()} / ${next.threshold.toLocaleString()} to ${next.name}`;
+        barLabel.innerHTML = `${Math.round(prestige).toLocaleString()} / ${next.threshold.toLocaleString()} to ${next.name} <span class="tap-hint">(tap for breakdown)</span>`;
       }
+      // Tap to reveal what actually makes up that prestige number — the
+      // three weighted inputs computePrestigeScore combines, otherwise
+      // completely opaque to anyone looking at just the total.
+      const boardScore = bettingBoardScoreFor(linkedUid);
+      const xpPart = lifetime;
+      const boardPart = Math.max(0, boardScore || 0) * PRESTIGE_WEIGHT_DATASCORE;
+      const tippingPart = Math.max(0, tippingPoints || 0) * PRESTIGE_WEIGHT_TIPPING;
+      const breakdownEl = document.getElementById('profilePrestigeBreakdown');
+      if(breakdownEl){
+        breakdownEl.innerHTML = `
+          <div class="profile-prestige-breakdown-row"><span class="lbl">🏆 Lifetime Casino XP</span><span class="val">${Math.round(xpPart).toLocaleString()}</span></div>
+          <div class="profile-prestige-breakdown-row"><span class="lbl">📊 Board Score × ${PRESTIGE_WEIGHT_DATASCORE}</span><span class="val">${Math.round(boardPart).toLocaleString()}</span></div>
+          <div class="profile-prestige-breakdown-row"><span class="lbl">🏉 Tipping Points × ${PRESTIGE_WEIGHT_TIPPING}</span><span class="val">${Math.round(tippingPart).toLocaleString()}</span></div>
+        `;
+        breakdownEl.classList.remove('open');
+      }
+      barWrap.onclick = () => { if(breakdownEl) breakdownEl.classList.toggle('open'); };
     }
 
     // Bounties posted/claimed — cheap to compute from the same collection

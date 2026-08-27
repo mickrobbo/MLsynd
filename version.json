@@ -1,7 +1,9 @@
 {
-  "version": "2026-08-24.19",
+  "version": "2026-08-24.21",
   "date": "2026-08-27",
   "changes": [
-    "Critical fix: profiles were completely broken since the last update — tapping any name did nothing. A line resetting one of the new profile stat cells ran before that cell actually existed in the page, which threw an error and silently killed the whole open-profile function before the modal ever appeared. Fixed — profiles open normally again."
+    "\u2694\ufe0f New: Challenge someone straight from their profile \u2014 pre-fills the Challenge form with them already selected, no more hunting through the Casino tab.",
+    "\ud83d\udc4b New: Nudge \u2014 a lightweight push notification straight from a profile ('X nudged you'). 5 minute cooldown per person so it can't be spammed.",
+    "\ud83d\udc46 New: swipe left/right on an open profile to browse to the next/previous person on the leaderboard, instead of closing and reopening each one."
   ]
 }
