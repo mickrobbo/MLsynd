@@ -2663,7 +2663,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.21"; // Challenge/Nudge quick-actions and swipe-to-browse on profiles — new send-nudge.mjs function needs deploying too — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.22"; // Nudge now surfaces the real error instead of a generic message, plus a Diagnostics check confirming send-nudge.mjs is actually deployed — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7565,13 +7565,23 @@ document.getElementById('profileNudgeBtn').addEventListener('click', async () =>
       showToast(`👋 Nudged ${toName}`);
     } else if(res.status === 429){
       showToast(data.error || `Already nudged ${toName} recently — give it a bit`);
-    } else if(res.status === 404){
-      showToast(`${toName} hasn't turned on notifications`);
+    } else if(res.status === 404 && data.error){
+      // Only the function's OWN "no subscription on file" 404 lands here —
+      // it always sends a JSON body with that specific error. A 404 with
+      // no parseable JSON body means the function route itself doesn't
+      // exist (not deployed yet), which needs a different, honest message
+      // rather than being misreported as "they haven't turned on
+      // notifications".
+      showToast(data.error);
     } else {
-      showToast("Couldn't send nudge — try again");
+      // Surfaces the real reason instead of swallowing it — a generic
+      // "try again" here just hides whether this was a real server error,
+      // a permissions problem, or (most likely for a brand new function)
+      // that send-nudge.mjs hasn't actually been deployed yet.
+      showToast(data.error ? `Couldn't send nudge — ${data.error}` : `Couldn't send nudge — server said HTTP ${res.status}`);
     }
   }catch(e){
-    showToast("Couldn't send nudge — try again");
+    showToast(`Couldn't send nudge — ${e.message || 'unknown error'}`);
   }
   btn.disabled = false;
   btn.textContent = originalText;
@@ -11393,6 +11403,29 @@ async function runFullHealthCheck(){
     const badRates = Object.entries(XP_RATES).filter(([, v]) => !(typeof v === 'number' && isFinite(v) && v > 0));
     check('XP economy rates sanity', badRates.length === 0 ? 'pass' : 'fail',
       badRates.length === 0 ? `All ${Object.keys(XP_RATES).length} rates are positive numbers (${Object.entries(XP_RATES).map(([k,v]) => `${k}: ${v}`).join(', ')})` : `Invalid rate(s): ${badRates.map(([k,v]) => `${k}=${JSON.stringify(v)}`).join(', ')}`);
+  }
+
+  // 25. Nudge function deployed — send-nudge.mjs is a genuinely NEW
+  // function file (not a replacement of an existing one), so "did the
+  // deploy actually pick it up" is a real, easy-to-miss failure mode of
+  // its own. Sends an intentionally invalid request (no idToken/toUid) —
+  // harmless, doesn't notify anyone — and checks for the function's own
+  // clean 400 response. A raw 404 or an unparseable body means the route
+  // doesn't exist at all, i.e. the file was never actually deployed.
+  try{
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-nudge', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => null);
+    if(res.status === 400 && data && data.error){
+      check('Nudge function deployed', 'pass', 'Reachable and responding correctly');
+    } else if(res.status === 404 || !data){
+      check('Nudge function deployed', 'fail', `Doesn't appear to be deployed (HTTP ${res.status}, ${data ? 'valid' : 'no parseable'} JSON response) — add send-nudge.mjs to your Netlify functions alongside send-push.mjs`);
+    } else {
+      check('Nudge function deployed', 'warn', `Reachable but responded unexpectedly (HTTP ${res.status}): ${data.error || JSON.stringify(data)}`);
+    }
+  }catch(e){
+    check('Nudge function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
   }
 
   return { results, latencyMs: firebaseLatencyMs };
