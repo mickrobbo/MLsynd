@@ -1,11 +1,7 @@
 {
-  "version": "2026-08-24.25",
+  "version": "2026-08-24.27",
   "date": "2026-08-27",
   "changes": [
-    "\ud83c\udfb4 Tap a badge to flip it \u2014 shows the real qualifying condition (e.g. '10,000+ Lifetime XP') on the back, replacing the old popup bubble.",
-    "\u23f3 Prestige bar now projects '~3 weeks at this pace' based on your actual recent XP earn rate.",
-    "\ud83c\udf89 A one-time flex-moment celebration when you open your own profile right after a fresh tier-up or new badge.",
-    "\ud83d\udcc5 Tap a Recent Form dot to see that week's actual odds, not just win/loss.",
-    "\ud83d\udc46 Long-press any Board stat to compare yours vs theirs inline, without leaving the profile."
+    "\ud83c\udfc8 New: Tipping Dues \u2014 a separate one-off fee for the Tipping competition (admin sets the amount, currently TBD), completely independent of the $840 Board dues and tracked purely by account rather than Board roster membership, so it works for Tipping-only accounts too. Same rule as Board dues: 1 Casino XP per $2 paid. Admin panel lives in the Ledger; paid/owed status now shows on the profile for anyone who's been added."
   ]
 }

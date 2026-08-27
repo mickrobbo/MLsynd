@@ -2124,6 +2124,14 @@ let currentUserName = null;
 let currentUserUid = null;
 let currentUserEmail = null;
 const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping', 'casino'];
+// uid -> name, for anyone who's ever tipped but isn't on the Board roster
+// (a genuine Tipping-only account). The only group-readable way to learn
+// their name at all — /users is admin-only, so there's no way to bulk-list
+// every approved member client-side. Populated as a side effect whenever
+// the Tipping ladder renders (see renderTippingLadder), reused here for
+// profile resolution and the Casino leaderboard so neither has to
+// duplicate that same scan.
+let tippingParticipantNames = {};
 
 function applyRoleTabRestrictions(){
   if(currentUserRole !== 'tipping') return;
@@ -2670,7 +2678,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.25"; // 5 interactive profile features: badge flip, prestige countdown, flex moment, form-strip expand, long-press stat compare — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.27"; // Tipping Dues — new Ledger admin panel + profile display, same 1 XP per $2 rule as Board dues, uid-based so it reaches Tipping-only accounts too — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -6678,9 +6686,22 @@ async function renderXPLeaderboard(){
   const area = document.getElementById('xpLeaderboardArea');
   if(!currentState || !currentState.members){ area.innerHTML = '<div class="empty">No roster loaded yet.</div>'; return; }
   const linked = currentState.members.filter(m => m.linkedUid);
-  if(linked.length === 0){ area.innerHTML = '<div class="empty">Nobody\'s linked an account yet.</div>'; return; }
+  // Widened to include Tipping-only accounts too — real approved members
+  // with genuine Casino access and XP, just never on the Board roster.
+  // tippingParticipantNames only knows someone once the Tipping ladder
+  // has rendered this session (the only group-readable way to learn a
+  // non-Board name at all — /users is admin-only) — so a Tipping-only
+  // player who hasn't opened Tipping yet this session simply won't show
+  // here until they do. Deduplicated by uid so a Board member who's also
+  // tipped doesn't appear twice.
+  const linkedUids = new Set(linked.map(m => m.linkedUid));
+  const tippingOnly = Object.entries(tippingParticipantNames)
+    .filter(([uid]) => !linkedUids.has(uid))
+    .map(([uid, name]) => ({ name, linkedUid: uid }));
+  const allParticipants = [...linked, ...tippingOnly];
+  if(allParticipants.length === 0){ area.innerHTML = '<div class="empty">Nobody\'s linked an account yet.</div>'; return; }
   try{
-    const rows = await Promise.all(linked.map(async m => {
+    const rows = await Promise.all(allParticipants.map(async m => {
       try{
         const [balRes, lifetimeRes, streakRes, tippingRes] = await Promise.all([
           authedFetch(`/xp/${m.linkedUid}/balance.json`),
@@ -6710,7 +6731,7 @@ async function renderXPLeaderboard(){
       // as an actual "heater" worth calling out on the board.
       const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
       const tierKey = casinoTierFor(r.prestige)?.key || null; // already have the prestige score for this row — no extra fetch needed for the rank card's tier
-      return `<div style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '13px 8px' : '10px 4px'}; border-bottom:1px solid var(--line); ${bg}">
+      return `<div class="xp-lb-row" data-name="${escapeHtml(r.name)}" style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '13px 8px' : '10px 4px'}; border-bottom:1px solid var(--line); cursor:pointer; ${bg}">
         <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
         ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40)}
         <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${streakBadge}</span>
@@ -6720,6 +6741,13 @@ async function renderXPLeaderboard(){
         </span>
       </div>`;
     }).join('');
+    // Tapping a row opens their profile — same fallback-aware openProfile
+    // every other ladder uses, so a Tipping-only person shown here (see
+    // the widened participant list above) correctly gets their scoped
+    // profile rather than this silently doing nothing for them.
+    area.querySelectorAll('.xp-lb-row[data-name]').forEach(row => {
+      row.addEventListener('click', () => openProfile(row.dataset.name));
+    });
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load the leaderboard — try again.</div>';
   }
@@ -7465,7 +7493,20 @@ function computeAutoBadges(member, state){
 function openProfile(name){
   if(!currentState || !currentState.members) return;
   const m = currentState.members.find(mm => mm.name === name);
-  if(!m) return;
+  if(m){
+    openBoardProfile(m, name);
+    return;
+  }
+  // Not on the Board roster — check whether they're a known Tipping-only
+  // participant instead (see tippingParticipantNames, populated whenever
+  // the Tipping ladder has rendered this session). If we genuinely don't
+  // know them yet, there's nothing to show — most likely the Tipping tab
+  // just hasn't been visited yet this session, since that's what
+  // populates the cache in the first place.
+  const uid = Object.keys(tippingParticipantNames).find(u => tippingParticipantNames[u] === name);
+  if(uid) openTippingOnlyProfile(uid, name);
+}
+function openBoardProfile(m, name){
   const d = computeDerived(m);
   document.getElementById('profileName').textContent = m.name;
   document.getElementById('profileAvatarArea').innerHTML = ''; // clear immediately so the previous profile's photo can't flash before the new one loads
@@ -7518,6 +7559,9 @@ function openProfile(name){
     <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
       <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
       <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
+    </div>
+    <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
+      <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
     </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
@@ -7613,9 +7657,108 @@ function openProfile(name){
   loadProfileXP(m.linkedUid, name);
   loadProfileCasinoBadges(m.linkedUid, name);
   loadProfileGameStats(m.linkedUid, name);
+  loadProfileTippingDues(m.linkedUid, name);
   loadProfileLiveStatus(m.linkedUid, name);
   renderProfileAvatarSection(m);
   document.getElementById('profileModal').classList.add('open');
+}
+// Scoped-down profile for a Tipping-only account — real, approved member
+// with genuine Casino/Tipping access and activity, just never on the
+// Board roster. Shows everything uid-based (avatar, badges, tier,
+// prestige, XP, Bounties, most-played game, live status) exactly like a
+// full profile; hides everything that fundamentally requires Board data
+// (Multis, Individual Bets, Season Score, Recent Form, head-to-head vs
+// you) rather than showing a wall of misleading zeroes for stats this
+// account was never able to generate in the first place.
+function openTippingOnlyProfile(uid, name){
+  document.getElementById('profileName').textContent = name;
+  document.getElementById('profileAvatarArea').innerHTML = '';
+  document.getElementById('profileFlair').style.display = 'none';
+  document.getElementById('profilePrestigeBarWrap').style.display = 'none';
+  document.getElementById('profileLiveStatus').style.display = 'none';
+  document.getElementById('profileGameBreakdownSection').style.display = 'none';
+  document.getElementById('profileFlexBanner').style.display = 'none';
+
+  // Starts empty — loadProfileCasinoBadges below fills in Founding
+  // Player / XP milestones exactly the way it already does for a full
+  // profile's casino badges, since those are uid-based too.
+  document.getElementById('profileBadges').innerHTML = '<div style="font-size:11px; color:var(--muted);">No badges yet</div>';
+
+  document.getElementById('profileStats').innerHTML = `
+    <div class="profile-stat-group-label">Casino &amp; Tipping</div>
+    <div class="profile-stat-cell wide">
+      <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">…</span></span>
+      <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">…</span></span>
+    </div>
+    <div class="profile-stat-cell wide">
+      <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">…</span></span>
+      <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">…</span></span>
+    </div>
+    <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
+      <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
+      <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
+    </div>
+    <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
+      <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
+    </div>
+  `;
+  document.getElementById('profileModal').dataset.openName = name;
+
+  // No Board P/L to compare, no Board stats to long-press, no group-multi
+  // weekly history for Recent Form — all genuinely don't apply here.
+  const h2hEl = document.getElementById('profileHeadToHead');
+  if(h2hEl) h2hEl.style.display = 'none';
+  const formSection = document.getElementById('profileFormSection');
+  if(formSection) formSection.style.display = 'none';
+
+  const isMe = uid === currentUserUid;
+  const actionRow = document.getElementById('profileActionRow');
+  if(actionRow){
+    actionRow.style.display = (!isMe && currentUserRole !== 'readonly') ? 'flex' : 'none';
+    if(!isMe){
+      actionRow.dataset.targetUid = uid;
+      actionRow.dataset.targetName = name;
+    }
+  }
+  // Swipe-to-browse only walks the Board roster's order — a harmless
+  // no-op from here (the swipe handler's own name lookup just won't find
+  // a match and does nothing), so leaving the hint visible is a minor,
+  // acceptable inconsistency rather than something that actually breaks.
+  const swipeHintEl = document.getElementById('profileSwipeHint');
+  if(swipeHintEl) swipeHintEl.style.display = currentState.members.length > 1 ? 'block' : 'none';
+
+  const virtualMember = { name, linkedUid: uid }; // renderProfileAvatarSection only ever reads .name/.linkedUid off whatever it's given
+  loadProfileXP(uid, name);
+  loadProfileCasinoBadges(uid, name);
+  loadProfileGameStats(uid, name);
+  loadProfileTippingDues(uid, name);
+  loadProfileLiveStatus(uid, name);
+  renderProfileAvatarSection(virtualMember);
+  document.getElementById('profileModal').classList.add('open');
+}
+// Tipping Dues — a separate, one-off fee tracked purely by uid (see the
+// Ledger's new Tipping Dues panel), so it shows correctly on both a full
+// Board profile and a Tipping-only one. Only shows anything at all if
+// this person actually has an entry — most people won't yet, since it's
+// opt-in per the Ledger admin adding them, not automatic for everyone.
+async function loadProfileTippingDues(uid, forName){
+  const cellEl = document.getElementById('profileTippingDuesCell');
+  if(!uid || !cellEl) return;
+  try{
+    const res = await authedFetch(`/tippingDues/${uid}.json`);
+    if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
+    if(!res.ok) return;
+    const d = await res.json();
+    if(!d) return; // no entry — nothing to show, leave the cell hidden
+    const owed = Math.round(d.owed || 0);
+    const commitment = Math.round(d.commitment || 0);
+    const valEl = document.getElementById('profileTippingDuesVal');
+    if(valEl){
+      valEl.textContent = owed <= 0 && commitment > 0 ? `Paid ✅ ($${commitment})` : `$${owed} owed of $${commitment}`;
+      valEl.style.color = owed <= 0 && commitment > 0 ? 'var(--win)' : 'var(--brass)';
+    }
+    cellEl.style.display = 'flex';
+  }catch(e){}
 }
 // Biggest single win + most-played game, both derived from one fetch of
 // the linked account's own XP log — same endpoint/shape renderXPLog
@@ -12506,6 +12649,12 @@ async function renderTippingLadder(games){
       if(p && p.name) knownTippers[uid] = p.name;
     });
   });
+  // Shared with the rest of the app (Casino leaderboard, profile
+  // resolution) — the only group-readable way to learn a non-Board
+  // member's name at all, since /users is admin-only. Merged rather than
+  // replaced, so a name learned in an earlier render this session isn't
+  // lost if a later render's picks window happens to be narrower.
+  Object.assign(tippingParticipantNames, knownTippers);
 
   const tally = {}; // uid -> { name, points, marginDiff, marginCount }
   const pointsByRoundByUid = {}; // round -> uid -> points scored that round (for movement + chart)
@@ -12708,11 +12857,21 @@ async function renderTippingLadder(games){
     // only, so if boardJokerActiveByUid hadn't loaded yet when this ran (a real
     // race on first load), or updated later, nothing ever told the ladder to
     // reflect it — it could sit wrong for a full 4-minute poll cycle or more.
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td class="ladder-name-col" data-uid="${escapeHtml(r.uid)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${avatarRankCardHtml(r.name, avatarByUid[r.uid], tierKeyByUid[r.uid], 40)}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td class="ladder-name-col" data-uid="${escapeHtml(r.uid)}" data-name="${escapeHtml(r.name)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${avatarRankCardHtml(r.name, avatarByUid[r.uid], tierKeyByUid[r.uid], 40)}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;
   refreshJokerIconSlots();
+  // Tapping a name opens their profile — Board members get their full
+  // profile, anyone else gets the Tipping-only scoped version (see
+  // openProfile's fallback path). This is also the ONLY entry point a
+  // genuinely Tipping-only account has to reach their own profile at all,
+  // since the Home/Board tab (where "My Profile" access used to live) is
+  // hidden entirely for that role.
+  area.querySelectorAll('.ladder-name-col[data-name]').forEach(cell => {
+    cell.style.cursor = 'pointer';
+    cell.addEventListener('click', () => openProfile(cell.dataset.name));
+  });
 
   // Your points over the season, round by round — same pattern as the
   // money P/L chart on the Home tab.
