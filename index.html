@@ -631,6 +631,8 @@
         <button type="button" class="game-bubble" data-game="plinko"><span class="game-bubble-icon">🔴</span><span class="game-bubble-label">Plinko</span></button>
         <button type="button" class="game-bubble" data-game="bigwheel"><span class="game-bubble-icon">🛞</span><span class="game-bubble-label">Big Wheel</span></button>
         <button type="button" class="game-bubble" data-game="mines"><span class="game-bubble-icon">💣</span><span class="game-bubble-label">Mines</span></button>
+        <button type="button" class="game-bubble" data-game="crash"><span class="game-bubble-icon">🚀</span><span class="game-bubble-label">Crash</span></button>
+        <button type="button" class="game-bubble" data-game="doubleornothing"><span class="game-bubble-icon">🪙</span><span class="game-bubble-label">Double or Nothing</span></button>
         <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
         <button type="button" class="game-bubble" id="hubChallengesBtn" style="position:relative;"><span class="game-bubble-icon">🥊</span><span class="game-bubble-label">Challenges</span><span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span></button>
         <button type="button" class="game-bubble" id="hubBountiesBtn" style="position:relative;"><span class="game-bubble-icon">🎯</span><span class="game-bubble-label">Bounties</span><span class="casino-hub-badge" id="bountiesHubBadge" style="display:none;"></span></button>
@@ -1006,6 +1008,21 @@
         </div>
       </div>
       <div id="slotsResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
+      <div id="slotsGambleArea" class="slots-gamble-area" style="display:none;">
+        <div class="don-coin-wrap"><div class="playing-card pc-back slots-gamble-card" id="slotsGambleCard"><span class="slots-gamble-card-face" id="slotsGambleCardFace"></span></div></div>
+        <div class="slots-gamble-pot">Pot: <span id="slotsGamblePotVal">0</span> XP <span class="hint" id="slotsGambleRoundHint"></span></div>
+        <div class="deal-row">
+          <button type="button" id="slotsGambleRedBtn" class="pill-btn pill-btn-action slots-gamble-red">Red (2x)</button>
+          <button type="button" id="slotsGambleBlackBtn" class="pill-btn pill-btn-action slots-gamble-black">Black (2x)</button>
+        </div>
+        <div class="deal-row slots-gamble-suit-row">
+          <button type="button" class="pill-btn pill-btn-action" data-suit="♠">♠ (4x)</button>
+          <button type="button" class="pill-btn pill-btn-action" data-suit="♥" style="color:#e05a4e;">♥ (4x)</button>
+          <button type="button" class="pill-btn pill-btn-action" data-suit="♦" style="color:#e05a4e;">♦ (4x)</button>
+          <button type="button" class="pill-btn pill-btn-action" data-suit="♣">♣ (4x)</button>
+        </div>
+        <button type="button" id="slotsGambleCollectBtn" class="pill-btn pill-btn-primary" style="width:100%; margin-top:10px;">💰 Collect</button>
+      </div>
     </div>
     <div class="panel" id="slotsBetPanel">
       <div class="craps-section-label">Paylines <small>— activated in order, top to bottom of the list below</small></div>
@@ -1242,6 +1259,94 @@
         <button type="button" id="minesNewGameBtn" class="pill-btn" style="display:none;">New Game</button>
       </div>
       <div id="minesBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameCrash" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="crash">📜 Rules</button></div>
+    <div class="pc-table-rail" id="crashTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
+      <div class="craps-table-felt">
+        <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="deal-row" id="crashTopActions">
+          <button type="button" id="crashSameBetTopBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+          <button type="button" id="crashStartTopBtn" class="pill-btn pill-btn-primary">Start</button>
+        </div>
+        <button type="button" id="crashCashOutTopBtn" class="pill-btn pill-btn-action mines-top-fullwidth mines-cashout-top" style="display:none;">💰 Cash Out</button>
+        <div class="crash-display" id="crashDisplay">
+          <div class="crash-rocket" id="crashRocket">🚀</div>
+          <div class="crash-multiplier" id="crashMultiplierVal">1.00x</div>
+        </div>
+        <div class="craps-total-msg" id="crashResultMsg"></div>
+        <div class="croupier-caption" id="crashCroupierMsg"></div>
+        <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rounds</div>
+        <div class="craps-history" id="crashHistory"></div>
+      </div>
+    </div>
+    <div class="panel" id="crashBetPanel">
+      <div class="hint" style="margin-bottom:8px;">Place a bet and tap Start — the multiplier climbs from 1.00x the moment you do. Cash out any time before it crashes to lock in your win at whatever it's showing right then. Miss the window and the whole bet's gone.</div>
+      <div style="display:flex; justify-content:center; margin-top:4px;">
+        <div class="bj-chip" id="crashChipDisplay">50</div>
+        <input type="number" id="crashBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+      </div>
+      <div class="chip-rail" data-target="crashBetInput">
+        <button type="button" class="table-chip chip-5" data-val="5">5</button>
+        <button type="button" class="table-chip chip-10" data-val="10">10</button>
+        <button type="button" class="table-chip chip-25" data-val="25">25</button>
+        <button type="button" class="table-chip chip-50" data-val="50">50</button>
+        <button type="button" class="table-chip chip-100" data-val="100">100</button>
+        <button type="button" class="table-chip chip-250" data-val="250">250</button>
+        <button type="button" class="chip-clear-btn" data-target="crashBetInput">Clear Chips</button>
+      </div>
+      <div class="deal-row">
+        <button type="button" id="crashSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+        <button type="button" id="crashStartBtn" class="pill-btn pill-btn-primary">Start</button>
+        <button type="button" id="crashCashOutBtn" class="pill-btn pill-btn-action" style="display:none;">💰 Cash Out</button>
+      </div>
+      <div id="crashBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameDoubleOrNothing" style="display:none;">
+    <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="doubleornothing">📜 Rules</button></div>
+    <div class="pc-table-rail" id="donTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
+      <div class="craps-table-felt">
+        <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="don-coin-wrap"><div class="don-coin" id="donCoin"><span id="donCoinFace">?</span></div></div>
+        <div class="mines-status-row">
+          <div class="mines-status-cell"><span class="lbl">Current Pot</span><span class="val" id="donPotVal">—</span></div>
+          <div class="mines-status-cell"><span class="lbl">Streak</span><span class="val" id="donStreakVal">0</span></div>
+        </div>
+        <div class="craps-total-msg" id="donResultMsg"></div>
+        <div class="croupier-caption" id="donCroupierMsg"></div>
+        <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent rounds</div>
+        <div class="craps-history" id="donHistory"></div>
+      </div>
+    </div>
+    <div class="panel" id="donBetPanel">
+      <div class="hint" id="donHint" style="margin-bottom:8px;">Pick a bet, then call Heads or Tails. Guess right and your pot doubles — bank it, or go again and risk the lot for another double.</div>
+      <div id="donStakeRow">
+        <div style="display:flex; justify-content:center; margin-top:4px;">
+          <div class="bj-chip" id="donChipDisplay">50</div>
+          <input type="number" id="donBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
+        </div>
+        <div class="chip-rail" data-target="donBetInput">
+          <button type="button" class="table-chip chip-5" data-val="5">5</button>
+          <button type="button" class="table-chip chip-10" data-val="10">10</button>
+          <button type="button" class="table-chip chip-25" data-val="25">25</button>
+          <button type="button" class="table-chip chip-50" data-val="50">50</button>
+          <button type="button" class="table-chip chip-100" data-val="100">100</button>
+          <button type="button" class="table-chip chip-250" data-val="250">250</button>
+          <button type="button" class="chip-clear-btn" data-target="donBetInput">Clear Chips</button>
+        </div>
+      </div>
+      <div class="deal-row" id="donChoiceRow">
+        <button type="button" id="donHeadsBtn" class="pill-btn pill-btn-primary">Heads</button>
+        <button type="button" id="donTailsBtn" class="pill-btn pill-btn-primary">Tails</button>
+      </div>
+      <div class="deal-row" id="donBankRow" style="display:none;">
+        <button type="button" id="donBankBtn" class="pill-btn pill-btn-action">💰 Bank it</button>
+      </div>
+      <div id="donBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
     </div>
     </div>
 
@@ -2578,7 +2683,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.7"; // grouped changelog covering today's full batch of work — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.8"; // two new casino games (Crash, Double or Nothing) plus a Gamble feature on Slots — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5299,7 +5404,7 @@ function updateXPBalanceDisplay(bal){
 // classifier rather than touching each of the six game functions
 // individually. Losses fund the pot; any casino play (win or lose) counts
 // toward the 20-play activity-eligibility threshold.
-const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Plinko|Big Wheel|Mines|Slots|Video Poker|Spin the Wheel)/i;
+const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Plinko|Big Wheel|Mines|Slots|Video Poker|Spin the Wheel|Crash|Double or Nothing)/i;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
@@ -6201,11 +6306,13 @@ async function checkAndAwardTippingXP(){
 const CASINO_GAME_PANEL_IDS = {
   blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
   war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin',
-  craps: 'casinoGameCraps', plinko: 'casinoGamePlinko', bigwheel: 'casinoGameBigWheel', mines: 'casinoGameMines'
+  craps: 'casinoGameCraps', plinko: 'casinoGamePlinko', bigwheel: 'casinoGameBigWheel', mines: 'casinoGameMines',
+  crash: 'casinoGameCrash', doubleornothing: 'casinoGameDoubleOrNothing'
 };
 const CASINO_GAME_LABELS = {
   blackjack: 'Blackjack', baccarat: 'Baccarat', roulette: 'Roulette', war: 'Casino War',
-  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', plinko: 'Plinko', bigwheel: 'Big Wheel', mines: 'Mines'
+  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', plinko: 'Plinko', bigwheel: 'Big Wheel', mines: 'Mines',
+  crash: 'Crash', doubleornothing: 'Double or Nothing'
 };
 // Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
 // computing "my rank" doesn't re-fetch every linked member's balance a
@@ -6558,6 +6665,24 @@ const CASINO_RULES = {
     <p>Every cell on the grid picks independently from the same weighted set of symbols, so the rarer a symbol looks on the reel, the rarer it actually is — cherries turn up often for a small win, five 👑 in a row on a line is the real jackpot and genuinely rare.</p>
     <h3>Free Spins</h3>
     <p>Land 3 or more 👑 anywhere on the grid — any row, any reel, doesn't need to be on a line you bet on — and you get 8 free spins at a 3x multiplier on every win. Your bet is locked at whatever triggered it for the whole bonus (the controls disable themselves), and free spins can retrigger for more on top of what's left. Free spins never cost you anything, even the ones that don't hit.</p>
+    <h3>Gamble</h3>
+    <p>Win on a normal spin (not during Free Spins) and you can risk it before collecting: pick Red or Black for a clean 2x, or call the exact suit for 4x. Guess right and your pot grows, guess wrong and it's gone — but never more than the win itself, your balance never drops below what it was before that spin. Keep going for up to 5 rounds, or collect whenever you want to bank it.</p>
+  `},
+  crash: { title: '🚀 Crash Rules', body: `
+    <h3>Object</h3>
+    <p>Place your bet and tap Start — the multiplier climbs from 1.00x the instant the round begins. Cash out any time to lock in a payout of your bet × whatever the multiplier's showing right then. If you're still in when it crashes, the bet's gone.</p>
+    <h3>The odds</h3>
+    <p>The crash point is decided the moment you hit Start, not faked afterward to punish a particular cash-out — genuine 97% RTP at every multiplier you might choose to cash out at, same fairness property real crash games are built on: cashing out early or late doesn't change your expected return, only your risk.</p>
+    <h3>Reading the number</h3>
+    <p>The multiplier's colour shifts as it climbs — calm green, gold past 2x, hot orange past 5x — same idea as the rocket icon, a visual cue for how much is riding on this cash-out.</p>
+  `},
+  doubleornothing: { title: '🪙 Double or Nothing Rules', body: `
+    <h3>Object</h3>
+    <p>Pick a bet, then call Heads or Tails. Guess right and your pot doubles. From there: bank it, or call again and risk the whole pot for another double. No cap on how far a streak can run — the odds of getting there just get steeper each time.</p>
+    <h3>The odds</h3>
+    <p>Not a genuinely fair coin — each call is roughly a 48.5% chance, which at an exact 2x payout works out to the same 97% RTP every other game in this casino runs at. A truly fair 50/50 coin at 2x would be the one game here with no house edge at all, which wouldn't be honest about how this actually pays.</p>
+    <h3>Losing</h3>
+    <p>A wrong call loses the entire current pot, not just your original stake — the whole point of "double or nothing" is that everything you've built up this streak is on the table every time you go again.</p>
   `},
   dailyspin: { title: '🎡 Spin the Wheel Rules', body: `
     <h3>Object</h3>
@@ -6624,6 +6749,7 @@ document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
 const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
   ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['plinko', '🔴 Plinko'], ['bigwheel', '🛞 Big Wheel'], ['mines', '💣 Mines'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
+  ['crash', '🚀 Crash'], ['doubleornothing', '🪙 Double or Nothing'],
   ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot'], ['tiers', '🏅 Player Tiers']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
@@ -6723,6 +6849,8 @@ document.getElementById('crapsRollTopBtn').addEventListener('click', crapsRoll);
 <script>
 </script>
 <script src="casino-videopoker.js"></script>
+<script src="casino-crash.js"></script>
+<script src="casino-doubleornothing.js"></script>
 <script>
 // ---- Croupier table-talk — a small dealer-voice caption that flashes
 // briefly at the right moments (bets closing, a shoe going out, a big

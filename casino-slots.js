@@ -56,6 +56,19 @@ let slotsBuilt = false;
 let slotsLastBet = null; // { amountPerLine, lines }
 let slotsActiveLineCount = 3;
 
+// ---- Gamble feature — offered after any real (non-free-spin) win.
+// Two fair sub-games (no house edge added on top of the win itself,
+// same as how this feature commonly works in the real thing — the base
+// game already carries the house's edge): Red/Black at exactly 1/2 odds
+// for 2x, or a suit pick at exactly 1/4 odds for 4x. Capped at 5 rounds
+// so a hot streak can't run forever — real pokie gamble features
+// typically cap it too, and it keeps the state genuinely simple.
+const SLOTS_GAMBLE_MAX_ROUNDS = 5;
+const SLOTS_SUITS = ['♠', '♥', '♦', '♣'];
+let slotsGamblePot = 0;
+let slotsGambleRound = 0;
+let slotsGambleBusy = false;
+
 function slotsBuildReelStrip(reelEl, finalSymbols, stripLength){
   // finalSymbols: array of SLOTS_ROW_COUNT symbols, top to bottom — the
   // last `SLOTS_ROW_COUNT` entries of the strip, so they land as the
@@ -329,11 +342,18 @@ async function slotsSpin(){
     panelEl.classList.remove('pc-shake'); void panelEl.offsetWidth; panelEl.classList.add('pc-shake');
     setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
-  if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? (isFreeSpin ? 'Slots free spin win' : 'Slots win') : 'Slots loss', { silent: true });
+  // A real (non-free-spin) win gets offered the Gamble feature instead of
+  // being credited immediately — collecting there is what actually
+  // awards the XP, so it's the one case that skips the immediate award
+  // below. Losses always award immediately (the deduction), and a
+  // free-spin win always awards immediately too (no gamble on those).
+  const goesToGamble = totalDelta > 0 && !isFreeSpin;
+  if(totalDelta !== 0 && !goesToGamble) await awardXP(totalDelta, totalDelta > 0 ? 'Slots free spin win' : 'Slots loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
   slotsUpdateTotalBetHint();
+  if(goesToGamble) slotsOfferGamble(totalDelta);
 }
 document.getElementById('slotsSpinBtn').addEventListener('click', slotsSpin);
 document.getElementById('slotsSameBetBtn').addEventListener('click', () => {
@@ -352,6 +372,110 @@ document.getElementById('slotsBetInput').addEventListener('input', (e) => {
   }
   slotsUpdateTotalBetHint();
 });
+
+function slotsOfferGamble(winAmount){
+  slotsGamblePot = winAmount;
+  slotsGambleRound = 0;
+  slotsGambleBusy = false;
+  const betPanel = document.getElementById('slotsBetPanel');
+  const gambleArea = document.getElementById('slotsGambleArea');
+  if(betPanel) betPanel.style.display = 'none';
+  if(gambleArea) gambleArea.style.display = 'block';
+  document.getElementById('slotsGambleCardFace').textContent = '';
+  slotsGambleUpdateDisplay();
+  slotsGambleSetSuitButtonsVisible(true);
+}
+function slotsGambleUpdateDisplay(){
+  document.getElementById('slotsGamblePotVal').textContent = slotsGamblePot.toLocaleString();
+  const hintEl = document.getElementById('slotsGambleRoundHint');
+  if(hintEl){
+    hintEl.textContent = slotsGambleRound >= SLOTS_GAMBLE_MAX_ROUNDS
+      ? 'Max streak reached — collect to bank it'
+      : `Round ${slotsGambleRound + 1} of ${SLOTS_GAMBLE_MAX_ROUNDS}`;
+  }
+}
+// At the cap, only Collect stays usable — the guess buttons hide rather
+// than sit there disabled, so it reads as "done", not "broken".
+function slotsGambleSetSuitButtonsVisible(visible){
+  const atCap = slotsGambleRound >= SLOTS_GAMBLE_MAX_ROUNDS;
+  const show = visible && !atCap;
+  document.getElementById('slotsGambleRedBtn').style.display = show ? 'inline-block' : 'none';
+  document.getElementById('slotsGambleBlackBtn').style.display = show ? 'inline-block' : 'none';
+  document.querySelectorAll('#slotsGambleArea [data-suit]').forEach(b => { b.style.display = show ? 'inline-block' : 'none'; });
+}
+function slotsGambleSetButtonsDisabled(disabled){
+  document.getElementById('slotsGambleRedBtn').disabled = disabled;
+  document.getElementById('slotsGambleBlackBtn').disabled = disabled;
+  document.querySelectorAll('#slotsGambleArea [data-suit]').forEach(b => { b.disabled = disabled; });
+  document.getElementById('slotsGambleCollectBtn').disabled = disabled;
+}
+async function slotsGambleGuess(type, value){
+  if(slotsGambleBusy) return;
+  slotsGambleBusy = true;
+  slotsGambleSetButtonsDisabled(true);
+
+  const suit = SLOTS_SUITS[Math.floor(Math.random() * SLOTS_SUITS.length)];
+  const isRed = suit === '♥' || suit === '♦';
+  const actualColor = isRed ? 'red' : 'black';
+  const won = type === 'color' ? value === actualColor : value === suit;
+  const mult = type === 'color' ? 2 : 4;
+
+  const cardEl = document.getElementById('slotsGambleCard');
+  const faceEl = document.getElementById('slotsGambleCardFace');
+  cardEl.classList.remove('slots-gamble-flip'); void cardEl.offsetWidth; cardEl.classList.add('slots-gamble-flip');
+  bjPlayChipSound();
+  await bjWait(600);
+  faceEl.textContent = suit;
+  faceEl.style.color = isRed ? '#e05a4e' : 'var(--chalk)';
+
+  if(won){
+    slotsGamblePot *= mult;
+    slotsGambleRound++;
+    slotsGambleUpdateDisplay();
+    slotsGambleSetSuitButtonsVisible(true);
+    slotsGambleSetButtonsDisabled(false);
+    slotsGambleBusy = false;
+    bjPlayChime(true);
+    const panelEl = document.getElementById('casinoGameSlots');
+    panelEl.classList.remove('pc-flash-gold'); void panelEl.offsetWidth; panelEl.classList.add('pc-flash-gold');
+    setTimeout(() => panelEl.classList.remove('pc-flash-gold'), 700);
+  } else {
+    bjPlayChime(false);
+    const panelEl = document.getElementById('casinoGameSlots');
+    panelEl.classList.add('pc-shake');
+    setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
+    // Busted — the gambled winnings are gone, but this never reaches
+    // below zero: the worst case is exactly "as if this spin had been a
+    // push", never touching XP the spin itself didn't win.
+    slotsGamblePot = 0;
+    await slotsGambleClose();
+  }
+}
+async function slotsGambleCollect(){
+  if(slotsGambleBusy) return;
+  slotsGambleBusy = true;
+  slotsGambleSetButtonsDisabled(true);
+  if(slotsGamblePot > 0){
+    await awardXP(slotsGamblePot, 'Slots gamble collect', { silent: true });
+  }
+  await slotsGambleClose();
+}
+async function slotsGambleClose(){
+  const gambleArea = document.getElementById('slotsGambleArea');
+  const betPanel = document.getElementById('slotsBetPanel');
+  if(gambleArea) gambleArea.style.display = 'none';
+  if(betPanel) betPanel.style.display = 'block';
+  slotsGambleBusy = false;
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+  renderXPLog();
+}
+document.getElementById('slotsGambleRedBtn').addEventListener('click', () => slotsGambleGuess('color', 'red'));
+document.getElementById('slotsGambleBlackBtn').addEventListener('click', () => slotsGambleGuess('color', 'black'));
+document.querySelectorAll('#slotsGambleArea [data-suit]').forEach(btn => {
+  btn.addEventListener('click', () => slotsGambleGuess('suit', btn.dataset.suit));
+});
+document.getElementById('slotsGambleCollectBtn').addEventListener('click', slotsGambleCollect);
 
 // A bright ascending coin-cascade sound for a casino win — originally part
 // of the Slots sound set, but Video Poker's win celebration (below) also

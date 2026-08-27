@@ -1,12 +1,9 @@
 {
-  "version": "2026-08-24.7",
+  "version": "2026-08-24.8",
   "date": "2026-08-27",
   "changes": [
-    "🎨 Navigation: redesigned bottom nav with an elevated gold Casino button; Cash and Slips moved under Home's own sub-tabs.",
-    "🎰 Casino tables: Mines, Craps, Roulette, and Plinko all got their main actions duplicated to the top of the table so you're not scrolling down every round. Slots rebuilt as a real 5-reel/3-row pokie \u2014 bet 1/3/5 paylines, an actual line drawn across the grid on every win, and a Free Spins bonus (3+ crowns anywhere \u2192 8 spins at 3x).",
-    "\ud83c\udfc6 Tier cosmetics: your table felt, card backs, and chip rims now reflect your Casino tier (Bronze through Diamond), and the Diamond badge has a proper pulsing glow.",
-    "\ud83d\udcb0 XP rates updated: correct tip 250 (was 150), individual bet win 150/$ (was 100), group multi leg win 350 (was 150). New: a losing group multi leg now costs 100 XP (used to cost nothing) \u2014 void/no bet is still 0. Weekly bonus 500 (was 350).",
-    "\ud83d\udcc5 On This Day: now also shows a personal MLSynd fact (your biggest XP swing on this date, past years) alongside the sports one, in the same card.",
-    "\ud83c\udfaf New: Bounties \u2014 post XP for anyone to claim first (honour system), from the Casino hub."
+    "🚀 New: Crash — the multiplier climbs from 1.00x, cash out any time before it crashes to lock in your win.",
+    "🪙 New: Double or Nothing — call Heads or Tails, double your pot on a correct call, bank it or risk it all again.",
+    "🎰 Slots: after any real win, you can now Gamble it — pick Red/Black (2x) or a suit (4x), up to 5 rounds, before collecting."
   ]
 }
