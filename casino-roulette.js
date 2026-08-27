@@ -345,12 +345,15 @@ function rouletteTapOutsideCell(cell){
 function rouletteRenderActiveBets(){
   const area = document.getElementById('rouletteActiveBetsArea');
   const clearBtn = document.getElementById('rouletteClearAllBtn');
+  const clearBtnTop = document.getElementById('rouletteClearAllTopBtn');
   if(rouletteActiveBets.length === 0){
     area.innerHTML = '<div class="roulette-total-staked">Total staked: 0 XP</div>';
     clearBtn.disabled = true;
+    if(clearBtnTop) clearBtnTop.disabled = true;
     return;
   }
   clearBtn.disabled = false;
+  if(clearBtnTop) clearBtnTop.disabled = false;
   const total = rouletteActiveBets.reduce((s, b) => s + b.amount, 0);
   area.innerHTML = rouletteActiveBets.map(b => `
     <div class="roulette-active-bet-row">
@@ -361,12 +364,14 @@ function rouletteRenderActiveBets(){
     el.addEventListener('click', () => rouletteRemoveBet(parseInt(el.dataset.removeId, 10)));
   });
 }
-document.getElementById('rouletteClearAllBtn').addEventListener('click', () => {
+function rouletteClearAllBets(){
   rouletteActiveBets.slice().forEach(b => rouletteRemoveBet(b.id));
   rouletteClearBuilding();
   document.getElementById('rouletteSelectedSpot').textContent = 'No spot selected';
   document.getElementById('rouletteSelectedSpot').style.color = '';
-});
+}
+document.getElementById('rouletteClearAllBtn').addEventListener('click', rouletteClearAllBets);
+document.getElementById('rouletteClearAllTopBtn').addEventListener('click', rouletteClearAllBets);
 // Re-places every bet from the last completed spin exactly as it was —
 // replaces whatever's currently on the table rather than stacking on top,
 // so tapping it twice in a row is a no-op, not a doubled bet.
@@ -389,6 +394,7 @@ function rouletteRepeatLastBet(){
   bjPlayChipSound();
 }
 document.getElementById('rouletteSameBetBtn').addEventListener('click', rouletteRepeatLastBet);
+document.getElementById('rouletteSameBetTopBtn').addEventListener('click', rouletteRepeatLastBet);
 document.getElementById('rouletteBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('rouletteChipDisplay');
   if(chip){
@@ -456,12 +462,15 @@ async function rouletteSpin(){
   if(rouletteSpinning) return;
   rouletteSpinning = true;
   const spinBtn = document.getElementById('rouletteSpinBtn');
+  const spinBtnTop = document.getElementById('rouletteSpinTopBtn');
   if(spinBtn) spinBtn.disabled = true;
+  if(spinBtnTop) spinBtnTop.disabled = true;
   try{
     await rouletteSpinInner();
   } finally {
     rouletteSpinning = false;
     if(spinBtn) spinBtn.disabled = false;
+    if(spinBtnTop) spinBtnTop.disabled = false;
   }
 }
 async function rouletteSpinInner(){
@@ -494,6 +503,8 @@ async function rouletteSpinInner(){
 
   await bjWait(4300);
   document.getElementById('rouletteSpinBtn').disabled = false;
+  const spinBtnTopMidFlow = document.getElementById('rouletteSpinTopBtn');
+  if(spinBtnTopMidFlow) spinBtnTopMidFlow.disabled = false;
 
   const color = rouletteColorOf(winningPocket);
   let totalDelta = 0;
@@ -541,8 +552,11 @@ async function rouletteSpinInner(){
   // so the Same Bet pill can re-place this exact spread next round.
   rouletteLastBets = rouletteActiveBets.map(b => ({ ...b, cellEls: b.cellEls.slice() }));
   document.getElementById('rouletteSameBetBtn').disabled = rouletteLastBets.length === 0;
+  const sameBetTopBtn = document.getElementById('rouletteSameBetTopBtn');
+  if(sameBetTopBtn) sameBetTopBtn.disabled = rouletteLastBets.length === 0;
   rouletteActiveBets.forEach(b => b.cellEls.forEach(c => { c.classList.remove('selected'); const bd = c.querySelector('.rt-chip-badge'); if(bd) bd.remove(); }));
   rouletteActiveBets = [];
   rouletteRenderActiveBets();
 }
 document.getElementById('rouletteSpinBtn').addEventListener('click', rouletteSpin);
+document.getElementById('rouletteSpinTopBtn').addEventListener('click', rouletteSpin);

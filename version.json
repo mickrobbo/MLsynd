@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.2",
+  "version": "2026-08-24.3",
   "date": "2026-08-27",
   "changes": [
-    "Mines: Start, Same Bet, and New Game now also sit at the top of the felt (next to Cash Out), so you're not scrolling down to the bet panel every single round. Same auto-scroll-to-table on your first bet as before."
+    "Mines' top buttons now have proper breathing room instead of feeling cramped. Craps and Roulette got the same top-of-table treatment as Mines: Roll/Spin/Same Bet/Clear are now also reachable right at the top, not just after scrolling all the way down through the bet panel."
   ]
 }

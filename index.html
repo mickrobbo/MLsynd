@@ -746,6 +746,11 @@
         <div class="roulette-hub">◆</div>
         <div class="roulette-pointer"></div>
       </div>
+      <div class="deal-row" id="rouletteTopActions">
+        <button type="button" id="rouletteClearAllTopBtn" class="pill-btn pill-btn-action" disabled>Clear Bet</button>
+        <button type="button" id="rouletteSameBetTopBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+        <button type="button" id="rouletteSpinTopBtn" class="pill-btn pill-btn-primary">Spin</button>
+      </div>
       <div id="rouletteResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:20px; margin-top:6px; min-height:26px;"></div>
       <div class="croupier-caption" id="rouletteCroupierMsg"></div>
       <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent spins</div>
@@ -839,6 +844,10 @@
     <div class="craps-table-rail" id="crapsTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
       <div class="craps-table-felt">
         <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="deal-row" id="crapsTopActions">
+          <button type="button" id="crapsClearStagedTopBtn" class="pill-btn pill-btn-action">Clear New Bets</button>
+          <button type="button" id="crapsRollTopBtn" class="pill-btn pill-btn-primary">Roll</button>
+        </div>
         <div class="craps-puck-row">
           <div class="craps-puck off" id="crapsPuck">OFF</div>
         </div>
@@ -2526,7 +2535,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.2"; // bumped for Mines: Start/Same Bet/New Game now also live at the top of the felt, next to Cash Out — no more scrolling down every round — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.3"; // bumped for Craps/Roulette getting the same top-of-table Roll/Spin/Same-Bet/Clear buttons as Mines, plus more breathing room between Mines' top buttons — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -6428,6 +6437,7 @@ wirePPTogglePill('warPerfectPairsToggle', 'warPerfectPairsCheck', 'warPPAmountRo
 <script src="casino-craps.js"></script>
 <script>
 document.getElementById('crapsRollBtn').addEventListener('click', crapsRoll);
+document.getElementById('crapsRollTopBtn').addEventListener('click', crapsRoll);
 
 </script>
 <script src="casino-plinko.js"></script>

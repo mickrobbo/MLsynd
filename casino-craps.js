@@ -218,7 +218,9 @@ document.querySelectorAll('#crapsWinModeRow .craps-winmode-btn').forEach(btn => 
     document.getElementById('crapsWinModeHint').textContent = CRAPS_WINMODE_HINTS[crapsWinMode];
   });
 });
-document.getElementById('crapsClearStagedBtn').addEventListener('click', () => {
+document.getElementById('crapsClearStagedBtn').addEventListener('click', crapsClearStaged);
+document.getElementById('crapsClearStagedTopBtn').addEventListener('click', crapsClearStaged);
+function crapsClearStaged(){
   crapsStaged = {
     pass: 0, dontpass: 0, come: 0, dontcome: 0, field: 0, passodds: 0, dontpassodds: 0,
     place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 }, hardway: { 4: 0, 6: 0, 8: 0, 10: 0 },
@@ -231,7 +233,7 @@ document.getElementById('crapsClearStagedBtn').addEventListener('click', () => {
   // "nothing visibly happened" can't be mistaken for "button's broken".
   const railEl = document.getElementById('crapsTableRail');
   if(railEl){ railEl.classList.remove('pc-flash-gold'); void railEl.offsetWidth; railEl.classList.add('pc-flash-gold'); }
-});
+}
 document.getElementById('crapsBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('crapsChipDisplay');
   if(!chip) return;
@@ -265,13 +267,19 @@ async function crapsRoll(){
   crapsRolling = true;
   const rollBtn = document.getElementById('crapsRollBtn');
   const clearBtn = document.getElementById('crapsClearStagedBtn');
+  const rollBtnTop = document.getElementById('crapsRollTopBtn');
+  const clearBtnTop = document.getElementById('crapsClearStagedTopBtn');
   rollBtn.disabled = true;
   clearBtn.disabled = true;
+  if(rollBtnTop) rollBtnTop.disabled = true;
+  if(clearBtnTop) clearBtnTop.disabled = true;
   try{
     await crapsRollInner();
   } finally {
     rollBtn.disabled = false;
     clearBtn.disabled = false;
+    if(rollBtnTop) rollBtnTop.disabled = false;
+    if(clearBtnTop) clearBtnTop.disabled = false;
     crapsRolling = false;
   }
 }

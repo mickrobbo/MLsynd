@@ -1431,6 +1431,15 @@
   .mines-cashout-top{
     animation: minesCashoutPulse 1.8s ease-in-out infinite;
   }
+  /* Same deal-row buttons as the bet panel below, but up here at the top
+     they're the very first thing you see on the felt — the shared 10px
+     deal-row gap read as pinched at that prominence, especially with
+     Start's bigger primary-button padding right up against Same Bet's
+     smaller dashed pill. More room + a hair more bottom margin so it
+     doesn't crowd the stat cells right underneath. */
+  #minesTopActions{ gap:18px; margin-bottom:16px; }
+  #crapsTopActions{ gap:18px; margin-bottom:14px; margin-top:0; }
+  #rouletteTopActions{ gap:14px; margin-bottom:6px; margin-top:16px; }
   @keyframes minesCashoutPulse{
     0%,100%{ box-shadow:0 0 0 rgba(90,220,130,0); }
     50%{ box-shadow:0 0 16px rgba(90,220,130,.55); }
