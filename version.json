@@ -1,9 +1,7 @@
 {
-  "version": "2026-08-24.8",
+  "version": "2026-08-24.11",
   "date": "2026-08-27",
   "changes": [
-    "🚀 New: Crash — the multiplier climbs from 1.00x, cash out any time before it crashes to lock in your win.",
-    "🪙 New: Double or Nothing — call Heads or Tails, double your pot on a correct call, bank it or risk it all again.",
-    "🎰 Slots: after any real win, you can now Gamble it — pick Red/Black (2x) or a suit (4x), up to 5 rounds, before collecting."
+    "Fixed a real bug in Crash and Double or Nothing: the guard that stops a double-tap from starting two rounds at once was only being set AFTER the balance check finished, not before it. A fast double-tap on Start or Heads/Tails could slip a second round in during that gap and corrupt the game state. Both now lock immediately on tap, before any check runs."
   ]
 }
