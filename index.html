@@ -2578,7 +2578,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.6"; // bumped for Slots Free Spins multiplier 6x → 3x — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.7"; // grouped changelog covering today's full batch of work — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3063,6 +3063,17 @@ function casinoTierFor(prestigeScore){
   for(const t of CASINO_TIERS){ if(prestigeScore >= t.threshold) return t; }
   return null;
 }
+// Applies the signed-in viewer's own tier as a class on <body> — table
+// felt, card backs, and chip rims key off this (see the TIER COSMETICS
+// block in dashboard.css). Purely a local visual, never touches odds or
+// what anyone else sees. Called wherever the current user's prestige
+// score is already being computed (checkCasinoTierUpForCurrentUser, and
+// once at startup) rather than adding a separate fetch of its own.
+function applyCasinoTierCosmetics(prestigeScore){
+  const tier = casinoTierFor(prestigeScore);
+  document.body.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-platinum', 'tier-diamond');
+  if(tier) document.body.classList.add(`tier-${tier.key}`);
+}
 function casinoTierBadgeHtml(prestigeScore){
   const t = casinoTierFor(prestigeScore);
   // A custom-built gem, not an emoji — the leaderboard already uses
@@ -3137,6 +3148,7 @@ async function checkCasinoTierUpForCurrentUser(){
     const lifetime = (await lifetimeRes.json()) || 0;
     const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
     const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(currentUserUid), tippingPoints);
+    applyCasinoTierCosmetics(prestige);
     await checkCasinoTierUp(prestige);
   }catch(e){}
 }
@@ -6587,6 +6599,8 @@ const CASINO_RULES = {
       <div style="display:flex; align-items:center; gap:10px;"><span class="tier-badge tier-diamond" style="width:15px; height:15px; margin:0;"></span><span><b>Diamond</b> — 1,000,000</span></div>
     </div>
     <p class="hint" style="margin-top:6px;">Your current score and tier are shown at the top of the Badges screen.</p>
+    <h3>Cosmetics</h3>
+    <p>Your tier now shows up on the tables too, not just as a badge — Blackjack/Baccarat/War/Challenges and Craps/Plinko/Big Wheel/Mines all pick up a tier-tinted felt, dealt cards get a matching back design, and your chips get a tier-coloured rim. Diamond's badge also has a proper glow. Purely visual and purely local to your own screen — it doesn't change odds, and nobody else sees your table any differently.</p>
   `}
 };
 function openCasinoRules(key){

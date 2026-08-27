@@ -901,6 +901,12 @@
     padding:3px 9px; border-radius:999px; border:1px solid var(--brass-dim); color:var(--muted);
   }
   .slots-payline-chip.won{ color:var(--ink); background:var(--brass-light); border-color:var(--brass-light); }
+  /* Whole-machine gold pulse while a Free Spins bonus is active — the bet
+     controls are disabled during this (see slotsSetControlsLockedForFreeSpins),
+     so this is the main visual signal that something's different right now. */
+  @keyframes slotsFreeSpinsGlow{ 0%,100%{ box-shadow: 0 8px 20px rgba(0,0,0,.55), inset 0 3px 5px rgba(255,255,255,.4), inset 0 -4px 8px rgba(0,0,0,.5); } 50%{ box-shadow: 0 8px 20px rgba(0,0,0,.55), inset 0 3px 5px rgba(255,255,255,.4), inset 0 -4px 8px rgba(0,0,0,.5), 0 0 24px 4px rgba(255,214,120,.7); } }
+  #casinoGameSlots.slots-free-spins-active .slots-machine{ animation: slotsFreeSpinsGlow 1.6s ease-in-out infinite; }
+  #casinoGameSlots.slots-free-spins-active #slotsTotalBetHint{ color:var(--brass-light); font-weight:700; }
   /* Paytable — a real ×3/×4/×5 column grid, symbol shown exactly once per
      row, rather than repeating it 3/4/5 times per row (which wrapped onto
      extra lines and looked cramped on a phone screen). */
@@ -1769,7 +1775,79 @@
   .tier-badge.tier-diamond{
     background: linear-gradient(155deg, #eafdff, #7fd8ff 55%, #2a9dc9);
     box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.7), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 5px rgba(127,216,255,.7);
+    animation: diamondBadgePulse 2.4s ease-in-out infinite;
   }
+  @keyframes diamondBadgePulse{
+    0%,100%{ box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.7), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 5px rgba(127,216,255,.7); }
+    50%{ box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.7), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 11px 2px rgba(127,216,255,1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .tier-badge.tier-diamond{ animation:none; }
+  }
+
+  /* =====================================================================
+     TIER COSMETICS — table felt / card back / chip rim reflect the
+     signed-in viewer's OWN tier (see applyCasinoTierCosmetics, sets a
+     tier-{key} class on <body>). Purely visual, purely local to what you
+     see — never touches odds, payouts, or what anyone else sees.
+     Scoped to the shared felt classes only (.bj-table covers Blackjack/
+     Baccarat/War/Challenges, .craps-table-felt covers Craps/Plinko/Big
+     Wheel/Mines) — Roulette's wheel, Slots' cabinet, and Hold'em's oval
+     each have their own more bespoke, already-tuned visual identity that
+     a simple hue-shift risks cheapening, so those stay as-is for now.
+     ===================================================================== */
+  body.tier-bronze .bj-table, body.tier-bronze .craps-table-felt{
+    background:
+      radial-gradient(ellipse at 32% 20%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 50% 32%, #3d2a15 0%, #241a0d 60%, #120c06 100%);
+  }
+  body.tier-silver .bj-table, body.tier-silver .craps-table-felt{
+    background:
+      radial-gradient(ellipse at 32% 20%, rgba(255,255,255,.07) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 50% 32%, #2a3230 0%, #17201d 60%, #0a0f0d 100%);
+  }
+  body.tier-gold .bj-table, body.tier-gold .craps-table-felt{
+    background:
+      radial-gradient(ellipse at 32% 20%, rgba(255,255,255,.07) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 50% 32%, #3d3512 0%, #241f0a 60%, #120f05 100%);
+  }
+  body.tier-platinum .bj-table, body.tier-platinum .craps-table-felt{
+    background:
+      radial-gradient(ellipse at 32% 20%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 50% 32%, #1a2a35 0%, #0e1a22 60%, #070d11 100%);
+  }
+  body.tier-diamond .bj-table, body.tier-diamond .craps-table-felt{
+    background:
+      radial-gradient(ellipse at 32% 20%, rgba(255,255,255,.09) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 50% 32%, #0e2a33 0%, #071a20 60%, #030d10 100%);
+  }
+
+  /* Card back — one shared class (.pc-back, used by Blackjack's hole card
+     and Video Poker's held-card backs), so a single override per tier
+     reaches everywhere it's used. */
+  body.tier-bronze .playing-card.pc-back{ background: repeating-linear-gradient(45deg, #a9672f, #a9672f 4px, #3d2a15 4px, #3d2a15 8px); border-color:#e0a469; }
+  body.tier-bronze .playing-card.pc-back::after{ border-color:#e0a469; }
+  body.tier-silver .playing-card.pc-back{ background: repeating-linear-gradient(45deg, #b8b8b8, #b8b8b8 4px, #2a3230 4px, #2a3230 8px); border-color:#f4f4f4; }
+  body.tier-silver .playing-card.pc-back::after{ border-color:#f4f4f4; }
+  body.tier-gold .playing-card.pc-back{ background: repeating-linear-gradient(45deg, #d4af37, #d4af37 4px, #3d3512 4px, #3d3512 8px); border-color:#fff0b8; }
+  body.tier-gold .playing-card.pc-back::after{ border-color:#fff0b8; }
+  body.tier-platinum .playing-card.pc-back{ background: repeating-linear-gradient(45deg, #6f93a8, #6f93a8 4px, #1a2a35 4px, #1a2a35 8px); border-color:#eef8ff; }
+  body.tier-platinum .playing-card.pc-back::after{ border-color:#eef8ff; }
+  body.tier-diamond .playing-card.pc-back{
+    background: repeating-linear-gradient(45deg, #2a9dc9, #2a9dc9 4px, #0e2a33 4px, #0e2a33 8px);
+    border-color:#7fd8ff; box-shadow:0 4px 10px rgba(0,0,0,.5), 0 0 10px rgba(127,216,255,.5);
+  }
+  body.tier-diamond .playing-card.pc-back::after{ border-color:#eafdff; }
+
+  /* Chip rim — an outer accent ring layered on top of each chip's
+     existing denomination colour (5/10/25/50/100/250 already each have
+     their own real-poker-chip colour coding, which this deliberately
+     doesn't touch) rather than a background swap. */
+  body.tier-bronze .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #a9672f; }
+  body.tier-silver .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #b8b8b8; }
+  body.tier-gold .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #d4af37; }
+  body.tier-platinum .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #6f93a8; }
+  body.tier-diamond .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #2a9dc9, 0 0 8px rgba(127,216,255,.6); }
   /* Badges screen's own status card — a real card instead of a cramped
      inline text line, since this is the one place someone specifically
      comes to check where they stand. Big gem + tier name up top (the
@@ -1881,6 +1959,8 @@
   .multi-summary-banner{ background:linear-gradient(165deg, rgba(193,96,74,.18), rgba(193,96,74,.08)); border:1px solid rgba(193,96,74,.35); border-radius:8px; padding:9px 12px; margin-bottom:12px; font-size:12.5px; font-weight:600; color:var(--chalk); }
   .otd-year{ font-family:'Barlow Condensed', sans-serif; font-size:32px; font-weight:700; color:var(--brass); text-align:center; line-height:1; }
   .otd-text{ font-size:13px; color:var(--chalk); text-align:center; line-height:1.5; margin-top:8px; }
+  .otd-block + .otd-block{ margin-top:16px; padding-top:14px; border-top:1px dashed var(--line); }
+  .otd-mlsynd .otd-year{ font-size:15px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); }
   .multi-summary-banner.clean{ background:linear-gradient(165deg, rgba(111,169,138,.18), rgba(111,169,138,.08)); border-color:rgba(111,169,138,.35); }
   .highlight-row:last-child{ border-bottom:none; }
   .highlight-row .hl-lbl{ color: var(--muted); flex-shrink:0; }
