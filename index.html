@@ -150,7 +150,7 @@
     </div>
 
     <div class="panel panel-quiet" id="onThisDayPanel">
-      <h2>📅 On This Day In Sport</h2>
+      <h2>📅 On This Day</h2>
       <div id="onThisDayArea"><div class="empty">Loading…</div></div>
     </div>
 
@@ -550,6 +550,36 @@
       <div id="challengesListArea"><div class="empty">Loading…</div></div>
     </div>
 
+    <!-- Bounties — anyone can put up XP for anyone (including themselves)
+         to claim first. No automated verification of the condition (an
+         arbitrary description like "first natural Blackjack" isn't
+         something this can check) — honour system, same trust level as
+         the rest of a small friend-group syndicate. Escrowed the moment
+         it's created, same as a Challenge stake; claiming is a single
+         self-write (the claimant's own client credits their own balance
+         directly — no cross-uid write needed, unlike Challenges, since
+         there's no second player to wait on here). -->
+    <div class="panel casino-view" id="casinoBountiesView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">🎯 Bounties</h2>
+        <button type="button" class="pill-btn" id="bountiesBackBtn">← Back</button>
+      </div>
+      <div class="hint" style="margin-bottom:10px;">Put up XP for anyone to claim first — "first to hit a natural Blackjack", "first Mines full clear", whatever. Your stake is locked in the moment you post it. No automated checking — first person to tap Claim and say they did it gets it, honour system. You can cancel your own bounty for a refund any time before someone claims it.</div>
+      <button type="button" class="pill-btn pill-btn-primary" id="newBountyBtn" style="width:100%; margin-bottom:12px;">🎯 New Bounty</button>
+      <div id="newBountyForm" style="display:none; margin-bottom:12px;">
+        <label class="form-field-label">What's the bounty?</label>
+        <input type="text" id="bountyDescInput" class="form-input" maxlength="120" placeholder="e.g. First natural Blackjack">
+        <label class="form-field-label">Stake (XP)</label>
+        <input type="number" id="bountyStakeInput" class="form-input" min="1" step="1" placeholder="e.g. 100">
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="pill-btn pill-btn-primary" id="postBountyBtn" style="flex:1;">Post Bounty</button>
+          <button type="button" class="pill-btn" id="cancelNewBountyBtn" style="flex:1;">Cancel</button>
+        </div>
+        <div class="status-msg" id="newBountyStatus" style="margin-top:8px;"></div>
+      </div>
+      <div id="bountiesListArea"><div class="empty">Loading…</div></div>
+    </div>
+
     <!-- Head-to-head hand — standard hit/stand only (no split/double/
          insurance) deliberately, to keep the very first version of
          real-stakes player-vs-player play simple and easy to trust. -->
@@ -603,6 +633,7 @@
         <button type="button" class="game-bubble" data-game="mines"><span class="game-bubble-icon">💣</span><span class="game-bubble-label">Mines</span></button>
         <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
         <button type="button" class="game-bubble" id="hubChallengesBtn" style="position:relative;"><span class="game-bubble-icon">🥊</span><span class="game-bubble-label">Challenges</span><span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span></button>
+        <button type="button" class="game-bubble" id="hubBountiesBtn" style="position:relative;"><span class="game-bubble-icon">🎯</span><span class="game-bubble-label">Bounties</span><span class="casino-hub-badge" id="bountiesHubBadge" style="display:none;"></span></button>
       </div>
       <button type="button" class="game-bubble-wide" data-game="dailyspin">🎁 Spin the Wheel</button>
     </div>
@@ -2547,7 +2578,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.4"; // bumped for Slots' 3x5 multi-payline rebuild (real win lines drawn across the grid, 1/3/5 lines) and Plinko's top-of-table Same Bet/Drop Ball buttons — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.6"; // bumped for Slots Free Spins multiplier 6x → 3x — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -2599,14 +2630,14 @@ function renderChangelogBanner(data){
 // per-user write pattern (each signed-in client only ever writes its own
 // /xp/{uid} path) rather than any new security model — same trust level
 // already accepted elsewhere in this app for a friendly ~11-person group.
-const XP_RATES = { perTippingPoint: 150, perDollarIndividualWin: 100, perGroupLegWin: 150 };
+const XP_RATES = { perTippingPoint: 250, perDollarIndividualWin: 150, perGroupLegWin: 350, perGroupLegLoss: 100 };
 const XP_SIGNUP_BONUS = 500;
 // A tipping-tier account can't see Board/Cash/Slips (no individual bets or
 // group multi legs to earn XP from), so a small recurring bonus plus their
 // Tipping points conversion are deliberately their ONLY XP sources — full
 // and dashboard-tier accounts also see this bonus, it's just not their
 // only source the way it is for tipping-tier.
-const XP_WEEKLY_BONUS = 350;
+const XP_WEEKLY_BONUS = 500;
 function xpWeekKey(d){
   const now = d || new Date();
   const date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -2928,6 +2959,7 @@ function renderXpInfoView(){
   if(!isTipping){
     rows.push(['🎲 Individual bet wins', `+${XP_RATES.perDollarIndividualWin} XP per $ won`]);
     rows.push(['🤝 Group multi leg wins', `+${XP_RATES.perGroupLegWin} XP per winning leg`]);
+    rows.push(['🤝 Group multi leg losses', `-${XP_RATES.perGroupLegLoss} XP per losing leg — a Void or no bet that week costs nothing`]);
   }
   body.innerHTML = rows.map(([label, desc]) =>
     `<div class="xp-source-row"><span>${escapeHtml(label)}</span></div><div class="hint" style="padding:0 4px 10px;">${escapeHtml(desc)}</div>`).join('')
@@ -3660,6 +3692,210 @@ document.getElementById('challengeHandBackBtn').addEventListener('click', () => 
   renderChallengesList();
   showCasinoView('casinoChallengesView');
 });
+
+// =====================================================================
+// BOUNTIES — /bounties/{id}: { creatorUid, creatorName, description,
+// stakeXp, status ('open'|'claimed'|'cancelled'), createdAt, claimedByUid,
+// claimedByName, claimedAt }
+//
+// Simpler than Challenges — there's no second player to wait on. Posting
+// deducts the creator's own stake immediately (own-uid write, no issue).
+// Claiming is a single action by the claimant themselves: their own
+// client credits their own balance directly AND writes the shared
+// record's status/claimedBy fields in the same call — no delayed
+// self-check pattern needed since the claimant IS the one acting.
+// Firebase rules enforce: create only with creatorUid === your own uid;
+// claim only transitions status open→claimed with claimedByUid === your
+// own uid; cancel only by the original creator, only while still open.
+// =====================================================================
+
+async function creditMyBountyXP(amount, reason){
+  if(!currentUserUid || !amount) return;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/balance.json`);
+    const current = (await res.json()) || 0;
+    const next = current + amount;
+    await authedFetch(`/xp/${currentUserUid}/balance.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+    });
+    await authedFetch(`/xp/${currentUserUid}/log.json`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
+    });
+    if(amount > 0){
+      try{
+        const ltRes = await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`);
+        const ltCurrent = (await ltRes.json()) || 0;
+        await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ltCurrent + amount)
+        });
+      }catch(e){}
+    }
+    // Same reasoning as Challenges — this moves XP between members (or
+    // refunds your own), it isn't a loss to the house, so it doesn't feed
+    // the monthly Casino Pot the way a real game loss does.
+    updateXPBalanceDisplay(next);
+  }catch(e){}
+}
+async function fetchAllBounties(){
+  try{
+    const res = await authedFetch('/bounties.json');
+    if(!res.ok) return {};
+    return (await res.json()) || {};
+  }catch(e){ return {}; }
+}
+async function renderBountiesList(){
+  const area = document.getElementById('bountiesListArea');
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const bounties = await fetchAllBounties();
+    const entries = Object.entries(bounties)
+      .filter(([id, b]) => b)
+      .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No bounties yet — post one from the button above.</div>';
+    } else {
+      area.innerHTML = entries.map(([id, b]) => {
+        let statusText, actionHtml = '';
+        if(b.status === 'open'){
+          statusText = `${b.stakeXp.toLocaleString()} XP — posted by ${escapeHtml(b.creatorName || 'someone')}`;
+          if(b.creatorUid === currentUserUid){
+            actionHtml = `<button type="button" class="pill-btn challenge-cancel-btn bounty-cancel-btn" data-id="${id}">Cancel &amp; refund</button>`;
+          } else {
+            actionHtml = `<button type="button" class="pill-btn pill-btn-primary bounty-claim-btn" data-id="${id}">Claim</button>`;
+          }
+        } else if(b.status === 'claimed'){
+          statusText = `Claimed by ${escapeHtml(b.claimedByName || 'someone')} — ${b.stakeXp.toLocaleString()} XP`;
+        } else {
+          statusText = 'Cancelled — refunded';
+        }
+        return `<div class="challenge-row">
+          <div class="challenge-row-main"><b>${escapeHtml(b.description || '')}</b></div>
+          <div class="hint" style="margin:2px 0 6px;">${statusText}</div>
+          ${actionHtml}
+        </div>`;
+      }).join('');
+    }
+    area.querySelectorAll('.bounty-claim-btn').forEach(btn => btn.addEventListener('click', () => claimBounty(btn.dataset.id)));
+    area.querySelectorAll('.bounty-cancel-btn').forEach(btn => btn.addEventListener('click', () => cancelBounty(btn.dataset.id)));
+
+    const badge = document.getElementById('bountiesHubBadge');
+    if(badge){
+      const openCount = entries.filter(([id, b]) => b.status === 'open' && b.creatorUid !== currentUserUid).length;
+      badge.textContent = openCount;
+      badge.style.display = openCount > 0 ? 'flex' : 'none';
+    }
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load bounties — try again.</div>';
+  }
+}
+async function refreshBountiesBadgeOnly(){
+  if(!currentUserUid) return;
+  try{
+    const bounties = await fetchAllBounties();
+    const openCount = Object.values(bounties).filter(b => b && b.status === 'open' && b.creatorUid !== currentUserUid).length;
+    const badge = document.getElementById('bountiesHubBadge');
+    if(badge){
+      badge.textContent = openCount;
+      badge.style.display = openCount > 0 ? 'flex' : 'none';
+    }
+  }catch(e){}
+}
+document.getElementById('hubBountiesBtn').addEventListener('click', () => {
+  renderBountiesList();
+  showCasinoView('casinoBountiesView');
+});
+document.getElementById('bountiesBackBtn').addEventListener('click', () => showCasinoView(null));
+document.getElementById('newBountyBtn').addEventListener('click', () => {
+  document.getElementById('newBountyForm').style.display = 'block';
+  document.getElementById('newBountyBtn').style.display = 'none';
+});
+document.getElementById('cancelNewBountyBtn').addEventListener('click', () => {
+  document.getElementById('newBountyForm').style.display = 'none';
+  document.getElementById('newBountyBtn').style.display = 'block';
+  document.getElementById('newBountyStatus').textContent = '';
+});
+document.getElementById('postBountyBtn').addEventListener('click', async () => {
+  const postBtn = document.getElementById('postBountyBtn');
+  const statusEl = document.getElementById('newBountyStatus');
+  const description = document.getElementById('bountyDescInput').value.trim();
+  const stake = Math.floor(Number(document.getElementById('bountyStakeInput').value));
+  statusEl.className = 'status-msg';
+  if(!description){ statusEl.className = 'status-msg error'; statusEl.textContent = 'Describe the bounty first.'; return; }
+  if(!(stake > 0)){ statusEl.className = 'status-msg error'; statusEl.textContent = 'Enter a stake amount.'; return; }
+  postBtn.disabled = true;
+  statusEl.textContent = 'Posting…';
+  try{
+    const balance = await getXPBalance();
+    if(balance == null || stake > balance){
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = `You only have ${balance == null ? '?' : balance} XP.`;
+      postBtn.disabled = false;
+      return;
+    }
+    const id = `b_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const record = {
+      creatorUid: currentUserUid, creatorName: currentUserName || 'Someone',
+      description, stakeXp: stake, status: 'open', createdAt: Date.now()
+    };
+    const res = await authedFetch(`/bounties/${id}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(record)
+    });
+    if(!res.ok){
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = 'Could not post — try again.';
+      postBtn.disabled = false;
+      return;
+    }
+    await creditMyBountyXP(-stake, `Bounty posted: ${description}`);
+    document.getElementById('bountyDescInput').value = '';
+    document.getElementById('bountyStakeInput').value = '';
+    document.getElementById('newBountyForm').style.display = 'none';
+    document.getElementById('newBountyBtn').style.display = 'block';
+    showToast('Bounty posted');
+    renderBountiesList();
+  }catch(e){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Could not post — ' + e.message;
+  }
+  postBtn.disabled = false;
+});
+async function claimBounty(id){
+  if(!confirm('Claim this bounty? Only tap this once you\'ve actually done it — honour system, same as posting one.')) return;
+  try{
+    const res = await authedFetch(`/bounties/${id}.json`);
+    const bounty = await res.json();
+    if(!bounty || bounty.status !== 'open'){ showToast('Already taken'); renderBountiesList(); return; }
+    const patchRes = await authedFetch(`/bounties/${id}.json`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'claimed', claimedByUid: currentUserUid, claimedByName: currentUserName || 'Someone', claimedAt: Date.now() })
+    });
+    if(!patchRes.ok){ showToast('Someone beat you to it'); renderBountiesList(); return; }
+    await creditMyBountyXP(bounty.stakeXp, `Bounty claimed: ${bounty.description}`);
+    showToast(`+${bounty.stakeXp} XP`);
+    renderBountiesList();
+  }catch(e){
+    showToast('Could not claim — try again');
+  }
+}
+async function cancelBounty(id){
+  if(!confirm('Cancel this bounty and refund your stake?')) return;
+  try{
+    const res = await authedFetch(`/bounties/${id}.json`);
+    const bounty = await res.json();
+    if(!bounty || bounty.status !== 'open' || bounty.creatorUid !== currentUserUid){ renderBountiesList(); return; }
+    const patchRes = await authedFetch(`/bounties/${id}.json`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' })
+    });
+    if(!patchRes.ok){ showToast('Could not cancel — try again'); return; }
+    await creditMyBountyXP(bounty.stakeXp, `Bounty cancelled (refund): ${bounty.description}`);
+    showToast('Refunded');
+    renderBountiesList();
+  }catch(e){
+    showToast('Could not cancel — try again');
+  }
+}
 
 // =====================================================================
 // HOLD'EM — table browser + seat ring. Every write (sit, stand, create
@@ -5720,6 +5956,7 @@ let casinoTickerShowing = false;
 async function pollCasinoTicker(){
   refreshChallengesBadgeOnly(); // piggybacks on the same 8s tab-scoped interval — no separate poller needed for this
   refreshHoldemBadge();
+  refreshBountiesBadgeOnly();
   if(!currentState || !Array.isArray(currentState.members)) return;
   const linked = currentState.members.filter(m => m.linkedUid);
   if(linked.length === 0) return;
@@ -6304,9 +6541,11 @@ const CASINO_RULES = {
   `},
   slots: { title: '🎰 Slots Rules', body: `
     <h3>Object</h3>
-    <p>Tap Spin — all five reels spin and stop in sequence, left to right. Payouts follow the classic left-to-right payline: matching symbols have to run unbroken starting from reel 1. Two matching pays a small 1:1 consolation, three/four/five pay escalating multipliers per the table below. A broken run (e.g. reels 1 and 3 match but not 2) pays nothing.</p>
+    <p>A real 5-reel, 3-row grid. Pick 1, 3, or 5 paylines (Middle only, or add Top+Bottom, or add both diagonals) and set your bet PER LINE — your total stake is bet-per-line × how many lines you've got active. Tap Spin — all five reels spin and stop in sequence, left to right. Each active payline pays on its own: matching symbols have to run unbroken starting from reel 1 along that line's path. Two matching pays a small 1:1 consolation, three/four/five pay escalating multipliers per the table below. A broken run (e.g. reels 1 and 3 match but not 2) pays nothing on that line. Winning lines are traced across the grid so you can see exactly what hit.</p>
     <h3>Odds</h3>
-    <p>Every reel picks independently from the same weighted set of symbols, so the rarer a symbol looks on the reel, the rarer it actually is — cherries turn up often for a small win, five 👑 in a row is the real jackpot and genuinely rare.</p>
+    <p>Every cell on the grid picks independently from the same weighted set of symbols, so the rarer a symbol looks on the reel, the rarer it actually is — cherries turn up often for a small win, five 👑 in a row on a line is the real jackpot and genuinely rare.</p>
+    <h3>Free Spins</h3>
+    <p>Land 3 or more 👑 anywhere on the grid — any row, any reel, doesn't need to be on a line you bet on — and you get 8 free spins at a 3x multiplier on every win. Your bet is locked at whatever triggered it for the whole bonus (the controls disable themselves), and free spins can retrigger for more on top of what's left. Free spins never cost you anything, even the ones that don't hit.</p>
   `},
   dailyspin: { title: '🎡 Spin the Wheel Rules', body: `
     <h3>Object</h3>
@@ -8008,13 +8247,55 @@ let currentState = null;
 
 function renderOnThisDay(data){
   const area = document.getElementById('onThisDayArea');
-  if(!data || !data.found){
-    area.innerHTML = '<div class="empty">Nothing suitably outrageous found for today — check back tomorrow.</div>';
-    return;
+  const parts = [];
+  if(data && data.sport && data.sport.found){
+    parts.push(`<div class="otd-block"><div class="otd-year">${escapeHtml(String(data.sport.year))}</div><div class="otd-text">${escapeHtml(data.sport.text)}</div></div>`);
   }
-  area.innerHTML = `<div class="otd-year">${escapeHtml(String(data.year))}</div><div class="otd-text">${escapeHtml(data.text)}</div>`;
+  if(data && data.mlsynd && data.mlsynd.found){
+    const amt = data.mlsynd.amount;
+    const verb = amt > 0 ? 'won' : 'lost';
+    const yearsLabel = `${data.mlsynd.yearsAgo} year${data.mlsynd.yearsAgo === 1 ? '' : 's'} ago in MLSynd`;
+    parts.push(`<div class="otd-block otd-mlsynd"><div class="otd-year">${escapeHtml(yearsLabel)}</div><div class="otd-text">You ${verb} ${Math.abs(amt).toLocaleString()} XP — ${escapeHtml(data.mlsynd.reason || '')}</div></div>`);
+  }
+  area.innerHTML = parts.length > 0 ? parts.join('') : '<div class="empty">Nothing suitably outrageous found for today — check back tomorrow.</div>';
 }
-const OTD_CACHE_VERSION = 'v3'; // bumped when on-this-day.js was rebuilt on a new data source — old v2 cached "nothing found" results were stale and needed discarding, not left to linger until midnight
+// The MLSynd half of On This Day — reads the signed-in member's own XP
+// log (every casino/tipping/bet swing already gets logged with a real
+// timestamp) and surfaces the single biggest swing, win or loss, that
+// happened on today's month+day in a past year. Deliberately scoped to
+// the viewer's own history, not a cross-member search — /xp/{uid}/log is
+// readable by any approved member, so a syndicate-wide version is
+// possible later, but this platform is young enough that there's barely
+// a year of history yet either way, so the extra complexity isn't worth
+// it until there's actually more than one year of data to search across.
+async function fetchMlsyndOnThisDay(){
+  if(!currentUserUid) return { found: false };
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/log.json`);
+    if(!res.ok) return { found: false };
+    const data = await res.json();
+    if(!data) return { found: false };
+    const now = new Date();
+    const todayMonth = now.getMonth();
+    const todayDate = now.getDate();
+    const currentYear = now.getFullYear();
+    const matches = Object.values(data).filter(e => {
+      if(!e || !e.ts) return false;
+      const d = new Date(e.ts);
+      return d.getMonth() === todayMonth && d.getDate() === todayDate && d.getFullYear() < currentYear;
+    });
+    if(matches.length === 0) return { found: false };
+    // Biggest single swing by absolute size — a brutal loss is just as
+    // worth remembering as a big win, same "worth talking about" bar a
+    // real on-this-day fact uses.
+    matches.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+    const best = matches[0];
+    return { found: true, yearsAgo: currentYear - new Date(best.ts).getFullYear(), amount: best.amount, reason: best.reason };
+  }catch(e){
+    return { found: false };
+  }
+}
+const OTD_CACHE_VERSION = 'v4'; // bumped for the MLSynd-history merge — old v3 cache shape (sport fact only, no .sport/.mlsynd split) needs discarding, not left to linger until midnight
 async function refreshOnThisDayIfNeeded(){
   const todayKey = new Date().toDateString() + '|' + OTD_CACHE_VERSION;
   let cached = null;
@@ -8028,23 +8309,30 @@ async function refreshOnThisDayIfNeeded(){
     renderOnThisDay(cached);
     return;
   }
-  try{
-    trackApiCall('on-this-day');
-    const res = await fetch('/.netlify/functions/on-this-day', { cache: 'no-store' });
-    const data = await res.json();
-    const toCache = { ...data, cachedFor: todayKey, fetchedAt: Date.now() };
-    localStorage.setItem('otd_cache', JSON.stringify(toCache));
-    renderOnThisDay(toCache);
-  }catch(e){
-    // A network hiccup shouldn't discard a same-day cached fact that was
-    // still fresh, just too old to trust blindly — fall back to it rather
-    // than show an error if we have something reasonably recent.
-    if(cached && cached.cachedFor === todayKey){
-      renderOnThisDay(cached);
-    } else {
-      document.getElementById('onThisDayArea').innerHTML = '<div class="empty">Could not load today\'s sporting fact.</div>';
-    }
+  // Sport and MLSynd are fetched independently and rendered whenever
+  // either one succeeds — one source having a bad day (a broken function,
+  // a network hiccup) no longer blanks the whole card the way a single
+  // combined try/catch used to.
+  const [sportResult, mlsyndResult] = await Promise.allSettled([
+    (async () => {
+      trackApiCall('on-this-day');
+      const res = await fetch('/.netlify/functions/on-this-day', { cache: 'no-store' });
+      return await res.json();
+    })(),
+    fetchMlsyndOnThisDay()
+  ]);
+  const sport = sportResult.status === 'fulfilled' ? sportResult.value : null;
+  const mlsynd = mlsyndResult.status === 'fulfilled' ? mlsyndResult.value : { found: false };
+  if(!sport && cached && cached.cachedFor === todayKey && cached.sport){
+    // The sport fetch specifically failed — same-day cached sport fact is
+    // still worth showing rather than dropping it just because today's
+    // refresh attempt had a network hiccup.
+    renderOnThisDay({ sport: cached.sport, mlsynd, cachedFor: todayKey, fetchedAt: Date.now() });
+    return;
   }
+  const toCache = { sport: sport || { found: false }, mlsynd, cachedFor: todayKey, fetchedAt: Date.now() };
+  localStorage.setItem('otd_cache', JSON.stringify(toCache));
+  renderOnThisDay(toCache);
 }
 
 async function refresh(){

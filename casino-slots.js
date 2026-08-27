@@ -24,6 +24,21 @@ SLOTS_SYMBOLS.forEach(s => { for(let i = 0; i < s.weight; i++) SLOTS_WEIGHTED_PO
 function slotsPickSymbol(){ return SLOTS_WEIGHTED_POOL[Math.floor(Math.random() * SLOTS_WEIGHTED_POOL.length)]; }
 const SLOTS_SYMBOL_HEIGHT = 66; // matches .slots-symbol height in CSS
 
+// Free Spins bonus — 👑 doubles as the scatter symbol (same top-tier
+// symbol that already pays the best on a line, real pokies often reuse
+// their premium symbol as the trigger too). 3+ crowns ANYWHERE on the
+// 5×3 board, regardless of payline, awards free spins at a flat 6x
+// multiplier on every win. The bet is locked to whatever was active on
+// the triggering spin for the whole bonus (real-pokie convention — can't
+// crank your stake mid-bonus to game the payout), and can retrigger for
+// more free spins on top of whatever's left.
+const SLOTS_SCATTER_SYMBOL = '👑';
+const SLOTS_FREE_SPINS_TRIGGER_COUNT = 3;
+const SLOTS_FREE_SPINS_AWARD = 8; // spins granted per trigger — a judgment call, not specified; easy to retune
+const SLOTS_FREE_SPINS_MULTIPLIER = 3;
+let slotsFreeSpinsRemaining = 0;
+let slotsFreeSpinsBet = null; // { amountPerLine, lines } — locked in for the whole bonus
+
 // Five classic pokie paylines — row index (0=top,1=middle,2=bottom) per
 // reel, left to right. Activated in this exact order: betting "1 Line"
 // only lights up Middle, "3 Lines" adds Top+Bottom, "5 Lines" adds both
@@ -99,9 +114,25 @@ function slotsEvaluateRun(lineSymbols){
 function slotsUpdateTotalBetHint(){
   const hintEl = document.getElementById('slotsTotalBetHint');
   if(!hintEl) return;
+  if(slotsFreeSpinsRemaining > 0){
+    hintEl.textContent = `🎉 FREE SPIN — ${slotsFreeSpinsRemaining} left, ${SLOTS_FREE_SPINS_MULTIPLIER}x wins, bet locked at ${slotsFreeSpinsBet.amountPerLine} XP/line × ${slotsFreeSpinsBet.lines}`;
+    return;
+  }
   const perLine = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
   const total = perLine * slotsActiveLineCount;
   hintEl.textContent = `${perLine} XP/line × ${slotsActiveLineCount} line${slotsActiveLineCount === 1 ? '' : 's'} — total bet ${total} XP`;
+}
+// Betting controls are locked for the whole bonus — same reason the bet
+// itself is locked in the payout math (see the top-of-file note): letting
+// someone change stake or line count mid-bonus would let them game a
+// multiplier that's meant to apply to whatever they'd already committed to.
+function slotsSetControlsLockedForFreeSpins(locked){
+  document.querySelectorAll('#slotsLinesRow .craps-winmode-btn').forEach(b => { b.disabled = locked; });
+  document.querySelectorAll('#slotsBetPanel .table-chip, #slotsBetPanel .chip-clear-btn').forEach(b => { b.disabled = locked; });
+  const chip = document.getElementById('slotsChipDisplay');
+  if(chip) chip.style.pointerEvents = locked ? 'none' : '';
+  const panel = document.getElementById('casinoGameSlots');
+  if(panel) panel.classList.toggle('slots-free-spins-active', locked);
 }
 function slotsRenderPaylinesKey(winningLineIndexes){
   const el = document.getElementById('slotsPaylinesKey');
@@ -157,12 +188,23 @@ async function slotsSpin(){
   spinBtn.disabled = true;
   const errEl = document.getElementById('slotsBetError');
   errEl.textContent = '';
-  const perLine = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
-  if(perLine <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
-  const totalBet = perLine * slotsActiveLineCount;
-  const balance = await getXPBalance();
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
-  if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; spinBtn.disabled = false; return; }
+
+  const isFreeSpin = slotsFreeSpinsRemaining > 0;
+  let perLine, lineCount;
+  if(isFreeSpin){
+    // Bet is whatever triggered the bonus, not whatever the (disabled)
+    // controls currently show — see slotsSetControlsLockedForFreeSpins.
+    perLine = slotsFreeSpinsBet.amountPerLine;
+    lineCount = slotsFreeSpinsBet.lines;
+  } else {
+    perLine = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
+    lineCount = slotsActiveLineCount;
+    if(perLine <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
+    const totalBet = perLine * lineCount;
+    const balance = await getXPBalance();
+    if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
+    if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; spinBtn.disabled = false; return; }
+  }
 
   if(sameBtn) sameBtn.disabled = true;
   const resultEl = document.getElementById('slotsResultMsg');
@@ -189,10 +231,14 @@ async function slotsSpin(){
   })()));
 
   spinBtn.disabled = false;
-  slotsLastBet = { amountPerLine: perLine, lines: slotsActiveLineCount };
-  if(sameBtn) sameBtn.disabled = false;
+  if(!isFreeSpin){
+    slotsLastBet = { amountPerLine: perLine, lines: lineCount };
+    if(sameBtn) sameBtn.disabled = false;
+  } else if(sameBtn){
+    sameBtn.disabled = !slotsLastBet;
+  }
 
-  const activeLines = SLOTS_PAYLINES.slice(0, slotsActiveLineCount);
+  const activeLines = SLOTS_PAYLINES.slice(0, lineCount);
   let totalDelta = 0;
   let isJackpot = false;
   const winningLineIndexes = [];
@@ -212,6 +258,7 @@ async function slotsSpin(){
     } else {
       delta = perLine; // 2 matching — 1:1 consolation, same as the original single-line machine
     }
+    if(isFreeSpin) delta *= SLOTS_FREE_SPINS_MULTIPLIER;
     totalDelta += delta;
     winningLineIndexes.push(lineIdx);
     winParts.push(`${line.name} ${run}×${lineSymbols[0]} (+${delta})`);
@@ -219,15 +266,42 @@ async function slotsSpin(){
       winningCellKeys.add(`${reelI}-${line.rows[reelI]}`);
     }
   });
-  // Losing lines cost their per-line stake — same "1:1 to play, escalating
-  // to win" economics as the original, just now summed across however
-  // many lines were active instead of a single fixed line.
-  const losingLineCount = activeLines.length - winningLineIndexes.length;
-  totalDelta -= losingLineCount * perLine;
+  if(isFreeSpin){
+    // Nothing was staked this spin — a dark line costs nothing, unlike a
+    // real paid spin where every active line you didn't hit on still
+    // takes its per-line stake.
+  } else {
+    const losingLineCount = activeLines.length - winningLineIndexes.length;
+    totalDelta -= losingLineCount * perLine;
+  }
 
-  resultEl.textContent = winParts.length > 0
+  // Scatter check — anywhere on the board, independent of paylines or
+  // whether this spin even won anything on a line. Can retrigger during
+  // an existing bonus (adds more spins on top of whatever's left).
+  const scatterCount = grid.reduce((n, reelSymbols) => n + reelSymbols.filter(s => s === SLOTS_SCATTER_SYMBOL).length, 0);
+  const triggeredFreeSpins = scatterCount >= SLOTS_FREE_SPINS_TRIGGER_COUNT;
+  if(triggeredFreeSpins){
+    const wasAlreadyInBonus = slotsFreeSpinsRemaining > 0;
+    if(!wasAlreadyInBonus){
+      slotsFreeSpinsBet = { amountPerLine: perLine, lines: lineCount };
+      slotsSetControlsLockedForFreeSpins(true);
+    }
+    slotsFreeSpinsRemaining += SLOTS_FREE_SPINS_AWARD;
+  }
+  if(isFreeSpin) slotsFreeSpinsRemaining--;
+  const bonusJustEnded = isFreeSpin && slotsFreeSpinsRemaining <= 0;
+  if(bonusJustEnded){
+    slotsFreeSpinsRemaining = 0;
+    slotsFreeSpinsBet = null;
+    slotsSetControlsLockedForFreeSpins(false);
+  }
+
+  const resultPrefix = triggeredFreeSpins
+    ? `🎉 ${scatterCount}×${SLOTS_SCATTER_SYMBOL} — +${SLOTS_FREE_SPINS_AWARD} FREE SPINS at ${SLOTS_FREE_SPINS_MULTIPLIER}x!  `
+    : '';
+  resultEl.textContent = resultPrefix + (winParts.length > 0
     ? `${winParts.join(' · ')} — Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`
-    : `No line hit (${totalDelta} XP)`;
+    : (isFreeSpin ? `No line hit (0 XP — free spin, nothing lost)` : `No line hit (${totalDelta} XP)`));
   resultEl.style.color = isJackpot ? '' : (totalDelta > 0 ? 'var(--win)' : (totalDelta < 0 ? 'var(--loss)' : 'var(--muted)'));
   resultEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
 
@@ -241,7 +315,13 @@ async function slotsSpin(){
   });
 
   const panelEl = document.getElementById('casinoGameSlots');
-  if(totalDelta > 0){
+  if(triggeredFreeSpins){
+    // Triggering the bonus is always a celebration moment, even if this
+    // particular spin's own lines net-lost — same reasoning a real
+    // machine uses (the scatter hit overrides the line outcome's mood).
+    bjPlayChime(true);
+    bjLaunchConfetti(resultEl, 50);
+  } else if(totalDelta > 0){
     bjPlayChime(true);
     bjLaunchConfetti(resultEl, isJackpot ? 42 : 20);
   } else if(totalDelta < 0){
@@ -249,10 +329,11 @@ async function slotsSpin(){
     panelEl.classList.remove('pc-shake'); void panelEl.offsetWidth; panelEl.classList.add('pc-shake');
     setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
-  if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? 'Slots win' : 'Slots loss', { silent: true });
+  if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? (isFreeSpin ? 'Slots free spin win' : 'Slots win') : 'Slots loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
+  slotsUpdateTotalBetHint();
 }
 document.getElementById('slotsSpinBtn').addEventListener('click', slotsSpin);
 document.getElementById('slotsSameBetBtn').addEventListener('click', () => {
