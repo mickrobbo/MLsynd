@@ -276,6 +276,7 @@
     <div class="subnav-row">
       <button type="button" class="subnav-btn active" data-tipsub="games"><span class="subnav-icon">🏉</span>Games</button>
       <button type="button" class="subnav-btn" data-tipsub="ladder"><span class="subnav-icon">🏆</span>Ladder</button>
+      <button type="button" class="subnav-btn" data-tipsub="history"><span class="subnav-icon">📅</span>Past Seasons</button>
       <button type="button" class="subnav-btn" id="tippingRulesBtn"><span class="subnav-icon">📜</span>Rules</button>
     </div>
 
@@ -297,6 +298,15 @@
         <h2>Your Points This Season</h2>
         <div id="tippingChartArea">Loading…</div>
       </div>
+    </div>
+
+    <div id="tippingSubview-history" class="tipping-subview" style="display:none;">
+      <div class="panel">
+        <h2>Past Seasons</h2>
+        <div class="hint" style="font-size:11px; color:var(--muted);">Final ladder, prize pot, and Joker picks from each archived season.</div>
+        <div id="tippingHistoryYearSelectWrap" style="margin-top:8px;"></div>
+      </div>
+      <div id="tippingHistoryArea">Loading…</div>
     </div>
 
     <div style="font-size:9px; color:var(--muted); opacity:0.6; margin-top:10px; text-align:center;">Fixtures via Squiggle · Odds via PuntersEdge</div>
@@ -2489,7 +2499,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-23.3"; // bumped for Tipping season-readiness: shared season-start-round helper, consolidated lock-window constant, ladder snapshot for archiving — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-23.4"; // bumped for the Tipping "Past Seasons" history viewer (reads /tippingArchive) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8589,6 +8599,7 @@ document.querySelectorAll('#tab-tipping .subnav-btn[data-tipsub]').forEach(btn =
       el.style.display = el.id === `tippingSubview-${view}` ? 'block' : 'none';
     });
     if(view === 'ladder') refreshTippingLadderOnly();
+    if(view === 'history') renderTippingHistory();
   });
 });
 
@@ -11335,6 +11346,77 @@ async function renderTippingLadder(games){
       myChartArea.innerHTML = '<div class="empty">Submit some tips to start tracking your points here.</div>';
     }
   }
+}
+
+let tippingArchiveCache = null;
+let tippingArchiveSelectedYear = null;
+async function renderTippingHistory(){
+  const selectWrap = document.getElementById('tippingHistoryYearSelectWrap');
+  const area = document.getElementById('tippingHistoryArea');
+  try{
+    if(!tippingArchiveCache){
+      const res = await authedFetch('/tippingArchive.json');
+      tippingArchiveCache = (await res.json()) || {};
+    }
+    const years = Object.keys(tippingArchiveCache).sort((a, b) => b - a); // newest first
+    if(years.length === 0){
+      selectWrap.innerHTML = '';
+      area.innerHTML = '<div class="empty">No archived seasons yet — these show up once a season is archived from the Ledger\'s Admin tab.</div>';
+      return;
+    }
+    if(!tippingArchiveSelectedYear || !years.includes(String(tippingArchiveSelectedYear))) tippingArchiveSelectedYear = years[0];
+    selectWrap.innerHTML = `<select id="tippingHistoryYearSelect" class="form-select">${years.map(y => `<option value="${y}" ${String(tippingArchiveSelectedYear) === y ? 'selected' : ''}>${y} Season</option>`).join('')}</select>`;
+    document.getElementById('tippingHistoryYearSelect').addEventListener('change', (e) => {
+      tippingArchiveSelectedYear = e.target.value;
+      renderTippingHistoryYear();
+    });
+    renderTippingHistoryYear();
+  }catch(e){
+    area.innerHTML = `<div class="empty">Could not load past seasons: ${escapeHtml(e.message)}</div>`;
+  }
+}
+function renderTippingHistoryYear(){
+  const area = document.getElementById('tippingHistoryArea');
+  const record = tippingArchiveCache[tippingArchiveSelectedYear];
+  if(!record){
+    area.innerHTML = '<div class="empty">No data for that season.</div>';
+    return;
+  }
+  const rows = (record.ladder && record.ladder.rows) || [];
+  const nameByUid = {};
+  rows.forEach(r => { nameByUid[r.uid] = r.name; });
+
+  let html = '';
+  html += `<div class="panel" style="text-align:center;">
+    <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">Final Prize Pot</div>
+    <div style="font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:700; color:var(--brass);">$${(record.prizePot || 0).toFixed ? record.prizePot.toFixed(0) : record.prizePot}</div>
+  </div>`;
+
+  html += '<div class="panel"><h2>Final Ladder</h2>';
+  if(rows.length === 0){
+    html += '<div class="empty">No ladder data was captured for this season.</div>';
+  } else {
+    html += '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
+    rows.forEach((r, i) => {
+      html += `<tr><td>${i+1}</td><td>${escapeHtml(r.name || '')}</td><td>${r.points}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  const jokerEntries = Object.entries(record.jokers || {}).filter(([uid, j]) => j && j.round != null);
+  html += '<div class="panel"><h2>Jokers Used</h2>';
+  if(jokerEntries.length === 0){
+    html += '<div class="empty">No Joker picks recorded.</div>';
+  } else {
+    html += jokerEntries.map(([uid, j]) => `<div class="api-tracker-row"><span class="api-tracker-name">${escapeHtml(nameByUid[uid] || uid.slice(0, 8))}</span><span class="api-tracker-meta">${roundLabel(j.round)}</span></div>`).join('');
+  }
+  html += '</div>';
+
+  if(record.archivedAt){
+    html += `<div class="hint" style="text-align:center; margin-top:4px;">Archived ${new Date(record.archivedAt).toLocaleDateString()}</div>`;
+  }
+  area.innerHTML = html;
 }
 // ================= /Tipping =================
 
