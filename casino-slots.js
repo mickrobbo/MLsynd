@@ -1,12 +1,16 @@
-// ---- Slots (5 reels, single payline) ----
-// Restored original polished implementation (recovered from an earlier
-// build the user provided), replacing a differently-designed version —
-// real translateY reel strips instead of class-toggle blur, sequential
-// left-to-right reel stops reusing Spin the Wheel's own peg-tick sound,
-// a clean run-based payline, and a proper ×3/×4/×5 column paytable
-// (an earlier attempt repeated the symbol 3/4/5 times per row instead,
-// which wrapped onto extra lines and looked cramped).
+// ---- Slots (5 reels × 3 rows, multi-payline) ----
+// Upgraded from the original single-row/single-payline machine to a real
+// pokie-style grid: 3 symbols visible per reel, up to 5 fixed paylines
+// (activated in order — 1/3/5, matching how real machines let you choose
+// how many of the available lines to bet on), each evaluated with the
+// same left-to-right "matching run" rule the single payline always used.
+// Winning lines are traced with an actual line drawn across the grid
+// (SVG, real DOM-measured coordinates — not guessed percentages, so it
+// stays aligned if the reel spacing/padding ever changes) plus a glow on
+// the specific winning cells, same gold flash language as every other
+// win moment in the casino.
 const SLOTS_REEL_COUNT = 5;
+const SLOTS_ROW_COUNT = 3;
 const SLOTS_SYMBOLS = [
   { sym: '🍒', weight: 8, mult3: 3, mult4: 8, mult5: 20 },
   { sym: '🍋', weight: 7, mult3: 5, mult4: 12, mult5: 30 },
@@ -19,12 +23,31 @@ const SLOTS_WEIGHTED_POOL = [];
 SLOTS_SYMBOLS.forEach(s => { for(let i = 0; i < s.weight; i++) SLOTS_WEIGHTED_POOL.push(s.sym); });
 function slotsPickSymbol(){ return SLOTS_WEIGHTED_POOL[Math.floor(Math.random() * SLOTS_WEIGHTED_POOL.length)]; }
 const SLOTS_SYMBOL_HEIGHT = 66; // matches .slots-symbol height in CSS
+
+// Five classic pokie paylines — row index (0=top,1=middle,2=bottom) per
+// reel, left to right. Activated in this exact order: betting "1 Line"
+// only lights up Middle, "3 Lines" adds Top+Bottom, "5 Lines" adds both
+// diagonals — same convention real machines use so the paytable/line
+// list stays predictable as you raise how many lines you're covering.
+const SLOTS_PAYLINES = [
+  { name: 'Middle', rows: [1,1,1,1,1] },
+  { name: 'Top', rows: [0,0,0,0,0] },
+  { name: 'Bottom', rows: [2,2,2,2,2] },
+  { name: 'V', rows: [0,1,2,1,0] },
+  { name: 'Inverted V', rows: [2,1,0,1,2] },
+];
+
 let slotsBuilt = false;
-let slotsLastBet = 0;
-function slotsBuildReelStrip(reelEl, finalSymbol, stripLength){
+let slotsLastBet = null; // { amountPerLine, lines }
+let slotsActiveLineCount = 3;
+
+function slotsBuildReelStrip(reelEl, finalSymbols, stripLength){
+  // finalSymbols: array of SLOTS_ROW_COUNT symbols, top to bottom — the
+  // last `SLOTS_ROW_COUNT` entries of the strip, so they land as the
+  // visible window once the strip's translated up out of view.
   const symbols = [];
-  for(let i = 0; i < stripLength - 1; i++) symbols.push(slotsPickSymbol());
-  symbols.push(finalSymbol); // last one is what ends up centered in the window
+  for(let i = 0; i < stripLength - SLOTS_ROW_COUNT; i++) symbols.push(slotsPickSymbol());
+  finalSymbols.forEach(s => symbols.push(s));
   const strip = document.createElement('div');
   strip.className = 'slots-symbol-strip';
   strip.innerHTML = symbols.map(s => `<div class="slots-symbol">${s}</div>`).join('');
@@ -34,18 +57,21 @@ function slotsBuildReelStrip(reelEl, finalSymbol, stripLength){
 }
 function slotsBuildInitial(){
   for(let i = 0; i < SLOTS_REEL_COUNT; i++){
-    slotsBuildReelStrip(document.getElementById('slotsReel' + i), slotsPickSymbol(), 1);
+    const finals = Array.from({ length: SLOTS_ROW_COUNT }, () => slotsPickSymbol());
+    slotsBuildReelStrip(document.getElementById('slotsReel' + i), finals, SLOTS_ROW_COUNT);
   }
   slotsBuilt = true;
+  slotsUpdateTotalBetHint();
+  slotsRenderPaylinesKey();
 }
-async function slotsSpinReel(reelId, finalSymbol, duration){
+async function slotsSpinReel(reelId, finalSymbols, duration){
   const reelEl = document.getElementById(reelId);
   const stripLength = 24;
-  const strip = slotsBuildReelStrip(reelEl, finalSymbol, stripLength);
+  const strip = slotsBuildReelStrip(reelEl, finalSymbols, stripLength);
   strip.style.transition = 'none';
   strip.style.transform = 'translateY(0)';
   void strip.offsetWidth;
-  const targetY = -(stripLength - 1) * SLOTS_SYMBOL_HEIGHT;
+  const targetY = -(stripLength - SLOTS_ROW_COUNT) * SLOTS_SYMBOL_HEIGHT;
   strip.style.transition = `transform ${duration}ms cubic-bezier(.17,.67,.24,1)`;
   strip.style.transform = `translateY(${targetY}px)`;
   await bjWait(duration);
@@ -55,21 +81,71 @@ function slotsBuildPaytable(){
   const rows = SLOTS_SYMBOLS.map(s =>
     `<div class="slots-pt-row"><div class="slots-pt-sym">${s.sym}</div><div class="vp-pt-mult">${s.mult3}:1</div><div class="vp-pt-mult">${s.mult4}:1</div><div class="vp-pt-mult">${s.mult5}:1</div></div>`
   ).join('');
-  const consolation = `<div class="slots-pt-consolation"><span class="vp-pt-name">Any 2 matching (left to right)</span><span class="vp-pt-mult">1:1</span></div>`;
+  const consolation = `<div class="slots-pt-consolation"><span class="vp-pt-name">Any 2 matching (left to right, per line)</span><span class="vp-pt-mult">1:1</span></div>`;
   document.getElementById('slotsPaytable').innerHTML = header + rows + consolation;
 }
-// Standard "left to right" slot payline: count how many reels, starting
-// from reel 1, match in an unbroken run — 2 matching is a small
-// consolation win, 3/4/5 pay escalating multipliers per the paytable, a
-// broken run (e.g. reel 1 and 3 match but not 2) pays nothing, exactly
-// like a real machine's payline rule.
-function slotsEvaluateRun(finals){
+// Standard "left to right" payline rule, unchanged from the original
+// single-line machine — count how many reels, starting from reel 1,
+// match in an unbroken run along whichever row the line follows. Now
+// called once per active payline instead of just once per spin.
+function slotsEvaluateRun(lineSymbols){
   let run = 1;
-  for(let i = 1; i < finals.length; i++){
-    if(finals[i] === finals[0]) run++;
+  for(let i = 1; i < lineSymbols.length; i++){
+    if(lineSymbols[i] === lineSymbols[0]) run++;
     else break;
   }
   return run;
+}
+function slotsUpdateTotalBetHint(){
+  const hintEl = document.getElementById('slotsTotalBetHint');
+  if(!hintEl) return;
+  const perLine = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
+  const total = perLine * slotsActiveLineCount;
+  hintEl.textContent = `${perLine} XP/line × ${slotsActiveLineCount} line${slotsActiveLineCount === 1 ? '' : 's'} — total bet ${total} XP`;
+}
+function slotsRenderPaylinesKey(winningLineIndexes){
+  const el = document.getElementById('slotsPaylinesKey');
+  if(!el) return;
+  const won = new Set(winningLineIndexes || []);
+  el.innerHTML = SLOTS_PAYLINES.slice(0, slotsActiveLineCount).map((line, i) =>
+    `<span class="slots-payline-chip${won.has(i) ? ' won' : ''}">${line.name}</span>`
+  ).join('');
+}
+document.querySelectorAll('#slotsLinesRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    slotsActiveLineCount = parseInt(btn.dataset.lines, 10);
+    document.querySelectorAll('#slotsLinesRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    slotsUpdateTotalBetHint();
+    slotsRenderPaylinesKey();
+  });
+});
+// Draws the actual winning payline(s) across the grid using real
+// measured positions — reads each reel's on-screen box and each row's
+// vertical center within it, rather than guessing at pixel offsets from
+// the CSS. Stays correct even if the reel gap/padding changes later.
+function slotsDrawWinLines(winningLineIndexes){
+  const svg = document.getElementById('slotsLinesOverlay');
+  if(!svg) return;
+  svg.innerHTML = '';
+  if(winningLineIndexes.length === 0) return;
+  const svgRect = svg.getBoundingClientRect();
+  svg.setAttribute('viewBox', `0 0 ${svgRect.width} ${svgRect.height}`);
+  const reelRects = [];
+  for(let i = 0; i < SLOTS_REEL_COUNT; i++){
+    reelRects.push(document.getElementById('slotsReel' + i).getBoundingClientRect());
+  }
+  winningLineIndexes.forEach(lineIdx => {
+    const line = SLOTS_PAYLINES[lineIdx];
+    const points = line.rows.map((row, reelI) => {
+      const r = reelRects[reelI];
+      const x = (r.left + r.width / 2) - svgRect.left;
+      const y = (r.top + (row + 0.5) * SLOTS_SYMBOL_HEIGHT) - svgRect.top;
+      return `${x},${y}`;
+    }).join(' ');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    poly.setAttribute('points', points);
+    svg.appendChild(poly);
+  });
 }
 async function slotsSpin(){
   const spinBtn = document.getElementById('slotsSpinBtn');
@@ -81,66 +157,99 @@ async function slotsSpin(){
   spinBtn.disabled = true;
   const errEl = document.getElementById('slotsBetError');
   errEl.textContent = '';
-  const bet = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
-  if(bet <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
+  const perLine = parseInt(document.getElementById('slotsBetInput').value, 10) || 0;
+  if(perLine <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
+  const totalBet = perLine * slotsActiveLineCount;
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
-  if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; spinBtn.disabled = false; return; }
+  if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; spinBtn.disabled = false; return; }
 
   if(sameBtn) sameBtn.disabled = true;
   const resultEl = document.getElementById('slotsResultMsg');
   resultEl.textContent = '';
   resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  document.getElementById('slotsLinesOverlay').innerHTML = '';
+  document.querySelectorAll('.slots-symbol.slots-win-cell').forEach(el => el.classList.remove('slots-win-cell'));
   bjPlayChipSound();
 
-  const finals = [];
-  for(let i = 0; i < SLOTS_REEL_COUNT; i++) finals.push(slotsPickSymbol());
+  // grid[reel][row] — full 5×3 board, independent of which lines are
+  // actually active (a line you didn't bet on still lands normally, it
+  // just can't win anything, exactly like a real machine's unlit lines).
+  const grid = [];
+  for(let r = 0; r < SLOTS_REEL_COUNT; r++){
+    grid.push(Array.from({ length: SLOTS_ROW_COUNT }, () => slotsPickSymbol()));
+  }
   // Reels stop in sequence left to right (classic slot suspense) rather
   // than all at once — each one's own peg-tick-style sound reused from
   // Spin the Wheel's synth marks the moment it lands.
-  await Promise.all(finals.map((sym, i) => (async () => {
+  await Promise.all(grid.map((finals, i) => (async () => {
     await bjWait(i * 300);
-    await slotsSpinReel('slotsReel' + i, sym, 1400 + i * 300);
+    await slotsSpinReel('slotsReel' + i, finals, 1400 + i * 300);
     dailySpinPlayPegTick();
   })()));
 
   spinBtn.disabled = false;
-  slotsLastBet = bet;
+  slotsLastBet = { amountPerLine: perLine, lines: slotsActiveLineCount };
   if(sameBtn) sameBtn.disabled = false;
 
-  const run = slotsEvaluateRun(finals);
-  const symData = SLOTS_SYMBOLS.find(s => s.sym === finals[0]);
-  let delta, outcome, isJackpot = false;
-  if(run >= 3){
-    const mult = run === 3 ? symData.mult3 : (run === 4 ? symData.mult4 : symData.mult5);
-    delta = bet * mult;
-    outcome = `${run} \u00d7 ${finals[0]}! ${mult}:1`;
-    isJackpot = mult >= 50;
-  } else if(run === 2){
-    delta = bet;
-    outcome = 'Two match \u2014 small win';
-  } else {
-    delta = -bet;
-    outcome = 'No match';
-  }
+  const activeLines = SLOTS_PAYLINES.slice(0, slotsActiveLineCount);
+  let totalDelta = 0;
+  let isJackpot = false;
+  const winningLineIndexes = [];
+  const winParts = [];
+  const winningCellKeys = new Set();
 
-  resultEl.textContent = `${outcome} (${delta >= 0 ? '+' : ''}${delta} XP)`;
-  resultEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : 'var(--loss)');
+  activeLines.forEach((line, lineIdx) => {
+    const lineSymbols = line.rows.map((row, reelI) => grid[reelI][row]);
+    const run = slotsEvaluateRun(lineSymbols);
+    if(run < 2) return; // this line didn't hit — no different from a real machine's dark line
+    const symData = SLOTS_SYMBOLS.find(s => s.sym === lineSymbols[0]);
+    let delta;
+    if(run >= 3){
+      const mult = run === 3 ? symData.mult3 : (run === 4 ? symData.mult4 : symData.mult5);
+      delta = perLine * mult;
+      if(mult >= 50) isJackpot = true;
+    } else {
+      delta = perLine; // 2 matching — 1:1 consolation, same as the original single-line machine
+    }
+    totalDelta += delta;
+    winningLineIndexes.push(lineIdx);
+    winParts.push(`${line.name} ${run}×${lineSymbols[0]} (+${delta})`);
+    for(let reelI = 0; reelI < run; reelI++){
+      winningCellKeys.add(`${reelI}-${line.rows[reelI]}`);
+    }
+  });
+  // Losing lines cost their per-line stake — same "1:1 to play, escalating
+  // to win" economics as the original, just now summed across however
+  // many lines were active instead of a single fixed line.
+  const losingLineCount = activeLines.length - winningLineIndexes.length;
+  totalDelta -= losingLineCount * perLine;
+
+  resultEl.textContent = winParts.length > 0
+    ? `${winParts.join(' · ')} — Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`
+    : `No line hit (${totalDelta} XP)`;
+  resultEl.style.color = isJackpot ? '' : (totalDelta > 0 ? 'var(--win)' : (totalDelta < 0 ? 'var(--loss)' : 'var(--muted)'));
   resultEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
 
+  slotsDrawWinLines(winningLineIndexes);
+  slotsRenderPaylinesKey(winningLineIndexes);
+  winningCellKeys.forEach(key => {
+    const [reelI, row] = key.split('-').map(Number);
+    const reelEl = document.getElementById('slotsReel' + reelI);
+    const cell = reelEl && reelEl.querySelectorAll('.slots-symbol')[row];
+    if(cell) cell.classList.add('slots-win-cell');
+  });
+
   const panelEl = document.getElementById('casinoGameSlots');
-  if(delta > 0){
+  if(totalDelta > 0){
     bjPlayChime(true);
-    document.querySelectorAll('.slots-reel').forEach((r, i) => {
-      if(i < run){ r.classList.remove('pc-reel-win'); void r.offsetWidth; r.classList.add('pc-reel-win'); }
-    });
     bjLaunchConfetti(resultEl, isJackpot ? 42 : 20);
-  } else if(delta < 0){
+  } else if(totalDelta < 0){
     bjPlayChime(false);
     panelEl.classList.remove('pc-shake'); void panelEl.offsetWidth; panelEl.classList.add('pc-shake');
     setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
-  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Slots win' : 'Slots loss', { silent: true });
+  if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? 'Slots win' : 'Slots loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   renderXPLog();
@@ -149,14 +258,18 @@ document.getElementById('slotsSpinBtn').addEventListener('click', slotsSpin);
 document.getElementById('slotsSameBetBtn').addEventListener('click', () => {
   if(!slotsLastBet) return;
   const input = document.getElementById('slotsBetInput');
-  input.value = slotsLastBet;
+  input.value = slotsLastBet.amountPerLine;
   input.dispatchEvent(new Event('input'));
+  const targetBtn = document.querySelector(`#slotsLinesRow .craps-winmode-btn[data-lines="${slotsLastBet.lines}"]`);
+  if(targetBtn) targetBtn.click();
 });
 document.getElementById('slotsBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('slotsChipDisplay');
-  if(!chip) return;
-  chip.textContent = e.target.value || '0';
-  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+  if(chip){
+    chip.textContent = e.target.value || '0';
+    chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+  }
+  slotsUpdateTotalBetHint();
 });
 
 // A bright ascending coin-cascade sound for a casino win — originally part

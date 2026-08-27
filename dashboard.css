@@ -871,19 +871,36 @@
     background:#0a1a12; box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6);
   }
   .slots-reel{
-    width:52px; height:66px; overflow:hidden; border-radius:5px; position:relative;
+    width:52px; height:198px; overflow:hidden; border-radius:5px; position:relative;
     background: linear-gradient(180deg, #0d2318, #163826 50%, #0d2318);
     box-shadow: inset 0 0 10px rgba(0,0,0,.7), inset 0 0 0 1px rgba(255,214,120,.2);
   }
   .slots-symbol-strip{ position:absolute; left:0; top:0; width:100%; display:flex; flex-direction:column; align-items:center; }
-  .slots-symbol{ width:52px; height:66px; display:flex; align-items:center; justify-content:center; font-size:27px; flex-shrink:0; }
-  .slots-payline{
-    position:absolute; left:8px; right:8px; top:50%; height:2px; margin-top:-1px;
-    background: linear-gradient(90deg, transparent, var(--brass-light), transparent); z-index:2; pointer-events:none;
-    box-shadow:0 0 6px rgba(255,214,120,.7);
+  .slots-symbol{ width:52px; height:66px; display:flex; align-items:center; justify-content:center; font-size:27px; flex-shrink:0; position:relative; }
+  /* Individual winning cells (not whole reels — a payline can win on the
+     top row of one reel and the middle row of the next) get a glowing
+     ring, same gold flash language as everywhere else in the casino. */
+  @keyframes slotsCellFlash{ 0%,100%{ box-shadow:none; } 50%{ box-shadow: inset 0 0 0 2px var(--brass-light), 0 0 12px rgba(255,214,120,.8); } }
+  .slots-symbol.slots-win-cell{ animation: slotsCellFlash .5s ease 3; border-radius:6px; }
+  /* SVG overlay tracing the actual winning payline(s) across the grid,
+     like a real pokie — drawn with real DOM-measured coordinates (see
+     slotsDrawWinLines) rather than hand-guessed percentages, so it stays
+     correctly aligned regardless of reel gap/padding tweaks later. */
+  .slots-lines-overlay{ position:absolute; inset:0; z-index:3; pointer-events:none; width:100%; height:100%; }
+  .slots-lines-overlay polyline{
+    fill:none; stroke:var(--brass-light); stroke-width:3; stroke-linecap:round; stroke-linejoin:round;
+    filter: drop-shadow(0 0 4px rgba(255,214,120,.9));
+    opacity:0; animation: slotsLineFadeIn .35s ease forwards;
   }
-  @keyframes slotsReelFlash{ 0%,100%{ box-shadow: inset 0 0 10px rgba(0,0,0,.7), inset 0 0 0 1px rgba(255,214,120,.2); } 50%{ box-shadow: inset 0 0 10px rgba(0,0,0,.7), inset 0 0 0 2px var(--brass-light), 0 0 14px rgba(255,214,120,.7); } }
-  .slots-reel.pc-reel-win{ animation: slotsReelFlash .45s ease 3; }
+  @keyframes slotsLineFadeIn{ from{ opacity:0; } to{ opacity:.92; } }
+  .slots-paylines-key{
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:10px;
+  }
+  .slots-payline-chip{
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:10px; letter-spacing:.5px;
+    padding:3px 9px; border-radius:999px; border:1px solid var(--brass-dim); color:var(--muted);
+  }
+  .slots-payline-chip.won{ color:var(--ink); background:var(--brass-light); border-color:var(--brass-light); }
   /* Paytable — a real ×3/×4/×5 column grid, symbol shown exactly once per
      row, rather than repeating it 3/4/5 times per row (which wrapped onto
      extra lines and looked cramped on a phone screen). */
@@ -1440,6 +1457,7 @@
   #minesTopActions{ gap:18px; margin-bottom:16px; }
   #crapsTopActions{ gap:18px; margin-bottom:14px; margin-top:0; }
   #rouletteTopActions{ gap:14px; margin-bottom:6px; margin-top:16px; }
+  #plinkoTopActions{ gap:18px; margin-bottom:14px; margin-top:0; }
   @keyframes minesCashoutPulse{
     0%,100%{ box-shadow:0 0 0 rgba(90,220,130,0); }
     50%{ box-shadow:0 0 16px rgba(90,220,130,.55); }

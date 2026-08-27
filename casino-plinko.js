@@ -39,8 +39,11 @@ function plinkoUpdateStakeHint(){
   const bet = parseInt(document.getElementById('plinkoBetInput').value, 10) || 0;
   const hint = document.getElementById('plinkoTotalStakeHint');
   if(hint) hint.textContent = `Total stake: ${(bet * plinkoBallCount).toLocaleString()} XP${plinkoBallCount > 1 ? ` (${bet} XP × ${plinkoBallCount} balls)` : ''}`;
+  const label = plinkoBallCount === 1 ? 'Drop Ball' : `Drop ${plinkoBallCount} Balls`;
   const btn = document.getElementById('plinkoDropBtn');
-  if(btn && !plinkoDropping) btn.textContent = plinkoBallCount === 1 ? 'Drop Ball' : `Drop ${plinkoBallCount} Balls`;
+  const btnTop = document.getElementById('plinkoDropTopBtn');
+  if(btn && !plinkoDropping) btn.textContent = label;
+  if(btnTop && !plinkoDropping) btnTop.textContent = label;
 }
 document.querySelectorAll('#plinkoBallCountRow .craps-winmode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -146,12 +149,16 @@ async function plinkoDrop(){
   if(plinkoDropping) return;
   plinkoDropping = true;
   const btn = document.getElementById('plinkoDropBtn');
+  const btnTop = document.getElementById('plinkoDropTopBtn');
   btn.disabled = true;
+  if(btnTop) btnTop.disabled = true;
   try{
     await plinkoDropInner();
   } finally {
     btn.disabled = false;
+    if(btnTop) btnTop.disabled = false;
     plinkoDropping = false;
+    plinkoUpdateStakeHint(); // restores each button's own label (Drop Ball / Drop N Balls) once re-enabled
   }
 }
 async function plinkoDropInner(){
@@ -192,6 +199,8 @@ async function plinkoDropInner(){
   const delta = totalPayout - totalStake;
   plinkoLastBet = { amount: betPerBall, ballCount: plinkoBallCount };
   document.getElementById('plinkoSameBetBtn').disabled = false;
+  const sameBetTopBtn = document.getElementById('plinkoSameBetTopBtn');
+  if(sameBetTopBtn) sameBetTopBtn.disabled = false;
 
   Object.keys(landedSlotCounts).forEach(slotIdx => {
     const slotEl = document.querySelector(`#plinkoSlots .plinko-slot[data-slot="${slotIdx}"]`);
@@ -241,11 +250,12 @@ async function plinkoDropInner(){
   renderXPLog();
 }
 document.getElementById('plinkoDropBtn').addEventListener('click', plinkoDrop);
+document.getElementById('plinkoDropTopBtn').addEventListener('click', plinkoDrop);
 // Restores both the bet-per-ball amount and the ball count from the last
 // completed drop — real-clicks the correct ball-count pill so its active
 // styling and the stake hint both stay in sync, same as every other
 // repeat-bet button in the casino.
-document.getElementById('plinkoSameBetBtn').addEventListener('click', () => {
+function plinkoApplySameBet(){
   if(!plinkoLastBet || plinkoDropping) return;
   const targetBtn = document.querySelector(`#plinkoBallCountRow .craps-winmode-btn[data-balls="${plinkoLastBet.ballCount}"]`);
   if(targetBtn) targetBtn.click();
@@ -253,5 +263,7 @@ document.getElementById('plinkoSameBetBtn').addEventListener('click', () => {
   betInput.value = plinkoLastBet.amount;
   betInput.dispatchEvent(new Event('input'));
   bjPlayChipSound();
-});
+}
+document.getElementById('plinkoSameBetBtn').addEventListener('click', plinkoApplySameBet);
+document.getElementById('plinkoSameBetTopBtn').addEventListener('click', plinkoApplySameBet);
 // ================= /Plinko =================

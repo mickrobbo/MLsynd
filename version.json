@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.3",
+  "version": "2026-08-24.4",
   "date": "2026-08-27",
   "changes": [
-    "Mines' top buttons now have proper breathing room instead of feeling cramped. Craps and Roulette got the same top-of-table treatment as Mines: Roll/Spin/Same Bet/Clear are now also reachable right at the top, not just after scrolling all the way down through the bet panel."
+    "Slots rebuilt as a real pokie: 3 rows x 5 reels, bet across 1/3/5 paylines (Middle, Top, Bottom, and both diagonals), with an actual line drawn across the grid on every win plus a glow on the winning symbols. Plinko now also has Same Bet and Drop Ball at the top of the board, same as Mines/Craps/Roulette."
   ]
 }

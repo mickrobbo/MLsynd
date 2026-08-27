@@ -971,16 +971,23 @@
           <div class="slots-reel" id="slotsReel2"></div>
           <div class="slots-reel" id="slotsReel3"></div>
           <div class="slots-reel" id="slotsReel4"></div>
-          <div class="slots-payline"></div>
+          <svg class="slots-lines-overlay" id="slotsLinesOverlay"></svg>
         </div>
       </div>
       <div id="slotsResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
     </div>
     <div class="panel" id="slotsBetPanel">
+      <div class="craps-section-label">Paylines <small>— activated in order, top to bottom of the list below</small></div>
+      <div class="craps-winmode-row" id="slotsLinesRow">
+        <button type="button" class="craps-winmode-btn" data-lines="1">1 Line</button>
+        <button type="button" class="craps-winmode-btn active" data-lines="3">3 Lines</button>
+        <button type="button" class="craps-winmode-btn" data-lines="5">5 Lines</button>
+      </div>
       <div style="display:flex; justify-content:center; margin-top:4px;">
         <div class="bj-chip" id="slotsChipDisplay">50</div>
         <input type="number" id="slotsBetInput" min="5" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
+      <div class="hint" id="slotsTotalBetHint" style="margin-top:2px; margin-bottom:2px;">Bet per line — total bet shown below</div>
       <div class="chip-rail" data-target="slotsBetInput">
         <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
@@ -995,6 +1002,7 @@
         <button type="button" id="slotsSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
       </div>
       <div id="slotsBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+      <div class="slots-paylines-key" id="slotsPaylinesKey"></div>
       <div class="slots-paytable" id="slotsPaytable"></div>
     </div>
     </div>
@@ -1054,6 +1062,10 @@
     <div class="pc-table-rail" id="plinkoTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
       <div class="craps-table-felt">
         <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
+        <div class="deal-row" id="plinkoTopActions">
+          <button type="button" id="plinkoSameBetTopBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+          <button type="button" id="plinkoDropTopBtn" class="pill-btn pill-btn-primary">Drop Ball</button>
+        </div>
         <div class="plinko-board-wrap" id="plinkoBoardWrap">
           <div class="plinko-pegs" id="plinkoPegs"></div>
           <div class="plinko-slots" id="plinkoSlots"></div>
@@ -2535,7 +2547,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.3"; // bumped for Craps/Roulette getting the same top-of-table Roll/Spin/Same-Bet/Clear buttons as Mines, plus more breathing room between Mines' top buttons — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.4"; // bumped for Slots' 3x5 multi-payline rebuild (real win lines drawn across the grid, 1/3/5 lines) and Plinko's top-of-table Same Bet/Drop Ball buttons — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
