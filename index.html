@@ -1143,7 +1143,12 @@
     <div class="pc-table-rail" id="minesTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
       <div class="craps-table-felt">
         <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
-        <button type="button" id="minesCashOutTopBtn" class="pill-btn pill-btn-action mines-cashout-top" style="display:none;">💰 Cash Out</button>
+        <div class="deal-row" id="minesTopActions">
+          <button type="button" id="minesSameBetTopBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+          <button type="button" id="minesStartTopBtn" class="pill-btn pill-btn-primary">Start</button>
+        </div>
+        <button type="button" id="minesCashOutTopBtn" class="pill-btn pill-btn-action mines-top-fullwidth mines-cashout-top" style="display:none;">💰 Cash Out</button>
+        <button type="button" id="minesNewGameTopBtn" class="pill-btn mines-top-fullwidth" style="display:none;">New Game</button>
         <div class="mines-status-row">
           <div class="mines-status-cell"><span class="lbl">Multiplier</span><span class="val" id="minesMultVal">1.00x</span></div>
           <div class="mines-status-cell"><span class="lbl">Potential Payout</span><span class="val" id="minesPayoutVal">—</span></div>
@@ -2521,7 +2526,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.1"; // bumped for the redesigned bottom nav — Cash/Slips folded into Home's sub-nav, elevated gold Casino coin replaces the old flat tab — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.2"; // bumped for Mines: Start/Same Bet/New Game now also live at the top of the felt, next to Cash Out — no more scrolling down every round — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

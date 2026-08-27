@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.1",
+  "version": "2026-08-24.2",
   "date": "2026-08-27",
   "changes": [
-    "Redesigned bottom nav: Cash and Slips are now sub-tabs under Home (Overview/Cash/Slips), and Casino got a new elevated gold coin button in the middle. No data or feature changes \u2014 same tabs, new layout."
+    "Mines: Start, Same Bet, and New Game now also sit at the top of the felt (next to Cash Out), so you're not scrolling down to the bet panel every single round. Same auto-scroll-to-table on your first bet as before."
   ]
 }

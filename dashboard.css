@@ -1427,8 +1427,8 @@
      view without scrolling down to the bet panel below the grid — the
      same Cash Out action as the button down there, just where you can
      actually reach it mid-round on a full 5x5 board. */
+  .mines-top-fullwidth{ width:100%; max-width:280px; margin:0 auto 12px; display:block; }
   .mines-cashout-top{
-    width:100%; max-width:280px; margin:0 auto 12px; display:block;
     animation: minesCashoutPulse 1.8s ease-in-out infinite;
   }
   @keyframes minesCashoutPulse{

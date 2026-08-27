@@ -26,12 +26,36 @@ let minesHistory = [];
 // Both Cash Out buttons (the one up top on the felt, and the one down in
 // the bet panel) always show/hide together — one helper so every call
 // site only has to remember there's a button, not that there are two.
+// Same idea now extended to Start/Same Bet/New Game, all originally only
+// reachable down in the bet panel below the grid — meant scrolling all
+// the way down after every single round just to start the next one, then
+// back up to actually see the board. Duplicated up top instead, exact
+// same pattern as Cash Out already used.
 function minesSetCashOutVisible(visible){
   const display = visible ? 'inline-block' : 'none';
   const topBtn = document.getElementById('minesCashOutTopBtn');
   const bottomBtn = document.getElementById('minesCashOutBtn');
   if(topBtn) topBtn.style.display = visible ? 'block' : 'none';
   if(bottomBtn) bottomBtn.style.display = display;
+}
+function minesSetStartVisible(visible){
+  const bottomBtn = document.getElementById('minesStartBtn');
+  const topRow = document.getElementById('minesTopActions');
+  if(bottomBtn) bottomBtn.style.display = visible ? 'inline-block' : 'none';
+  if(topRow) topRow.style.display = visible ? 'flex' : 'none';
+}
+function minesSetNewGameVisible(visible){
+  const display = visible ? 'inline-block' : 'none';
+  const topBtn = document.getElementById('minesNewGameTopBtn');
+  const bottomBtn = document.getElementById('minesNewGameBtn');
+  if(topBtn) topBtn.style.display = visible ? 'block' : 'none';
+  if(bottomBtn) bottomBtn.style.display = display;
+}
+function minesSetSameBetEnabled(enabled){
+  const topBtn = document.getElementById('minesSameBetTopBtn');
+  const bottomBtn = document.getElementById('minesSameBetBtn');
+  if(topBtn) topBtn.disabled = !enabled;
+  if(bottomBtn) bottomBtn.disabled = !enabled;
 }
 function minesInit(){
   minesBuilt = true;
@@ -80,11 +104,14 @@ async function minesStart(){
   if(minesActionInFlight) return;
   minesActionInFlight = true;
   const startBtn = document.getElementById('minesStartBtn');
+  const startBtnTop = document.getElementById('minesStartTopBtn');
   startBtn.disabled = true;
+  if(startBtnTop) startBtnTop.disabled = true;
   try{
     await minesStartInner();
   } finally {
     startBtn.disabled = false;
+    if(startBtnTop) startBtnTop.disabled = false;
     minesActionInFlight = false;
   }
 }
@@ -117,9 +144,9 @@ async function minesStartInner(){
   document.getElementById('minesMultVal').textContent = '1.00x';
   document.getElementById('minesPayoutVal').textContent = `${bet.toLocaleString()} XP`;
   document.getElementById('minesResultMsg').textContent = '';
-  document.getElementById('minesStartBtn').style.display = 'none';
+  minesSetStartVisible(false);
   minesSetCashOutVisible(false);
-  document.getElementById('minesNewGameBtn').style.display = 'none';
+  minesSetNewGameVisible(false);
   document.getElementById('minesHint').textContent = 'Tap a tile to reveal it — cash out anytime after your first safe gem.';
   croupierSay('minesCroupierMsg', MINES_CROUPIER_LINES.start);
   bjPlayChipSound();
@@ -215,10 +242,10 @@ async function minesResolve(payout){
   }
 
   minesSetCashOutVisible(false);
-  document.getElementById('minesNewGameBtn').style.display = 'inline-block';
+  minesSetNewGameVisible(true);
   document.getElementById('minesHint').textContent = 'Round over — press New Game to play again.';
   minesLastBet = { amount: minesBetAmount, count: minesCount };
-  document.getElementById('minesSameBetBtn').disabled = false;
+  minesSetSameBetEnabled(true);
 
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Mines win' : 'Mines loss', { silent: true });
   const bal = await getXPBalance();
@@ -226,10 +253,11 @@ async function minesResolve(payout){
   renderXPLog();
 }
 document.getElementById('minesStartBtn').addEventListener('click', minesStart);
+document.getElementById('minesStartTopBtn').addEventListener('click', minesStart);
 // Restores both the bet amount and mine count from the last completed
 // round — real-clicks the correct mine-count pill so its active styling
 // stays in sync, same as every other repeat-bet button in the casino.
-document.getElementById('minesSameBetBtn').addEventListener('click', () => {
+function minesApplySameBet(){
   if(!minesLastBet || minesRoundActive) return;
   const betInput = document.getElementById('minesBetInput');
   betInput.value = minesLastBet.amount;
@@ -237,16 +265,20 @@ document.getElementById('minesSameBetBtn').addEventListener('click', () => {
   const targetBtn = document.querySelector(`#minesMineCountRow .craps-winmode-btn[data-mines="${minesLastBet.count}"]`);
   if(targetBtn) targetBtn.click();
   bjPlayChipSound();
-});
+}
+document.getElementById('minesSameBetBtn').addEventListener('click', minesApplySameBet);
+document.getElementById('minesSameBetTopBtn').addEventListener('click', minesApplySameBet);
 document.getElementById('minesCashOutBtn').addEventListener('click', minesCashOut);
 document.getElementById('minesCashOutTopBtn').addEventListener('click', minesCashOut);
-document.getElementById('minesNewGameBtn').addEventListener('click', () => {
-  document.getElementById('minesStartBtn').style.display = 'inline-block';
-  document.getElementById('minesNewGameBtn').style.display = 'none';
+function minesResetForNewGame(){
+  minesSetStartVisible(true);
+  minesSetNewGameVisible(false);
   document.getElementById('minesMultVal').textContent = '1.00x';
   document.getElementById('minesPayoutVal').textContent = '—';
   document.getElementById('minesResultMsg').textContent = '';
   document.getElementById('minesHint').textContent = 'Pick your bet and how many mines, then Start.';
   document.querySelectorAll('#minesGrid .mines-tile').forEach(tile => { tile.className = 'mines-tile disabled'; tile.innerHTML = ''; });
-});
+}
+document.getElementById('minesNewGameBtn').addEventListener('click', minesResetForNewGame);
+document.getElementById('minesNewGameTopBtn').addEventListener('click', minesResetForNewGame);
 // ================= /Mines =================
