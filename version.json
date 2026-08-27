@@ -1,8 +1,8 @@
 {
-  "version": "2026-08-24.12",
+  "version": "2026-08-24.13",
   "date": "2026-08-27",
   "changes": [
-    "\ud83e\ude99 Double or Nothing: coin is bigger (130px, was 78px) and the tumble is genuinely slower (1.5s, was 0.75s). The portrait/logo now feather into the coin's own gold background with a warm colour grade instead of looking like a cutout pasted on top.",
-    "\ud83d\ude80 Crash: found and fixed the real cause of the stutter \u2014 a CSS animation was silently overriding any rotation set from JS, and a position transition was fighting with the frequent updates. Rewrote the whole animation loop on requestAnimationFrame (smooth, browser-synced) and the rocket now genuinely points the direction it's travelling, recalculated every frame instead of a fixed angle."
+    "\ud83e\ude99 Double or Nothing: coin spin slowed further (2.3s) with a genuine 3D tumble (wobbling on multiple axes, not a flat spin) and a couple of light sparkles catching it mid-flip.",
+    "\ud83d\ude80 Crash: replaced the particle spark trail (which spawned as separate dots and could show gaps) with a real continuous glow trail tracing the exact same path as the main line \u2014 it can't separate because it's one stroke, not a string of dots. Graph screen is also considerably bigger now (400px wide, was 320px)."
   ]
 }

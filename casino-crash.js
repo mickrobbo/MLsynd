@@ -33,7 +33,6 @@ let crashBetAmount = 0;
 let crashLastBet = null; // { amount }
 let crashHistory = [];
 let crashRafHandle = null;
-let crashSparkIntervalHandle = null;
 let crashStartTime = 0;
 let crashPathPoints = [];
 let crashPrevPlotPoint = null; // { x, y } in 0-100 left%/bottom% space — used to work out which way the rocket's actually pointing
@@ -87,11 +86,13 @@ function crashUpdateDisplay(mult, elapsed){
     else if(tier === 'hot') cashBtn.classList.add('crash-cashout-hot');
   }
   const line = document.getElementById('crashGraphLine');
-  if(line){
-    line.classList.remove('crash-line-mid', 'crash-line-hot');
-    if(tier === 'mid') line.classList.add('crash-line-mid');
-    else if(tier === 'hot') line.classList.add('crash-line-hot');
-  }
+  const glowLine = document.getElementById('crashGraphGlowLine');
+  [line, glowLine].forEach(el => {
+    if(!el) return;
+    el.classList.remove('crash-line-mid', 'crash-line-hot');
+    if(tier === 'mid') el.classList.add('crash-line-mid');
+    else if(tier === 'hot') el.classList.add('crash-line-hot');
+  });
   if(elapsed != null) crashUpdateGraph(mult, elapsed);
 }
 // Plots the rocket's actual path — x from elapsed time (capped at the
@@ -107,8 +108,14 @@ function crashUpdateGraph(mult, elapsed){
   const pyBottom = normY * 100; // matches the rocket's own `bottom` positioning
   const pyTop = 100 - pyBottom; // SVG y grows downward; flip so "up" reads as climbing
   crashPathPoints.push(`${px.toFixed(2)},${pyTop.toFixed(2)}`);
+  const pointsStr = crashPathPoints.join(' ');
   const line = document.getElementById('crashGraphLine');
-  if(line) line.setAttribute('points', crashPathPoints.join(' '));
+  const glowLine = document.getElementById('crashGraphGlowLine');
+  // Same points on both — the glow trail is genuinely continuous because
+  // it's one single stroke tracing the exact same path, not a string of
+  // separately-timed particles that can show gaps between them.
+  if(line) line.setAttribute('points', pointsStr);
+  if(glowLine) glowLine.setAttribute('points', pointsStr);
 
   const rocket = document.getElementById('crashRocket');
   if(rocket){
@@ -137,17 +144,6 @@ function crashUpdateGraph(mult, elapsed){
     rocket.style.bottom = pyBottom + '%';
     rocket.style.transform = `translate(-50%,50%) rotate(${angleDeg.toFixed(1)}deg) scale(${bobScale.toFixed(3)})`;
   }
-}
-function crashSpawnSpark(){
-  const box = document.getElementById('crashGraphBox');
-  const rocket = document.getElementById('crashRocket');
-  if(!box || !rocket) return;
-  const spark = document.createElement('div');
-  spark.className = 'crash-spark';
-  spark.style.left = rocket.style.left;
-  spark.style.bottom = rocket.style.bottom;
-  box.appendChild(spark);
-  setTimeout(() => spark.remove(), 700);
 }
 function crashExplode(){
   const box = document.getElementById('crashGraphBox');
@@ -219,9 +215,14 @@ async function crashStart(){
   document.getElementById('crashResultMsg').textContent = '';
   const rocketEl = document.getElementById('crashRocket');
   const lineEl = document.getElementById('crashGraphLine');
+  const glowLineEl = document.getElementById('crashGraphGlowLine');
   const numEl = document.getElementById('crashMultiplierVal');
   if(rocketEl){ rocketEl.style.opacity = '1'; rocketEl.classList.remove('crash-busted'); rocketEl.style.left = '0%'; rocketEl.style.bottom = '0%'; rocketEl.style.transform = 'translate(-50%,50%) rotate(0deg) scale(1)'; }
-  if(lineEl){ lineEl.classList.remove('crash-line-mid', 'crash-line-hot', 'crash-line-busted'); lineEl.setAttribute('points', '0,100'); }
+  [lineEl, glowLineEl].forEach(el => {
+    if(!el) return;
+    el.classList.remove('crash-line-mid', 'crash-line-hot', 'crash-line-busted');
+    el.setAttribute('points', '0,100');
+  });
   if(numEl){ numEl.classList.remove('crash-busted'); numEl.classList.add('crash-flying'); }
   crashUpdateDisplay(1.00, 0);
   croupierSay('crashCroupierMsg', CRASH_CROUPIER_LINES.start);
@@ -229,7 +230,6 @@ async function crashStart(){
   bjPlaySpinSound();
   crashStartTime = Date.now();
   crashRafHandle = requestAnimationFrame(crashTick);
-  crashSparkIntervalHandle = setInterval(crashSpawnSpark, 130);
 }
 // requestAnimationFrame instead of a fixed setInterval — browser-synced
 // to the actual display refresh (typically ~60fps) rather than an
@@ -258,7 +258,6 @@ async function crashCashOut(){
   crashCashedOut = true;
   crashRunning = false;
   cancelAnimationFrame(crashRafHandle);
-  clearInterval(crashSparkIntervalHandle);
   const rocketEl = document.getElementById('crashRocket');
   const numEl = document.getElementById('crashMultiplierVal');
   if(numEl) numEl.classList.remove('crash-flying');
@@ -268,12 +267,16 @@ async function crashCashOut(){
 async function crashHandleBust(){
   crashRunning = false;
   cancelAnimationFrame(crashRafHandle);
-  clearInterval(crashSparkIntervalHandle);
   const rocketEl = document.getElementById('crashRocket');
   const numEl = document.getElementById('crashMultiplierVal');
   const lineEl = document.getElementById('crashGraphLine');
+  const glowLineEl = document.getElementById('crashGraphGlowLine');
   if(numEl){ numEl.classList.remove('crash-flying'); numEl.classList.add('crash-busted'); }
-  if(lineEl){ lineEl.classList.remove('crash-line-mid', 'crash-line-hot'); lineEl.classList.add('crash-line-busted'); }
+  [lineEl, glowLineEl].forEach(el => {
+    if(!el) return;
+    el.classList.remove('crash-line-mid', 'crash-line-hot');
+    el.classList.add('crash-line-busted');
+  });
   crashExplode();
   if(rocketEl) rocketEl.classList.add('crash-busted');
   await crashResolve(0, crashCrashPoint, false);
@@ -325,11 +328,16 @@ async function crashResolve(payout, atMult, won){
   setTimeout(() => {
     const rocketEl = document.getElementById('crashRocket');
     const lineEl = document.getElementById('crashGraphLine');
+    const glowLineEl = document.getElementById('crashGraphGlowLine');
     const numEl = document.getElementById('crashMultiplierVal');
     const box = document.getElementById('crashGraphBox');
     const cashBtn = document.getElementById('crashCashOutTopBtn');
     if(rocketEl){ rocketEl.classList.remove('crash-busted'); rocketEl.style.opacity = '1'; rocketEl.style.left = '0%'; rocketEl.style.bottom = '0%'; rocketEl.style.transform = 'translate(-50%,50%) rotate(0deg) scale(1)'; }
-    if(lineEl){ lineEl.classList.remove('crash-line-busted', 'crash-line-mid', 'crash-line-hot'); lineEl.setAttribute('points', ''); }
+    [lineEl, glowLineEl].forEach(el => {
+      if(!el) return;
+      el.classList.remove('crash-line-busted', 'crash-line-mid', 'crash-line-hot');
+      el.setAttribute('points', '');
+    });
     if(numEl) numEl.classList.remove('crash-busted', 'crash-mid', 'crash-hot');
     if(box) box.classList.remove('crash-danger-1', 'crash-danger-2');
     if(cashBtn) cashBtn.classList.remove('crash-cashout-warm', 'crash-cashout-hot');

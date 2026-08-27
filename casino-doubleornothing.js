@@ -144,7 +144,7 @@ async function donFlip(choice){
   const won = Math.random() < DON_WIN_PROBABILITY;
   const shownResult = won ? choice : (choice === 'heads' ? 'tails' : 'heads');
 
-  await bjWait(1500); // matches the coin-tumble CSS animation duration
+  await bjWait(2300); // matches the coin-tumble CSS animation duration
 
   coinEl.classList.remove('don-flipping');
   donShowFace(shownResult);
