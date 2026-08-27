@@ -2011,6 +2011,61 @@
     .tier-badge.tier-diamond{ animation:none; }
   }
 
+  /* ---- Avatar Rank Card — the ladder-row avatar treatment (Board
+     Leaderboard, Casino Leaderboard, Tipping ladder). Squircle photo,
+     tier colour as a glowing edge, small tier-gem emblem overlapping the
+     corner — replaces the old small circular photo + separate tier gem
+     sitting next to the name. Diamond gets a pulsing glow, same
+     escalating-tiers language the coin/felt/card-back cosmetics use. */
+  .avatar-rankcard{
+    position:relative; display:inline-flex; flex-shrink:0; vertical-align:middle; margin-right:9px;
+    border-radius:12px; overflow:visible;
+  }
+  .avatar-rankcard img, .avatar-rankcard-fallback{
+    display:block; border-radius:12px; object-fit:cover;
+  }
+  .avatar-rankcard-fallback{
+    background:linear-gradient(165deg, var(--felt-3), var(--felt)); display:flex; align-items:center; justify-content:center;
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; color:var(--brass-light);
+  }
+  .avatar-rankcard img{ box-shadow:0 0 0 2px var(--brass-dim), 0 3px 10px rgba(0,0,0,.45); }
+  .avatar-rankcard-fallback{ box-shadow:0 0 0 2px var(--brass-dim), 0 3px 10px rgba(0,0,0,.45); }
+  .avatar-rankcard.tier-bronze img, .avatar-rankcard.tier-bronze .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #a9672f, 0 0 10px -2px rgba(169,103,47,.75), 0 3px 10px rgba(0,0,0,.45); }
+  .avatar-rankcard.tier-silver img, .avatar-rankcard.tier-silver .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #b8b8b8, 0 0 10px -2px rgba(184,184,184,.75), 0 3px 10px rgba(0,0,0,.45); }
+  .avatar-rankcard.tier-gold img, .avatar-rankcard.tier-gold .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #d4af37, 0 0 10px -2px rgba(212,175,55,.75), 0 3px 10px rgba(0,0,0,.45); }
+  .avatar-rankcard.tier-platinum img, .avatar-rankcard.tier-platinum .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #6f93a8, 0 0 10px -2px rgba(111,147,168,.75), 0 3px 10px rgba(0,0,0,.45); }
+  .avatar-rankcard.tier-diamond img, .avatar-rankcard.tier-diamond .avatar-rankcard-fallback{
+    box-shadow:0 0 0 2px #2a9dc9, 0 0 12px -1px rgba(42,157,201,.85), 0 3px 10px rgba(0,0,0,.45);
+    animation: rankCardDiamondPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes rankCardDiamondPulse{
+    0%,100%{ filter:drop-shadow(0 0 2px rgba(42,157,201,.55)); }
+    50%{ filter:drop-shadow(0 0 7px rgba(42,157,201,.95)); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .avatar-rankcard.tier-diamond img, .avatar-rankcard.tier-diamond .avatar-rankcard-fallback{ animation:none; }
+  }
+  .avatar-rankcard-emblem{
+    position:absolute; bottom:-4px; right:-4px; width:16px; height:16px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; border:2px solid var(--ink);
+    box-shadow:0 2px 5px rgba(0,0,0,.5); z-index:2;
+  }
+  .avatar-rankcard-emblem.tier-bronze{ background:linear-gradient(155deg, #e0a469, #a9672f 55%, #6b3f1a); }
+  .avatar-rankcard-emblem.tier-silver{ background:linear-gradient(155deg, #f4f4f4, #b8b8b8 55%, #838383); }
+  .avatar-rankcard-emblem.tier-gold{ background:linear-gradient(155deg, #fff0b8, #d4af37 55%, #8a6620); }
+  .avatar-rankcard-emblem.tier-platinum{ background:linear-gradient(155deg, #eef8ff, #a9cbe0 55%, #6f93a8); }
+  .avatar-rankcard-emblem.tier-diamond{ background:linear-gradient(155deg, #eafdff, #7fd8ff 55%, #2a9dc9); }
+  .avatar-rankcard-emblem-gem{
+    width:7px; height:7px; border-radius:2px; transform:rotate(45deg);
+    background:rgba(0,0,0,.28); box-shadow:inset 0 1px 1px rgba(255,255,255,.55);
+  }
+
+  /* Taller rows across all three ladders so the bigger rank-card avatar
+     has room — was a tight ~28-36px row, now comfortably fits a 40px
+     avatar plus the emblem's small corner overflow without clipping. */
+  .lb-name-col{ padding-top:11px; padding-bottom:11px; }
+  .ladder-name-col{ padding-top:11px; padding-bottom:11px; }
+
   /* =====================================================================
      TIER COSMETICS — table felt / card back / chip rim reflect the
      signed-in viewer's OWN tier (see applyCasinoTierCosmetics, sets a
@@ -2458,6 +2513,21 @@
   .profile-badges{ display:flex; justify-content:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
   .profile-badge{ display:flex; flex-direction:column; align-items:center; gap:5px; width:76px; cursor:pointer; }
   .profile-badge:active{ transform:scale(0.94); }
+
+  /* ---- Photo crop/position tool ---- */
+  .avatar-crop-viewport{
+    width:240px; height:240px; margin:0 auto; border-radius:16px; overflow:hidden; position:relative;
+    background:#000; border:2px solid var(--brass-dim); box-shadow:0 8px 24px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.06);
+    touch-action:none; cursor:grab;
+  }
+  .avatar-crop-viewport.dragging{ cursor:grabbing; }
+  .avatar-crop-viewport img{
+    position:absolute; top:50%; left:50%; max-width:none; max-height:none;
+    -webkit-user-select:none; user-select:none; -webkit-user-drag:none; pointer-events:none;
+  }
+  .avatar-crop-zoom-row{ display:flex; align-items:center; gap:10px; max-width:240px; margin:14px auto 0; }
+  .avatar-crop-zoom-icon{ font-size:16px; color:var(--muted); flex-shrink:0; width:16px; text-align:center; }
+  .avatar-crop-zoom-row input[type="range"]{ flex:1; accent-color:var(--brass); }
   .profile-badge-label{ font-size:9px; color:var(--muted); text-align:center; line-height:1.3; }
   .badge-info-bubble{
     margin-top:12px; padding:11px 14px; background:rgba(0,0,0,.3); border:1px solid var(--brass-dim);

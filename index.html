@@ -91,6 +91,7 @@
       <button type="button" class="subnav-btn active" data-homesub="overview"><span class="subnav-icon">🏠</span>Overview</button>
       <button type="button" class="subnav-btn" data-homesub="cash"><span class="subnav-icon">💰</span>Cash</button>
       <button type="button" class="subnav-btn" data-homesub="slips"><span class="subnav-icon">📎</span>Slips</button>
+      <button type="button" class="subnav-btn" data-homesub="diag" id="homeDiagSubBtn" style="display:none;"><span class="subnav-icon">🔧</span>Diag</button>
     </div>
 
     <div id="homeSubview-overview" class="home-subview">
@@ -187,17 +188,127 @@
       <div id="slipsArea"></div>
     </div>
     </div>
+
+    <div id="homeSubview-diag" class="home-subview" style="display:none;">
+    <div class="panel">
+      <h2>🔧 Diagnostics</h2>
+      <div class="hint">Admin only. Not shown to anyone else — this pill doesn't even exist for other accounts.</div>
+    </div>
+
+    <div class="craps-winmode-row" id="diagSubmodeRow" style="margin: 0 0 14px;">
+      <button type="button" class="craps-winmode-btn active" data-submode="pulse">🩺 Pulse</button>
+      <button type="button" class="craps-winmode-btn" data-submode="money">💰 Money</button>
+      <button type="button" class="craps-winmode-btn" data-submode="play">🎲 Play</button>
+    </div>
+
+    <div class="diag-submode active" data-submode-panel="pulse">
+    <div class="panel">
+      <div class="balance-grid" id="pulseToteCells">
+        <div class="toteboard-cell" id="pulseHealthCell"><span class="lbl">Health</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseOnlineCell"><span class="lbl">Online</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseSyndyCell"><span class="lbl">Syndy $ (mo)</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseRoundsCell"><span class="lbl">Rounds (7d)</span><span class="val">—</span></div>
+      </div>
+      <div class="hint" id="pulseLastRunHint" style="margin-top:10px; text-align:center;">Health score is from the last full check you ran — this fast view doesn't re-run it automatically.</div>
+      <div id="pulseLastFailuresArea" style="margin-top:8px;"></div>
+    </div>
+    <div class="panel">
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">Recent Errors</h3>
+      <div class="hint">Failed tip saves, failed health-check internals, and sampled client errors — across all linked members, not just this device.</div>
+      <div id="pulseErrorsArea" style="margin-top:8px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <button type="button" id="runHealthCheckBtn">🩺 Run Full System Check</button>
+      <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data (including duplicate account links), season history, tipping reads, Joker validity, Casino XP/badge integrity, dues consistency, individual bet drafts, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
+      <div id="healthCheckResults" style="margin-top:10px;"></div>
+      <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
+    </div>
+    <div class="panel" id="diagTabAreaPanel" style="display:none;">
+      <div id="diagTabArea">Loading…</div>
+    </div>
+    <div class="panel">
+      <h2>🟢 Who's Online</h2>
+      <div class="hint">Based on a heartbeat each device sends every 60s while the app's open — not instant, but "active in the last few minutes" is a reasonable read on it. Won't show anyone until they've opened the app at least once since this shipped. A locked/backgrounded phone stops sending these and won't show as online.</div>
+      <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    </div>
+
+    <div class="diag-submode" data-submode-panel="money">
+    <div class="panel">
+      <h2>🔮 Syndy Usage (all members)</h2>
+      <div class="hint">Real shared total — incremented server-side every time syndy-chat.js actually calls Perplexity, from any member's device. Cost figures are the exact per-call amount Perplexity's own response reports, not an estimate.</div>
+      <div id="syndyUsageArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>💰 Estimated Monthly Running Costs</h2>
+      <div class="hint">Perplexity spend above is real tracked data. Netlify, domain, and anything else below is manually entered — there's no billing API wired up for those, so these numbers are only as accurate as what's typed in. For gauging total cost / splitting with the group, not a live invoice.</div>
+      <div id="runningCostsArea" style="margin-top:10px;"></div>
+      <div id="runningCostsAdmin" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label style="font-size:11px; color:var(--muted);">Starting Perplexity trial credit (USD)
+            <input type="number" id="rcPerplexityCredit" step="0.01" style="width:100%; margin-top:3px;">
+          </label>
+          <label style="font-size:11px; color:var(--muted);">Netlify (USD/month)
+            <input type="number" id="rcNetlify" step="0.01" style="width:100%; margin-top:3px;">
+          </label>
+          <label style="font-size:11px; color:var(--muted);">Domain (USD/month, annual ÷ 12 is fine)
+            <input type="number" id="rcDomain" step="0.01" style="width:100%; margin-top:3px;">
+          </label>
+          <label style="font-size:11px; color:var(--muted);">Other (USD/month)
+            <input type="number" id="rcOther" step="0.01" style="width:100%; margin-top:3px;">
+          </label>
+          <label style="font-size:11px; color:var(--muted);">Notes (what "Other" covers, etc.)
+            <textarea id="rcNotes" rows="2" style="width:100%; margin-top:3px; resize:vertical;"></textarea>
+          </label>
+          <button type="button" id="saveRunningCostsBtn" class="btn-secondary">Save</button>
+          <div class="status-msg" id="runningCostsStatus"></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">This device</h3>
+      <div class="hint">Tracks calls made from this device/browser only (localStorage) — not a shared count across all members, since instrumenting the actual Netlify functions server-side would need touching each one's own source directly.</div>
+      <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
+      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Reset stats</button>
+    </div>
+    <div class="panel">
+      <h2>🔔 Test Push Notification</h2>
+      <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
+      <button type="button" id="testPushBtn">Send test notification</button>
+      <div class="status-msg" id="testPushStatus"></div>
+    </div>
+    </div>
+
+    <div class="diag-submode" data-submode-panel="play">
+    <div class="panel">
+      <h2>🎲 Recent Casino Activity</h2>
+      <div class="hint">Who played what, pulled from a small per-day index written the moment each game resolves (see awardXP) — not everyone's full XP log. History only exists from the day this shipped; older casino rounds aren't backfilled into it.</div>
+      <div id="activityFeedArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>📈 Activity — Last 14 Days</h2>
+      <div class="hint">Count of casino rounds played per day across everyone, same source as the feed above.</div>
+      <div id="activityGraphArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>⏱ Time Spent by Section</h2>
+      <div class="hint">Best-effort, not a precise stopwatch — flushed every time you switch tabs, plus every 60s while sitting on one. A locked or backgrounded phone stops accruing time and won't show as online (see visibilitychange handling) — only genuinely active time counts. Across all members, last 7 days.</div>
+      <div id="timeSpentTabsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">By casino game</h3>
+      <div id="timeSpentGamesArea"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>📋 Weekly Report</h2>
+      <div class="hint">A rundown of the last 7 days — time spent, casino activity, and where to find the rest. Shows a saved snapshot for this week if one exists, otherwise a live compute (clearly labelled either way). No pushed notification — this only runs when you open it or tap the button below.</div>
+      <button type="button" id="snapshotWeekBtn" class="btn-secondary" style="width:100%; margin-top:8px;">📸 Snapshot this week</button>
+      <div class="status-msg" id="snapshotWeekStatus"></div>
+      <div id="weeklyReportArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    </div>
+    </div>
   </div>
 
   <div class="tab-panel" id="tab-board">
-    <div class="panel" style="display:flex; align-items:center; gap:12px; cursor:pointer;" id="myProfileBtn">
-      <div id="myProfileAvatarThumb" style="flex-shrink:0;"></div>
-      <div style="flex:1;">
-        <div style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:14px; color:var(--brass-light); letter-spacing:.5px;">👤 My Profile</div>
-        <div class="hint" style="margin-top:2px;">Change your photo — shown at the Hold'em table</div>
-      </div>
-      <div style="color:var(--muted); font-size:18px;">›</div>
-    </div>
     <div class="panel">
       <h2>Leaderboard</h2>
       <div id="leaderboardArea"></div>
@@ -1375,131 +1486,11 @@
     </div>
   </div>
 
-  <div class="tab-panel" id="tab-diag">
-    <div class="panel">
-      <h2>🔧 Diagnostics</h2>
-      <div class="hint">Admin only. Not shown to anyone else — this tab doesn't even exist for other accounts.</div>
-    </div>
-
-    <div class="craps-winmode-row" id="diagSubmodeRow" style="margin: 0 0 14px;">
-      <button type="button" class="craps-winmode-btn active" data-submode="pulse">🩺 Pulse</button>
-      <button type="button" class="craps-winmode-btn" data-submode="money">💰 Money</button>
-      <button type="button" class="craps-winmode-btn" data-submode="play">🎲 Play</button>
-    </div>
-
-    <div class="diag-submode active" data-submode-panel="pulse">
-    <div class="panel">
-      <div class="balance-grid" id="pulseToteCells">
-        <div class="toteboard-cell" id="pulseHealthCell"><span class="lbl">Health</span><span class="val">—</span></div>
-        <div class="toteboard-cell" id="pulseOnlineCell"><span class="lbl">Online</span><span class="val">—</span></div>
-        <div class="toteboard-cell" id="pulseSyndyCell"><span class="lbl">Syndy $ (mo)</span><span class="val">—</span></div>
-        <div class="toteboard-cell" id="pulseRoundsCell"><span class="lbl">Rounds (7d)</span><span class="val">—</span></div>
-      </div>
-      <div class="hint" id="pulseLastRunHint" style="margin-top:10px; text-align:center;">Health score is from the last full check you ran — this fast view doesn't re-run it automatically.</div>
-      <div id="pulseLastFailuresArea" style="margin-top:8px;"></div>
-    </div>
-    <div class="panel">
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">Recent Errors</h3>
-      <div class="hint">Failed tip saves, failed health-check internals, and sampled client errors — across all linked members, not just this device.</div>
-      <div id="pulseErrorsArea" style="margin-top:8px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <button type="button" id="runHealthCheckBtn">🩺 Run Full System Check</button>
-      <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data (including duplicate account links), season history, tipping reads, Joker validity, Casino XP/badge integrity, dues consistency, individual bet drafts, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
-      <div id="healthCheckResults" style="margin-top:10px;"></div>
-      <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
-    </div>
-    <div class="panel" id="diagTabAreaPanel" style="display:none;">
-      <div id="diagTabArea">Loading…</div>
-    </div>
-    <div class="panel">
-      <h2>🟢 Who's Online</h2>
-      <div class="hint">Based on a heartbeat each device sends every 60s while the app's open — not instant, but "active in the last few minutes" is a reasonable read on it. Won't show anyone until they've opened the app at least once since this shipped. A locked/backgrounded phone stops sending these and won't show as online.</div>
-      <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    </div>
-
-    <div class="diag-submode" data-submode-panel="money">
-    <div class="panel">
-      <h2>🔮 Syndy Usage (all members)</h2>
-      <div class="hint">Real shared total — incremented server-side every time syndy-chat.js actually calls Perplexity, from any member's device. Cost figures are the exact per-call amount Perplexity's own response reports, not an estimate.</div>
-      <div id="syndyUsageArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>💰 Estimated Monthly Running Costs</h2>
-      <div class="hint">Perplexity spend above is real tracked data. Netlify, domain, and anything else below is manually entered — there's no billing API wired up for those, so these numbers are only as accurate as what's typed in. For gauging total cost / splitting with the group, not a live invoice.</div>
-      <div id="runningCostsArea" style="margin-top:10px;"></div>
-      <div id="runningCostsAdmin" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <label style="font-size:11px; color:var(--muted);">Starting Perplexity trial credit (USD)
-            <input type="number" id="rcPerplexityCredit" step="0.01" style="width:100%; margin-top:3px;">
-          </label>
-          <label style="font-size:11px; color:var(--muted);">Netlify (USD/month)
-            <input type="number" id="rcNetlify" step="0.01" style="width:100%; margin-top:3px;">
-          </label>
-          <label style="font-size:11px; color:var(--muted);">Domain (USD/month, annual ÷ 12 is fine)
-            <input type="number" id="rcDomain" step="0.01" style="width:100%; margin-top:3px;">
-          </label>
-          <label style="font-size:11px; color:var(--muted);">Other (USD/month)
-            <input type="number" id="rcOther" step="0.01" style="width:100%; margin-top:3px;">
-          </label>
-          <label style="font-size:11px; color:var(--muted);">Notes (what "Other" covers, etc.)
-            <textarea id="rcNotes" rows="2" style="width:100%; margin-top:3px; resize:vertical;"></textarea>
-          </label>
-          <button type="button" id="saveRunningCostsBtn" class="btn-secondary">Save</button>
-          <div class="status-msg" id="runningCostsStatus"></div>
-        </div>
-      </div>
-    </div>
-    <div class="panel">
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">This device</h3>
-      <div class="hint">Tracks calls made from this device/browser only (localStorage) — not a shared count across all members, since instrumenting the actual Netlify functions server-side would need touching each one's own source directly.</div>
-      <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
-      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Reset stats</button>
-    </div>
-    <div class="panel">
-      <h2>🔔 Test Push Notification</h2>
-      <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
-      <button type="button" id="testPushBtn">Send test notification</button>
-      <div class="status-msg" id="testPushStatus"></div>
-    </div>
-    </div>
-
-    <div class="diag-submode" data-submode-panel="play">
-    <div class="panel">
-      <h2>🎲 Recent Casino Activity</h2>
-      <div class="hint">Who played what, pulled from a small per-day index written the moment each game resolves (see awardXP) — not everyone's full XP log. History only exists from the day this shipped; older casino rounds aren't backfilled into it.</div>
-      <div id="activityFeedArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>📈 Activity — Last 14 Days</h2>
-      <div class="hint">Count of casino rounds played per day across everyone, same source as the feed above.</div>
-      <div id="activityGraphArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>⏱ Time Spent by Section</h2>
-      <div class="hint">Best-effort, not a precise stopwatch — flushed every time you switch tabs, plus every 60s while sitting on one. A locked or backgrounded phone stops accruing time and won't show as online (see visibilitychange handling) — only genuinely active time counts. Across all members, last 7 days.</div>
-      <div id="timeSpentTabsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">By casino game</h3>
-      <div id="timeSpentGamesArea"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>📋 Weekly Report</h2>
-      <div class="hint">A rundown of the last 7 days — time spent, casino activity, and where to find the rest. Shows a saved snapshot for this week if one exists, otherwise a live compute (clearly labelled either way). No pushed notification — this only runs when you open it or tap the button below.</div>
-      <button type="button" id="snapshotWeekBtn" class="btn-secondary" style="width:100%; margin-top:8px;">📸 Snapshot this week</button>
-      <div class="status-msg" id="snapshotWeekStatus"></div>
-      <div id="weeklyReportArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    </div>
-  </div>
-
   <div class="status-bar" id="statusBar">Loading…</div>
 
   <div class="account-bar">
     <span id="accountName"></span>
     <span id="guestBadge" style="display:none; width:100%; text-align:center; margin-bottom:4px; font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#9cc2e6;">👀 Guest view — read-only</span>
-    <button type="button" class="pill-btn" id="editNameBtn" title="Change your name">✎ Edit name</button>
-    <button type="button" class="pill-btn" id="resyncNameBtn" title="Re-sync your name onto past Tipping picks">🔄</button>
     <button type="button" class="pill-btn" id="pushToggleBtn" title="Get notified when a tip's about to lock">🔔 Notify me</button>
     <button type="button" class="pill-btn" id="mainSignOutBtn" title="Sign out">Sign out</button>
   </div>
@@ -1527,7 +1518,6 @@
   </button>
   <button class="tab-btn" data-tab="tipping"><span class="icon">🏉</span>Tipping</button>
   <button class="tab-btn" data-tab="afl"><span class="icon">⚽</span>Sport</button>
-  <button class="tab-btn" data-tab="diag" id="diagTabBtn" style="display:none;"><span class="icon">🔧</span>Diag</button>
 </nav>
 
 <!-- Syndy floating button — fixed above the tab bar, visible on every tab.
@@ -1566,6 +1556,7 @@
   <div class="profile-sheet">
     <button type="button" class="profile-close" id="profileCloseBtn">✕</button>
     <div class="profile-header">
+      <div id="profileAvatarArea" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
       <h2 id="profileName">Name</h2>
       <div class="profile-badges" id="profileBadges"></div>
       <div class="badge-info-bubble" id="badgeInfoBubble" style="display:none;"></div>
@@ -1574,19 +1565,27 @@
   </div>
 </div>
 
-<!-- Your own avatar upload — deliberately separate from #profileModal
-     above (that one shows OTHER members' stats/badges when you tap their
-     name on the leaderboard). Different feature, kept clearly distinct
-     to avoid any ID collision between the two. -->
-<div id="myAvatarModal" class="profile-modal">
+<!-- Photo crop/position tool — opens after choosing a file, before it's
+     saved. Drag to pan, slider to zoom; the frame always shows exactly
+     what gets saved, so there's no separate "preview" step needed. -->
+<div id="avatarCropModal" class="profile-modal">
   <div class="profile-sheet" style="text-align:center;">
-    <button type="button" class="profile-close" id="myAvatarModalCloseBtn">✕</button>
-    <div id="myAvatarPreview" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
-    <div style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:16px; color:var(--brass-light);" id="myAvatarNameDisplay"></div>
-    <div class="hint" style="margin:6px 0 16px;">This photo shows up next to your seat at the Hold'em table.</div>
-    <label for="myAvatarInput" class="pill-btn pill-btn-primary" style="display:inline-block; cursor:pointer;">Choose a photo</label>
-    <input type="file" id="myAvatarInput" accept="image/*" style="display:none;">
-    <div class="status-msg" id="myAvatarStatus" style="margin-top:10px;"></div>
+    <button type="button" class="profile-close" id="avatarCropCloseBtn">✕</button>
+    <h2 style="font-size:16px; margin-bottom:4px;">Position your photo</h2>
+    <div class="hint" style="margin-bottom:14px;">Drag to move, use the slider to zoom.</div>
+    <div class="avatar-crop-viewport" id="avatarCropViewport">
+      <img id="avatarCropImg" src="" alt="" draggable="false">
+    </div>
+    <div class="avatar-crop-zoom-row">
+      <span class="avatar-crop-zoom-icon">－</span>
+      <input type="range" id="avatarCropZoomSlider" min="100" max="300" value="100" step="1">
+      <span class="avatar-crop-zoom-icon">＋</span>
+    </div>
+    <div class="deal-row" style="margin-top:14px;">
+      <button type="button" class="pill-btn" id="avatarCropCancelBtn">Cancel</button>
+      <button type="button" class="pill-btn pill-btn-primary" id="avatarCropSaveBtn">Save photo</button>
+    </div>
+    <div class="status-msg" id="avatarCropStatus" style="margin-top:10px;"></div>
   </div>
 </div>
 
@@ -1751,9 +1750,10 @@ function trackApiCall(name){
   entry.lastCalledAt = Date.now();
   apiCallStats[name] = entry;
   try{ localStorage.setItem(API_CALL_STATS_KEY, JSON.stringify(apiCallStats)); }catch(e){}
-  // Diag tab may already be open and looking at this — keep it live rather
+  // Diag pill may already be open and looking at this — keep it live rather
   // than only updating on next tab switch.
-  if(document.getElementById('tab-diag') && document.getElementById('tab-diag').classList.contains('active')){
+  const diagSubview = document.getElementById('homeSubview-diag');
+  if(diagSubview && diagSubview.style.display !== 'none'){
     renderApiCallTracker();
   }
 }
@@ -2217,13 +2217,12 @@ function renderAccountBar(){
   const isReadOnly = currentUserRole === 'readonly';
   const guestBadge = document.getElementById('guestBadge');
   if(guestBadge) guestBadge.style.display = isReadOnly ? 'block' : 'none';
-  // These three buttons only ever trigger writes (name changes, pick re-sync,
-  // push subscription) — authedFetch would block the write anyway, but
-  // hiding them for a guest avoids a dead-end tap-and-toast.
-  ['editNameBtn', 'resyncNameBtn', 'pushToggleBtn'].forEach(id => {
-    const btn = document.getElementById(id);
-    if(btn) btn.style.display = isReadOnly ? 'none' : '';
-  });
+  // This button only ever triggers a write (push subscription) —
+  // authedFetch would block it anyway, but hiding it for a guest avoids a
+  // dead-end tap-and-toast. Name-change/resync moved into the profile
+  // modal (see renderProfileAvatarSection), gated there the same way.
+  const pushBtn = document.getElementById('pushToggleBtn');
+  if(pushBtn) pushBtn.style.display = isReadOnly ? 'none' : '';
   if(!isReadOnly) updatePushToggleUI();
   applyGuestProtections();
   const fab = document.getElementById('syndyFabBtn');
@@ -2359,7 +2358,7 @@ async function checkApprovalAndProceed(){
       // have been gated yet. Cheap no-store fetch, safe to call again.
       if(typeof checkForUpdate === 'function') checkForUpdate();
       if(currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
-        const diagBtn = document.getElementById('diagTabBtn');
+        const diagBtn = document.getElementById('homeDiagSubBtn');
         if(diagBtn) diagBtn.style.display = '';
       }
       if(!appStarted){
@@ -2542,64 +2541,11 @@ function initAuthGate(){
   // someone's Tipping profile name and Board name have already drifted
   // apart (exactly what happened here) — so this prefers a persisted link
   // first, and only falls back to matching/asking when that's not there yet.
-
-  document.getElementById('editNameBtn').addEventListener('click', async () => {
-    // Once a month, to stop members repeatedly renaming themselves as a joke
-    try{
-      const lastChangeRes = await authedFetch(`/users/${currentUserUid}/lastNameChange.json`);
-      const lastChange = await lastChangeRes.json();
-      if(lastChange){
-        const daysSince = (Date.now() - lastChange) / (1000*60*60*24);
-        if(daysSince < 30){
-          const daysLeft = Math.ceil(30 - daysSince);
-          alert(`You can change your name again in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — once a month, to stop funny buggers.`);
-          return;
-        }
-      }
-    }catch(e){}
-
-    const newName = prompt('Change your name to:', currentUserName || '');
-    if(!newName || !newName.trim() || newName.trim() === currentUserName) return;
-    const trimmed = newName.trim();
-    const oldName = currentUserName;
-    try{
-      await authedFetch(`/users/${currentUserUid}/name.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
-      });
-      await authedFetch(`/users/${currentUserUid}/lastNameChange.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
-      });
-      currentUserName = trimmed;
-      renderAccountBar();
-      showToast('Updating everywhere…');
-
-      // Also update the matching Board/Ledger roster entry (Board, Profile, badges
-      // all read from here). Uses a persisted link rather than fragile name
-      // matching, which was the actual bug — your Tipping and Board names had
-      // already drifted apart from an earlier rename, so a simple name==name
-      // check found nothing and silently skipped the Board side.
-      const memberIdx = await resolveMyMemberIndex(oldName);
-      if(memberIdx !== null && memberIdx !== -1){
-        await authedFetch(`/state/members/${memberIdx}/name.json`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
-        });
-        currentState.members[memberIdx].name = trimmed;
-        render(currentState);
-      }
-
-      await renameOnAllMyPicks(trimmed);
-      showToast('Name updated everywhere');
-    }catch(e){
-      alert('Could not save your name — try again.');
-    }
-  });
-
-  document.getElementById('resyncNameBtn').addEventListener('click', async () => {
-    if(!currentUserName){ alert('Sign-in still loading — try again in a moment.'); return; }
-    showToast('Re-syncing your name onto past picks…');
-    await renameOnAllMyPicks(currentUserName);
-    showToast('Done — check the Tipping ladder');
-  });
+  //
+  // The actual edit-name/resync UI and click handlers now live in the
+  // profile modal (see renderProfileAvatarSection) — resolveMyMemberIndex
+  // and renameOnAllMyPicks above are still defined here since other code
+  // in this section uses them too.
 
   // ---------- Push notifications ----------
   // The VAPID public key is meant to be public — only the matching private
@@ -2700,7 +2646,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.13"; // coin spin slower with real 3D tumble + sparkle, Crash tail replaced with a genuinely continuous glow trail and a bigger graph — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.16"; // Diagnostics wired for Bounties/avatars/new games, stray text reference fixed, Tier + Bounties stats added to profile — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4521,11 +4467,47 @@ function invalidateAvatarCache(uid){
 // so the fallback always looks consistent.
 function avatarHtml(name, dataUri, sizePx){
   const size = sizePx || 28;
+  // vertical-align:middle + margin-right matches the exact convention
+  // .tier-badge already uses, since this now sits right next to it in
+  // several inline/table contexts (leaderboard, tipping ladder) as well
+  // as the flex contexts it originally served (Hold'em seats, profile
+  // modal) — img/div default to baseline align, which looks visibly
+  // sunken next to text without this.
   if(dataUri){
-    return `<img src="${dataUri}" alt="" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:1px solid var(--brass-dim); flex-shrink:0;">`;
+    return `<img src="${dataUri}" alt="" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:1px solid var(--brass-dim); flex-shrink:0; vertical-align:middle; margin-right:6px;">`;
   }
   const initial = (name || '?').trim().charAt(0).toUpperCase();
-  return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--brass-dim); display:flex; align-items:center; justify-content:center; font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:${Math.round(size*0.45)}px; color:var(--brass-light); flex-shrink:0;">${escapeHtml(initial)}</div>`;
+  return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--brass-dim); display:inline-flex; align-items:center; justify-content:center; font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:${Math.round(size*0.45)}px; color:var(--brass-light); flex-shrink:0; vertical-align:middle; margin-right:6px;">${escapeHtml(initial)}</div>`;
+}
+
+// The "rank card" avatar treatment — a squircle photo with the tier's
+// colour as a glowing edge, plus a small tier-gem emblem overlapping the
+// corner, replacing the old plain-circle-avatar + separate-gem-badge
+// combo on the three ladders (Board, Casino, Tipping). tierKey is one of
+// CASINO_TIERS' keys (bronze/silver/gold/platinum/diamond) or null/
+// undefined for someone with no tier yet — renders as a plain photo with
+// no glow/emblem in that case, same graceful "nothing yet" as the gem
+// badge already did.
+function avatarRankCardHtml(name, dataUri, tierKey, sizePx){
+  const size = sizePx || 40;
+  const tierCls = tierKey ? `tier-${tierKey}` : '';
+  const inner = dataUri
+    ? `<img src="${dataUri}" alt="" style="width:${size}px; height:${size}px;">`
+    : `<span class="avatar-rankcard-fallback" style="width:${size}px; height:${size}px; font-size:${Math.round(size * 0.42)}px;">${escapeHtml((name || '?').trim().charAt(0).toUpperCase())}</span>`;
+  const emblem = tierKey ? `<span class="avatar-rankcard-emblem ${tierCls}"><span class="avatar-rankcard-emblem-gem"></span></span>` : '';
+  return `<span class="avatar-rankcard ${tierCls}" style="width:${size}px; height:${size}px;">${inner}${emblem}</span>`;
+}
+// Same idea as getCasinoTierBadgeHtml but returns just the tier key
+// (bronze/silver/gold/platinum/diamond/null) instead of pre-built badge
+// HTML — what avatarRankCardHtml needs. Reuses the exact same cache and
+// fetch (casinoTierCache stores the raw prestige score keyed by uid), so
+// this never causes an extra network round trip beyond what the gem
+// lookup was already doing.
+async function getCasinoTierKey(uid){
+  if(!uid) return null;
+  await getCasinoTierBadgeHtml(uid); // populates casinoTierCache[uid] — free if already cached
+  const t = casinoTierFor(casinoTierCache[uid]);
+  return t ? t.key : null;
 }
 
 // A real chip-stack visual for a player's current bet — not a literal
@@ -4548,39 +4530,6 @@ function holdemChipStackHtml(amount){
   return `<span class="holdem-chip-badge"><span class="holdem-chip-stack-visual">${chips}</span><span class="holdem-hand-seat-committed">${amount.toLocaleString()} XP</span></span>`;
 }
 
-// Resizes and center-crops an uploaded image file down to a small square
-// JPEG, returned as a data URI ready to store directly. Pure Canvas API,
-// no libraries — center-crop means a non-square photo doesn't get
-// squished, it gets cropped to the middle square instead (the normal
-// behavior people expect from an avatar picker).
-function resizeImageToDataUri(file, maxDim, quality){
-  return new Promise((resolve, reject) => {
-    if(!file.type || !file.type.startsWith('image/')){
-      reject(new Error('Please choose an image file.'));
-      return;
-    }
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Couldn't read that file."));
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("Couldn't read that image."));
-      img.onload = () => {
-        const size = Math.min(img.width, img.height);
-        const sx = (img.width - size) / 2;
-        const sy = (img.height - size) / 2;
-        const canvas = document.createElement('canvas');
-        canvas.width = maxDim;
-        canvas.height = maxDim;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, sx, sy, size, size, 0, 0, maxDim, maxDim);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 async function saveMyAvatar(dataUri){
   await authedFetch(`/avatars/${currentUserUid}.json`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataUri)
@@ -4588,53 +4537,262 @@ async function saveMyAvatar(dataUri){
   invalidateAvatarCache(currentUserUid);
 }
 
-async function updateMyProfileThumb(){
-  const thumb = document.getElementById('myProfileAvatarThumb');
-  if(!thumb || !currentUserUid) return;
-  const existing = await getAvatarDataUri(currentUserUid);
-  thumb.innerHTML = avatarHtml(currentUserName, existing, 42);
+// =====================================================================
+// PHOTO CROP TOOL — drag to pan, slider to zoom, before the photo is
+// ever saved. Pointer Events (not separate mouse/touch handlers) so one
+// code path covers both desktop and mobile drag. The frame IS the crop —
+// what's visible in the viewport when Save is tapped is rendered
+// pixel-for-pixel to the output, no separate preview/confirm step.
+//
+// Coordinate math: the image is always scaled so its SMALLER natural
+// dimension exactly covers the (square) viewport at zoom=1 — the same
+// starting point object-fit:cover would give you — and the zoom slider
+// multiplies on top of that. Pan is clamped every time zoom OR position
+// changes so the frame can never show empty space beyond the photo's
+// edge, the same guarantee a native cropper gives you.
+// =====================================================================
+const AVATAR_CROP_VIEWPORT_SIZE = 240; // must match .avatar-crop-viewport's CSS width/height
+let cropNaturalW = 0, cropNaturalH = 0, cropBaseScale = 1, cropZoom = 1, cropOffsetX = 0, cropOffsetY = 0;
+let cropDragging = false, cropDragStartX = 0, cropDragStartY = 0, cropDragStartOffsetX = 0, cropDragStartOffsetY = 0;
+let cropSaveContext = null; // the member object to refresh afterward — always "me" in practice, since only your own profile shows the upload control
+
+function cropMaxOffsets(){
+  const effScale = cropBaseScale * cropZoom;
+  const dispW = cropNaturalW * effScale, dispH = cropNaturalH * effScale;
+  return {
+    x: Math.max(0, (dispW - AVATAR_CROP_VIEWPORT_SIZE) / 2),
+    y: Math.max(0, (dispH - AVATAR_CROP_VIEWPORT_SIZE) / 2)
+  };
+}
+function cropClampOffsets(){
+  const max = cropMaxOffsets();
+  cropOffsetX = Math.max(-max.x, Math.min(max.x, cropOffsetX));
+  cropOffsetY = Math.max(-max.y, Math.min(max.y, cropOffsetY));
+}
+function cropApplyTransform(){
+  const img = document.getElementById('avatarCropImg');
+  if(!img) return;
+  const effScale = cropBaseScale * cropZoom;
+  img.style.width = (cropNaturalW * effScale) + 'px';
+  img.style.height = (cropNaturalH * effScale) + 'px';
+  img.style.transform = `translate(-50%, -50%) translate(${cropOffsetX}px, ${cropOffsetY}px)`;
 }
 
-async function openProfileModal(){
-  const modal = document.getElementById('myAvatarModal');
-  const preview = document.getElementById('myAvatarPreview');
-  const nameEl = document.getElementById('myAvatarNameDisplay');
-  const statusEl = document.getElementById('myAvatarStatus');
-  statusEl.textContent = '';
-  nameEl.textContent = currentUserName || '';
-  const existing = await getAvatarDataUri(currentUserUid);
-  preview.innerHTML = avatarHtml(currentUserName, existing, 96);
-  modal.classList.add('open');
+function openAvatarCropModal(file, m){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Couldn't read that file."));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Couldn't read that image."));
+      img.onload = () => {
+        cropNaturalW = img.naturalWidth;
+        cropNaturalH = img.naturalHeight;
+        cropBaseScale = AVATAR_CROP_VIEWPORT_SIZE / Math.min(cropNaturalW, cropNaturalH);
+        cropZoom = 1;
+        cropOffsetX = 0;
+        cropOffsetY = 0;
+        cropSaveContext = m;
+        const cropImg = document.getElementById('avatarCropImg');
+        cropImg.src = e.target.result;
+        document.getElementById('avatarCropZoomSlider').value = 100;
+        document.getElementById('avatarCropStatus').textContent = '';
+        cropApplyTransform();
+        document.getElementById('avatarCropModal').classList.add('open');
+        resolve();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
-document.getElementById('myProfileBtn').addEventListener('click', openProfileModal);
-document.getElementById('myAvatarModalCloseBtn').addEventListener('click', () => {
-  document.getElementById('myAvatarModal').classList.remove('open');
+function closeAvatarCropModal(){
+  document.getElementById('avatarCropModal').classList.remove('open');
+  document.getElementById('avatarCropImg').src = ''; // release the decoded image, no reason to hold it in memory once closed
+}
+document.getElementById('avatarCropCloseBtn').addEventListener('click', closeAvatarCropModal);
+document.getElementById('avatarCropCancelBtn').addEventListener('click', closeAvatarCropModal);
+
+document.getElementById('avatarCropZoomSlider').addEventListener('input', (e) => {
+  cropZoom = Number(e.target.value) / 100;
+  cropClampOffsets();
+  cropApplyTransform();
 });
-document.getElementById('myAvatarInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const statusEl = document.getElementById('myAvatarStatus');
-  const preview = document.getElementById('myAvatarPreview');
-  statusEl.textContent = 'Processing…';
+
+const cropViewportEl = document.getElementById('avatarCropViewport');
+cropViewportEl.addEventListener('pointerdown', (e) => {
+  cropDragging = true;
+  cropDragStartX = e.clientX;
+  cropDragStartY = e.clientY;
+  cropDragStartOffsetX = cropOffsetX;
+  cropDragStartOffsetY = cropOffsetY;
+  cropViewportEl.classList.add('dragging');
+  cropViewportEl.setPointerCapture(e.pointerId);
+});
+cropViewportEl.addEventListener('pointermove', (e) => {
+  if(!cropDragging) return;
+  cropOffsetX = cropDragStartOffsetX + (e.clientX - cropDragStartX);
+  cropOffsetY = cropDragStartOffsetY + (e.clientY - cropDragStartY);
+  cropClampOffsets();
+  cropApplyTransform();
+});
+function cropEndDrag(){
+  cropDragging = false;
+  cropViewportEl.classList.remove('dragging');
+}
+cropViewportEl.addEventListener('pointerup', cropEndDrag);
+cropViewportEl.addEventListener('pointercancel', cropEndDrag);
+
+document.getElementById('avatarCropSaveBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('avatarCropStatus');
+  const saveBtn = document.getElementById('avatarCropSaveBtn');
+  saveBtn.disabled = true;
+  statusEl.textContent = 'Saving…';
   try{
-    const dataUri = await resizeImageToDataUri(file, 128, 0.7);
-    // Sanity cap — the resize/compress step above should already keep
-    // this to a few KB, but a genuinely huge or unusual source image
-    // could still slip through larger than intended. Reject rather than
-    // silently store something oversized in Realtime Database.
+    const img = document.getElementById('avatarCropImg');
+    const effScale = cropBaseScale * cropZoom;
+    // Map the visible viewport square back to source-image pixel
+    // coordinates — inverse of cropApplyTransform's positioning — then
+    // draw exactly that region to the output canvas.
+    const dispW = cropNaturalW * effScale, dispH = cropNaturalH * effScale;
+    const sx = ((dispW - AVATAR_CROP_VIEWPORT_SIZE) / 2 - cropOffsetX) / effScale;
+    const sy = ((dispH - AVATAR_CROP_VIEWPORT_SIZE) / 2 - cropOffsetY) / effScale;
+    const sSize = AVATAR_CROP_VIEWPORT_SIZE / effScale;
+    const outputSize = 128;
+    const canvas = document.createElement('canvas');
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, outputSize, outputSize);
+    const dataUri = canvas.toDataURL('image/jpeg', 0.7);
+    // Sanity cap — should already be a few KB at 128px/0.7 quality, but
+    // reject rather than silently store something oversized if a source
+    // image somehow slips through larger than intended.
     if(dataUri.length > 100000){
       statusEl.textContent = 'That image is too large even after compressing — try a simpler photo.';
+      saveBtn.disabled = false;
       return;
     }
-    preview.innerHTML = avatarHtml(currentUserName, dataUri, 96);
-    statusEl.textContent = 'Saving…';
     await saveMyAvatar(dataUri);
-    statusEl.textContent = 'Saved.';
+    closeAvatarCropModal();
+    if(cropSaveContext) renderProfileAvatarSection(cropSaveContext); // refresh to show the new photo + updated button label
+    if(currentState) render(currentState); // refresh so the new photo shows on the board straight away too
   }catch(err){
-    statusEl.textContent = err.message || "Couldn't process that image.";
+    statusEl.textContent = err.message || "Couldn't save that photo — try again.";
   }
-  e.target.value = ''; // reset so choosing the same file again still fires 'change'
+  saveBtn.disabled = false;
 });
+
+// Renders into #profileAvatarArea inside the shared profile modal —
+// everyone's photo shows here now (previously only visible via a
+// separate "My Profile" flow on the Board tab). The upload control only
+// appears when the open profile is your own; viewing someone else's is
+// read-only, same as their stats/badges already are.
+async function renderProfileAvatarSection(m){
+  const area = document.getElementById('profileAvatarArea');
+  if(!area) return;
+  const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
+  const canEdit = isMe && currentUserRole !== 'readonly'; // guests can view their own row but never write — same guard the old account-bar buttons used
+  const uidForAvatar = m.linkedUid || (isMe ? currentUserUid : null);
+  const existing = uidForAvatar ? await getAvatarDataUri(uidForAvatar) : null;
+  if(document.getElementById('profileModal').dataset.openName !== m.name) return; // profile moved on while this was in flight
+  let html = `<div style="display:flex; flex-direction:column; align-items:center;">${avatarHtml(m.name, existing, 84)}`;
+  if(canEdit){
+    html += `
+      <label for="profileAvatarInput" class="pill-btn" style="display:inline-block; cursor:pointer; font-size:11px; padding:6px 12px; margin-top:8px;">📷 ${existing ? 'Change photo' : 'Add a photo'}</label>
+      <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;">
+      <div class="status-msg" id="profileAvatarStatus" style="margin-top:6px; font-size:11px;"></div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button type="button" class="pill-btn" id="profileEditNameBtn" style="font-size:11px; padding:6px 12px;" title="Change your name">✎ Edit name</button>
+        <button type="button" class="pill-btn" id="profileResyncNameBtn" style="font-size:11px; padding:6px 12px;" title="Re-sync your name onto past Tipping picks">🔄 Re-sync picks</button>
+      </div>
+      <div class="status-msg" id="profileNameStatus" style="margin-top:6px; font-size:11px;"></div>
+    `;
+  }
+  html += '</div>';
+  area.innerHTML = html;
+  if(canEdit){
+    document.getElementById('profileAvatarInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = ''; // reset now so choosing the same file again still fires 'change', even if the crop tool gets cancelled
+      if(!file) return;
+      const statusEl = document.getElementById('profileAvatarStatus');
+      if(!file.type || !file.type.startsWith('image/')){
+        statusEl.textContent = 'Please choose an image file.';
+        return;
+      }
+      statusEl.textContent = '';
+      try{
+        await openAvatarCropModal(file, m);
+      }catch(err){
+        statusEl.textContent = err.message || "Couldn't read that image.";
+      }
+    });
+    document.getElementById('profileEditNameBtn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('profileNameStatus');
+      statusEl.textContent = '';
+      // Once a month, to stop members repeatedly renaming themselves as a joke
+      try{
+        const lastChangeRes = await authedFetch(`/users/${currentUserUid}/lastNameChange.json`);
+        const lastChange = await lastChangeRes.json();
+        if(lastChange){
+          const daysSince = (Date.now() - lastChange) / (1000*60*60*24);
+          if(daysSince < 30){
+            const daysLeft = Math.ceil(30 - daysSince);
+            alert(`You can change your name again in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — once a month, to stop funny buggers.`);
+            return;
+          }
+        }
+      }catch(e){}
+
+      const newName = prompt('Change your name to:', currentUserName || '');
+      if(!newName || !newName.trim() || newName.trim() === currentUserName) return;
+      const trimmed = newName.trim();
+      const oldName = currentUserName;
+      try{
+        await authedFetch(`/users/${currentUserUid}/name.json`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
+        });
+        await authedFetch(`/users/${currentUserUid}/lastNameChange.json`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
+        });
+        currentUserName = trimmed;
+        renderAccountBar();
+        statusEl.textContent = 'Updating everywhere…';
+
+        // Also update the matching Board/Ledger roster entry (Board, Profile, badges
+        // all read from here). Uses a persisted link rather than fragile name
+        // matching, which was the actual bug — Tipping and Board names had
+        // already drifted apart from an earlier rename, so a simple name==name
+        // check found nothing and silently skipped the Board side.
+        const memberIdx = await resolveMyMemberIndex(oldName);
+        if(memberIdx !== null && memberIdx !== -1){
+          await authedFetch(`/state/members/${memberIdx}/name.json`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(trimmed)
+          });
+          currentState.members[memberIdx].name = trimmed;
+          render(currentState);
+        }
+
+        await renameOnAllMyPicks(trimmed);
+        statusEl.textContent = 'Name updated everywhere.';
+        // The profile modal was opened under the old name — close it rather
+        // than leave it open on a name that no longer matches any member,
+        // since re-opening from wherever they tapped in will show the new one.
+        document.getElementById('profileCloseBtn').click();
+      }catch(e){
+        statusEl.textContent = 'Could not save your name — try again.';
+      }
+    });
+    document.getElementById('profileResyncNameBtn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('profileNameStatus');
+      if(!currentUserName){ statusEl.textContent = 'Sign-in still loading — try again in a moment.'; return; }
+      statusEl.textContent = 'Re-syncing your name onto past picks…';
+      await renameOnAllMyPicks(currentUserName);
+      statusEl.textContent = 'Done — check the Tipping ladder.';
+    });
+  }
+}
 
 async function renderHoldemHistory(tableId){
   const area = document.getElementById('holdemHistoryArea');
@@ -6509,8 +6667,9 @@ async function renderXPLeaderboard(){
         const streak = await streakRes.json();
         const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
         const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(m.linkedUid), tippingPoints);
-        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0, lifetime: lifetime != null ? lifetime : 0, streak: streak || 0, prestige };
-      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null, lifetime: null, streak: 0, prestige: 0 }; }
+        const avatar = await getAvatarDataUri(m.linkedUid); // cached after first load, so this is free on repeat renders
+        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0, lifetime: lifetime != null ? lifetime : 0, streak: streak || 0, prestige, avatar };
+      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null, lifetime: null, streak: 0, prestige: 0, avatar: null }; }
     }));
     rows.sort((a,b) => (b.balance || 0) - (a.balance || 0));
     lastLeaderboardBalances = rows; // reused by refreshCasinoHeroExtras — avoids a duplicate full-roster fetch for "my rank"
@@ -6524,9 +6683,11 @@ async function renderXPLeaderboard(){
       // A streak of 1 or 2 is just a normal win — only 3+ in a row reads
       // as an actual "heater" worth calling out on the board.
       const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
-      return `<div style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '11px 8px' : '8px 4px'}; border-bottom:1px solid var(--line); ${bg}">
+      const tierKey = casinoTierFor(r.prestige)?.key || null; // already have the prestige score for this row — no extra fetch needed for the rank card's tier
+      return `<div style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '13px 8px' : '10px 4px'}; border-bottom:1px solid var(--line); ${bg}">
         <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
-        <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${casinoTierBadgeHtml(r.prestige)}${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${streakBadge}</span>
+        ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40)}
+        <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${streakBadge}</span>
         <span style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
           <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${r.balance != null ? r.balance.toLocaleString() : '—'}</span>
           <span class="lb-lifetime-telly">🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime</span>
@@ -7160,6 +7321,7 @@ function openProfile(name){
   if(!m) return;
   const d = computeDerived(m);
   document.getElementById('profileName').textContent = m.name;
+  document.getElementById('profileAvatarArea').innerHTML = ''; // clear immediately so the previous profile's photo can't flash before the new one loads
 
   const manualBadges = Array.isArray(m.badges) ? m.badges : [];
   const autoBadges = computeAutoBadges(m, currentState);
@@ -7201,10 +7363,15 @@ function openProfile(name){
       <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
       <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
     </div>
+    <div class="profile-stat-cell wide">
+      <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
+      <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
+    </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
   loadProfileXP(m.linkedUid, name);
   loadProfileCasinoBadges(m.linkedUid, name);
+  renderProfileAvatarSection(m);
   document.getElementById('profileModal').classList.add('open');
 }
 // Casino badges (Founding Player + XP milestones) live under the linked
@@ -7217,6 +7384,10 @@ async function loadProfileCasinoBadges(linkedUid, forName){
   if(!linkedUid){
     const lifetimeEl = document.getElementById('profileLifetimeXPVal');
     if(lifetimeEl) lifetimeEl.textContent = '—';
+    const tierEl = document.getElementById('profileTierVal');
+    if(tierEl) tierEl.textContent = '—';
+    const bountiesEl = document.getElementById('profileBountiesVal');
+    if(bountiesEl) bountiesEl.textContent = '—';
     return;
   }
   try{
@@ -7238,6 +7409,30 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     if(nameHeading){
       nameHeading.querySelectorAll('.tier-badge').forEach(el => el.remove());
       nameHeading.insertAdjacentHTML('beforeend', casinoTierBadgeHtml(prestige));
+    }
+    // Readable text alongside the gem — the gem's own tooltip is a hover
+    // title, which doesn't exist on a touch screen, so the tier name
+    // wouldn't otherwise be readable at all on mobile.
+    const tierEl = document.getElementById('profileTierVal');
+    if(tierEl){
+      const t = casinoTierFor(prestige);
+      tierEl.textContent = t ? t.name : 'Unranked';
+    }
+    // Bounties posted/claimed — cheap to compute from the same collection
+    // the Bounties tab itself reads, no dedicated per-uid index needed at
+    // this scale.
+    try{
+      const bountiesRes = await authedFetch('/bounties.json');
+      const bounties = bountiesRes.ok ? ((await bountiesRes.json()) || {}) : {};
+      const all = Object.values(bounties).filter(b => b && typeof b === 'object');
+      const posted = all.filter(b => b.creatorUid === linkedUid).length;
+      const claimed = all.filter(b => b.claimedByUid === linkedUid).length;
+      if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on while this fetch was in flight
+      const bountiesEl = document.getElementById('profileBountiesVal');
+      if(bountiesEl) bountiesEl.textContent = `${posted} posted, ${claimed} won`;
+    }catch(e){
+      const bountiesEl = document.getElementById('profileBountiesVal');
+      if(bountiesEl) bountiesEl.textContent = '—';
     }
     const founding = await foundingRes.json();
     const unlockedIds = [];
@@ -8047,7 +8242,6 @@ document.getElementById('syndyChatInput').addEventListener('keydown', (e) => {
 function render(state){
   renderSyncStatusLine(state);
   renderHealthPill(state);
-  updateMyProfileThumb(); // cheap after the first call — getAvatarDataUri is cached
   if(!state || !state.members || state.members.length === 0){
     document.getElementById('leaderboardArea').innerHTML = '';
     document.getElementById('owedArea').innerHTML = '';
@@ -8168,16 +8362,17 @@ function render(state){
   html += '</table></div>';
   document.getElementById('leaderboardArea').innerHTML = html;
   refreshJokerIconSlots();
-  // Tier gems are fetched/inserted after the fact rather than awaited
+  // Avatar rank card fetched/inserted after the fact rather than awaited
   // above — render() itself isn't async (called from a lot of places that
   // rely on it finishing synchronously), so this can't block the actual
-  // table paint. Same gem shown on the Casino leaderboard/Tipping ladder/
-  // Hold'em seats/chat, added in place once each lookup resolves.
+  // table paint. Avatar + tier fetched together in one Promise.all so the
+  // single insert lands atomically — two independent async inserts would
+  // race against whichever network fetch resolves first.
   ranked.filter(m => m.linkedUid).forEach(m => {
-    getCasinoTierBadgeHtml(m.linkedUid).then(badgeHtml => {
-      if(!badgeHtml) return;
+    Promise.all([getAvatarDataUri(m.linkedUid), getCasinoTierKey(m.linkedUid)]).then(([dataUri, tierKey]) => {
       const cell = document.querySelector(`#leaderboardArea .profile-link[data-uid="${CSS.escape(m.linkedUid)}"]`);
-      if(cell) cell.insertAdjacentHTML('afterbegin', badgeHtml);
+      if(!cell) return;
+      cell.insertAdjacentHTML('afterbegin', avatarRankCardHtml(m.name, dataUri, tierKey, 40));
     });
   });
   // Board's own Season Score is one of the three tier inputs — a strong
@@ -8525,6 +8720,21 @@ async function refresh(){
 
 // ---------- Tabs ----------
 function setActiveTab(tab){
+  // Diag moved from being its own top-level tab into a Home pill — this
+  // keeps every existing setActiveTab('diag') call site working (the
+  // health-pill jump, and session-restore-after-refresh below) without
+  // needing to touch each one individually. Delegates to the normal
+  // 'balance' switch for everything generic (casino recap, time
+  // tracking, scroll-to-top, tab-btn/tab-panel state), then layers the
+  // Home-subview selection and the diag-specific render on top.
+  if(tab === 'diag'){
+    setActiveTab('balance');
+    document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(b => b.classList.toggle('active', b.dataset.homesub === 'diag'));
+    document.querySelectorAll('.home-subview').forEach(el => { el.style.display = el.id === 'homeSubview-diag' ? 'block' : 'none'; });
+    try{ sessionStorage.setItem('mlsynd-active-tab', 'diag'); }catch(e){} // overwrite balance's own save so refresh-restore still lands back on diag specifically
+    if(appStarted) renderDiagTab();
+    return;
+  }
   // Leaving Casino for another tab entirely — same recap-on-exit as
   // switching games within Casino (see the game-bubble handler).
   if(tab !== 'casino') casinoSessionShowRecapIfAny();
@@ -8551,7 +8761,6 @@ function setActiveTab(tab){
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
 });
-document.getElementById('diagTabBtn').addEventListener('click', renderDiagTab);
 document.getElementById('snapshotWeekBtn').addEventListener('click', async () => {
   const btn = document.getElementById('snapshotWeekBtn');
   const statusEl = document.getElementById('snapshotWeekStatus');
@@ -8645,7 +8854,7 @@ document.getElementById('copyHealthReportBtn').addEventListener('click', async (
 // always landing back on Balance
 try{
   const savedTab = sessionStorage.getItem('mlsynd-active-tab');
-  if(savedTab && document.getElementById(`tab-${savedTab}`)){
+  if(savedTab === 'diag' || (savedTab && document.getElementById(`tab-${savedTab}`))){
     setActiveTab(savedTab);
     // Deliberately NOT calling renderDiagTab() here — this whole block runs
     // at script-parse time, well before auth has actually resolved
@@ -9086,7 +9295,7 @@ document.querySelectorAll('#sportsMainSubnav .subnav-btn').forEach(btn => {
   });
 });
 
-// ---------- Home tab sub-navigation (Overview / Cash / Slips) ----------
+// ---------- Home tab sub-navigation (Overview / Cash / Slips / Diag) ----------
 document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const view = btn.dataset.homesub;
@@ -9094,6 +9303,8 @@ document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(btn => {
     document.querySelectorAll('.home-subview').forEach(el => {
       el.style.display = el.id === `homeSubview-${view}` ? 'block' : 'none';
     });
+    try{ sessionStorage.setItem('mlsynd-active-tab', view === 'diag' ? 'diag' : 'balance'); }catch(e){}
+    if(view === 'diag') renderDiagTab();
     window.scrollTo(0,0);
   });
 });
@@ -10793,6 +11004,94 @@ async function runFullHealthCheck(){
     }
   }
 
+  // 20. Bounties rules access — same real GET+PUT+GET no-op proof as the
+  // Casino Pot / XP checks above, on a dedicated scratch key that can't
+  // collide with a real bounty (those are always prefixed b_<timestamp>).
+  if(currentUserUid){
+    try{
+      const path = '/bounties/__healthcheck__.json';
+      const getRes = await authedFetch(path);
+      if(!getRes.ok){
+        check('Bounties rules access', 'fail', `Read denied — HTTP ${getRes.status}. The /bounties rules likely haven't been deployed to Firebase yet.`);
+      } else {
+        const current = (await getRes.json()) || 0;
+        const putRes = await authedFetch(path, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current)
+        });
+        check('Bounties rules access', putRes.ok ? 'pass' : 'fail', putRes.ok ? 'Read+write both OK' : `Write denied — HTTP ${putRes.status}. The /bounties rules likely haven't been deployed to Firebase yet.`);
+      }
+    }catch(e){
+      check('Bounties rules access', 'fail', e.message);
+    }
+  }
+
+  // 21. Bounties data integrity — malformed records here would either
+  // silently fail to render on the list or let someone claim/refund an
+  // amount that doesn't add up.
+  try{
+    const res = await authedFetch('/bounties.json');
+    const bounties = res.ok ? ((await res.json()) || {}) : {};
+    const entries = Object.entries(bounties).filter(([id]) => id !== '__healthcheck__');
+    const badStake = entries.filter(([, b]) => b && !(Number(b.stakeXp) > 0)).map(([id]) => id);
+    const badStatus = entries.filter(([, b]) => b && !['open', 'claimed', 'cancelled'].includes(b.status)).map(([id]) => id);
+    const claimedNoClaimant = entries.filter(([, b]) => b && b.status === 'claimed' && !b.claimedByUid).map(([id]) => id);
+    const openCount = entries.filter(([, b]) => b && b.status === 'open').length;
+    const problems = [...new Set([...badStake, ...badStatus, ...claimedNoClaimant])];
+    check('Bounties data integrity', problems.length === 0 ? 'pass' : 'warn',
+      problems.length === 0 ? `${entries.length} bount(y/ies) total, ${openCount} open, all well-formed` : `Malformed: ${problems.join(', ')}`);
+  }catch(e){
+    check('Bounties data integrity', 'fail', e.message);
+  }
+
+  // 22. Casino Pot reason-pattern coverage — regression guard for a real
+  // bug that happened once already: a game's XP-award reason string not
+  // matching CASINO_POT_REASON_PATTERN means its wins/losses silently
+  // don't count toward the monthly pot, the activity threshold, session
+  // recaps, or win streaks, with no error anywhere to notice it by. Tests
+  // an actual sample reason string per game rather than eyeballing the
+  // regex, so a future edit that drops coverage gets caught here.
+  {
+    const sampleReasons = [
+      'Blackjack win', 'Baccarat win', 'Roulette win', 'Casino War win', 'Craps win',
+      'Plinko win', 'Big Wheel win', 'Mines win', 'Slots win', 'Video Poker win',
+      'Spin the Wheel win', 'Crash win', 'Double or Nothing win'
+    ];
+    const uncovered = sampleReasons.filter(r => !CASINO_POT_REASON_PATTERN.test(r));
+    check('Casino Pot reason-pattern coverage', uncovered.length === 0 ? 'pass' : 'fail',
+      uncovered.length === 0 ? `All ${sampleReasons.length} games' win reasons are recognised` : `Not matched by CASINO_POT_REASON_PATTERN: ${uncovered.join(', ')} — that game's wins/losses silently won't count toward the pot, activity threshold, or streaks`);
+  }
+
+  // 23. Avatar rules access — same GET+PUT+GET no-op proof, on the
+  // signed-in user's own /avatars/{uid} leaf (a genuine no-op: writes
+  // back the exact photo already stored, or null if none set yet).
+  if(currentUserUid){
+    try{
+      const path = `/avatars/${currentUserUid}.json`;
+      const getRes = await authedFetch(path);
+      if(!getRes.ok){
+        check('Avatar rules access', 'fail', `Read denied — HTTP ${getRes.status}. The /avatars rules likely haven't been deployed to Firebase yet.`);
+      } else {
+        const current = await getRes.json();
+        const putRes = await authedFetch(path, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current)
+        });
+        check('Avatar rules access', putRes.ok ? 'pass' : 'fail', putRes.ok ? (current ? 'Read+write both OK — photo set' : 'Read+write both OK — no photo set yet') : `Write denied — HTTP ${putRes.status}. The /avatars rules likely haven't been deployed to Firebase yet.`);
+      }
+    }catch(e){
+      check('Avatar rules access', 'fail', e.message);
+    }
+  }
+
+  // 24. XP economy rates sanity — a mistyped/accidentally-zeroed rate
+  // (e.g. XP_RATES.perTippingPoint left at 0 after an edit) wouldn't
+  // throw anywhere, it'd just quietly under- or over-pay everyone. Flags
+  // anything non-positive or non-finite.
+  {
+    const badRates = Object.entries(XP_RATES).filter(([, v]) => !(typeof v === 'number' && isFinite(v) && v > 0));
+    check('XP economy rates sanity', badRates.length === 0 ? 'pass' : 'fail',
+      badRates.length === 0 ? `All ${Object.keys(XP_RATES).length} rates are positive numbers (${Object.entries(XP_RATES).map(([k,v]) => `${k}: ${v}`).join(', ')})` : `Invalid rate(s): ${badRates.map(([k,v]) => `${k}=${JSON.stringify(v)}`).join(', ')}`);
+  }
+
   return { results, latencyMs: firebaseLatencyMs };
 }
 
@@ -11796,7 +12095,7 @@ async function renderTippingLadder(games){
   const anomalyDetected = rows.length >= 5 && !hasSpread && topScore > 0 && involvedRounds.length >= 2;
   let warningHtml = '';
   if(anomalyDetected){
-    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">⚠️ Every tipper has the exact same score across ${involvedRounds.length} round(s) — this usually means some picks aren't being read correctly rather than a genuine tie.${isAdminViewer ? ' Check Diagnostics on your profile for details.' : ' Flag this to the admin if it doesn\'t sort itself out.'}</div>`;
+    warningHtml = `<div class="hint" style="margin-bottom:10px; color:var(--loss);">⚠️ Every tipper has the exact same score across ${involvedRounds.length} round(s) — this usually means some picks aren't being read correctly rather than a genuine tie.${isAdminViewer ? ' Check Diagnostics on the Home tab for details.' : ' Flag this to the admin if it doesn\'t sort itself out.'}</div>`;
     // Self-healing: don't let a failed sync attempt stay "done" forever for
     // this session — force the next refresh to actually retry it, rather
     // than requiring a full page reload to recover.
@@ -11810,11 +12109,15 @@ async function renderTippingLadder(games){
     : '';
 
   let html = warningHtml + liveNoteHtml + '<table class="ladder-table"><thead><tr><th>#</th><th>Name</th><th>Points</th><th>Margin</th></tr></thead><tbody>';
-  // Same tier gem shown on the Casino leaderboard/Hold'em seats/chat —
-  // resolved once per unique uid here (cached, so free after the first
-  // time each person's tier is looked up this session).
-  const tierBadgeByUid = {};
-  await Promise.all(rows.map(async r => { tierBadgeByUid[r.uid] = await getCasinoTierBadgeHtml(r.uid); }));
+  // Rank card needs the tier KEY (not pre-built badge HTML) plus the
+  // avatar — resolved once per unique uid here (cached, so free after the
+  // first time each person's tier/avatar is looked up this session).
+  const tierKeyByUid = {};
+  const avatarByUid = {};
+  await Promise.all(rows.map(async r => {
+    tierKeyByUid[r.uid] = await getCasinoTierKey(r.uid);
+    avatarByUid[r.uid] = await getAvatarDataUri(r.uid);
+  }));
   rows.forEach((r, i) => {
     const isLeader = hasSpread && r.points === topScore;
     const isLoser = hasSpread && rows.length > 1 && r.points === bottomScore;
@@ -11832,7 +12135,7 @@ async function renderTippingLadder(games){
     // only, so if boardJokerActiveByUid hadn't loaded yet when this ran (a real
     // race on first load), or updated later, nothing ever told the ladder to
     // reflect it — it could sit wrong for a full 4-minute poll cycle or more.
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td data-uid="${escapeHtml(r.uid)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${tierBadgeByUid[r.uid] || ''}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td class="ladder-name-col" data-uid="${escapeHtml(r.uid)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${avatarRankCardHtml(r.name, avatarByUid[r.uid], tierKeyByUid[r.uid], 40)}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;
