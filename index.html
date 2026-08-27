@@ -1133,6 +1133,7 @@
           <button type="button" class="pill-btn pill-btn-action" data-suit="♣">♣ (4x)</button>
         </div>
         <button type="button" id="slotsGambleCollectBtn" class="pill-btn pill-btn-primary" style="width:100%; margin-top:10px;">💰 Collect</button>
+        <div class="status-msg error" id="slotsGambleStatus" style="margin-top:8px; text-align:center;"></div>
       </div>
     </div>
     <div class="panel" id="slotsBetPanel">
@@ -1553,15 +1554,25 @@
 </div>
 
 <div id="profileModal" class="profile-modal">
-  <div class="profile-sheet">
+  <div class="profile-sheet" id="profileSheet">
     <button type="button" class="profile-close" id="profileCloseBtn">✕</button>
     <div class="profile-header">
       <div id="profileAvatarArea" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
       <h2 id="profileName">Name</h2>
+      <div class="profile-flair" id="profileFlair" style="display:none;"></div>
       <div class="profile-badges" id="profileBadges"></div>
       <div class="badge-info-bubble" id="badgeInfoBubble" style="display:none;"></div>
     </div>
+    <div class="profile-prestige-bar-wrap" id="profilePrestigeBarWrap" style="display:none;">
+      <div class="profile-prestige-bar-track"><div class="profile-prestige-bar-fill" id="profilePrestigeBarFill"></div></div>
+      <div class="profile-prestige-bar-label" id="profilePrestigeBarLabel"></div>
+    </div>
+    <div class="profile-headtohead" id="profileHeadToHead" style="display:none;"></div>
     <div class="profile-stat-grid" id="profileStats"></div>
+    <div class="profile-form-section" id="profileFormSection" style="display:none;">
+      <div class="profile-form-label">Recent Form</div>
+      <div class="profile-form-strip" id="profileFormStrip"></div>
+    </div>
   </div>
 </div>
 
@@ -2646,7 +2657,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.16"; // Diagnostics wired for Bounties/avatars/new games, stray text reference fixed, Tier + Bounties stats added to profile — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.18"; // 7 premium profile additions: tier-tinted sheet, prestige progress bar, flair line, head-to-head vs you, recent form strip, biggest win, most-played game — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7322,6 +7333,9 @@ function openProfile(name){
   const d = computeDerived(m);
   document.getElementById('profileName').textContent = m.name;
   document.getElementById('profileAvatarArea').innerHTML = ''; // clear immediately so the previous profile's photo can't flash before the new one loads
+  document.getElementById('profileFlair').style.display = 'none'; // same — these three are filled in async, so clear synchronously or the last profile's values can flash briefly
+  document.getElementById('profilePrestigeBarWrap').style.display = 'none';
+  document.getElementById('profileBiggestWinCell').style.display = 'none';
 
   const manualBadges = Array.isArray(m.badges) ? m.badges : [];
   const autoBadges = computeAutoBadges(m, currentState);
@@ -7367,12 +7381,109 @@ function openProfile(name){
       <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
       <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
     </div>
+    <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
+      <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
+      <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
+    </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
+
+  // Head-to-head vs you — only makes sense on someone ELSE's profile.
+  const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
+  const h2hEl = document.getElementById('profileHeadToHead');
+  if(h2hEl){
+    if(!isMe && currentUserName){
+      const myLifetime = getLifetimeStats(currentUserName, currentState);
+      h2hEl.style.display = 'flex';
+      h2hEl.innerHTML = `
+        <div class="profile-h2h-side ${myLifetime.pl > lifetime.pl ? 'ahead' : ''}"><span class="val">${fmtMoney(myLifetime.pl)}</span><span class="lbl">You</span></div>
+        <div class="profile-h2h-vs">VS</div>
+        <div class="profile-h2h-side ${lifetime.pl > myLifetime.pl ? 'ahead' : ''}"><span class="val">${fmtMoney(lifetime.pl)}</span><span class="lbl">${escapeHtml(m.name)}</span></div>
+      `;
+    } else {
+      h2hEl.style.display = 'none';
+    }
+  }
+
+  // Recent form — last several weeks' group-multi results as a compact
+  // dot strip, oldest to newest. Pure local computation, same source
+  // computeAutoBadges already reads for the win/loss-streak badges above.
+  const formSection = document.getElementById('profileFormSection');
+  const formStrip = document.getElementById('profileFormStrip');
+  if(formSection && formStrip){
+    const history = currentState.history || [];
+    const weeks = history.filter(w => w.groupEntries && w.groupEntries[name] && w.groupEntries[name].result).slice(-10);
+    if(weeks.length > 0){
+      formSection.style.display = 'block';
+      formStrip.innerHTML = weeks.map(w => {
+        const r = w.groupEntries[name].result;
+        const cls = r === 'Win' ? 'win' : (r === 'Loss' ? 'loss' : 'void');
+        const letter = r === 'Win' ? 'W' : (r === 'Loss' ? 'L' : (r === 'MIA' ? '?' : '–'));
+        return `<span class="profile-form-dot ${cls}" title="${escapeHtml(w.label || '')}: ${escapeHtml(r)}">${letter}</span>`;
+      }).join('');
+    } else {
+      formSection.style.display = 'none';
+    }
+  }
+
   loadProfileXP(m.linkedUid, name);
   loadProfileCasinoBadges(m.linkedUid, name);
+  loadProfileGameStats(m.linkedUid, name);
   renderProfileAvatarSection(m);
   document.getElementById('profileModal').classList.add('open');
+}
+// Biggest single win + most-played game, both derived from one fetch of
+// the linked account's own XP log — same endpoint/shape renderXPLog
+// already uses. "Most played" matches a reason string's leading game
+// name against the same list CASINO_POT_REASON_PATTERN recognises.
+const PROFILE_GAME_NAMES = ['Blackjack', 'Baccarat', 'Roulette', 'Casino War', 'Craps', 'Plinko', 'Big Wheel', 'Mines', 'Slots', 'Video Poker', 'Spin the Wheel', 'Crash', 'Double or Nothing'];
+async function loadProfileGameStats(linkedUid, forName){
+  const cellEl = document.getElementById('profileBiggestWinCell');
+  if(!linkedUid || !cellEl) return;
+  try{
+    const res = await authedFetch(`/xp/${linkedUid}/log.json`);
+    if(!res.ok) return;
+    const data = await res.json();
+    const entries = (data && typeof data === 'object' ? Object.values(data) : []).filter(e => e && typeof e === 'object');
+    if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
+    if(entries.length === 0) return;
+
+    let biggest = null;
+    entries.forEach(e => {
+      const amt = typeof e.amount === 'number' ? e.amount : 0;
+      if(amt > 0 && (!biggest || amt > biggest.amount)) biggest = e;
+    });
+
+    const perGame = {};
+    entries.forEach(e => {
+      const reason = e.reason || '';
+      const game = PROFILE_GAME_NAMES.find(g => reason.toLowerCase().startsWith(g.toLowerCase()));
+      if(!game) return;
+      if(!perGame[game]) perGame[game] = { count: 0, wins: 0, losses: 0 };
+      perGame[game].count++;
+      const amt = typeof e.amount === 'number' ? e.amount : 0;
+      if(amt > 0) perGame[game].wins++;
+      else if(amt < 0) perGame[game].losses++;
+    });
+    const topGame = Object.entries(perGame).sort((a, b) => b[1].count - a[1].count)[0];
+
+    if(biggest || topGame){
+      cellEl.style.display = 'flex';
+      const winEl = document.getElementById('profileBiggestWinVal');
+      if(winEl) winEl.textContent = biggest ? `+${biggest.amount.toLocaleString()} — ${biggest.reason || '?'}` : '—';
+      const playedEl = document.getElementById('profileMostPlayedVal');
+      if(playedEl){
+        if(topGame){
+          const [gname, stats] = topGame;
+          const decided = stats.wins + stats.losses;
+          const winPct = decided > 0 ? Math.round((stats.wins / decided) * 100) : null;
+          playedEl.textContent = `${gname} (${stats.count}${winPct != null ? `, ${winPct}% win` : ''})`;
+        } else {
+          playedEl.textContent = '—';
+        }
+      }
+    }
+  }catch(e){}
 }
 // Casino badges (Founding Player + XP milestones) live under the linked
 // account's Firebase uid, not on the member record, so they're fetched
@@ -7401,6 +7512,7 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     const lifetimeEl = document.getElementById('profileLifetimeXPVal');
     if(lifetimeEl) lifetimeEl.textContent = lifetime.toLocaleString();
     const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
+    const founding = await foundingRes.json(); // read once here, reused below for both badges and the flair line — a Response body can only be read once
     const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(linkedUid), tippingPoints);
     // Same tier badge shown on the leaderboard/Hold'em seats/chat — this is
     // the one place besides the leaderboard where it's cheap to add since
@@ -7413,28 +7525,76 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     // Readable text alongside the gem — the gem's own tooltip is a hover
     // title, which doesn't exist on a touch screen, so the tier name
     // wouldn't otherwise be readable at all on mobile.
+    const t = casinoTierFor(prestige);
     const tierEl = document.getElementById('profileTierVal');
-    if(tierEl){
-      const t = casinoTierFor(prestige);
-      tierEl.textContent = t ? t.name : 'Unranked';
+    if(tierEl) tierEl.textContent = t ? t.name : 'Unranked';
+
+    // Tier-tinted sheet — whole modal picks up a faint wash of this
+    // person's tier colour, same escalating language the table cosmetics
+    // (felt/card-backs/chip-rims) already use.
+    const sheetEl = document.getElementById('profileSheet');
+    if(sheetEl){
+      sheetEl.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-platinum', 'tier-diamond');
+      if(t) sheetEl.classList.add(`tier-${t.key}`);
     }
+
+    // Prestige progress bar — how far toward the NEXT tier up. CASINO_TIERS
+    // is ordered Diamond-first (highest threshold first), so the "next"
+    // tier is the one immediately BEFORE the current one in that array —
+    // already Diamond, or already at the ceiling, both just show full/maxed.
+    const barWrap = document.getElementById('profilePrestigeBarWrap');
+    const barFill = document.getElementById('profilePrestigeBarFill');
+    const barLabel = document.getElementById('profilePrestigeBarLabel');
+    if(barWrap && barFill && barLabel){
+      barWrap.style.display = 'block';
+      if(t && t.key === 'diamond'){
+        barFill.style.width = '100%';
+        barLabel.textContent = `${Math.round(prestige).toLocaleString()} prestige — top tier reached`;
+      } else {
+        const tierIdx = t ? CASINO_TIERS.findIndex(x => x.key === t.key) : CASINO_TIERS.length;
+        const next = CASINO_TIERS[tierIdx - 1] || CASINO_TIERS[CASINO_TIERS.length - 1];
+        const floor = t ? t.threshold : 0;
+        const span = next.threshold - floor;
+        const pct = span > 0 ? Math.max(0, Math.min(100, ((prestige - floor) / span) * 100)) : 100;
+        barFill.style.width = pct.toFixed(1) + '%';
+        barLabel.textContent = `${Math.round(prestige).toLocaleString()} / ${next.threshold.toLocaleString()} to ${next.name}`;
+      }
+    }
+
     // Bounties posted/claimed — cheap to compute from the same collection
     // the Bounties tab itself reads, no dedicated per-uid index needed at
-    // this scale.
+    // this scale. Claimed count also feeds the flair line below.
+    let bountiesClaimed = 0;
     try{
       const bountiesRes = await authedFetch('/bounties.json');
       const bounties = bountiesRes.ok ? ((await bountiesRes.json()) || {}) : {};
       const all = Object.values(bounties).filter(b => b && typeof b === 'object');
       const posted = all.filter(b => b.creatorUid === linkedUid).length;
-      const claimed = all.filter(b => b.claimedByUid === linkedUid).length;
+      bountiesClaimed = all.filter(b => b.claimedByUid === linkedUid).length;
       if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on while this fetch was in flight
       const bountiesEl = document.getElementById('profileBountiesVal');
-      if(bountiesEl) bountiesEl.textContent = `${posted} posted, ${claimed} won`;
+      if(bountiesEl) bountiesEl.textContent = `${posted} posted, ${bountiesClaimed} won`;
     }catch(e){
       const bountiesEl = document.getElementById('profileBountiesVal');
       if(bountiesEl) bountiesEl.textContent = '—';
     }
-    const founding = await foundingRes.json();
+
+    // Flair line — one auto-generated fact string under the name, built
+    // from whatever's actually true rather than editable free text.
+    const flairEl = document.getElementById('profileFlair');
+    if(flairEl){
+      const parts = [];
+      if(founding) parts.push(`Founding Player #${founding}`);
+      if(t) parts.push(`${t.name} tier`);
+      if(bountiesClaimed > 0) parts.push(`${bountiesClaimed} ${bountiesClaimed === 1 ? 'Bounty' : 'Bounties'} won`);
+      if(parts.length > 0){
+        flairEl.textContent = parts.join(' · ');
+        flairEl.style.display = 'block';
+      } else {
+        flairEl.style.display = 'none';
+      }
+    }
+
     const unlockedIds = [];
     if(founding) unlockedIds.push('founding-player');
     XP_MILESTONE_BADGES.forEach(b => { if(lifetime >= b.threshold) unlockedIds.push(b.key); });

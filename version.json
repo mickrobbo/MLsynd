@@ -1,12 +1,7 @@
 {
-  "version": "2026-08-24.16",
+  "version": "2026-08-24.18",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\ude80\ud83e\ude99 New: Crash and Double or Nothing \u2014 climb-and-cash-out and call-the-coin, each with a full animation pass (real trajectory graph, directional rocket, continuous glow trail, a genuine 3D coin tumble with real face art). Slots also got a Gamble feature to risk a win for 2x/4x.",
-    "\ud83d\udc64 Profile photos are now part of everyone's profile, not a separate Board-tab flow \u2014 tap any name to see their photo, and if it's your own, add or change it right there with a proper drag-to-pan/zoom crop tool instead of a fixed auto-crop.",
-    "\ud83c\udff7\ufe0f Rank Card avatars on the Board, Casino, and Tipping ladders \u2014 tier colour glows around the photo itself with a small tier emblem, instead of a separate gem badge next to the name. Taller rows to fit it properly.",
-    "\u270f\ufe0f Name changes and Diagnostics both live in sensible places now \u2014 Edit name moved into your own profile (same self-only rule the photo upload uses), and Diagnostics is its own pill on the Home tab rather than a separate bottom-nav item.",
-    "\ud83d\udd27 Diagnostics expanded to cover today's new systems \u2014 Bounties and Avatar Firebase rules access, Bounties data integrity, a regression guard on the Casino Pot reason-pattern bug that hit Crash/Double or Nothing earlier, and XP rate sanity.",
-    "\ud83d\udcca Profile now also shows your Casino Tier (readable text, not just a hover-only gem) and your Bounties posted/won."
+    "\ud83c\udfc6 Seven premium additions to everyone's profile: a tier-tinted sheet (the whole modal picks up your tier's colour, not just the gem), a prestige progress bar toward your next tier, an auto-generated flair line under your name, a head-to-head vs you comparison when viewing someone else, a recent-form strip of your last 10 weeks, your biggest single win, and your most-played casino game with win rate."
   ]
 }

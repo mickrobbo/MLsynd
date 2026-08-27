@@ -2514,6 +2514,61 @@
   .profile-badge{ display:flex; flex-direction:column; align-items:center; gap:5px; width:76px; cursor:pointer; }
   .profile-badge:active{ transform:scale(0.94); }
 
+  /* ---- Profile sheet tier tint — the whole sheet picks up a faint wash
+     of the VIEWED person's tier colour, same escalating-tiers language
+     the table cosmetics already use, so a Diamond profile actually looks
+     different from a Bronze one rather than just a different gem icon. */
+  .profile-sheet{ transition: background .4s ease, box-shadow .4s ease; }
+  .profile-sheet.tier-bronze{ background:linear-gradient(165deg, #2a1f12, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(224,164,105,.12); }
+  .profile-sheet.tier-silver{ background:linear-gradient(165deg, #232726, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(184,184,184,.14); }
+  .profile-sheet.tier-gold{ background:linear-gradient(165deg, #2c2612, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(212,175,55,.16); }
+  .profile-sheet.tier-platinum{ background:linear-gradient(165deg, #172428, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(111,147,168,.16); }
+  .profile-sheet.tier-diamond{ background:linear-gradient(165deg, #0d2831, var(--felt) 60%); box-shadow:0 -10px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(42,157,201,.22), 0 0 30px -10px rgba(42,157,201,.35); }
+
+  /* ---- Flair line — one auto-generated fact string under the name. ---- */
+  .profile-flair{
+    font-size:11.5px; color:var(--muted); text-align:center; margin-top:4px;
+    letter-spacing:.3px; font-style:italic;
+  }
+
+  /* ---- Prestige progress bar — how far toward the next tier up. ---- */
+  .profile-prestige-bar-wrap{ margin:14px 0 4px; }
+  .profile-prestige-bar-track{
+    width:100%; height:8px; border-radius:5px; background:rgba(0,0,0,.35);
+    overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,.5);
+  }
+  .profile-prestige-bar-fill{
+    height:100%; border-radius:5px; background:linear-gradient(90deg, var(--brass-dim), var(--brass-light));
+    transition:width .6s ease;
+  }
+  .profile-prestige-bar-label{ font-size:10.5px; color:var(--muted); text-align:center; margin-top:5px; }
+
+  /* ---- Head-to-head vs you — only shown on someone ELSE'S profile. ---- */
+  .profile-headtohead{
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    margin:14px 0 4px; padding:10px 8px; border-radius:12px;
+    background:rgba(0,0,0,.18); border:1px solid var(--line);
+  }
+  .profile-h2h-side{ flex:1; text-align:center; }
+  .profile-h2h-side .val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:14px; display:block; }
+  .profile-h2h-side .lbl{ font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .profile-h2h-side.ahead .val{ color:var(--win); }
+  .profile-h2h-vs{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:11px; color:var(--muted); flex-shrink:0; }
+
+  /* ---- Recent form strip — last several weeks' group-multi results as
+     a compact dot sequence, oldest to newest (reads left-to-right like a
+     sports form guide). ---- */
+  .profile-form-section{ margin-top:16px; }
+  .profile-form-label{ font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; text-align:center; margin-bottom:8px; }
+  .profile-form-strip{ display:flex; justify-content:center; gap:5px; flex-wrap:wrap; }
+  .profile-form-dot{
+    width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; font-family:'IBM Plex Mono', monospace; flex-shrink:0;
+  }
+  .profile-form-dot.win{ background:rgba(111,169,138,.25); color:var(--win); border:1px solid rgba(111,169,138,.5); }
+  .profile-form-dot.loss{ background:rgba(193,96,74,.25); color:var(--loss); border:1px solid rgba(193,96,74,.5); }
+  .profile-form-dot.void{ background:rgba(255,255,255,.06); color:var(--muted); border:1px solid var(--line); }
+
   /* ---- Photo crop/position tool ---- */
   .avatar-crop-viewport{
     width:240px; height:240px; margin:0 auto; border-radius:16px; overflow:hidden; position:relative;
