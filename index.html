@@ -4683,6 +4683,12 @@ async function checkApprovalAndProceed(){
         appStarted = true;
         applyRoleTabRestrictions();
         startApp();
+        // If Diag was the tab open before a refresh, setActiveTab already
+        // switched to it (see the tab-restore block, script-load time) —
+        // but its data couldn't render yet since currentUserUid wasn't set
+        // until just now. Render it here instead, now that auth is
+        // actually ready and authedFetch calls will succeed.
+        if(sessionStorage.getItem('mlsynd-active-tab') === 'diag') renderDiagTab();
       }
       // Presence heartbeat — a plain "I was last active at this timestamp"
       // write, not true real-time presence (this app talks to Firebase over
@@ -5011,7 +5017,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-22.96";
+const APP_VERSION = "2026-08-22.98";
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -13818,7 +13824,14 @@ try{
   const savedTab = sessionStorage.getItem('mlsynd-active-tab');
   if(savedTab && document.getElementById(`tab-${savedTab}`)){
     setActiveTab(savedTab);
-    if(savedTab === 'diag') renderDiagTab();
+    // Deliberately NOT calling renderDiagTab() here — this whole block runs
+    // at script-parse time, well before auth has actually resolved
+    // (currentUserUid is still null), so every authedFetch inside it would
+    // throw "Not signed in" and leave Recent Errors / Who's Online stuck
+    // on a permanent "Could not load" with nothing to ever retry it. The
+    // tab itself still switches correctly here (setActiveTab is just DOM
+    // class toggling, doesn't need auth); the actual data render is
+    // deferred to checkApprovalAndProceed, once currentUserUid is real.
   }
 }catch(e){}
 
@@ -16480,7 +16493,28 @@ function renderPulseErrors(){
 
 let diagMoneyLoaded = false;
 let diagPlayLoaded = false;
-function renderDiagTab(){
+function renderDiagTab(retriesLeft){
+  // Can fire before currentState is populated — the sessionStorage
+  // tab-restore near the bottom of this file calls this unconditionally
+  // if Diag was the last-open tab, and that runs at script load, entirely
+  // independent of whether auth + startApp()'s refresh() have actually
+  // finished. A pull-to-refresh while sitting on Diag hits this exactly:
+  // the whole page reloads, restores Diag as active, and this fires
+  // before currentState exists yet — every function below that reads
+  // currentState.members would throw. Retry briefly rather than show a
+  // scary "could not load" for what's really just "give it a second."
+  if(!currentState){
+    if(retriesLeft === undefined) retriesLeft = 10; // ~4s total before actually giving up
+    if(retriesLeft <= 0){
+      ['pulseErrorsArea', 'presenceArea'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.innerHTML = '<div class="empty">Still waiting on account data to load — try reopening this tab.</div>';
+      });
+      return;
+    }
+    setTimeout(() => renderDiagTab(retriesLeft - 1), 400);
+    return;
+  }
   // Pulse only on open — Money and Play load lazily the first time their
   // pill is actually tapped (see the submode click handler below), not on
   // every Diag open. This used to unconditionally fetch Syndy costs,
