@@ -61,8 +61,7 @@ export default async (req) => {
     });
 
     if (lockingGames.length === 0) {
-      console.log("No games locking in the check window.");
-      return new Response("No games locking soon", { status: 200 });
+      console.log("No games locking in the check window for picks.");
     }
 
     const subscriptions = (await dbGet("/pushSubscriptions")) || {};
@@ -105,7 +104,75 @@ export default async (req) => {
     }
 
     console.log(`Checked ${lockingGames.length} game(s), sent ${sent}, skipped ${skipped}.`);
-    return new Response(`Sent ${sent}`, { status: 200 });
+
+    // ---- Joker last-chance reminder ----
+    // One-shot, once ever (well, once per season — cleared by the Ledger's
+    // season archive/reset action alongside everything else under
+    // /tipping). Joker is "one round per season, home-and-away only" —
+    // reminding every single round someone hasn't used it yet would be
+    // spammy for something that's genuinely fine to sit on all season.
+    // The one moment that actually matters is the LAST home-and-away
+    // round locking, since after that using it at all is no longer
+    // possible. Uses the same games list already fetched above.
+    let jokerSent = 0, jokerSkipped = 0;
+    try {
+      const regularRounds = games
+        .filter((g) => !((g.roundname || "").toLowerCase().includes("final")))
+        .map((g) => g.round);
+      if (regularRounds.length > 0) {
+        const lastRegularRound = Math.max(...regularRounds);
+        const lastRoundGames = games.filter((g) => g.round === lastRegularRound && g.date);
+        const lastRoundKickoffTimes = lastRoundGames
+          .map((g) => new Date(g.date.replace(" ", "T") + "+10:00").getTime())
+          .filter((t) => !isNaN(t));
+
+        if (lastRoundKickoffTimes.length > 0) {
+          // Joker locks at the round's earliest kickoff itself, not 12h
+          // before — matches roundLockTime's actual semantics (see
+          // syncRoundLockTime client-side), unlike the picks reminder
+          // above which fires ahead of the 12h pick-lock window.
+          const jokerLockMs = Math.min(...lastRoundKickoffTimes);
+          if (jokerLockMs > windowStartMs && jokerLockMs <= windowEndMs) {
+            const [allJokers, jokerAlreadyNotified] = await Promise.all([
+              dbGet("/tipping/joker"),
+              dbGet("/pushJokerLastChanceNotified"),
+            ]);
+            const jokersByUid = allJokers || {};
+            const alreadyNotified = jokerAlreadyNotified || {};
+
+            for (const uid of Object.keys(subscriptions)) {
+              if (jokersByUid[uid] && jokersByUid[uid].round != null) continue; // already used their Joker this season, somewhere
+              if (alreadyNotified[uid]) continue; // already told them about this, this season
+              const sub = subscriptions[uid];
+              if (!sub || !sub.endpoint) continue;
+
+              try {
+                await webpush.sendNotification(
+                  sub,
+                  JSON.stringify({
+                    title: "Last chance for your Joker",
+                    body: `Round ${lastRegularRound} locks in under an hour — it's the final home-and-away round, so this is your last chance to use your Joker this season.`,
+                    url: "/",
+                  })
+                );
+                jokerSent++;
+                await dbPut(`/pushJokerLastChanceNotified/${uid}`, true);
+              } catch (err) {
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                  await dbPut(`/pushSubscriptions/${uid}`, null);
+                }
+                jokerSkipped++;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Joker last-chance check failed:", err.message);
+    }
+    console.log(`Joker last-chance: sent ${jokerSent}, skipped ${jokerSkipped}.`);
+
+    return new Response(`Sent ${sent}, joker ${jokerSent}`, { status: 200 });
   } catch (err) {
     console.error("check-lockouts-scheduled error:", err.message);
     return new Response(`Error: ${err.message}`, { status: 500 });
