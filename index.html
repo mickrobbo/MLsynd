@@ -2657,7 +2657,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.18"; // 7 premium profile additions: tier-tinted sheet, prestige progress bar, flair line, head-to-head vs you, recent form strip, biggest win, most-played game — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.19"; // CRITICAL FIX: openProfile() threw on every single call — a reset line referenced an element that didn't exist in the DOM yet, breaking all profile access since .18 — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7333,9 +7333,16 @@ function openProfile(name){
   const d = computeDerived(m);
   document.getElementById('profileName').textContent = m.name;
   document.getElementById('profileAvatarArea').innerHTML = ''; // clear immediately so the previous profile's photo can't flash before the new one loads
-  document.getElementById('profileFlair').style.display = 'none'; // same — these three are filled in async, so clear synchronously or the last profile's values can flash briefly
+  document.getElementById('profileFlair').style.display = 'none'; // these two are static HTML (exist since page load) so a synchronous reset here is safe — clears the previous profile's value before the new async fetch lands
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
-  document.getElementById('profileBiggestWinCell').style.display = 'none';
+  // profileBiggestWinCell is NOT reset here — unlike the two above, it's
+  // only created later in this same function (inside profileStats'
+  // innerHTML) and doesn't exist in the DOM yet at this point on a fresh
+  // page load. getElementById returns null and .style throws, which was
+  // silently killing this entire function before it ever opened the
+  // modal — every single profile click doing nothing. It doesn't need a
+  // reset anyway: the template that creates it already bakes in
+  // style="display:none" fresh each time.
 
   const manualBadges = Array.isArray(m.badges) ? m.badges : [];
   const autoBadges = computeAutoBadges(m, currentState);

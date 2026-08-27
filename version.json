@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.18",
+  "version": "2026-08-24.19",
   "date": "2026-08-27",
   "changes": [
-    "\ud83c\udfc6 Seven premium additions to everyone's profile: a tier-tinted sheet (the whole modal picks up your tier's colour, not just the gem), a prestige progress bar toward your next tier, an auto-generated flair line under your name, a head-to-head vs you comparison when viewing someone else, a recent-form strip of your last 10 weeks, your biggest single win, and your most-played casino game with win rate."
+    "Critical fix: profiles were completely broken since the last update — tapping any name did nothing. A line resetting one of the new profile stat cells ran before that cell actually existed in the page, which threw an error and silently killed the whole open-profile function before the modal ever appeared. Fixed — profiles open normally again."
   ]
 }
