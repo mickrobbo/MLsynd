@@ -2489,7 +2489,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-23.2"; // bumped for all remaining casino games extracted to their own script files — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-23.3"; // bumped for Tipping season-readiness: shared season-start-round helper, consolidated lock-window constant, ladder snapshot for archiving — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5840,12 +5840,7 @@ document.getElementById('bigWinModal').addEventListener('click', (e) => {
 async function checkAndAwardTippingXP(){
   if(!currentUserUid) return;
   try{
-    let seasonStartRound = 1;
-    try{
-      const r = await authedFetch('/tipping/config/firstRound.json');
-      const v = await r.json();
-      if(v != null) seasonStartRound = Number(v);
-    }catch(e){}
+    const seasonStartRound = await getSeasonStartRound();
 
     const games = await fetchTippingFixtures().catch(() => []);
     const relevant = games.filter(g => g.round >= seasonStartRound);
@@ -8855,6 +8850,38 @@ document.getElementById('racingArea').addEventListener('click', async (e) => {
 });
 
 // ================= Tipping =================
+// The 12h pre-kickoff pick-lock window — was three separate hardcoded
+// copies of `12 * 3600 * 1000` (two here, one baked into the Firebase
+// security rule itself). Consolidated to this one constant for the two
+// client-side copies; the rules copy stays a separate hardcoded literal
+// on purpose (deliberately not wired to a live config value — changing
+// the lock window is rare enough that a manual rules-file edit is fine,
+// and a Firebase rule reading a dynamic number is a materially bigger
+// risk surface than this small a convenience gain justifies).
+const TIP_LOCK_WINDOW_MS = 12 * 3600 * 1000;
+
+// Single shared source of truth for the season-start-round config value,
+// replacing four independent copies of the same fetch+parse+default-to-1
+// pattern (checkAndAwardTippingXP, computeTippingDiagnostics,
+// renderTippingLadder, and the health check's config-sanity read) that had
+// drifted into place separately over time. getSeasonStartRoundInfo()
+// returns the full picture (raw stored value + whether the fetch itself
+// succeeded) for anything that needs to report on the config's health;
+// getSeasonStartRound() is the convenience wrapper for the common case of
+// just wanting the effective number to filter games by.
+async function getSeasonStartRoundInfo(){
+  try{
+    const res = await authedFetch('/tipping/config/firstRound.json');
+    const raw = await res.json();
+    return { ok: true, raw, value: raw != null ? Number(raw) : 1 };
+  }catch(e){
+    return { ok: false, raw: null, value: 1, error: e.message };
+  }
+}
+async function getSeasonStartRound(){
+  const info = await getSeasonStartRoundInfo();
+  return info.value;
+}
 let tippingFixturesCache = null;
 let tippingFixturesCacheTime = 0;
 
@@ -9257,7 +9284,7 @@ async function renderTippingRound(games, currentRound){
   const upcomingLockGames = roundGames.filter(g => {
     if(!g.date) return false;
     const kickoffMs = new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
-    const lockMs = kickoffMs - (12 * 3600 * 1000);
+    const lockMs = kickoffMs - TIP_LOCK_WINDOW_MS;
     const untilLock = lockMs - nowMs;
     return untilLock > 0 && untilLock <= soonThresholdMs;
   });
@@ -9497,7 +9524,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents, previousDraft){
 
     if(tipCountdownIntervals[g.id]) clearInterval(tipCountdownIntervals[g.id]);
     const kickoffMs = getKickoffMs(g);
-    const withinFinalWindow = (kickoffMs - Date.now()) <= 12 * 3600 * 1000;
+    const withinFinalWindow = (kickoffMs - Date.now()) <= TIP_LOCK_WINDOW_MS;
 
     if(myPick && withinFinalWindow){
       // STATE 3: saved, inside the final 12h before the opening bounce —
@@ -9883,12 +9910,7 @@ async function processInBatches(items, batchSize, worker){
 async function computeTippingDiagnostics(){
   try{
     const games = await fetchTippingFixtures();
-    let seasonStartRound = 1;
-    try{
-      const res = await authedFetch('/tipping/config/firstRound.json');
-      const val = await res.json();
-      if(val != null) seasonStartRound = Number(val);
-    }catch(e){}
+    const seasonStartRound = await getSeasonStartRound();
 
     const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)) && g.round >= seasonStartRound);
     const pickResults = await Promise.all(finishedGames.map(async g => {
@@ -10025,12 +10047,13 @@ async function runFullHealthCheck(){
   }
 
   // 5. Config sanity
-  try{
-    const res = await authedFetch('/tipping/config/firstRound.json');
-    const val = await res.json();
-    check('Season-start-round config', val != null ? 'pass' : 'warn', val != null ? `Set to Round ${val}` : 'Not set — defaults to Round 1, confirm this is intended');
-  }catch(e){
-    check('Season-start-round config', 'fail', e.message);
+  {
+    const info = await getSeasonStartRoundInfo();
+    if(!info.ok){
+      check('Season-start-round config', 'fail', info.error);
+    } else {
+      check('Season-start-round config', info.raw != null ? 'pass' : 'warn', info.raw != null ? `Set to Round ${info.raw}` : 'Not set — defaults to Round 1, confirm this is intended');
+    }
   }
 
   // 6. Tipping read health (reuses the existing diagnostic)
@@ -10999,12 +11022,7 @@ async function renderTippingLadder(games){
   // wasn't a data or auth bug at all — confirmed via the diagnostics above
   // (0 failed reads, 0 uid mismatches, 175/178 pre-Round-22 games genuinely
   // empty for everyone) before landing on this as the real fix.
-  let seasonStartRound = 1; // reuses the existing (previously unused) /tipping/config/firstRound value
-  try{
-    const res = await authedFetch('/tipping/config/firstRound.json');
-    const val = await res.json();
-    if(val != null) seasonStartRound = Number(val);
-  }catch(e){}
+  const seasonStartRound = await getSeasonStartRound();
 
   const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)) && g.round >= seasonStartRound);
   if(finishedGames.length === 0){
@@ -11184,6 +11202,20 @@ async function renderTippingLadder(games){
     area.innerHTML = '<div class="empty">No picks recorded yet.</div>';
     return;
   }
+
+  // Best-effort snapshot of this fully-computed ladder, for the Ledger's
+  // end-of-season archive screen to read from later — deliberately NOT a
+  // recomputation of the scoring logic (that logic has a long, hard-won
+  // debugging history and isn't worth the regression risk of touching
+  // again just to factor it out). Any approved viewer can write this, same
+  // pattern as syncRoundLockTime — it's just a read cache of data everyone
+  // can already independently derive from picks, never used for scoring
+  // itself. Whoever opens Tipping last before the admin runs the season
+  // archive is what makes the snapshot fresh.
+  authedFetch('/tipping/lastComputedLadder.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ updatedAt: Date.now(), seasonStartRound, rows })
+  }).catch(() => {});
 
   // Self-reported cache of this person's own season points — Firebase
   // rules only allow writing your own uid's data, so this can't cache

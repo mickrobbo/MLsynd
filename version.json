@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-23.2",
+  "version": "2026-08-23.3",
   "date": "2026-08-27",
   "changes": [
-    "No visible change — the remaining casino games (Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, Big Wheel, Mines) each moved into their own script file, completing the architecture-split project's casino-games step"
+    "Tipping season-readiness (part 1): consolidated the 4 duplicated season-start-round fetches into one shared helper, moved the 12h pick-lock window into a single constant, and the Tipping ladder now snapshots its final computed result for the new season-archive tool in Ledger's Admin tab. No visible change on the Dashboard itself."
   ]
 }
