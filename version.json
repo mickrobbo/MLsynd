@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-23.4",
+  "version": "2026-08-24.1",
   "date": "2026-08-27",
   "changes": [
-    "Tipping: new \"Past Seasons\" screen (Tipping tab sub-nav) showing each archived season's final ladder, prize pot, and Joker picks, reading from /tippingArchive."
+    "Redesigned bottom nav: Cash and Slips are now sub-tabs under Home (Overview/Cash/Slips), and Casino got a new elevated gold coin button in the middle. No data or feature changes \u2014 same tabs, new layout."
   ]
 }

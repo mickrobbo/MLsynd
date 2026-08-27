@@ -87,6 +87,13 @@
   </header>
 
   <div class="tab-panel active" id="tab-balance">
+    <div class="subnav-row" id="homeMainSubnav">
+      <button type="button" class="subnav-btn active" data-homesub="overview"><span class="subnav-icon">🏠</span>Overview</button>
+      <button type="button" class="subnav-btn" data-homesub="cash"><span class="subnav-icon">💰</span>Cash</button>
+      <button type="button" class="subnav-btn" data-homesub="slips"><span class="subnav-icon">📎</span>Slips</button>
+    </div>
+
+    <div id="homeSubview-overview" class="home-subview">
     <div id="changelogBanner" style="display:none;"></div>
     <div id="weeklyReminderPanel" class="panel" style="display:none;">
       <h2>🔔 This week's outstanding items</h2>
@@ -154,24 +161,9 @@
       <span id="syncStatusLine"></span>
       <span class="health-pill app-footer-health" id="healthPill" style="display:none;"></span>
     </div>
-  </div>
-
-  <div class="tab-panel" id="tab-board">
-    <div class="panel" style="display:flex; align-items:center; gap:12px; cursor:pointer;" id="myProfileBtn">
-      <div id="myProfileAvatarThumb" style="flex-shrink:0;"></div>
-      <div style="flex:1;">
-        <div style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:14px; color:var(--brass-light); letter-spacing:.5px;">👤 My Profile</div>
-        <div class="hint" style="margin-top:2px;">Change your photo — shown at the Hold'em table</div>
-      </div>
-      <div style="color:var(--muted); font-size:18px;">›</div>
     </div>
-    <div class="panel">
-      <h2>Leaderboard</h2>
-      <div id="leaderboardArea"></div>
-    </div>
-  </div>
 
-  <div class="tab-panel" id="tab-owed">
+    <div id="homeSubview-cash" class="home-subview" style="display:none;">
     <div class="offline-money-notice" id="moneyOfflineNoticeCash" style="display:none;"></div>
     <div class="panel" id="myDuesPanel" style="display:none; text-align:center;">
       <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">You Owe</div>
@@ -186,13 +178,29 @@
       <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Each member's equal share of the current Bank, minus what they still owe in dues. Updates automatically every week as the Bank changes.</div>
       <div id="bankShareArea"></div>
     </div>
-  </div>
+    </div>
 
-  <div class="tab-panel" id="tab-slips">
+    <div id="homeSubview-slips" class="home-subview" style="display:none;">
     <div class="panel">
       <h2>Bet slips</h2>
       <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Uploaded from the ledger app each week.</div>
       <div id="slipsArea"></div>
+    </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="tab-board">
+    <div class="panel" style="display:flex; align-items:center; gap:12px; cursor:pointer;" id="myProfileBtn">
+      <div id="myProfileAvatarThumb" style="flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:14px; color:var(--brass-light); letter-spacing:.5px;">👤 My Profile</div>
+        <div class="hint" style="margin-top:2px;">Change your photo — shown at the Hold'em table</div>
+      </div>
+      <div style="color:var(--muted); font-size:18px;">›</div>
+    </div>
+    <div class="panel">
+      <h2>Leaderboard</h2>
+      <div id="leaderboardArea"></div>
     </div>
   </div>
 
@@ -1321,11 +1329,25 @@
 <nav class="tabbar">
   <button class="tab-btn active" data-tab="balance"><span class="icon">🏠</span>Home</button>
   <button class="tab-btn" data-tab="board"><span class="icon">🏆</span>Board</button>
-  <button class="tab-btn" data-tab="owed"><span class="icon">💰</span>Cash</button>
-  <button class="tab-btn" data-tab="slips"><span class="icon">📎</span>Slips</button>
-  <button class="tab-btn" data-tab="afl"><span class="icon">🏆</span>Sport</button>
+  <button class="tab-btn tab-btn-coin" data-tab="casino">
+    <span class="coin-disc-wrap">
+      <span class="coin-glow"></span>
+      <span class="coin-laurel coin-laurel-l">🌿</span>
+      <span class="coin-laurel coin-laurel-r">🌿</span>
+      <span class="coin-disc">
+        <span class="coin-shine"></span>
+        <span class="coin-sparkle coin-sparkle-1"></span>
+        <span class="coin-sparkle coin-sparkle-2"></span>
+        <span class="coin-face">
+          <span class="coin-crown">♛</span>
+          <span class="coin-spade">♠</span>
+        </span>
+      </span>
+    </span>
+    <span class="coin-label">Casino</span>
+  </button>
   <button class="tab-btn" data-tab="tipping"><span class="icon">🏉</span>Tipping</button>
-  <button class="tab-btn" data-tab="casino"><span class="icon">🃏</span>Casino</button>
+  <button class="tab-btn" data-tab="afl"><span class="icon">⚽</span>Sport</button>
   <button class="tab-btn" data-tab="diag" id="diagTabBtn" style="display:none;"><span class="icon">🔧</span>Diag</button>
 </nav>
 
@@ -2499,7 +2521,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-23.4"; // bumped for the Tipping "Past Seasons" history viewer (reads /tippingArchive) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.1"; // bumped for the redesigned bottom nav — Cash/Slips folded into Home's sub-nav, elevated gold Casino coin replaces the old flat tab — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8587,6 +8609,18 @@ document.querySelectorAll('#sportsMainSubnav .subnav-btn').forEach(btn => {
     });
     if(view === 'racing') refreshRacing();
     if(view === 'news') refreshNews();
+  });
+});
+
+// ---------- Home tab sub-navigation (Overview / Cash / Slips) ----------
+document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const view = btn.dataset.homesub;
+    document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.home-subview').forEach(el => {
+      el.style.display = el.id === `homeSubview-${view}` ? 'block' : 'none';
+    });
+    window.scrollTo(0,0);
   });
 });
 
