@@ -2,6 +2,15 @@
 let bjDeck = [], bjPlayerHand = [], bjDealerHand = [], bjCurrentBet = 0, bjHandActive = false;
 let bjLastBet = null; // snapshot of the last hand's bet (+ Perfect Pairs), for the Same Bet button
 let bjHistory = []; // 'W'/'L'/'P' per completed hand — net result, not per-split-hand
+// Haptic feedback — feature-detected, silently does nothing on a device/
+// browser that doesn't support the Vibration API (most desktop browsers,
+// iOS Safari). Hooked directly into the two shared sound functions below
+// rather than added per-game, since every game already calls through
+// these for its chip taps and win/loss chimes — one change here reaches
+// the whole casino at once.
+function hapticPulse(pattern){
+  try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+}
 let bjAudioCtx = null;
 function bjGetAudioCtx(){
   if(!bjAudioCtx){ try{ bjAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){} }
@@ -25,6 +34,7 @@ function bjPlayCardSound(){
   noise.start();
 }
 function bjPlayChipSound(){
+  hapticPulse(8); // barely-there tick, just enough to feel a tap register
   const ctx = bjGetAudioCtx(); if(!ctx) return;
   const now = ctx.currentTime;
   [0, 0.05, 0.1].forEach((t, idx) => {
@@ -38,6 +48,7 @@ function bjPlayChipSound(){
   });
 }
 function bjPlayChime(ascending){
+  hapticPulse(ascending ? [15, 40, 15] : 35); // a little double-tap for a win, one firmer buzz for a loss — audibly and physically distinct
   const ctx = bjGetAudioCtx(); if(!ctx) return;
   const now = ctx.currentTime;
   const notes = ascending ? [523.25, 659.25, 783.99] : [440, 349.23, 293.66];
@@ -87,6 +98,86 @@ function bjPlaySpinSound(){
   noise.start(); noise.stop(ctx.currentTime + dur);
 }
 function bjWait(ms){ return new Promise(res => setTimeout(res, ms)); }
+
+// ---- Casino ambience — a very quiet filtered brown-noise loop for the
+// Casino hub/lobby/game-picker, off entirely while actually at a table
+// (where the per-action sounds above already carry the moment, and
+// shouldn't be competing with a background layer). Same brown-noise
+// technique as a leaky integrator over white noise, low-passed, just
+// like the rest of this file's sounds — no audio file involved.
+let ambientSource = null;
+let ambientGainNode = null;
+let ambientPlaying = false;
+function startCasinoAmbience(){
+  if(ambientPlaying) return;
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  ambientPlaying = true;
+  const dur = 8;
+  const bufferSize = Math.floor(ctx.sampleRate * dur);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  let lastOut = 0, peak = 0.0001;
+  for(let i = 0; i < bufferSize; i++){
+    const white = Math.random() * 2 - 1;
+    lastOut = (lastOut + 0.02 * white) / 1.02;
+    data[i] = lastOut;
+    peak = Math.max(peak, Math.abs(lastOut));
+  }
+  for(let i = 0; i < bufferSize; i++) data[i] /= peak; // normalize to full range, actual level set by the gain node below
+  // A short crossfade at the loop seam (matching the buffer's own start)
+  // so looping doesn't click — blend the tail into the head.
+  const fadeLen = Math.floor(ctx.sampleRate * 0.5);
+  for(let i = 0; i < fadeLen; i++){
+    const f = i / fadeLen;
+    const blended = data[bufferSize - fadeLen + i] * (1 - f) + data[i] * f;
+    data[i] = blended;
+    data[bufferSize - fadeLen + i] = blended;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 300;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.035, ctx.currentTime + 1.5); // deliberately quiet — felt more than heard
+  source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  source.start();
+  ambientSource = source;
+  ambientGainNode = gain;
+}
+function stopCasinoAmbience(){
+  if(!ambientPlaying) return;
+  ambientPlaying = false;
+  const ctx = bjAudioCtx;
+  const source = ambientSource, gain = ambientGainNode;
+  if(!ctx || !gain || !source){ return; }
+  gain.gain.cancelScheduledValues(ctx.currentTime);
+  gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
+  setTimeout(() => { try{ source.stop(); }catch(e){} }, 900);
+  ambientSource = null;
+  ambientGainNode = null;
+}
+// Checked from several trigger points (tab switches, showCasinoView,
+// entering/leaving a game) rather than trying to precisely track every
+// possible exit path from a game — some games have their own internal
+// "back"/"new game" buttons that don't all funnel through one function.
+// Reading the actual DOM state directly here is more robust than trying
+// to enumerate every transition individually.
+function reconcileCasinoAmbience(){
+  const onCasinoTab = document.getElementById('tab-casino') && document.getElementById('tab-casino').classList.contains('active');
+  if(!onCasinoTab){ stopCasinoAmbience(); return; }
+  const anyGamePlaying = Array.from(document.querySelectorAll('.casino-game-panel')).some(p => p.style.display === 'block');
+  if(anyGamePlaying) stopCasinoAmbience();
+  else startCasinoAmbience();
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState !== 'visible') stopCasinoAmbience();
+  else reconcileCasinoAmbience();
+});
 
 // Lightweight DOM confetti (not canvas) — each piece is a small fixed-position
 // div, angled and timed from here, animated purely by the CSS confettiFall

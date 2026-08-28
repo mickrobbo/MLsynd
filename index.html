@@ -39,6 +39,7 @@
     <div class="auth-title">MLSYND</div>
     <div class="auth-tagline">Sports Betting Syndicate</div>
     <div id="authFormWrap">
+      <div class="auth-invite-banner" id="authInviteBanner" style="display:none;">🏉 You're joining the Footy Tipping competition — sign up below to get started.</div>
       <div class="auth-tabs">
         <button type="button" class="auth-tab active" id="authTabLogin">Log in</button>
         <button type="button" class="auth-tab" id="authTabSignup">Sign up</button>
@@ -96,6 +97,7 @@
 
     <div id="homeSubview-overview" class="home-subview">
     <div id="changelogBanner" style="display:none;"></div>
+    <div class="panel" id="homeDigestWidget" style="display:none;"></div>
     <div id="weeklyReminderPanel" class="panel" style="display:none;">
       <h2>🔔 This week's outstanding items</h2>
       <div id="weeklyReminderList"></div>
@@ -310,7 +312,13 @@
 
   <div class="tab-panel" id="tab-board">
     <div class="panel">
-      <h2>Leaderboard</h2>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
+        <h2 style="margin:0;">Leaderboard</h2>
+        <div class="lb-time-toggle" id="boardLbTimeToggle">
+          <button type="button" class="lb-time-btn active" data-lb-mode="allTime">All Time</button>
+          <button type="button" class="lb-time-btn" data-lb-mode="thisMonth">This Month</button>
+        </div>
+      </div>
       <div id="leaderboardArea"></div>
     </div>
   </div>
@@ -606,7 +614,13 @@
         <div class="casino-social-tab" id="membersTabFloor">🃏 Floor</div>
       </div>
       <div id="membersLeaderboardView">
-        <div style="text-align:right; margin-bottom:4px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="tiers" style="padding:4px 9px; font-size:10.5px;">ⓘ Tier badges</button></div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
+          <div class="lb-time-toggle" id="xpLbTimeToggle">
+            <button type="button" class="lb-time-btn active" data-lb-mode="allTime">All Time</button>
+            <button type="button" class="lb-time-btn" data-lb-mode="thisMonth">This Month</button>
+          </div>
+          <button type="button" class="pill-btn casino-rules-btn" data-rules="tiers" style="padding:4px 9px; font-size:10.5px; flex-shrink:0;">ⓘ Tier badges</button>
+        </div>
         <div id="xpLeaderboardArea"><div class="empty">Loading…</div></div>
       </div>
       <div id="membersFloorView" style="display:none;">
@@ -2010,6 +2024,12 @@ async function authSignUp(name, email, password, remember){
   authStorageSet(auth, remember);
   const body = { name, email, createdAt: new Date().toISOString() };
   if(email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) body.status = 'approved';
+  // Came in via a Tipping invite link (?invite=tipping) — tagged here so
+  // the Ledger's pending-approvals list can flag it, meaning the admin
+  // doesn't have to guess which of the four role buttons to click. Purely
+  // a hint, not a grant — approval (and the ACTUAL role) still only ever
+  // happens admin-side, same as every other signup.
+  if(pendingInviteRole) body.requestedRole = pendingInviteRole;
   await fetch(`${FIREBASE_URL}/users/${auth.uid}.json?auth=${auth.idToken}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
   });
@@ -2310,6 +2330,11 @@ const GUEST_LOGIN_EMAIL = 'guest@mlsynd.app';
 const GUEST_LOGIN_PASSWORD = 'cUvlvDH2HRhGo6_uXT6pj_bR';
 const GUEST_TRIAL_XP = 500;
 let guestLinkChecked = false;
+// Set from a ?invite=tipping URL param (see initAuthGate) — a hint
+// carried through to the new user's record on signup, purely for the
+// Ledger's approval list to flag; the actual role/approval only ever
+// happens admin-side.
+let pendingInviteRole = null;
 
 // Resets the shared guest account's Casino XP to a fresh trial amount every
 // time a guest link is opened — so whatever a previous visitor won/spent
@@ -2531,6 +2556,21 @@ function initAuthGate(){
   tabLogin.addEventListener('click', () => setMode('login'));
   tabSignup.addEventListener('click', () => setMode('signup'));
 
+  // A ?invite=tipping link lands here straight to Signup, with a clear
+  // banner explaining what they're joining — the same generic signup
+  // form underneath (there's no separate account-creation path, and
+  // doesn't need one — approval and the actual role assignment already
+  // happen entirely admin-side in the Ledger's one-click role buttons).
+  // This just removes the "wait, what am I even signing up for" moment
+  // and tags the request so the admin doesn't have to guess.
+  const inviteParam = new URLSearchParams(location.search).get('invite');
+  if(inviteParam === 'tipping'){
+    pendingInviteRole = 'tipping';
+    const banner = document.getElementById('authInviteBanner');
+    if(banner) banner.style.display = 'block';
+    setMode('signup');
+  }
+
   submitBtn.addEventListener('click', async () => {
     const name = document.getElementById('authName').value.trim();
     const email = document.getElementById('authEmail').value.trim();
@@ -2678,7 +2718,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.27"; // Tipping Dues — new Ledger admin panel + profile display, same 1 XP per $2 rule as Board dues, uid-based so it reaches Tipping-only accounts too — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.31"; // Casino ambience (quiet filtered noise, lobby/hub only, off while actually playing a game) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -6553,6 +6593,7 @@ async function showCasinoView(viewId){
     renderCasinoFloorFeed();
   }
   if(isGamesTable) renderXPLog();
+  reconcileCasinoAmbience();
 }
 document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
 document.getElementById('hubRulesBtn').addEventListener('click', () => showCasinoView('casinoRulesHubView'));
@@ -6595,6 +6636,7 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     if(btn.dataset.game === 'plinko' && !plinkoBuilt){ plinkoInit(); }
     if(btn.dataset.game === 'bigwheel' && !bigWheelBuilt){ bigWheelBuildWheel(); }
     if(btn.dataset.game === 'mines' && !minesBuilt){ minesInit(); }
+    reconcileCasinoAmbience();
   });
 });
 
@@ -6682,6 +6724,7 @@ async function refreshCasinoHeroExtras(){
 // Reads every linked member's own /xp/{uid}/balance in parallel — relies on
 // the wider group-read rule added for this (same visibility level as the
 // Board's P/L), not the self-or-admin-only rule XP writes still use.
+let xpLeaderboardMode = 'allTime'; // or 'thisMonth' — persists across re-renders since renderXPLeaderboard reads this module-level flag rather than taking it as an argument
 async function renderXPLeaderboard(){
   const area = document.getElementById('xpLeaderboardArea');
   if(!currentState || !currentState.members){ area.innerHTML = '<div class="empty">No roster loaded yet.</div>'; return; }
@@ -6701,6 +6744,8 @@ async function renderXPLeaderboard(){
   const allParticipants = [...linked, ...tippingOnly];
   if(allParticipants.length === 0){ area.innerHTML = '<div class="empty">Nobody\'s linked an account yet.</div>'; return; }
   try{
+    const isThisMonth = xpLeaderboardMode === 'thisMonth';
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
     const rows = await Promise.all(allParticipants.map(async m => {
       try{
         const [balRes, lifetimeRes, streakRes, tippingRes] = await Promise.all([
@@ -6715,14 +6760,33 @@ async function renderXPLeaderboard(){
         const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
         const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(m.linkedUid), tippingPoints);
         const avatar = await getAvatarDataUri(m.linkedUid); // cached after first load, so this is free on repeat renders
-        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0, lifetime: lifetime != null ? lifetime : 0, streak: streak || 0, prestige, avatar };
-      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null, lifetime: null, streak: 0, prestige: 0, avatar: null }; }
+        // Only fetched in "This Month" mode — the full log is a heavier
+        // read than the four small values above, so All Time (the
+        // default) stays exactly as cheap as it always was.
+        let monthEarned = null;
+        if(isThisMonth){
+          try{
+            const logRes = await authedFetch(`/xp/${m.linkedUid}/log.json`);
+            const logData = logRes.ok ? await logRes.json() : null;
+            const entries = logData && typeof logData === 'object' ? Object.values(logData) : [];
+            monthEarned = entries
+              .filter(e => e && typeof e.amount === 'number' && e.amount > 0 && typeof e.ts === 'number' && e.ts >= monthStart)
+              .reduce((s, e) => s + e.amount, 0);
+          }catch(e){ monthEarned = 0; }
+        }
+        return { name: m.name, uid: m.linkedUid, balance: bal != null ? bal : 0, lifetime: lifetime != null ? lifetime : 0, monthEarned, streak: streak || 0, prestige, avatar };
+      }catch(e){ return { name: m.name, uid: m.linkedUid, balance: null, lifetime: null, monthEarned: null, streak: 0, prestige: 0, avatar: null }; }
     }));
-    rows.sort((a,b) => (b.balance || 0) - (a.balance || 0));
+    const rankKey = isThisMonth ? 'monthEarned' : 'balance';
+    rows.sort((a, b) => (b[rankKey] || 0) - (a[rankKey] || 0));
     lastLeaderboardBalances = rows; // reused by refreshCasinoHeroExtras — avoids a duplicate full-roster fetch for "my rank"
     const medals = ['🥇','🥈','🥉'];
     const topTint = ['rgba(255,214,120,.14)', 'rgba(210,210,220,.10)', 'rgba(198,140,90,.12)'];
     const topGlow = ['0 0 12px rgba(255,214,120,.35)', '0 0 10px rgba(220,220,230,.25)', '0 0 10px rgba(198,140,90,.3)'];
+    if(rows.every(r => (r[rankKey] || 0) === 0) && isThisMonth){
+      area.innerHTML = '<div class="empty">Nobody\'s earned any XP yet this month.</div>';
+      return;
+    }
     area.innerHTML = rows.map((r, i) => {
       const isMe = r.uid === currentUserUid || r.name === currentUserName;
       const isTop3 = i < 3;
@@ -6731,13 +6795,15 @@ async function renderXPLeaderboard(){
       // as an actual "heater" worth calling out on the board.
       const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
       const tierKey = casinoTierFor(r.prestige)?.key || null; // already have the prestige score for this row — no extra fetch needed for the rank card's tier
+      const primaryVal = isThisMonth ? (r.monthEarned != null ? '+' + r.monthEarned.toLocaleString() : '—') : (r.balance != null ? r.balance.toLocaleString() : '—');
+      const secondaryLabel = isThisMonth ? `💰 ${r.balance != null ? r.balance.toLocaleString() : '—'} balance` : `🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime`;
       return `<div class="xp-lb-row" data-name="${escapeHtml(r.name)}" style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '13px 8px' : '10px 4px'}; border-bottom:1px solid var(--line); cursor:pointer; ${bg}">
         <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
         ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40)}
         <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${streakBadge}</span>
         <span style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
-          <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${r.balance != null ? r.balance.toLocaleString() : '—'}</span>
-          <span class="lb-lifetime-telly">🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${primaryVal}</span>
+          <span class="lb-lifetime-telly">${secondaryLabel}</span>
         </span>
       </div>`;
     }).join('');
@@ -6752,6 +6818,20 @@ async function renderXPLeaderboard(){
     area.innerHTML = '<div class="empty">Couldn\'t load the leaderboard — try again.</div>';
   }
 }
+document.getElementById('xpLbTimeToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-lb-mode]');
+  if(!btn || btn.classList.contains('active')) return;
+  document.querySelectorAll('#xpLbTimeToggle .lb-time-btn').forEach(b => b.classList.toggle('active', b === btn));
+  xpLeaderboardMode = btn.dataset.lbMode;
+  renderXPLeaderboard();
+});
+document.getElementById('boardLbTimeToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-lb-mode]');
+  if(!btn || btn.classList.contains('active')) return;
+  document.querySelectorAll('#boardLbTimeToggle .lb-time-btn').forEach(b => b.classList.toggle('active', b === btn));
+  boardLbMode = btn.dataset.lbMode;
+  if(currentState) render(currentState);
+});
 document.getElementById('membersTabLeaderboard').addEventListener('click', () => {
   document.getElementById('membersTabLeaderboard').classList.add('active');
   document.getElementById('membersTabFloor').classList.remove('active');
@@ -7512,8 +7592,10 @@ function openBoardProfile(m, name){
   document.getElementById('profileAvatarArea').innerHTML = ''; // clear immediately so the previous profile's photo can't flash before the new one loads
   document.getElementById('profileFlair').style.display = 'none'; // these two are static HTML (exist since page load) so a synchronous reset here is safe — clears the previous profile's value before the new async fetch lands
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
+  document.getElementById('profilePrestigeBarWrap').classList.remove('revealed');
   document.getElementById('profileLiveStatus').style.display = 'none'; // also static HTML — same reasoning
   document.getElementById('profileGameBreakdownSection').style.display = 'none';
+  document.getElementById('profileGameBreakdownSection').classList.remove('revealed');
   document.getElementById('profileFlexBanner').style.display = 'none';
   // profileBiggestWinCell is NOT reset here — unlike the two above, it's
   // only created later in this same function (inside profileStats'
@@ -7675,8 +7757,10 @@ function openTippingOnlyProfile(uid, name){
   document.getElementById('profileAvatarArea').innerHTML = '';
   document.getElementById('profileFlair').style.display = 'none';
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
+  document.getElementById('profilePrestigeBarWrap').classList.remove('revealed');
   document.getElementById('profileLiveStatus').style.display = 'none';
   document.getElementById('profileGameBreakdownSection').style.display = 'none';
+  document.getElementById('profileGameBreakdownSection').classList.remove('revealed');
   document.getElementById('profileFlexBanner').style.display = 'none';
 
   // Starts empty — loadProfileCasinoBadges below fills in Founding
@@ -7845,6 +7929,7 @@ async function loadProfileGameStats(linkedUid, forName){
       if(allGames.length > 0){
         const maxCount = allGames[0][1].count;
         breakdownSection.style.display = 'block';
+        breakdownSection.classList.add('revealed'); // same reasoning as the prestige bar's — display alone isn't reliable this late
         breakdownBars.innerHTML = allGames.map(([gname, stats]) => {
           const pct = maxCount > 0 ? Math.max(6, (stats.count / maxCount) * 100) : 6; // 6% floor so even a single-play game shows a visible sliver, not nothing
           return `<div class="profile-game-bar-row">
@@ -8057,6 +8142,7 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     const barLabel = document.getElementById('profilePrestigeBarLabel');
     if(barWrap && barFill && barLabel){
       barWrap.style.display = 'block';
+      barWrap.classList.add('revealed'); // the display change alone doesn't reliably restart a keyframe animation this late — this class is what the CSS transition actually keys off
       if(t && t.key === 'diamond'){
         barFill.style.width = '100%';
         barLabel.innerHTML = `${Math.round(prestige).toLocaleString()} prestige — top tier reached <span class="tap-hint">(tap for breakdown)</span>`;
@@ -8187,6 +8273,30 @@ document.getElementById('profileCloseBtn').addEventListener('click', () => {
 document.getElementById('profileModal').addEventListener('click', (e) => {
   if(e.target.id === 'profileModal') document.getElementById('profileModal').classList.remove('open');
 });
+
+// Board leaderboard time filter. "This month" shows a record/win-rate
+// view rather than dollar P/L — the per-week history entries store the
+// leg's result and odds, but never the actual dollar stake, so an
+// accurate "this month's $" figure genuinely can't be reconstructed from
+// existing data without guessing at bet sizes. A monthly win-rate view
+// is fully supported by real data AND arguably captures "who's hot right
+// now" better than a dollar figure would anyway.
+let boardLbMode = 'allTime'; // or 'thisMonth'
+function computeMonthlyRecord(name, state){
+  const history = state.history || [];
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+  let wins = 0, losses = 0, voids = 0;
+  history.forEach(w => {
+    if(!w.savedAt || w.savedAt < monthStart) return;
+    const entry = w.groupEntries && w.groupEntries[name];
+    if(!entry || !entry.result) return;
+    if(entry.result === 'Win') wins++;
+    else if(entry.result === 'Loss') losses++;
+    else voids++; // Void or MIA
+  });
+  const decided = wins + losses;
+  return { wins, losses, voids, winPct: decided > 0 ? wins / decided : 0, decided };
+}
 
 function rankedMembers(members){
   const withDerived = members.map(m => ({ ...m, ...computeDerived(m) }));
@@ -9036,23 +9146,50 @@ function render(state){
   }
 
   const ranked = rankedMembers(state.members);
-  let html = '<div class="lb-scroll"><table class="lb-table"><tr><th class="lb-sticky lb-rank-col">#</th><th class="lb-sticky lb-name-col">Name</th><th>P/L</th><th>Win%</th><th>Score</th><th>W-L-V</th><th>Ind W-L</th><th>Avg Leg</th></tr>';
-  ranked.forEach((m, i) => {
-    const rank = i + 1;
-    const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
-    const rowCls = `${rank===1?'rank-1':''}${isMe ? ' my-row' : ''}`;
-    html += `<tr class="${rowCls}">
-      <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
-      <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}" data-uid="${escapeHtml(m.linkedUid || '')}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
-      <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
-      <td>${(m.winPct*100).toFixed(0)}%</td>
-      <td>${m.dataScore.toFixed(2)}</td>
-      <td>${m.wins}-${m.losses}-${m.voids}</td>
-      <td>${m.indWin}-${m.indLoss}</td>
-      <td>${m.avgLeg > 0 ? '@ ' + m.avgLeg.toFixed(2) : '—'}</td>
-    </tr>`;
-  });
-  html += '</table></div>';
+  let html;
+  if(boardLbMode === 'thisMonth'){
+    // A simpler, focused table for this view — record/win-rate rather
+    // than the full all-time column set, since P/L genuinely isn't
+    // available for a monthly window (see computeMonthlyRecord above).
+    const monthlyRows = ranked.map(m => ({ m, rec: computeMonthlyRecord(m.name, state) }))
+      .sort((a, b) => (b.rec.wins - a.rec.wins) || (b.rec.winPct - a.rec.winPct));
+    const anyPlayed = monthlyRows.some(r => r.rec.decided > 0 || r.rec.voids > 0);
+    if(!anyPlayed){
+      html = '<div class="empty">No multi results recorded yet this month.</div>';
+    } else {
+      html = '<div class="lb-scroll"><table class="lb-table"><tr><th class="lb-sticky lb-rank-col">#</th><th class="lb-sticky lb-name-col">Name</th><th>Record</th><th>Win%</th></tr>';
+      monthlyRows.forEach(({ m, rec }, i) => {
+        const rank = i + 1;
+        const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
+        const rowCls = `${rank===1 && rec.wins > 0 ? 'rank-1' : ''}${isMe ? ' my-row' : ''}`;
+        html += `<tr class="${rowCls}">
+          <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
+          <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}" data-uid="${escapeHtml(m.linkedUid || '')}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
+          <td>${rec.wins}-${rec.losses}-${rec.voids}</td>
+          <td>${rec.decided > 0 ? (rec.winPct*100).toFixed(0) + '%' : '—'}</td>
+        </tr>`;
+      });
+      html += '</table></div>';
+    }
+  } else {
+    html = '<div class="lb-scroll"><table class="lb-table"><tr><th class="lb-sticky lb-rank-col">#</th><th class="lb-sticky lb-name-col">Name</th><th>P/L</th><th>Win%</th><th>Score</th><th>W-L-V</th><th>Ind W-L</th><th>Avg Leg</th></tr>';
+    ranked.forEach((m, i) => {
+      const rank = i + 1;
+      const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
+      const rowCls = `${rank===1?'rank-1':''}${isMe ? ' my-row' : ''}`;
+      html += `<tr class="${rowCls}">
+        <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
+        <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}" data-uid="${escapeHtml(m.linkedUid || '')}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
+        <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
+        <td>${(m.winPct*100).toFixed(0)}%</td>
+        <td>${m.dataScore.toFixed(2)}</td>
+        <td>${m.wins}-${m.losses}-${m.voids}</td>
+        <td>${m.indWin}-${m.indLoss}</td>
+        <td>${m.avgLeg > 0 ? '@ ' + m.avgLeg.toFixed(2) : '—'}</td>
+      </tr>`;
+    });
+    html += '</table></div>';
+  }
   document.getElementById('leaderboardArea').innerHTML = html;
   refreshJokerIconSlots();
   // Avatar rank card fetched/inserted after the fact rather than awaited
@@ -9434,6 +9571,7 @@ function setActiveTab(tab){
   timeTrackSwitchTo(tab);
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  reconcileCasinoAmbience(); // starts/stops based on the tab-panel state just set above — no-ops harmlessly if the audio context isn't ready yet (e.g. a silent session-restore before any real tap), corrects itself on the next trigger
   window.scrollTo(0,0);
   try{ sessionStorage.setItem('mlsynd-active-tab', tab); }catch(e){}
   // Sport/Tipping/Board polling is tab-scoped (see startTabScopedPolling)
@@ -13016,6 +13154,70 @@ document.getElementById('newsCategorySelect').addEventListener('change', () => {
   refreshNews();
 });
 
+// Home digest — a quick "what's happening" glance (open bounties, a
+// recent notable win, next tipping lockout), computed ONCE per session
+// rather than kept live, so it's genuinely cheap: no dedicated poller the
+// way the Casino ticker has, just a single pass right after the first
+// real data load.
+async function renderHomeDigest(){
+  const el = document.getElementById('homeDigestWidget');
+  if(!el || currentUserRole === 'readonly') return; // guests don't have Casino/Bounties activity worth digesting
+  const parts = [];
+
+  try{
+    const res = await authedFetch('/bounties.json');
+    const bounties = res.ok ? ((await res.json()) || {}) : {};
+    const openCount = Object.values(bounties).filter(b => b && b.status === 'open').length;
+    if(openCount > 0){
+      parts.push(`<div class="home-digest-row">🎯 <b>${openCount}</b> ${openCount === 1 ? 'bounty' : 'bounties'} open right now</div>`);
+    }
+  }catch(e){}
+
+  try{
+    if(currentState && Array.isArray(currentState.members)){
+      const linked = currentState.members.filter(m => m.linkedUid);
+      const orderBy = encodeURIComponent('"ts"');
+      const perMember = await Promise.all(linked.map(async m => {
+        try{
+          const res = await authedFetch(`/xp/${m.linkedUid}/log.json?orderBy=${orderBy}&limitToLast=5`);
+          if(!res.ok) return [];
+          const data = await res.json();
+          return data && typeof data === 'object' ? Object.values(data).map(e => ({ name: m.name, ...e })) : [];
+        }catch(e){ return []; }
+      }));
+      const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const recent = perMember.flat()
+        .filter(e => e && typeof e.amount === 'number' && e.amount >= CASINO_TICKER_THRESHOLD_XP && e.ts >= dayAgo)
+        .sort((a, b) => (b.amount || 0) - (a.amount || 0))[0];
+      if(recent){
+        parts.push(`<div class="home-digest-row">🎰 <b>${escapeHtml(recent.name)}</b> won +${recent.amount.toLocaleString()} XP — ${escapeHtml(recent.reason || 'Casino')}</div>`);
+      }
+    }
+  }catch(e){}
+
+  try{
+    const games = await fetchTippingFixtures();
+    const now = Date.now();
+    let nextLock = null;
+    (games || []).forEach(g => {
+      if(!g.date) return;
+      const kickoffMs = new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
+      const lockMs = kickoffMs - TIP_LOCK_WINDOW_MS;
+      if(lockMs > now && (!nextLock || lockMs < nextLock)) nextLock = lockMs;
+    });
+    if(nextLock){
+      const msLeft = nextLock - now;
+      const hrs = Math.floor(msLeft / 3600000);
+      const mins = Math.floor((msLeft % 3600000) / 60000);
+      const timeText = hrs >= 24 ? `${Math.floor(hrs / 24)}d ${hrs % 24}h` : hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+      parts.push(`<div class="home-digest-row">⏰ Next tipping lockout in <b>${timeText}</b></div>`);
+    }
+  }catch(e){}
+
+  if(parts.length === 0){ el.style.display = 'none'; return; }
+  el.innerHTML = `<h2 style="font-size:14px; margin-bottom:2px;">📋 What's Happening</h2>${parts.join('')}`;
+  el.style.display = 'block';
+}
 function startApp(){
   refresh().then(() => {
     // Auto-link this account to its Board/Ledger roster entry on every
@@ -13027,6 +13229,7 @@ function startApp(){
     // Guests aren't a roster member and shouldn't be prompted to "pick which
     // name is you" — that flow (and its write) is for real squad members only.
     if(currentUserRole !== 'readonly') resolveMyMemberIndex(currentUserName).catch(() => {});
+    renderHomeDigest();
   });
   // Admin-only, self-gated — checks once per session whether a past month's
   // casino pot never got closed out, and distributes it automatically if

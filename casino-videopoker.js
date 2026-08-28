@@ -152,6 +152,8 @@ async function vpDraw(){
     bjPlayChime(true);
     slotsPlayCoinCascade(isBigWin || result.key === 'quads');
     bjLaunchConfetti(outcomeEl, isBigWin ? 42 : 20);
+    panelEl.classList.remove('pc-flash-gold'); void panelEl.offsetWidth; panelEl.classList.add('pc-flash-gold');
+    setTimeout(() => panelEl.classList.remove('pc-flash-gold'), 700);
   } else {
     delta = -amount;
     outcomeEl.textContent = `No pair of Tens or better — ${delta} XP`;

@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.27",
+  "version": "2026-08-24.31",
   "date": "2026-08-27",
   "changes": [
-    "\ud83c\udfc8 New: Tipping Dues \u2014 a separate one-off fee for the Tipping competition (admin sets the amount, currently TBD), completely independent of the $840 Board dues and tracked purely by account rather than Board roster membership, so it works for Tipping-only accounts too. Same rule as Board dues: 1 Casino XP per $2 paid. Admin panel lives in the Ledger; paid/owed status now shows on the profile for anyone who's been added."
+    "\ud83d\udd0a New: Casino ambience \u2014 a very quiet room-tone loop while you're in the lobby, browsing games, or on Rules/XP/Badges, synthesized the same way every other sound in this casino is (no audio file). Fades out the moment you actually open a game (where the per-action sounds already carry it) and fades back in when you return."
   ]
 }
