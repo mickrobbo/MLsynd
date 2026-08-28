@@ -440,6 +440,64 @@
      bubble bug: cramming items into one row forces small, awkward text.
      A 2x2 grid gives each bubble real width no matter how many there are. */
   .casino-hub-row{ display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-top:4px; }
+
+  /* ---- Acts of God — a spontaneous, group-wide live event banner. ---- */
+  .act-of-god-banner{
+    display:flex; flex-direction:column; gap:2px; padding:10px 14px; margin-bottom:12px;
+    border-radius:12px; text-align:center;
+    background:linear-gradient(120deg, rgba(245,232,168,.22), rgba(203,177,102,.12));
+    border:1px solid var(--brass); animation: actOfGodBannerPulse 2.4s ease-in-out infinite;
+  }
+  .act-of-god-banner b{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:.3px; color:var(--brass-light); }
+  .act-of-god-banner span{ font-size:11px; color:var(--chalk); }
+  @keyframes actOfGodBannerPulse{
+    0%,100%{ box-shadow:0 0 0 rgba(203,177,102,0); }
+    50%{ box-shadow:0 0 16px rgba(203,177,102,.35); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .act-of-god-banner{ animation:none; }
+  }
+
+  /* ---- Syndy's Book — prediction market cards. ---- */
+  .book-market-card{
+    background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:12px;
+    padding:12px; margin-bottom:10px;
+  }
+  .book-market-question{ font-size:13px; color:var(--chalk); font-weight:600; margin-bottom:4px; }
+  .book-market-time{ font-size:10.5px; color:var(--muted); margin-bottom:10px; }
+  .book-market-odds{ display:flex; gap:8px; margin-bottom:10px; }
+  .book-odds-side{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding:8px; border-radius:8px; background:rgba(0,0,0,.2); border:1px solid var(--line);
+  }
+  .book-odds-side .lbl{ font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .book-odds-side .val{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--chalk); }
+  .book-odds-side .mult{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; color:var(--brass); }
+  .book-my-stake{
+    text-align:center; font-size:11px; padding:7px; border-radius:8px;
+    background:rgba(203,177,102,.12); color:var(--chalk);
+  }
+  .book-my-stake.won{ background:rgba(111,169,138,.18); color:var(--win); }
+  .book-my-stake.lost{ background:rgba(193,96,74,.18); color:var(--loss); }
+  #bookStakeYesBtn.selected, #bookStakeNoBtn.selected{
+    background:linear-gradient(180deg, var(--brass-light), var(--brass)); color:#0E1A16;
+  }
+
+  /* Golden Hour — a purely cosmetic wash over the whole app while it's
+     active. Applied to body so it reaches every tab, not just Casino —
+     the point is the whole app visibly feels different for the hour. */
+  body.golden-hour-active::before{
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:9999;
+    background:radial-gradient(ellipse at top, rgba(245,214,120,.10), transparent 60%);
+    animation: goldenHourShimmer 6s ease-in-out infinite;
+  }
+  @keyframes goldenHourShimmer{
+    0%,100%{ opacity:.7; }
+    50%{ opacity:1; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    body.golden-hour-active::before{ animation:none; }
+  }
   .casino-hub-bubble{
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
     padding:16px 8px; border-radius:16px; cursor:pointer;
@@ -3180,6 +3238,21 @@
   background:linear-gradient(180deg, var(--brass-light), var(--brass)); color:#0E1A16;
   box-shadow:0 2px 8px rgba(199,162,72,.3);
 }
+
+/* ---- Ghost record banner — a departed member's all-time best season,
+   kept as a visible target rather than buried in the archive. ---- */
+.ghost-record-banner{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:10px;
+  border-radius:10px; background:rgba(127,216,255,.08); border:1px solid rgba(127,216,255,.3);
+  font-size:11.5px; color:var(--chalk);
+}
+.ghost-record-banner .icon{ font-size:18px; flex-shrink:0; }
+.ghost-record-banner b{ color:#7FD8FF; }
+.ghost-record-close{
+  margin-top:6px; padding:8px 10px; border-radius:8px; background:rgba(127,216,255,.1);
+  border:1px solid rgba(127,216,255,.35); font-size:11px; color:var(--chalk); text-align:center;
+}
+.ghost-record-close b{ color:#7FD8FF; }
 
 /* ---- Board leaderboard's "This Month" flex-row list — see the
    comment at its call site for why this isn't a <table>. ---- */

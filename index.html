@@ -321,6 +321,7 @@
           <button type="button" class="lb-time-btn" data-lb-mode="thisMonth">This Month</button>
         </div>
       </div>
+      <div class="ghost-record-banner" id="ghostRecordBanner" style="display:none;"></div>
       <div id="leaderboardArea"></div>
     </div>
   </div>
@@ -468,6 +469,7 @@
     <div id="casinoTicker" class="casino-ticker" style="display:none;"></div>
 
     <!-- Landing hub: primary action, right after your XP — not buried under info panels. -->
+    <div class="act-of-god-banner" id="actOfGodBanner" style="display:none;"></div>
     <div class="panel" id="casinoHubPanel" style="padding:14px 10px; text-align:center;">
       <div class="casino-hub-row">
         <div class="casino-hub-bubble" id="hubGamesBtn">
@@ -490,6 +492,14 @@
           <span class="casino-hub-label">Badges</span>
           <span class="casino-hub-sub">Founding Player &amp; XP milestones</span>
         </div>
+        <div class="casino-hub-bubble" id="hubBookBtn">
+          <span class="casino-hub-icon">📖</span>
+          <span class="casino-hub-label">Syndy's Book</span>
+          <span class="casino-hub-sub">Stake XP on group predictions</span>
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:8px;">
+        <button type="button" class="pill-btn" id="syndyVoiceToggleBtn" style="font-size:10.5px; padding:5px 10px;">🔊 Syndy Voice: On</button>
       </div>
     </div>
 
@@ -647,6 +657,50 @@
         <button type="button" class="pill-btn" id="badgesBackBtn">← Back</button>
       </div>
       <div id="casinoBadgesBody"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- Syndy's Book — peer prediction markets. Parimutuel pool payouts
+         (everyone's stake on the losing side splits across the winning
+         side, proportional to stake), presented as Syndy running the
+         book — the effective payout genuinely shifts as more piles onto
+         one side, giving it the real feel of a moving line without
+         needing an actual dynamically-quoted odds engine underneath. -->
+    <div class="panel casino-view" id="casinoBookView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">📖 Syndy's Book</h2>
+        <button type="button" class="pill-btn" id="bookBackBtn">← Back</button>
+      </div>
+      <div class="hint">Syndy runs the book — stake XP on real questions about the group. When a market resolves, the losing side's whole pool splits across everyone who backed the winner, proportional to their stake. The more that piles onto one side, the better the payout gets for whoever's still on the other.</div>
+      <div id="bookAdminCreateWrap" style="display:none; margin-top:10px; text-align:center;">
+        <button type="button" class="pill-btn pill-btn-action" id="bookCreateMarketBtn">+ New Market</button>
+      </div>
+      <div id="bookMarketsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div id="bookCreateModal" class="profile-modal">
+      <div class="profile-sheet" style="text-align:center;">
+        <button type="button" class="profile-close" id="bookCreateCloseBtn">✕</button>
+        <h2 style="font-size:16px; margin-bottom:12px;">New Market</h2>
+        <input type="text" id="bookCreateQuestion" placeholder="Will Tim win 3 multis in a row this month?" style="width:100%; margin-bottom:10px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
+        <label style="display:block; font-size:11px; color:var(--muted); text-align:left; margin-bottom:4px;">Closes in (hours)</label>
+        <input type="number" id="bookCreateHours" value="24" min="1" style="width:100%; margin-bottom:14px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
+        <button type="button" class="pill-btn pill-btn-primary" id="bookCreateSubmitBtn" style="width:100%;">Create Market</button>
+        <div class="status-msg" id="bookCreateStatus" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div id="bookStakeModal" class="profile-modal">
+      <div class="profile-sheet" style="text-align:center;">
+        <button type="button" class="profile-close" id="bookStakeCloseBtn">✕</button>
+        <h2 style="font-size:15px; margin-bottom:14px;" id="bookStakeQuestion"></h2>
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <button type="button" class="pill-btn pill-btn-action" id="bookStakeYesBtn" style="flex:1;">YES</button>
+          <button type="button" class="pill-btn pill-btn-action" id="bookStakeNoBtn" style="flex:1;">NO</button>
+        </div>
+        <input type="number" id="bookStakeAmount" placeholder="XP amount" style="width:100%; margin-bottom:12px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
+        <button type="button" class="pill-btn pill-btn-primary" id="bookStakeSubmitBtn" style="width:100%;">Place Stake</button>
+        <div class="status-msg" id="bookStakeStatus" style="margin-top:8px;"></div>
+      </div>
     </div>
 
     <!-- Head-to-head challenges — stake is escrowed the moment a challenge
@@ -1593,6 +1647,7 @@
       <button type="button" class="pill-btn pill-btn-action" id="profileNudgeBtn">👋 Nudge</button>
     </div>
     <div class="profile-stat-grid" id="profileStats"></div>
+    <div class="ghost-record-close" id="profileGhostChase" style="display:none;"></div>
     <div class="profile-game-breakdown-section" id="profileGameBreakdownSection" style="display:none;">
       <div class="profile-form-label">Where the XP Goes</div>
       <div id="profileGameBreakdownBars"></div>
@@ -2727,7 +2782,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.34"; // removed the opacity-transition dependency for the prestige bar / XP-by-game breakdown entirely — display:none→block is now the ONLY visibility mechanism, can't get stuck invisible regardless of timing — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.37"; // Syndy's Book (peer prediction markets, parimutuel payout) + Syndy Voice (spoken reaction to big wins via browser TTS) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5547,8 +5602,101 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// ---- Acts of God — a spontaneous, group-wide live event (Double XP
+// Hour, Golden Hour, a surprise House Bounty), triggered by a scheduled
+// server-side function roughly every so often, never by anything
+// client-side. This module just reads /actsOfGod/current (read-only for
+// clients — see firebase-rules.json) and reacts to it.
+let activeActOfGod = null; // { type, label, desc, startedAt, endsAt, bountyId } or null
+function isDoubleXpActive(){
+  return !!(activeActOfGod && activeActOfGod.type === 'doubleXp' && activeActOfGod.endsAt > Date.now());
+}
+async function pollActsOfGod(){
+  try{
+    const res = await authedFetch('/actsOfGod/current.json');
+    const data = res.ok ? await res.json() : null;
+    const wasActive = activeActOfGod && activeActOfGod.endsAt > Date.now();
+    const isActive = data && data.endsAt > Date.now();
+    activeActOfGod = isActive ? data : null;
+    document.body.classList.toggle('golden-hour-active', !!(isActive && activeActOfGod.type === 'goldenHour'));
+    if(isActive && !wasActive){
+      showToast(`${activeActOfGod.label} — ${activeActOfGod.desc}`);
+    }
+    renderActOfGodBanner();
+  }catch(e){}
+}
+function renderActOfGodBanner(){
+  const el = document.getElementById('actOfGodBanner');
+  if(!el) return;
+  if(!activeActOfGod){ el.style.display = 'none'; return; }
+  const minsLeft = Math.max(0, Math.round((activeActOfGod.endsAt - Date.now()) / 60000));
+  el.innerHTML = `<b>${escapeHtml(activeActOfGod.label)}</b><span>${escapeHtml(activeActOfGod.desc)} — ${minsLeft}m left</span>`;
+  el.style.display = 'flex';
+}
+setInterval(pollActsOfGod, 60000);
+
+// ---- Syndy Voice — real-time spoken reaction to a big live win, using
+// the browser's own built-in text-to-speech (Web Speech API). Free, no
+// API key, no server cost — the tradeoff is voice quality/character
+// varies a lot by device and browser, since it's whatever voice the
+// person's own phone/browser ships with, not a custom AI voice. Local
+// to whoever just won, not broadcast to anyone else — Web Speech only
+// ever speaks on the device that calls it.
+const SYNDY_VOICE_SETTING_KEY = 'mlsynd-syndy-voice-enabled';
+function isSyndyVoiceEnabled(){
+  try{ return localStorage.getItem(SYNDY_VOICE_SETTING_KEY) !== 'off'; }catch(e){ return true; }
+}
+const SYNDY_BIG_WIN_LINES = [
+  'Oh, that is a big one!',
+  'Somebody call the house — we have a winner.',
+  'Well well well, look at that payout.',
+  'Now THAT is how you do it.',
+  'The house is sweating a little after that one.',
+];
+function syndySpeakBigWin(amount){
+  if(!isSyndyVoiceEnabled()) return;
+  try{
+    if(!window.speechSynthesis) return;
+    window.speechSynthesis.cancel(); // don't let reactions queue/stack if a couple of big wins land in quick succession
+    const line = SYNDY_BIG_WIN_LINES[Math.floor(Math.random() * SYNDY_BIG_WIN_LINES.length)];
+    const utter = new SpeechSynthesisUtterance(`${line} Plus ${amount.toLocaleString()} X P.`); // "X P" spaced out — most TTS voices otherwise clip or mangle the bare acronym
+    utter.rate = 1.05;
+    utter.volume = 0.9;
+    window.speechSynthesis.speak(utter);
+  }catch(e){}
+}
+function updateSyndyVoiceToggleUI(){
+  const btn = document.getElementById('syndyVoiceToggleBtn');
+  if(!btn) return;
+  const on = isSyndyVoiceEnabled();
+  btn.textContent = on ? '🔊 Syndy Voice: On' : '🔇 Syndy Voice: Off';
+}
+document.getElementById('syndyVoiceToggleBtn').addEventListener('click', () => {
+  try{
+    const next = isSyndyVoiceEnabled() ? 'off' : 'on';
+    localStorage.setItem(SYNDY_VOICE_SETTING_KEY, next);
+  }catch(e){}
+  updateSyndyVoiceToggleUI();
+});
+updateSyndyVoiceToggleUI();
+
 async function awardXP(amount, reason, opts){
   if(!currentUserUid || !amount) return;
+  // Double XP Hour — only wins get doubled, never losses (that'd be a
+  // punishing "double loss hour", not the intent). Applied here since
+  // this is the one central choke point every casino game already
+  // funnels through, same reason the Monthly Pot tracking lives here.
+  if(amount > 0 && isDoubleXpActive()) amount = amount * 2;
+  // Syndy reacts out loud to a genuinely big win, live, the moment it
+  // happens — same threshold the floor-feed ticker already uses for
+  // "big win", so this doesn't invent a second definition of big.
+  // Deliberately NOT gated on opts.silent (prediction-market stakes/
+  // payouts use silent:true, but those aren't casino wins Syndy would
+  // ever react to) — gated on the reason instead, so a big loss or a
+  // big non-casino XP movement doesn't get a celebratory reaction.
+  if(amount >= CASINO_TICKER_THRESHOLD_XP && CASINO_POT_REASON_PATTERN.test(reason || '')){
+    syndySpeakBigWin(amount);
+  }
   try{
     const res = await authedFetch(`/xp/${currentUserUid}/balance.json`);
     const current = (await res.json()) || 0;
@@ -6608,9 +6756,245 @@ document.getElementById('hubGamesBtn').addEventListener('click', () => showCasin
 document.getElementById('hubRulesBtn').addEventListener('click', () => showCasinoView('casinoRulesHubView'));
 document.getElementById('hubXpBtn').addEventListener('click', () => { renderXpInfoView(); showCasinoView('casinoXpInfoView'); });
 document.getElementById('hubBadgesBtn').addEventListener('click', () => { renderCasinoBadgesView(); showCasinoView('casinoBadgesView'); });
+document.getElementById('hubBookBtn').addEventListener('click', () => { renderSyndyBook(); showCasinoView('casinoBookView'); });
+document.getElementById('bookBackBtn').addEventListener('click', () => showCasinoView(null));
 document.getElementById('rulesHubBackBtn').addEventListener('click', () => showCasinoView(null));
 document.getElementById('xpInfoBackBtn').addEventListener('click', () => showCasinoView(null));
 document.getElementById('badgesBackBtn').addEventListener('click', () => showCasinoView(null));
+
+// ---- Syndy's Book — peer prediction markets, parimutuel payout. ----
+async function renderSyndyBook(){
+  const area = document.getElementById('bookMarketsArea');
+  if(!area) return;
+  const createWrap = document.getElementById('bookAdminCreateWrap');
+  const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  if(createWrap) createWrap.style.display = isAdmin ? 'block' : 'none';
+  try{
+    const res = await authedFetch('/predictionMarkets.json');
+    const markets = res.ok ? ((await res.json()) || {}) : {};
+    const entries = Object.entries(markets).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No markets yet.</div>';
+      return;
+    }
+    const now = Date.now();
+    area.innerHTML = entries.map(([id, mkt]) => {
+      const stakes = mkt.stakes || {};
+      const stakeList = Object.entries(stakes);
+      const yesPool = stakeList.filter(([, s]) => s.side === 'yes').reduce((sum, [, s]) => sum + (s.amount || 0), 0);
+      const noPool = stakeList.filter(([, s]) => s.side === 'no').reduce((sum, [, s]) => sum + (s.amount || 0), 0);
+      const totalPool = yesPool + noPool;
+      const myStake = stakes[currentUserUid];
+      const isClosed = now >= (mkt.closesAt || 0);
+      const isResolved = mkt.status === 'resolved';
+      const yesMult = yesPool > 0 ? (totalPool / yesPool).toFixed(2) : '—';
+      const noMult = noPool > 0 ? (totalPool / noPool).toFixed(2) : '—';
+      const timeLeft = (mkt.closesAt || 0) - now;
+      const timeText = isResolved ? `Resolved: ${mkt.outcome === 'yes' ? 'YES' : 'NO'}`
+        : isClosed ? 'Closed — awaiting resolution'
+        : timeLeft > 3600000 ? `Closes in ${Math.round(timeLeft / 3600000)}h`
+        : `Closes in ${Math.max(1, Math.round(timeLeft / 60000))}m`;
+
+      let actionHtml = '';
+      if(isResolved){
+        if(myStake){
+          const won = myStake.side === mkt.outcome;
+          actionHtml = `<div class="book-my-stake ${won ? 'won' : 'lost'}">You staked ${myStake.amount.toLocaleString()} XP on ${myStake.side.toUpperCase()} — ${won ? 'won' : 'lost'}</div>`;
+        }
+      } else if(myStake){
+        actionHtml = `<div class="book-my-stake">You staked ${myStake.amount.toLocaleString()} XP on ${myStake.side.toUpperCase()}</div>`;
+      } else if(!isClosed){
+        actionHtml = `<button type="button" class="pill-btn pill-btn-action book-stake-btn" data-market-id="${id}" data-question="${escapeHtml(mkt.question)}">Stake XP</button>`;
+      }
+      if(isAdmin && isClosed && !isResolved){
+        actionHtml += `
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <button type="button" class="pill-btn book-resolve-btn" data-market-id="${id}" data-outcome="yes" style="flex:1;">Resolve YES</button>
+            <button type="button" class="pill-btn book-resolve-btn" data-market-id="${id}" data-outcome="no" style="flex:1;">Resolve NO</button>
+          </div>`;
+      }
+      return `<div class="book-market-card">
+        <div class="book-market-question">${escapeHtml(mkt.question)}</div>
+        <div class="book-market-time">${timeText}</div>
+        <div class="book-market-odds">
+          <div class="book-odds-side"><span class="lbl">YES</span><span class="val">${yesPool.toLocaleString()} XP</span><span class="mult">${yesMult}x</span></div>
+          <div class="book-odds-side"><span class="lbl">NO</span><span class="val">${noPool.toLocaleString()} XP</span><span class="mult">${noMult}x</span></div>
+        </div>
+        ${actionHtml}
+      </div>`;
+    }).join('');
+    area.querySelectorAll('.book-stake-btn').forEach(btn => {
+      btn.addEventListener('click', () => openBookStakeModal(btn.dataset.marketId, btn.dataset.question));
+    });
+    area.querySelectorAll('.book-resolve-btn').forEach(btn => {
+      btn.addEventListener('click', () => resolveBookMarket(btn.dataset.marketId, btn.dataset.outcome));
+    });
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load markets.</div>';
+  }
+}
+
+let bookStakeMarketId = null;
+let bookStakeSide = null;
+function openBookStakeModal(marketId, question){
+  bookStakeMarketId = marketId;
+  bookStakeSide = null;
+  document.getElementById('bookStakeQuestion').textContent = question;
+  document.getElementById('bookStakeAmount').value = '';
+  document.getElementById('bookStakeStatus').textContent = '';
+  document.getElementById('bookStakeYesBtn').classList.remove('selected');
+  document.getElementById('bookStakeNoBtn').classList.remove('selected');
+  document.getElementById('bookStakeModal').classList.add('open');
+}
+document.getElementById('bookStakeCloseBtn').addEventListener('click', () => {
+  document.getElementById('bookStakeModal').classList.remove('open');
+});
+document.getElementById('bookStakeYesBtn').addEventListener('click', () => {
+  bookStakeSide = 'yes';
+  document.getElementById('bookStakeYesBtn').classList.add('selected');
+  document.getElementById('bookStakeNoBtn').classList.remove('selected');
+});
+document.getElementById('bookStakeNoBtn').addEventListener('click', () => {
+  bookStakeSide = 'no';
+  document.getElementById('bookStakeNoBtn').classList.add('selected');
+  document.getElementById('bookStakeYesBtn').classList.remove('selected');
+});
+document.getElementById('bookStakeSubmitBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('bookStakeStatus');
+  if(!bookStakeSide){ statusEl.textContent = 'Pick YES or NO first.'; return; }
+  const amount = Math.floor(Number(document.getElementById('bookStakeAmount').value));
+  if(!amount || amount <= 0){ statusEl.textContent = 'Enter a valid XP amount.'; return; }
+  const btn = document.getElementById('bookStakeSubmitBtn');
+  btn.disabled = true;
+  statusEl.textContent = 'Placing stake…';
+  try{
+    const balRes = await authedFetch(`/xp/${currentUserUid}/balance.json`);
+    const balance = (await balRes.json()) || 0;
+    if(amount > balance){
+      statusEl.textContent = `You only have ${balance.toLocaleString()} XP.`;
+      btn.disabled = false;
+      return;
+    }
+    // Rules only allow writing your OWN stake node once created, but
+    // nothing stops silently overwriting it later — block that here so a
+    // real stake can't accidentally get replaced after the fact.
+    const existingRes = await authedFetch(`/predictionMarkets/${bookStakeMarketId}/stakes/${currentUserUid}.json`);
+    const existing = existingRes.ok ? await existingRes.json() : null;
+    if(existing){
+      statusEl.textContent = "You've already staked on this market.";
+      btn.disabled = false;
+      return;
+    }
+    await awardXP(-amount, `Prediction market stake (${bookStakeSide.toUpperCase()})`, { silent: true });
+    await authedFetch(`/predictionMarkets/${bookStakeMarketId}/stakes/${currentUserUid}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ side: bookStakeSide, amount, name: currentUserName, stakedAt: Date.now() })
+    });
+    statusEl.textContent = 'Staked!';
+    showToast(`Staked ${amount.toLocaleString()} XP on ${bookStakeSide.toUpperCase()}`);
+    document.getElementById('bookStakeModal').classList.remove('open');
+    renderSyndyBook();
+  }catch(e){
+    statusEl.textContent = 'Could not place stake — try again.';
+  }
+  btn.disabled = false;
+});
+
+document.getElementById('bookCreateMarketBtn').addEventListener('click', () => {
+  document.getElementById('bookCreateQuestion').value = '';
+  document.getElementById('bookCreateHours').value = '24';
+  document.getElementById('bookCreateStatus').textContent = '';
+  document.getElementById('bookCreateModal').classList.add('open');
+});
+document.getElementById('bookCreateCloseBtn').addEventListener('click', () => {
+  document.getElementById('bookCreateModal').classList.remove('open');
+});
+document.getElementById('bookCreateSubmitBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('bookCreateStatus');
+  const question = document.getElementById('bookCreateQuestion').value.trim();
+  const hours = Number(document.getElementById('bookCreateHours').value);
+  if(!question){ statusEl.textContent = 'Enter a question.'; return; }
+  if(!hours || hours <= 0){ statusEl.textContent = 'Enter a valid number of hours.'; return; }
+  const btn = document.getElementById('bookCreateSubmitBtn');
+  btn.disabled = true;
+  statusEl.textContent = 'Creating…';
+  try{
+    const now = Date.now();
+    await authedFetch('/predictionMarkets.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, createdAt: now, closesAt: now + hours * 3600000, status: 'open', outcome: null })
+    });
+    statusEl.textContent = 'Created!';
+    showToast('Market created');
+    document.getElementById('bookCreateModal').classList.remove('open');
+    renderSyndyBook();
+  }catch(e){
+    statusEl.textContent = 'Could not create — try again.';
+  }
+  btn.disabled = false;
+});
+
+// Admin-session equivalent of the Ledger's awardXPToUid — relies on the
+// SAME admin-override clause already present in the /xp rules (self OR
+// admin can write balance/log/lifetimeEarned), so payout distribution
+// needs no new server-side function, just the resolving admin's own
+// signed-in session.
+async function awardXPToUidAsAdmin(uid, amount, reason){
+  try{
+    const balRes = await authedFetch(`/xp/${uid}/balance.json`);
+    const current = (await balRes.json()) || 0;
+    const next = current + amount;
+    await authedFetch(`/xp/${uid}/balance.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+    });
+    await authedFetch(`/xp/${uid}/log.json`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
+    });
+    if(amount > 0){
+      const ltRes = await authedFetch(`/xp/${uid}/lifetimeEarned.json`);
+      const ltCurrent = (await ltRes.json()) || 0;
+      await authedFetch(`/xp/${uid}/lifetimeEarned.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ltCurrent + amount)
+      });
+    }
+  }catch(e){}
+}
+async function resolveBookMarket(marketId, outcome){
+  if(!confirm(`Resolve this market as ${outcome.toUpperCase()}? This pays out everyone who backed the winning side and can't be undone.`)) return;
+  try{
+    const res = await authedFetch(`/predictionMarkets/${marketId}.json`);
+    const mkt = await res.json();
+    if(!mkt || mkt.status === 'resolved'){ showToast('Already resolved or not found'); return; }
+    const stakes = mkt.stakes || {};
+    const stakeList = Object.entries(stakes);
+    const winners = stakeList.filter(([, s]) => s.side === outcome);
+    const losers = stakeList.filter(([, s]) => s.side !== outcome);
+    const winPool = winners.reduce((sum, [, s]) => sum + (s.amount || 0), 0);
+    const losePool = losers.reduce((sum, [, s]) => sum + (s.amount || 0), 0);
+
+    // Standard parimutuel payout — each winner gets their own stake back
+    // plus their proportional share of the losing pool. No house cut.
+    for(const [uid, s] of winners){
+      const payout = winPool > 0 ? s.amount + Math.floor((s.amount / winPool) * losePool) : s.amount;
+      await awardXPToUidAsAdmin(uid, payout, `Syndy's Book payout — "${mkt.question}"`);
+    }
+
+    await authedFetch(`/predictionMarkets/${marketId}/status.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify('resolved')
+    });
+    await authedFetch(`/predictionMarkets/${marketId}/outcome.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(outcome)
+    });
+    await authedFetch(`/predictionMarkets/${marketId}/resolvedAt.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
+    });
+    showToast(`Resolved as ${outcome.toUpperCase()} — ${winners.length} winner(s) paid out`);
+    renderSyndyBook();
+  }catch(e){
+    showToast('Could not resolve — try again');
+  }
+}
 
 // ---- Casino game selector ----
 document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
@@ -7660,6 +8044,25 @@ function openBoardProfile(m, name){
   `;
   document.getElementById('profileModal').dataset.openName = name;
 
+  // Ghost chase — only shown when genuinely close (within 40% of the
+  // gap), so it reads as a real moment rather than showing for everyone
+  // regardless of how far off the pace they are.
+  const ghostChaseEl = document.getElementById('profileGhostChase');
+  if(ghostChaseEl){
+    const bestSeason = computeAllTimeBestSeason(currentState);
+    if(bestSeason && bestSeason.pl > 0 && m.pl > 0 && m.name !== bestSeason.name){
+      const gap = bestSeason.pl - m.pl;
+      if(gap > 0 && gap <= bestSeason.pl * 0.4){
+        ghostChaseEl.style.display = 'block';
+        ghostChaseEl.innerHTML = `${bestSeason.isGhost ? '👻' : '🏆'} <b>${fmtMoney(gap)}</b> away from beating ${bestSeason.isGhost ? "ghost " : ''}<b>${escapeHtml(bestSeason.name)}</b>'s all-time best season (${fmtMoney(bestSeason.pl)})`;
+      } else {
+        ghostChaseEl.style.display = 'none';
+      }
+    } else {
+      ghostChaseEl.style.display = 'none';
+    }
+  }
+
   // Head-to-head vs you — only makes sense on someone ELSE's profile.
   // Resolved via linkedUid, not currentUserName — account display name
   // and Board roster name are two genuinely separate, driftable fields
@@ -7772,6 +8175,7 @@ function openTippingOnlyProfile(uid, name){
   document.getElementById('profileLiveStatus').style.display = 'none';
   document.getElementById('profileGameBreakdownSection').style.display = 'none';
   document.getElementById('profileFlexBanner').style.display = 'none';
+  document.getElementById('profileGhostChase').style.display = 'none'; // no Board P/L for a Tipping-only account, so this never applies here — but openBoardProfile leaves it visible when relevant, so it needs an explicit hide when swiping from a Board profile to this one
 
   // Starts empty — loadProfileCasinoBadges below fills in Founding
   // Player / XP milestones exactly the way it already does for a full
@@ -8304,6 +8708,28 @@ function computeMonthlyRecord(name, state){
   });
   const decided = wins + losses;
   return { wins, losses, voids, winPct: decided > 0 ? wins / decided : 0, decided };
+}
+
+// ---- Ghosts — a departed member's best-ever season stays an active
+// target rather than just data sitting in the archive. seasonArchive is
+// a snapshot of state.members taken BEFORE the Ledger zeroes anyone for
+// the new season, so someone since removed from the live roster still
+// has their historical season fully intact here — that's the actual
+// "ghost" signal, no separate tracking needed.
+function computeAllTimeBestSeason(state){
+  const archive = state.seasonArchive || [];
+  if(archive.length === 0) return null;
+  const liveNames = new Set((state.members || []).map(m => m.name));
+  let best = null;
+  archive.forEach(season => {
+    (season.members || []).forEach(m => {
+      if(typeof m.pl !== 'number') return;
+      if(!best || m.pl > best.pl){
+        best = { name: m.name, pl: m.pl, seasonLabel: season.label || 'a past season', isGhost: !liveNames.has(m.name) };
+      }
+    });
+  });
+  return best;
 }
 
 function rankedMembers(members){
@@ -9154,6 +9580,23 @@ function render(state){
   }
 
   const ranked = rankedMembers(state.members);
+
+  // Ghost record banner — shown once here regardless of All Time / This
+  // Month mode, since the record itself is a lifetime/season fact, not
+  // something that has a "this month" version.
+  const ghostBannerEl = document.getElementById('ghostRecordBanner');
+  if(ghostBannerEl){
+    const best = computeAllTimeBestSeason(state);
+    if(best && best.pl > 0){
+      ghostBannerEl.style.display = 'flex';
+      ghostBannerEl.innerHTML = best.isGhost
+        ? `<span class="icon">👻</span><span>${best.isGhost ? 'Ghost record — ' : ''}<b>${escapeHtml(best.name)}</b>'s all-time best season: <b>${fmtMoney(best.pl)}</b> (${escapeHtml(best.seasonLabel)}). No longer active, but the record stands.</span>`
+        : `<span class="icon">🏆</span><span>All-time best season: <b>${escapeHtml(best.name)}</b> with <b>${fmtMoney(best.pl)}</b> (${escapeHtml(best.seasonLabel)}).</span>`;
+    } else {
+      ghostBannerEl.style.display = 'none';
+    }
+  }
+
   let html;
   if(boardLbMode === 'thisMonth'){
     // A simpler, focused list for this view — record/win-rate rather
@@ -13250,6 +13693,15 @@ async function renderHomeDigest(){
     }
   }catch(e){}
 
+  try{
+    const res = await authedFetch('/actsOfGod/current.json');
+    const event = res.ok ? await res.json() : null;
+    if(event && event.endsAt > Date.now()){
+      const minsLeft = Math.max(0, Math.round((event.endsAt - Date.now()) / 60000));
+      parts.unshift(`<div class="home-digest-row">${escapeHtml(event.label)} — ${escapeHtml(event.desc)} <b>${minsLeft}m left</b></div>`);
+    }
+  }catch(e){}
+
   if(parts.length === 0){ el.style.display = 'none'; return; }
   el.innerHTML = `<h2 style="font-size:14px; margin-bottom:2px;">📋 What's Happening</h2>${parts.join('')}`;
   el.style.display = 'block';
@@ -13266,6 +13718,7 @@ function startApp(){
     // name is you" — that flow (and its write) is for real squad members only.
     if(currentUserRole !== 'readonly') resolveMyMemberIndex(currentUserName).catch(() => {});
     renderHomeDigest();
+    pollActsOfGod();
   });
   // Admin-only, self-gated — checks once per session whether a past month's
   // casino pot never got closed out, and distributes it automatically if

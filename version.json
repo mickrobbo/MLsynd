@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-24.34",
+  "version": "2026-08-24.37",
   "date": "2026-08-27",
   "changes": [
-    "Fixed the XP bars (prestige bar, Where the XP Goes) not lighting up on profiles \u2014 for real this time. The previous fix relied on a CSS transition reliably triggering; removed that dependency entirely so display:none\u2192block is the only thing controlling visibility now, the same simple mechanism every other element in the app already uses. Can't get stuck invisible regardless of timing."
+    "\ud83d\udcd6 New: Syndy's Book \u2014 peer prediction markets. Stake XP on YES/NO questions about the group; when a market resolves, the losing side's whole pool splits across the winners, proportional to stake \u2014 the effective payout genuinely shifts as more XP piles onto one side, the same way a real parimutuel book works. Admin creates and resolves markets from the Casino tab; everyone can stake.",
+    "\ud83c\udfa4 New: Syndy Voice \u2014 a spoken reaction, out loud, the instant you land a genuinely big win. Uses the browser's own built-in text-to-speech (free, no new cost or API key) \u2014 worth knowing the voice quality/character depends entirely on your own device/browser, not a custom AI voice. Toggle in the Casino hub if it's not your thing."
   ]
 }
