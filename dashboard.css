@@ -2563,19 +2563,15 @@
     .profile-modal.open .profile-stat-grid,
     .profile-modal.open .profile-form-section{ animation:none; }
   }
-  /* The two genuinely-async sections — plain transition, no keyframe.
-     JS adds .revealed the instant it sets display:block (see
-     loadProfileCasinoBadges / loadProfileGameStats), which is what
-     actually drives the fade — the display change alone doesn't. */
-  .profile-prestige-bar-wrap, .profile-game-breakdown-section{
-    opacity:0; transition: opacity .35s ease, transform .35s ease; transform:translateY(6px);
-  }
-  .profile-prestige-bar-wrap.revealed, .profile-game-breakdown-section.revealed{
-    opacity:1; transform:translateY(0);
-  }
-  @media (prefers-reduced-motion: reduce){
-    .profile-prestige-bar-wrap, .profile-game-breakdown-section{ transition:none; }
-  }
+  /* The two genuinely-async sections (prestige bar, game breakdown) —
+     deliberately NO fade-in/opacity transition here anymore. That's what
+     caused the original "stuck invisible" bug (an element parked at
+     opacity:0 whose reveal depended on a class actually landing), and
+     this is now a second report of bars "not lighting up" — so rather
+     than trust a more careful version of the same mechanism, this
+     removes the failure mode outright: display:none → block is the only
+     visibility switch, exactly like every other element in this app.
+     Costs the nice fade-in; guarantees it can never get stuck again. */
   .profile-sheet{
     width:100%; max-width:720px; max-height:88vh; overflow-y:auto; overflow-x:hidden; position:relative;
     background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--line);

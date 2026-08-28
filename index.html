@@ -2727,7 +2727,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.33"; // fixed Board leaderboard's "This Month" table breaking (converted to flex-list), polished the time-filter pills, optimized Casino "This Month" to query server-side instead of downloading full logs — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.34"; // removed the opacity-transition dependency for the prestige bar / XP-by-game breakdown entirely — display:none→block is now the ONLY visibility mechanism, can't get stuck invisible regardless of timing — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7606,10 +7606,8 @@ function openBoardProfile(m, name){
   document.getElementById('profileAvatarArea').innerHTML = ''; // clear immediately so the previous profile's photo can't flash before the new one loads
   document.getElementById('profileFlair').style.display = 'none'; // these two are static HTML (exist since page load) so a synchronous reset here is safe — clears the previous profile's value before the new async fetch lands
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
-  document.getElementById('profilePrestigeBarWrap').classList.remove('revealed');
   document.getElementById('profileLiveStatus').style.display = 'none'; // also static HTML — same reasoning
   document.getElementById('profileGameBreakdownSection').style.display = 'none';
-  document.getElementById('profileGameBreakdownSection').classList.remove('revealed');
   document.getElementById('profileFlexBanner').style.display = 'none';
   // profileBiggestWinCell is NOT reset here — unlike the two above, it's
   // only created later in this same function (inside profileStats'
@@ -7771,10 +7769,8 @@ function openTippingOnlyProfile(uid, name){
   document.getElementById('profileAvatarArea').innerHTML = '';
   document.getElementById('profileFlair').style.display = 'none';
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
-  document.getElementById('profilePrestigeBarWrap').classList.remove('revealed');
   document.getElementById('profileLiveStatus').style.display = 'none';
   document.getElementById('profileGameBreakdownSection').style.display = 'none';
-  document.getElementById('profileGameBreakdownSection').classList.remove('revealed');
   document.getElementById('profileFlexBanner').style.display = 'none';
 
   // Starts empty — loadProfileCasinoBadges below fills in Founding
@@ -7943,7 +7939,6 @@ async function loadProfileGameStats(linkedUid, forName){
       if(allGames.length > 0){
         const maxCount = allGames[0][1].count;
         breakdownSection.style.display = 'block';
-        breakdownSection.classList.add('revealed'); // same reasoning as the prestige bar's — display alone isn't reliable this late
         breakdownBars.innerHTML = allGames.map(([gname, stats]) => {
           const pct = maxCount > 0 ? Math.max(6, (stats.count / maxCount) * 100) : 6; // 6% floor so even a single-play game shows a visible sliver, not nothing
           return `<div class="profile-game-bar-row">
@@ -8156,7 +8151,6 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     const barLabel = document.getElementById('profilePrestigeBarLabel');
     if(barWrap && barFill && barLabel){
       barWrap.style.display = 'block';
-      barWrap.classList.add('revealed'); // the display change alone doesn't reliably restart a keyframe animation this late — this class is what the CSS transition actually keys off
       if(t && t.key === 'diamond'){
         barFill.style.width = '100%';
         barLabel.innerHTML = `${Math.round(prestige).toLocaleString()} prestige — top tier reached <span class="tap-hint">(tap for breakdown)</span>`;
