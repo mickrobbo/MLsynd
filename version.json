@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-24.31",
+  "version": "2026-08-24.32",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\udd0a New: Casino ambience \u2014 a very quiet room-tone loop while you're in the lobby, browsing games, or on Rules/XP/Badges, synthesized the same way every other sound in this casino is (no audio file). Fades out the moment you actually open a game (where the per-action sounds already carry it) and fades back in when you return."
+    "Critical fix: changing your name or re-syncing picks from your profile was silently failing every time \u2014 renameOnAllMyPicks was accidentally defined inside a function it wasn't reachable from, so every attempt threw 'not defined' and quietly did nothing.",
+    "Diagnostics: added a \"Clear my errors\" button to the Recent Errors panel."
   ]
 }

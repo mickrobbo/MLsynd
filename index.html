@@ -218,6 +218,8 @@
       <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">Recent Errors</h3>
       <div class="hint">Failed tip saves, failed health-check internals, and sampled client errors — across all linked members, not just this device.</div>
       <div id="pulseErrorsArea" style="margin-top:8px;"><div class="empty">Loading…</div></div>
+      <button type="button" id="clearMyErrorsBtn" class="pill-btn" style="margin-top:10px; font-size:11px; padding:6px 12px;">🧹 Clear my errors</button>
+      <div class="status-msg" id="clearMyErrorsStatus" style="margin-top:6px;"></div>
     </div>
     <div class="panel">
       <button type="button" id="runHealthCheckBtn">🩺 Run Full System Check</button>
@@ -2525,6 +2527,32 @@ async function resolveMyMemberIndex(oldName){
   }
   return idx;
 }
+// Picks store a snapshot of your name at the time you tipped, not a live
+// lookup — so a rename needs to actively rewrite every past pick's stored
+// name, otherwise old picks/ladder rows keep showing the old one forever.
+// Top-level (not nested inside initAuthGate, where this used to live) —
+// it's called from renderProfileAvatarSection too, a completely separate
+// top-level function, which a nested declaration is out of scope for.
+// That mismatch was a real bug: every rename/resync from the profile
+// modal was throwing "renameOnAllMyPicks is not defined" and silently
+// failing partway through, since JS caught it via a try/catch and moved
+// on rather than surfacing it.
+async function renameOnAllMyPicks(newName){
+  try{
+    const games = await fetchTippingFixtures();
+    await Promise.all(games.map(async g => {
+      try{
+        const res = await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}.json`);
+        const mine = await res.json();
+        if(mine){
+          await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}/name.json`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newName)
+          });
+        }
+      }catch(e){}
+    }));
+  }catch(e){}
+}
 
 function initAuthGate(){
   const tabLogin = document.getElementById('authTabLogin');
@@ -2615,9 +2643,10 @@ function initAuthGate(){
   // first, and only falls back to matching/asking when that's not there yet.
   //
   // The actual edit-name/resync UI and click handlers now live in the
-  // profile modal (see renderProfileAvatarSection) — resolveMyMemberIndex
-  // and renameOnAllMyPicks above are still defined here since other code
-  // in this section uses them too.
+  // profile modal (see renderProfileAvatarSection), which calls the
+  // top-level resolveMyMemberIndex/renameOnAllMyPicks defined above —
+  // both moved out of this function specifically so a completely separate
+  // top-level function like that one can actually reach them.
 
   // ---------- Push notifications ----------
   // The VAPID public key is meant to be public — only the matching private
@@ -2667,26 +2696,6 @@ function initAuthGate(){
     await updatePushToggleUI();
   });
 
-  async function renameOnAllMyPicks(newName){
-    // Picks store a snapshot of your name at the time you tipped, not a live
-    // lookup — so a rename needs to actively rewrite every past pick's stored
-    // name, otherwise old picks/ladder rows keep showing the old one forever.
-    try{
-      const games = await fetchTippingFixtures();
-      await Promise.all(games.map(async g => {
-        try{
-          const res = await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}.json`);
-          const mine = await res.json();
-          if(mine){
-            await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}/name.json`, {
-              method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newName)
-            });
-          }
-        }catch(e){}
-      }));
-    }catch(e){}
-  }
-
   document.getElementById('authForgotLink').addEventListener('click', async (e) => {
     e.preventDefault();
     const email = document.getElementById('authEmail').value.trim();
@@ -2718,7 +2727,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.31"; // Casino ambience (quiet filtered noise, lobby/hub only, off while actually playing a game) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.32"; // CRITICAL FIX: renameOnAllMyPicks was defined inside initAuthGate, out of scope for renderProfileAvatarSection — every name change/resync from the profile was silently failing. Also added a "Clear my errors" button to Diagnostics — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -12507,6 +12516,29 @@ function renderPulseErrors(){
     `).join('');
   }).catch(() => { area.innerHTML = '<div class="empty">Could not load.</div>'; });
 }
+// Only clears the SIGNED-IN user's own error history — /analytics/{uid}
+// is self-write (which includes delete), same rule as everything else
+// self-owned in this app. An admin technically also has write access to
+// anyone's node per the rules, but this button intentionally only ever
+// targets your own — clearing someone else's history isn't something to
+// do by accident from a shared "Clear" button.
+document.getElementById('clearMyErrorsBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('clearMyErrorsBtn');
+  const statusEl = document.getElementById('clearMyErrorsStatus');
+  if(!currentUserUid){ statusEl.textContent = 'Not signed in.'; return; }
+  if(!confirm('Clear your own error history? This only clears your errors, not anyone else\'s.')) return;
+  btn.disabled = true;
+  statusEl.textContent = 'Clearing…';
+  try{
+    await authedFetch(`/analytics/${currentUserUid}/opsErrors.json`, { method: 'DELETE' });
+    try{ localStorage.removeItem('mlsynd_ops_errors'); }catch(e){}
+    statusEl.textContent = 'Cleared.';
+    renderPulseErrors();
+  }catch(e){
+    statusEl.textContent = 'Could not clear — try again.';
+  }
+  btn.disabled = false;
+});
 
 let diagMoneyLoaded = false;
 let diagPlayLoaded = false;
