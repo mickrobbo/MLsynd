@@ -142,7 +142,7 @@ function startCasinoAmbience(){
   filter.frequency.value = 300;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.035, ctx.currentTime + 1.5); // deliberately quiet — felt more than heard
+  gain.gain.linearRampToValueAtTime(0.024, ctx.currentTime + 1.5); // turned down from 0.035 — quieter still, felt more than heard
   source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
   source.start();
   ambientSource = source;

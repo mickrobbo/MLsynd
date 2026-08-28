@@ -2508,17 +2508,46 @@
      animation on an element restarts cleanly the moment display leaves
      none — so it naturally reads as "revealing as data arrives" rather
      than needing to be perfectly synced to one single moment. */
+  /* Staggered cascade for sections that are ALREADY visible the moment
+     the modal opens (header, action row, stat grid) — a premium reveal
+     instead of everything snapping in flat at once. Sections that only
+     become visible LATER, asynchronously, once their own fetch resolves
+     (prestige bar, head-to-head, game breakdown) are deliberately NOT
+     included here — relying on a keyframe animation's fill-mode:both
+     0% frame (opacity:0) to "restart" whenever display leaves none
+     turned out not to be reliable for a display change that happens well
+     after the modal's own .open class was already applied (the game
+     breakdown specifically got stuck invisible at its 0% frame, correct
+     data rendered underneath it and everything — a real bug, not a
+     one-off). Those three get a plain CSS transition instead (see
+     .profile-prestige-bar-wrap, .profile-headtohead,
+     .profile-game-breakdown-section below), which is driven by an actual
+     property change rather than a selector-match timing quirk, so it
+     can't get stuck the same way. */
+  /* Staggered cascade for sections that are ALREADY visible the moment
+     the modal opens (header, head-to-head, action row, stat grid, recent
+     form — all populated from data that's already local, no fetch
+     needed) — a premium reveal instead of everything snapping in flat at
+     once. The two sections that only become visible LATER, asynchronously,
+     once their own fetch resolves (prestige bar, game breakdown) are
+     deliberately NOT included here — relying on a keyframe animation's
+     fill-mode:both 0% frame (opacity:0) to "restart" whenever display
+     leaves none turned out not to be reliable for a display change that
+     happens well after the modal's own .open class was already applied
+     (the game breakdown specifically got stuck invisible at its 0%
+     frame, correct data rendered underneath it and everything — a real
+     bug, not a one-off). Those two get a plain CSS transition instead
+     (see .profile-prestige-bar-wrap / .profile-game-breakdown-section
+     below), driven by an actual property change rather than a
+     selector-match timing quirk, so it can't get stuck the same way. */
   .profile-modal.open .profile-header,
-  .profile-modal.open .profile-prestige-bar-wrap,
   .profile-modal.open .profile-headtohead,
   .profile-modal.open .profile-action-row,
   .profile-modal.open .profile-stat-grid,
-  .profile-modal.open .profile-game-breakdown-section,
   .profile-modal.open .profile-form-section{
     animation: profileSectionIn .4s ease both;
   }
   .profile-modal.open .profile-header{ animation-delay:.04s; }
-  .profile-modal.open .profile-prestige-bar-wrap{ animation-delay:.09s; }
   .profile-modal.open .profile-headtohead{ animation-delay:.13s; }
   .profile-modal.open .profile-action-row{ animation-delay:.16s; }
   .profile-modal.open .profile-stat-grid{ animation-delay:.19s; }
@@ -2529,12 +2558,23 @@
   @media (prefers-reduced-motion: reduce){
     .profile-modal.open .profile-sheet,
     .profile-modal.open .profile-header,
-    .profile-modal.open .profile-prestige-bar-wrap,
     .profile-modal.open .profile-headtohead,
     .profile-modal.open .profile-action-row,
     .profile-modal.open .profile-stat-grid,
-    .profile-modal.open .profile-game-breakdown-section,
     .profile-modal.open .profile-form-section{ animation:none; }
+  }
+  /* The two genuinely-async sections — plain transition, no keyframe.
+     JS adds .revealed the instant it sets display:block (see
+     loadProfileCasinoBadges / loadProfileGameStats), which is what
+     actually drives the fade — the display change alone doesn't. */
+  .profile-prestige-bar-wrap, .profile-game-breakdown-section{
+    opacity:0; transition: opacity .35s ease, transform .35s ease; transform:translateY(6px);
+  }
+  .profile-prestige-bar-wrap.revealed, .profile-game-breakdown-section.revealed{
+    opacity:1; transform:translateY(0);
+  }
+  @media (prefers-reduced-motion: reduce){
+    .profile-prestige-bar-wrap, .profile-game-breakdown-section{ transition:none; }
   }
   .profile-sheet{
     width:100%; max-width:720px; max-height:88vh; overflow-y:auto; overflow-x:hidden; position:relative;
@@ -2846,6 +2886,10 @@
     text-align:center; font-family:'Barlow Condensed', sans-serif; font-size:10px; letter-spacing:4px;
     text-transform:uppercase; color:var(--muted); margin-bottom:24px;
   }
+  .auth-invite-banner{
+    text-align:center; font-size:12px; color:var(--brass-light); background:rgba(203,177,102,.14);
+    border:1px solid var(--brass-dim); border-radius:10px; padding:9px 12px; margin-bottom:16px; line-height:1.4;
+  }
   .auth-tabs{ display:flex; gap:0; margin-bottom:22px; border-bottom:1px solid var(--line); }
   .auth-tab{
     flex:1; font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:1.5px; font-weight:700;
@@ -3123,6 +3167,45 @@
   background:linear-gradient(180deg, var(--brass-light), var(--brass)); color:#0E1A16; border-color:var(--brass);
   box-shadow:0 2px 10px rgba(199,162,72,.3);
 }
+
+/* ---- Leaderboard time filter — shared by the Casino and Board
+   leaderboards. Same active-state gradient/shadow treatment as
+   .casino-social-tab right above (a working, established pattern),
+   rather than inventing a separate flat-fill look for what's really the
+   same kind of control. */
+.lb-time-toggle{ display:inline-flex; border-radius:8px; overflow:hidden; border:1px solid var(--line); flex-shrink:0; background:rgba(0,0,0,.15); }
+.lb-time-btn{
+  padding:6px 11px; font-size:10.5px; font-weight:700; font-family:'Barlow Condensed', sans-serif;
+  letter-spacing:.4px; text-transform:uppercase; background:transparent; color:var(--muted);
+  border:none; cursor:pointer; transition:background .15s ease, color .15s ease; -webkit-tap-highlight-color:transparent;
+}
+.lb-time-btn:active{ transform:scale(.96); }
+.lb-time-btn.active{
+  background:linear-gradient(180deg, var(--brass-light), var(--brass)); color:#0E1A16;
+  box-shadow:0 2px 8px rgba(199,162,72,.3);
+}
+
+/* ---- Board leaderboard's "This Month" flex-row list — see the
+   comment at its call site for why this isn't a <table>. ---- */
+.lb-flex-list{ display:flex; flex-direction:column; }
+.lb-flex-row{ display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--line); }
+.lb-flex-row.my-row{ background:rgba(203,177,102,.08); border-radius:8px; }
+.lb-flex-row.my-row .lb-flex-name{ border-bottom-color: transparent; }
+.lb-flex-rank{ width:22px; text-align:center; font-family:'IBM Plex Mono', monospace; color:var(--muted); flex-shrink:0; }
+.lb-flex-name{ flex:1; cursor:pointer; color:var(--chalk); font-size:13px; }
+.lb-flex-stat{ display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0; }
+.lb-flex-stat-val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; color:var(--brass); }
+.lb-flex-stat-lbl{ font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
+
+/* ---- Home digest — a quick "what's happening" glance, computed once
+   per session rather than kept live, so it's cheap without needing a
+   dedicated poller the way the Casino ticker has. ---- */
+.home-digest-row{
+  display:flex; align-items:center; gap:8px; padding:9px 4px; font-size:12.5px; color:var(--chalk);
+  border-bottom:1px solid var(--line);
+}
+.home-digest-row:last-child{ border-bottom:none; }
+.home-digest-row b{ color:var(--brass-light); }
 
 /* ---- Jackpot draw / celebration ---- */
 .pot-celebration-sheet{ position:relative; background:none; border:none; box-shadow:none; padding:0 18px calc(20px + env(safe-area-inset-bottom, 0)); }

@@ -2727,7 +2727,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.32"; // CRITICAL FIX: renameOnAllMyPicks was defined inside initAuthGate, out of scope for renderProfileAvatarSection — every name change/resync from the profile was silently failing. Also added a "Clear my errors" button to Diagnostics — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.33"; // fixed Board leaderboard's "This Month" table breaking (converted to flex-list), polished the time-filter pills, optimized Casino "This Month" to query server-side instead of downloading full logs — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -6769,17 +6769,22 @@ async function renderXPLeaderboard(){
         const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
         const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(m.linkedUid), tippingPoints);
         const avatar = await getAvatarDataUri(m.linkedUid); // cached after first load, so this is free on repeat renders
-        // Only fetched in "This Month" mode — the full log is a heavier
-        // read than the four small values above, so All Time (the
-        // default) stays exactly as cheap as it always was.
+        // Only fetched in "This Month" mode — and even then, filtered
+        // SERVER-SIDE via Firebase's orderBy/startAt (log is indexed on
+        // ts, see firebase-rules.json) rather than downloading someone's
+        // entire lifetime log and filtering it client-side. That log can
+        // get genuinely large for an active player, and this was the
+        // real cause of "This Month" feeling slow — this fetches only
+        // this month's entries, not the whole history.
         let monthEarned = null;
         if(isThisMonth){
           try{
-            const logRes = await authedFetch(`/xp/${m.linkedUid}/log.json`);
+            const orderBy = encodeURIComponent('"ts"');
+            const logRes = await authedFetch(`/xp/${m.linkedUid}/log.json?orderBy=${orderBy}&startAt=${monthStart}`);
             const logData = logRes.ok ? await logRes.json() : null;
             const entries = logData && typeof logData === 'object' ? Object.values(logData) : [];
             monthEarned = entries
-              .filter(e => e && typeof e.amount === 'number' && e.amount > 0 && typeof e.ts === 'number' && e.ts >= monthStart)
+              .filter(e => e && typeof e.amount === 'number' && e.amount > 0)
               .reduce((s, e) => s + e.amount, 0);
           }catch(e){ monthEarned = 0; }
         }
@@ -9157,28 +9162,33 @@ function render(state){
   const ranked = rankedMembers(state.members);
   let html;
   if(boardLbMode === 'thisMonth'){
-    // A simpler, focused table for this view — record/win-rate rather
+    // A simpler, focused list for this view — record/win-rate rather
     // than the full all-time column set, since P/L genuinely isn't
     // available for a monthly window (see computeMonthlyRecord above).
+    // A flex-row list rather than a <table> — the shared .lb-table CSS
+    // (sticky columns, min-width:520px) was tuned for the all-time
+    // view's 8 columns and genuinely broke down to a near-empty-looking
+    // table with only 4; a flex list sidesteps that entirely and matches
+    // the Casino leaderboard's already-proven row styling.
     const monthlyRows = ranked.map(m => ({ m, rec: computeMonthlyRecord(m.name, state) }))
       .sort((a, b) => (b.rec.wins - a.rec.wins) || (b.rec.winPct - a.rec.winPct));
     const anyPlayed = monthlyRows.some(r => r.rec.decided > 0 || r.rec.voids > 0);
     if(!anyPlayed){
       html = '<div class="empty">No multi results recorded yet this month.</div>';
     } else {
-      html = '<div class="lb-scroll"><table class="lb-table"><tr><th class="lb-sticky lb-rank-col">#</th><th class="lb-sticky lb-name-col">Name</th><th>Record</th><th>Win%</th></tr>';
-      monthlyRows.forEach(({ m, rec }, i) => {
+      const rows = monthlyRows.map(({ m, rec }, i) => {
         const rank = i + 1;
         const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
-        const rowCls = `${rank===1 && rec.wins > 0 ? 'rank-1' : ''}${isMe ? ' my-row' : ''}`;
-        html += `<tr class="${rowCls}">
-          <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
-          <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}" data-uid="${escapeHtml(m.linkedUid || '')}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
-          <td>${rec.wins}-${rec.losses}-${rec.voids}</td>
-          <td>${rec.decided > 0 ? (rec.winPct*100).toFixed(0) + '%' : '—'}</td>
-        </tr>`;
-      });
-      html += '</table></div>';
+        return `<div class="lb-flex-row${isMe ? ' my-row' : ''}">
+          <span class="lb-flex-rank">${rank}</span>
+          <span class="name profile-link lb-flex-name" data-profile-name="${escapeHtml(m.name)}" data-uid="${escapeHtml(m.linkedUid || '')}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</span>
+          <span class="lb-flex-stat">
+            <span class="lb-flex-stat-val">${rec.wins}-${rec.losses}-${rec.voids}</span>
+            <span class="lb-flex-stat-lbl">${rec.decided > 0 ? (rec.winPct*100).toFixed(0) + '% win' : 'no record yet'}</span>
+          </span>
+        </div>`;
+      }).join('');
+      html = `<div class="lb-flex-list">${rows}</div>`;
     }
   } else {
     html = '<div class="lb-scroll"><table class="lb-table"><tr><th class="lb-sticky lb-rank-col">#</th><th class="lb-sticky lb-name-col">Name</th><th>P/L</th><th>Win%</th><th>Score</th><th>W-L-V</th><th>Ind W-L</th><th>Avg Leg</th></tr>';

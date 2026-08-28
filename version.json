@@ -1,8 +1,10 @@
 {
-  "version": "2026-08-24.32",
+  "version": "2026-08-24.33",
   "date": "2026-08-27",
   "changes": [
-    "Critical fix: changing your name or re-syncing picks from your profile was silently failing every time \u2014 renameOnAllMyPicks was accidentally defined inside a function it wasn't reachable from, so every attempt threw 'not defined' and quietly did nothing.",
-    "Diagnostics: added a \"Clear my errors\" button to the Recent Errors panel."
+    "Fixed a real bug: Board leaderboard's \"This Month\" view broke the table layout (the shared table CSS was tuned for the all-time view's 8 columns, not 4). Rebuilt as a clean list instead of a table, sidestepping the issue entirely.",
+    "Polished the All Time / This Month pills on both leaderboards \u2014 same gradient/shadow treatment as the working Leaderboard/Floor tabs, rather than a separate flat style.",
+    "Optimized Casino leaderboard's \"This Month\" \u2014 now queries Firebase server-side for just this month's entries instead of downloading someone's entire XP log and filtering client-side. This was the real cause of it feeling slow.",
+    "Turned the Casino ambience down further, per feedback."
   ]
 }
