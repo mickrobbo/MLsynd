@@ -47,6 +47,9 @@ async function dbPost(path, value) {
   });
   return res.json(); // { name: "-Nxxxx" }
 }
+async function postToGroupChat(text) {
+  await dbPost("/groupChat/messages", { senderUid: "syndy", senderName: "Syndy", text, ts: Date.now() });
+}
 
 // ~10% chance per 30-min run this function actually gets invoked. Real
 // frequency depends on Netlify actually triggering the schedule on time,
@@ -118,6 +121,7 @@ export default async (req) => {
 
     await dbPut("/actsOfGod/current", event);
     await dbPost("/actsOfGod/history", event); // no pruning — nobody ever reads more than the last handful at this app's scale
+    await postToGroupChat(`${event.label} — ${event.desc}`); // posted once here, server-side — never from the client, since every connected device polls independently and would each post a duplicate
 
     const subscriptions = (await dbGet("/pushSubscriptions")) || {};
     let sent = 0, skipped = 0;
