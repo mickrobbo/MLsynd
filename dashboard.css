@@ -465,6 +465,13 @@
   }
   .book-market-question{ font-size:13px; color:var(--chalk); font-weight:600; margin-bottom:4px; }
   .book-market-time{ font-size:10.5px; color:var(--muted); margin-bottom:10px; }
+  .book-syndy-tag{ font-size:9px; color:var(--brass); background:rgba(203,177,102,.15); padding:2px 6px; border-radius:8px; vertical-align:middle; }
+  .book-reserve-row{
+    display:flex; align-items:center; justify-content:center; gap:6px; margin-top:10px;
+    padding:8px; border-radius:8px; background:rgba(0,0,0,.18); border:1px solid var(--line);
+    font-size:11.5px; color:var(--chalk);
+  }
+  .book-reserve-row b{ color:var(--brass); font-family:'IBM Plex Mono', monospace; }
   .book-market-odds{ display:flex; gap:8px; margin-bottom:10px; }
   .book-odds-side{
     flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
@@ -479,7 +486,7 @@
   }
   .book-my-stake.won{ background:rgba(111,169,138,.18); color:var(--win); }
   .book-my-stake.lost{ background:rgba(193,96,74,.18); color:var(--loss); }
-  #bookStakeYesBtn.selected, #bookStakeNoBtn.selected{
+  #bookStakeYesBtn.selected, #bookStakeNoBtn.selected, #legBetStakeWinBtn.selected, #legBetStakeLoseBtn.selected{
     background:linear-gradient(180deg, var(--brass-light), var(--brass)); color:#0E1A16;
   }
 
@@ -3017,6 +3024,12 @@
 .health-pill.app-footer-health{
   padding:1px 7px; font-size:9px; margin-left:2px; background:none; border:none;
 }
+.app-footer-toggle{
+  background:none; border:none; color:var(--muted); font-family:'IBM Plex Mono', monospace;
+  font-size:10px; cursor:pointer; padding:1px 0 1px 7px; margin-left:2px;
+  border-left:1px solid var(--line);
+}
+.app-footer-toggle:active{ color:var(--brass); }
 .health-pill.green{ color:var(--win); border-color:rgba(111,169,138,.4); }
 .health-pill.amber{ color:#E8A15C; border-color:rgba(232,161,92,.4); }
 .health-pill.red{ color:var(--loss); border-color:rgba(217,110,110,.4); }
@@ -3163,6 +3176,8 @@
 .syndy-chat-status{ font-size:10px; color:var(--win); }
 .syndy-chat-status::before{ content:'●'; margin-right:4px; font-size:8px; }
 .syndy-chat-close{ color:var(--muted); font-size:18px; cursor:pointer; padding:4px; }
+.chat-mode-toggle{ text-align:center; padding:8px 14px; border-bottom:1px solid var(--line); flex-shrink:0; }
+.chat-mode-toggle .lb-time-btn{ min-width:90px; }
 .syndy-chat-body{
   flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch;
   position:relative;
@@ -3188,6 +3203,8 @@
 .syndy-msg.user{ align-self:flex-end; background:linear-gradient(165deg, var(--brass-light), var(--brass)); color:#0E1A16; font-weight:600; border-bottom-right-radius:4px; }
 .syndy-msg.error{ align-self:center; color:var(--loss); font-size:11.5px; background:none; border:none; }
 .syndy-msg.typing{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; color:var(--muted); font-style:italic; }
+.syndy-msg-sender{ font-size:10px; font-weight:700; color:var(--brass); margin-bottom:3px; display:block; }
+.syndy-msg.user .syndy-msg-sender{ color:rgba(14,26,22,.6); }
 .syndy-chat-input-row{ display:flex; gap:8px; padding:10px; border-top:1px solid var(--line); flex-shrink:0; }
 .syndy-chat-input-row input{
   flex:1; background:var(--felt); border:1px solid var(--line); border-radius:999px; padding:10px 14px;

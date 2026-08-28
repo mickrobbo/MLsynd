@@ -1,8 +1,8 @@
 {
-  "version": "2026-08-24.37",
+  "version": "2026-08-24.41",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\udcd6 New: Syndy's Book \u2014 peer prediction markets. Stake XP on YES/NO questions about the group; when a market resolves, the losing side's whole pool splits across the winners, proportional to stake \u2014 the effective payout genuinely shifts as more XP piles onto one side, the same way a real parimutuel book works. Admin creates and resolves markets from the Casino tab; everyone can stake.",
-    "\ud83c\udfa4 New: Syndy Voice \u2014 a spoken reaction, out loud, the instant you land a genuinely big win. Uses the browser's own built-in text-to-speech (free, no new cost or API key) \u2014 worth knowing the voice quality/character depends entirely on your own device/browser, not a custom AI voice. Toggle in the Casino hub if it's not your thing."
+    "\ud83c\udfaf New: Leg Bets \u2014 fixed-odds betting on whether a person's next real group leg wins or loses. Syndy prices the odds from their real historical win rate (not the actual leg's real odds, since those aren't knowable until the result already is), fully automated, exposure-capped per side so a single bet can never threaten more than a bounded slice of the reserve. Resolves against their actual next real result once the Ledger records it \u2014 refunds everyone automatically if no result shows up within 9 days.",
+    "\ud83d\udd14 The chat icon now shows a real notification badge for unread Group Chat messages, not just the old weekly-checklist nag \u2014 clears the moment you open Group Chat."
   ]
 }

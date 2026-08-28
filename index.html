@@ -163,6 +163,7 @@
       <span class="sync-dot" id="syncStatusDot"></span>
       <span id="syncStatusLine"></span>
       <span class="health-pill app-footer-health" id="healthPill" style="display:none;"></span>
+      <button type="button" class="app-footer-toggle" id="syndyVoiceToggleBtn">🔊 Syndy Voice: On</button>
     </div>
     </div>
 
@@ -498,9 +499,6 @@
           <span class="casino-hub-sub">Stake XP on group predictions</span>
         </div>
       </div>
-      <div style="text-align:center; margin-top:8px;">
-        <button type="button" class="pill-btn" id="syndyVoiceToggleBtn" style="font-size:10.5px; padding:5px 10px;">🔊 Syndy Voice: On</button>
-      </div>
     </div>
 
     <!-- Hold'em table browser -->
@@ -670,11 +668,42 @@
         <h2 style="font-size:14px; margin:0;">📖 Syndy's Book</h2>
         <button type="button" class="pill-btn" id="bookBackBtn">← Back</button>
       </div>
-      <div class="hint">Syndy runs the book — stake XP on real questions about the group. When a market resolves, the losing side's whole pool splits across everyone who backed the winner, proportional to their stake. The more that piles onto one side, the better the payout gets for whoever's still on the other.</div>
+      <div class="hint">Syndy runs the book — stake XP on real questions about the group. If you're right, you get your stake back plus a share of the reward. If you're wrong, your stake goes to Syndy's Book reserve — which is what funds the rewards in the first place.</div>
+      <div class="book-reserve-row" id="bookReserveRow" style="display:none;"></div>
       <div id="bookAdminCreateWrap" style="display:none; margin-top:10px; text-align:center;">
         <button type="button" class="pill-btn pill-btn-action" id="bookCreateMarketBtn">+ New Market</button>
+        <button type="button" class="pill-btn" id="bookAddReserveBtn" style="margin-left:6px;">+ Add to Reserve</button>
       </div>
       <div id="bookMarketsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <div class="profile-form-label" style="margin-top:18px;">Leg Bets — fixed odds</div>
+      <div class="hint">Syndy prices these from real historical win rates, not the actual leg's real odds (those aren't knowable until the result already is). Fixed payout per stake — resolves against that person's actual next real result once it's recorded.</div>
+      <div id="legBetsArea" style="margin-top:8px;"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div id="legBetStakeModal" class="profile-modal">
+      <div class="profile-sheet" style="text-align:center;">
+        <button type="button" class="profile-close" id="legBetStakeCloseBtn">✕</button>
+        <h2 style="font-size:15px; margin-bottom:14px;" id="legBetStakeTitle"></h2>
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <button type="button" class="pill-btn pill-btn-action" id="legBetStakeWinBtn" style="flex:1;"></button>
+          <button type="button" class="pill-btn pill-btn-action" id="legBetStakeLoseBtn" style="flex:1;"></button>
+        </div>
+        <input type="number" id="legBetStakeAmount" placeholder="XP amount" style="width:100%; margin-bottom:6px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
+        <div class="hint" id="legBetPotentialPayout" style="margin-bottom:10px;"></div>
+        <button type="button" class="pill-btn pill-btn-primary" id="legBetStakeSubmitBtn" style="width:100%;">Place Bet</button>
+        <div class="status-msg" id="legBetStakeStatus" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div id="bookAddReserveModal" class="profile-modal">
+      <div class="profile-sheet" style="text-align:center;">
+        <button type="button" class="profile-close" id="bookAddReserveCloseBtn">✕</button>
+        <h2 style="font-size:16px; margin-bottom:12px;">Add to Reserve</h2>
+        <div class="hint" style="margin-bottom:10px;">This is XP conjured by the house, not deducted from anyone's balance — same as any other admin XP grant. Use it to seed the reserve initially, or top it up if it's running low.</div>
+        <input type="number" id="bookAddReserveAmount" placeholder="e.g. 1000" style="width:100%; margin-bottom:12px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
+        <button type="button" class="pill-btn pill-btn-primary" id="bookAddReserveSubmitBtn" style="width:100%;">Add</button>
+        <div class="status-msg" id="bookAddReserveStatus" style="margin-top:8px;"></div>
+      </div>
     </div>
 
     <div id="bookCreateModal" class="profile-modal">
@@ -683,7 +712,9 @@
         <h2 style="font-size:16px; margin-bottom:12px;">New Market</h2>
         <input type="text" id="bookCreateQuestion" placeholder="Will Tim win 3 multis in a row this month?" style="width:100%; margin-bottom:10px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
         <label style="display:block; font-size:11px; color:var(--muted); text-align:left; margin-bottom:4px;">Closes in (hours)</label>
-        <input type="number" id="bookCreateHours" value="24" min="1" style="width:100%; margin-bottom:14px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
+        <input type="number" id="bookCreateHours" value="24" min="1" style="width:100%; margin-bottom:10px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
+        <label style="display:block; font-size:11px; color:var(--muted); text-align:left; margin-bottom:4px;">Reward for correct guessers (XP, drawn from Syndy's Book reserve)</label>
+        <input type="number" id="bookCreateWorth" value="500" min="1" style="width:100%; margin-bottom:14px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box;">
         <button type="button" class="pill-btn pill-btn-primary" id="bookCreateSubmitBtn" style="width:100%;">Create Market</button>
         <div class="status-msg" id="bookCreateStatus" style="margin-top:8px;"></div>
       </div>
@@ -1604,12 +1635,16 @@
 <div id="syndyChatModal" class="profile-modal">
   <div class="profile-sheet syndy-chat-sheet">
     <div class="syndy-chat-header">
-      <img src="syndy-icon.png" alt="Syndy" onerror="this.style.display='none';">
+      <img src="syndy-icon.png" alt="Syndy" id="syndyChatHeaderIcon" onerror="this.style.display='none';">
       <div class="syndy-chat-who">
-        <div class="syndy-chat-name">Syndy</div>
-        <div class="syndy-chat-status">Online</div>
+        <div class="syndy-chat-name" id="syndyChatHeaderName">Syndy</div>
+        <div class="syndy-chat-status" id="syndyChatHeaderStatus">Online</div>
       </div>
       <div class="syndy-chat-close" id="syndyChatCloseBtn">✕</div>
+    </div>
+    <div class="chat-mode-toggle lb-time-toggle" id="chatModeToggle">
+      <button type="button" class="lb-time-btn active" data-chat-mode="syndy">🤖 Syndy</button>
+      <button type="button" class="lb-time-btn" data-chat-mode="group">💬 Group Chat</button>
     </div>
     <div class="syndy-chat-body" id="syndyChatBody"></div>
     <div class="syndy-chat-input-row">
@@ -2782,7 +2817,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.37"; // Syndy's Book (peer prediction markets, parimutuel payout) + Syndy Voice (spoken reaction to big wins via browser TTS) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.41"; // Leg Bets (fixed odds, Syndy-priced from real win rates, exposure-capped) + Group Chat unread badge on the chat icon — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -6756,7 +6791,7 @@ document.getElementById('hubGamesBtn').addEventListener('click', () => showCasin
 document.getElementById('hubRulesBtn').addEventListener('click', () => showCasinoView('casinoRulesHubView'));
 document.getElementById('hubXpBtn').addEventListener('click', () => { renderXpInfoView(); showCasinoView('casinoXpInfoView'); });
 document.getElementById('hubBadgesBtn').addEventListener('click', () => { renderCasinoBadgesView(); showCasinoView('casinoBadgesView'); });
-document.getElementById('hubBookBtn').addEventListener('click', () => { renderSyndyBook(); showCasinoView('casinoBookView'); });
+document.getElementById('hubBookBtn').addEventListener('click', () => { renderSyndyBook(); renderLegBets(); showCasinoView('casinoBookView'); });
 document.getElementById('bookBackBtn').addEventListener('click', () => showCasinoView(null));
 document.getElementById('rulesHubBackBtn').addEventListener('click', () => showCasinoView(null));
 document.getElementById('xpInfoBackBtn').addEventListener('click', () => showCasinoView(null));
@@ -6769,6 +6804,15 @@ async function renderSyndyBook(){
   const createWrap = document.getElementById('bookAdminCreateWrap');
   const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   if(createWrap) createWrap.style.display = isAdmin ? 'block' : 'none';
+  try{
+    const reserveRes = await authedFetch('/predictionMarketReserve.json');
+    const reserveBalance = reserveRes.ok ? ((await reserveRes.json()) || 0) : 0;
+    const reserveRow = document.getElementById('bookReserveRow');
+    if(reserveRow){
+      reserveRow.innerHTML = `💰 Reserve: <b>${reserveBalance.toLocaleString()} XP</b> — funds every reward, topped up by forfeited stakes`;
+      reserveRow.style.display = 'flex';
+    }
+  }catch(e){}
   try{
     const res = await authedFetch('/predictionMarkets.json');
     const markets = res.ok ? ((await res.json()) || {}) : {};
@@ -6814,8 +6858,8 @@ async function renderSyndyBook(){
           </div>`;
       }
       return `<div class="book-market-card">
-        <div class="book-market-question">${escapeHtml(mkt.question)}</div>
-        <div class="book-market-time">${timeText}</div>
+        <div class="book-market-question">${escapeHtml(mkt.question)}${mkt.createdBy === 'syndy' ? ' <span class="book-syndy-tag">Syndy\'s pick</span>' : ''}</div>
+        <div class="book-market-time">${timeText}${mkt.worth ? ` · Reward: ${Number(mkt.worth).toLocaleString()} XP` : ''}</div>
         <div class="book-market-odds">
           <div class="book-odds-side"><span class="lbl">YES</span><span class="val">${yesPool.toLocaleString()} XP</span><span class="mult">${yesMult}x</span></div>
           <div class="book-odds-side"><span class="lbl">NO</span><span class="val">${noPool.toLocaleString()} XP</span><span class="mult">${noMult}x</span></div>
@@ -6903,6 +6947,7 @@ document.getElementById('bookStakeSubmitBtn').addEventListener('click', async ()
 document.getElementById('bookCreateMarketBtn').addEventListener('click', () => {
   document.getElementById('bookCreateQuestion').value = '';
   document.getElementById('bookCreateHours').value = '24';
+  document.getElementById('bookCreateWorth').value = '500';
   document.getElementById('bookCreateStatus').textContent = '';
   document.getElementById('bookCreateModal').classList.add('open');
 });
@@ -6913,8 +6958,10 @@ document.getElementById('bookCreateSubmitBtn').addEventListener('click', async (
   const statusEl = document.getElementById('bookCreateStatus');
   const question = document.getElementById('bookCreateQuestion').value.trim();
   const hours = Number(document.getElementById('bookCreateHours').value);
+  const worth = Math.floor(Number(document.getElementById('bookCreateWorth').value));
   if(!question){ statusEl.textContent = 'Enter a question.'; return; }
   if(!hours || hours <= 0){ statusEl.textContent = 'Enter a valid number of hours.'; return; }
+  if(!worth || worth <= 0){ statusEl.textContent = 'Enter a valid reward amount.'; return; }
   const btn = document.getElementById('bookCreateSubmitBtn');
   btn.disabled = true;
   statusEl.textContent = 'Creating…';
@@ -6922,7 +6969,7 @@ document.getElementById('bookCreateSubmitBtn').addEventListener('click', async (
     const now = Date.now();
     await authedFetch('/predictionMarkets.json', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, createdAt: now, closesAt: now + hours * 3600000, status: 'open', outcome: null })
+      body: JSON.stringify({ question, worth, createdAt: now, closesAt: now + hours * 3600000, status: 'open', outcome: null, createdBy: currentUserUid })
     });
     statusEl.textContent = 'Created!';
     showToast('Market created');
@@ -6930,6 +6977,37 @@ document.getElementById('bookCreateSubmitBtn').addEventListener('click', async (
     renderSyndyBook();
   }catch(e){
     statusEl.textContent = 'Could not create — try again.';
+  }
+  btn.disabled = false;
+});
+
+document.getElementById('bookAddReserveBtn').addEventListener('click', () => {
+  document.getElementById('bookAddReserveAmount').value = '';
+  document.getElementById('bookAddReserveStatus').textContent = '';
+  document.getElementById('bookAddReserveModal').classList.add('open');
+});
+document.getElementById('bookAddReserveCloseBtn').addEventListener('click', () => {
+  document.getElementById('bookAddReserveModal').classList.remove('open');
+});
+document.getElementById('bookAddReserveSubmitBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('bookAddReserveStatus');
+  const amount = Math.floor(Number(document.getElementById('bookAddReserveAmount').value));
+  if(!amount || amount <= 0){ statusEl.textContent = 'Enter a valid amount.'; return; }
+  const btn = document.getElementById('bookAddReserveSubmitBtn');
+  btn.disabled = true;
+  statusEl.textContent = 'Adding…';
+  try{
+    const res = await authedFetch('/predictionMarketReserve.json');
+    const current = res.ok ? ((await res.json()) || 0) : 0;
+    await authedFetch('/predictionMarketReserve.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current + amount)
+    });
+    statusEl.textContent = 'Added!';
+    showToast(`Added ${amount.toLocaleString()} XP to the reserve`);
+    document.getElementById('bookAddReserveModal').classList.remove('open');
+    renderSyndyBook();
+  }catch(e){
+    statusEl.textContent = 'Could not add — try again.';
   }
   btn.disabled = false;
 });
@@ -6973,11 +7051,27 @@ async function resolveBookMarket(marketId, outcome){
     const winPool = winners.reduce((sum, [, s]) => sum + (s.amount || 0), 0);
     const losePool = losers.reduce((sum, [, s]) => sum + (s.amount || 0), 0);
 
-    // Standard parimutuel payout — each winner gets their own stake back
-    // plus their proportional share of the losing pool. No house cut.
+    // Losers' stakes go entirely to Syndy's Book's own reserve — a
+    // dedicated pool for this system, separate from the Casino Pot
+    // (which is a specific monthly jackpot-loss-tracker with its own
+    // mechanic; reusing it here would corrupt that unrelated purpose).
+    // Winners get their own stake back plus a proportional share of
+    // "worth" (the reward set when this market was created), drawn from
+    // the reserve and re-clamped to whatever it can actually afford
+    // right now — its balance may have moved since creation, so this
+    // can never pay out more than it really has.
+    const reserveRes = await authedFetch('/predictionMarketReserve.json');
+    const currentReserve = reserveRes.ok ? ((await reserveRes.json()) || 0) : 0;
+    const actualWorth = Math.max(0, Math.min(mkt.worth || 0, currentReserve));
     for(const [uid, s] of winners){
-      const payout = winPool > 0 ? s.amount + Math.floor((s.amount / winPool) * losePool) : s.amount;
-      await awardXPToUidAsAdmin(uid, payout, `Syndy's Book payout — "${mkt.question}"`);
+      const share = winPool > 0 ? Math.floor((s.amount / winPool) * actualWorth) : 0;
+      await awardXPToUidAsAdmin(uid, s.amount + share, `Syndy's Book payout — "${mkt.question}"`);
+    }
+    const reserveDelta = losePool - actualWorth;
+    if(reserveDelta !== 0){
+      await authedFetch('/predictionMarketReserve.json', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentReserve + reserveDelta)
+      });
     }
 
     await authedFetch(`/predictionMarkets/${marketId}/status.json`, {
@@ -6989,12 +7083,168 @@ async function resolveBookMarket(marketId, outcome){
     await authedFetch(`/predictionMarkets/${marketId}/resolvedAt.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
     });
+    // Group Chat announcement — same as Syndy's own auto-resolutions, so
+    // manually-resolved markets show up exactly the same way.
+    try{
+      const winnerNames = winners.map(([, s]) => s.name).join(', ') || 'nobody';
+      await authedFetch('/groupChat/messages.json', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderUid: 'syndy', senderName: 'Syndy', text: `📖 Market resolved: "${mkt.question}" — the answer was ${outcome.toUpperCase()}. Paid out: ${winnerNames}.`, ts: Date.now() })
+      });
+    }catch(e){}
     showToast(`Resolved as ${outcome.toUpperCase()} — ${winners.length} winner(s) paid out`);
     renderSyndyBook();
   }catch(e){
     showToast('Could not resolve — try again');
   }
 }
+
+// ---- Leg Bets — fixed odds, Syndy-priced from real historical win
+// rates, resolved server-side against a person's actual next real
+// result. See syndy-book-scheduled.mjs for the full design reasoning —
+// this is deliberately NOT the same mechanic as the pooled markets
+// above (fixed payout per stake, not proportional to a pool), so it
+// gets its own render/stake flow rather than reusing renderSyndyBook.
+async function renderLegBets(){
+  const area = document.getElementById('legBetsArea');
+  if(!area) return;
+  try{
+    const res = await authedFetch('/legBets.json');
+    const bets = res.ok ? ((await res.json()) || {}) : {};
+    const entries = Object.entries(bets).sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No leg bets yet.</div>';
+      return;
+    }
+    const now = Date.now();
+    area.innerHTML = entries.map(([id, bet]) => {
+      const stakes = bet.stakes || {};
+      const myStake = stakes[currentUserUid];
+      const isOpen = bet.status === 'open' && now < bet.closesAt;
+      const isResolved = bet.status === 'resolved';
+      const isVoided = bet.status === 'voided';
+      let statusText;
+      if(isResolved) statusText = `Resolved: leg came in ${bet.outcome === 'win' ? 'WIN' : 'LOSE'}`;
+      else if(isVoided) statusText = 'Voided — no result came through in time, refunded';
+      else if(now >= bet.closesAt) statusText = 'Closed — awaiting a real result';
+      else statusText = `Closes in ${Math.max(1, Math.round((bet.closesAt - now) / 3600000))}h`;
+
+      let actionHtml = '';
+      if(isResolved && myStake){
+        const won = myStake.side === bet.outcome;
+        actionHtml = `<div class="book-my-stake ${won ? 'won' : 'lost'}">You staked ${myStake.amount.toLocaleString()} XP on ${myStake.side.toUpperCase()} — ${won ? 'won' : 'lost'}</div>`;
+      } else if(isVoided && myStake){
+        actionHtml = `<div class="book-my-stake">Refunded ${myStake.amount.toLocaleString()} XP</div>`;
+      } else if(myStake){
+        actionHtml = `<div class="book-my-stake">You staked ${myStake.amount.toLocaleString()} XP on ${myStake.side.toUpperCase()}</div>`;
+      } else if(isOpen){
+        actionHtml = `<button type="button" class="pill-btn pill-btn-action leg-bet-stake-btn" data-bet-id="${id}" data-player="${escapeHtml(bet.playerName)}" data-win-odds="${bet.winOdds}" data-lose-odds="${bet.loseOdds}">Place Bet</button>`;
+      }
+      return `<div class="book-market-card">
+        <div class="book-market-question">${escapeHtml(bet.playerName)}'s leg <span class="book-syndy-tag">Syndy's odds</span></div>
+        <div class="book-market-time">${statusText}</div>
+        <div class="book-market-odds">
+          <div class="book-odds-side"><span class="lbl">WIN</span><span class="mult">${bet.winOdds}x</span></div>
+          <div class="book-odds-side"><span class="lbl">LOSE</span><span class="mult">${bet.loseOdds}x</span></div>
+        </div>
+        ${actionHtml}
+      </div>`;
+    }).join('');
+    area.querySelectorAll('.leg-bet-stake-btn').forEach(btn => {
+      btn.addEventListener('click', () => openLegBetStakeModal(btn.dataset.betId, btn.dataset.player, Number(btn.dataset.winOdds), Number(btn.dataset.loseOdds)));
+    });
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load leg bets.</div>';
+  }
+}
+
+let legBetStakeId = null;
+let legBetStakeSide = null;
+let legBetStakeOdds = { win: 0, lose: 0 };
+function openLegBetStakeModal(betId, playerName, winOdds, loseOdds){
+  legBetStakeId = betId;
+  legBetStakeSide = null;
+  legBetStakeOdds = { win: winOdds, lose: loseOdds };
+  document.getElementById('legBetStakeTitle').textContent = `${playerName}'s leg`;
+  document.getElementById('legBetStakeWinBtn').textContent = `WIN @ ${winOdds}x`;
+  document.getElementById('legBetStakeLoseBtn').textContent = `LOSE @ ${loseOdds}x`;
+  document.getElementById('legBetStakeWinBtn').classList.remove('selected');
+  document.getElementById('legBetStakeLoseBtn').classList.remove('selected');
+  document.getElementById('legBetStakeAmount').value = '';
+  document.getElementById('legBetPotentialPayout').textContent = '';
+  document.getElementById('legBetStakeStatus').textContent = '';
+  document.getElementById('legBetStakeModal').classList.add('open');
+}
+document.getElementById('legBetStakeCloseBtn').addEventListener('click', () => {
+  document.getElementById('legBetStakeModal').classList.remove('open');
+});
+function updateLegBetPayoutPreview(){
+  const amount = Number(document.getElementById('legBetStakeAmount').value) || 0;
+  const odds = legBetStakeSide === 'win' ? legBetStakeOdds.win : legBetStakeSide === 'lose' ? legBetStakeOdds.lose : 0;
+  const payoutEl = document.getElementById('legBetPotentialPayout');
+  if(!legBetStakeSide || !amount){ payoutEl.textContent = ''; return; }
+  payoutEl.textContent = `Potential payout: ${Math.floor(amount * odds).toLocaleString()} XP`;
+}
+document.getElementById('legBetStakeWinBtn').addEventListener('click', () => {
+  legBetStakeSide = 'win';
+  document.getElementById('legBetStakeWinBtn').classList.add('selected');
+  document.getElementById('legBetStakeLoseBtn').classList.remove('selected');
+  updateLegBetPayoutPreview();
+});
+document.getElementById('legBetStakeLoseBtn').addEventListener('click', () => {
+  legBetStakeSide = 'lose';
+  document.getElementById('legBetStakeLoseBtn').classList.add('selected');
+  document.getElementById('legBetStakeWinBtn').classList.remove('selected');
+  updateLegBetPayoutPreview();
+});
+document.getElementById('legBetStakeAmount').addEventListener('input', updateLegBetPayoutPreview);
+document.getElementById('legBetStakeSubmitBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('legBetStakeStatus');
+  if(!legBetStakeSide){ statusEl.textContent = 'Pick WIN or LOSE first.'; return; }
+  const amount = Math.floor(Number(document.getElementById('legBetStakeAmount').value));
+  if(!amount || amount <= 0){ statusEl.textContent = 'Enter a valid XP amount.'; return; }
+  const btn = document.getElementById('legBetStakeSubmitBtn');
+  btn.disabled = true;
+  statusEl.textContent = 'Placing bet…';
+  try{
+    const betRes = await authedFetch(`/legBets/${legBetStakeId}.json`);
+    const bet = await betRes.json();
+    if(!bet || bet.status !== 'open'){ statusEl.textContent = 'This bet is no longer open.'; btn.disabled = false; return; }
+    const stakes = bet.stakes || {};
+    if(stakes[currentUserUid]){ statusEl.textContent = "You've already bet on this leg."; btn.disabled = false; return; }
+
+    // Enforce the exposure cap fixed at creation — reject if this stake
+    // would push total potential payout on this side past what Syndy's
+    // Book reserve can safely cover.
+    const odds = legBetStakeSide === 'win' ? bet.winOdds : bet.loseOdds;
+    const existingExposure = Object.values(stakes)
+      .filter(s => s.side === legBetStakeSide)
+      .reduce((sum, s) => sum + Math.floor(s.amount * odds), 0);
+    const thisPayout = Math.floor(amount * odds);
+    if(existingExposure + thisPayout > bet.maxExposurePerSide){
+      statusEl.textContent = `Too much already staked on this side — Syndy's capped it at ${bet.maxExposurePerSide.toLocaleString()} XP potential payout. Try a smaller amount or the other side.`;
+      btn.disabled = false;
+      return;
+    }
+
+    const balRes = await authedFetch(`/xp/${currentUserUid}/balance.json`);
+    const balance = (await balRes.json()) || 0;
+    if(amount > balance){ statusEl.textContent = `You only have ${balance.toLocaleString()} XP.`; btn.disabled = false; return; }
+
+    await awardXP(-amount, `Leg bet stake — ${bet.playerName} to ${legBetStakeSide}`, { silent: true });
+    await authedFetch(`/legBets/${legBetStakeId}/stakes/${currentUserUid}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ side: legBetStakeSide, amount, name: currentUserName, stakedAt: Date.now() })
+    });
+    statusEl.textContent = 'Bet placed!';
+    showToast(`Staked ${amount.toLocaleString()} XP on ${legBetStakeSide.toUpperCase()}`);
+    document.getElementById('legBetStakeModal').classList.remove('open');
+    renderLegBets();
+  }catch(e){
+    statusEl.textContent = 'Could not place bet — try again.';
+  }
+  btn.disabled = false;
+});
 
 // ---- Casino game selector ----
 document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
@@ -9322,10 +9572,50 @@ document.getElementById('weeklyReminderClearBtn').addEventListener('click', () =
 let syndyMessages = [];
 let syndySending = false;
 
-function updateSyndyBadge(show){
+// The badge combines two independent reasons to show — the existing
+// weekly-checklist nag, and (new) unread Group Chat activity. Neither
+// should be able to silently clear the other, so both are tracked as
+// separate flags and the badge shows whenever either is true.
+let syndyBadgeNagActive = false;
+let groupChatUnreadActive = false;
+function refreshSyndyBadge(){
   const badge = document.getElementById('syndyFabBadge');
-  if(badge) badge.style.display = show ? 'block' : 'none';
+  if(badge) badge.style.display = (syndyBadgeNagActive || groupChatUnreadActive) ? 'block' : 'none';
 }
+function updateSyndyBadge(show){
+  syndyBadgeNagActive = show;
+  refreshSyndyBadge();
+}
+function updateGroupChatUnreadBadge(show){
+  groupChatUnreadActive = show;
+  refreshSyndyBadge();
+}
+
+// Per-device "have I seen the latest Group Chat message" — localStorage,
+// same lightweight pattern the flex-moment/changelog banners already use
+// for this exact kind of "don't re-show what's already been seen" state.
+const GROUP_CHAT_LAST_SEEN_KEY = 'mlsynd-group-chat-last-seen';
+function getGroupChatLastSeen(){
+  try{ return Number(localStorage.getItem(GROUP_CHAT_LAST_SEEN_KEY)) || 0; }catch(e){ return 0; }
+}
+function setGroupChatLastSeen(ts){
+  try{ localStorage.setItem(GROUP_CHAT_LAST_SEEN_KEY, String(ts)); }catch(e){}
+}
+async function checkGroupChatUnread(){
+  if(!currentUserUid) return;
+  try{
+    const orderBy = encodeURIComponent('"ts"');
+    const res = await authedFetch(`/groupChat/messages.json?orderBy=${orderBy}&limitToLast=1`);
+    const data = res.ok ? await res.json() : null;
+    const entries = data && typeof data === 'object' ? Object.values(data) : [];
+    if(entries.length === 0) return;
+    const latest = entries[0];
+    // Never badges for your own message — you already know you sent it.
+    const isUnread = latest.ts > getGroupChatLastSeen() && latest.senderUid !== currentUserUid;
+    updateGroupChatUnreadBadge(isUnread);
+  }catch(e){}
+}
+setInterval(checkGroupChatUnread, 60000);
 
 // A minimal, deliberately narrow markdown renderer — just **bold**,
 // numbered/bulleted lists, and line breaks, which is all Syndy's replies
@@ -9411,16 +9701,18 @@ function syndyAppendMessage(role, text){
 
 document.getElementById('syndyFabBtn').addEventListener('click', () => {
   document.getElementById('syndyChatModal').classList.add('open');
-  if(syndyMessages.length === 0){
-    syndyAppendMessage('syndy', "G'day legend. What's on — footy, racing, or you after a multi built off real form?");
-  }
+  switchChatMode('syndy'); // FAB always opens straight to Syndy — Group Chat is one tap away via the toggle, not something to land on unexpectedly
   document.getElementById('syndyChatInput').focus();
 });
 document.getElementById('syndyChatCloseBtn').addEventListener('click', () => {
   document.getElementById('syndyChatModal').classList.remove('open');
+  if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; } // stop polling the moment nobody's looking at it
 });
 document.getElementById('syndyChatModal').addEventListener('click', (e) => {
-  if(e.target.id === 'syndyChatModal') document.getElementById('syndyChatModal').classList.remove('open');
+  if(e.target.id === 'syndyChatModal'){
+    document.getElementById('syndyChatModal').classList.remove('open');
+    if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; }
+  }
 });
 
 async function sendSyndyMessage(){
@@ -9470,11 +9762,107 @@ async function sendSyndyMessage(){
     document.getElementById('syndyChatSendBtn').disabled = false;
   }
 }
-document.getElementById('syndyChatSendBtn').addEventListener('click', sendSyndyMessage);
+document.getElementById('syndyChatSendBtn').addEventListener('click', sendChatMessage);
 document.getElementById('syndyChatInput').addEventListener('keydown', (e) => {
-  if(e.key === 'Enter') sendSyndyMessage();
+  if(e.key === 'Enter') sendChatMessage();
 });
 
+// ---- Group Chat — a single shared channel, everyone approved can read
+// and post. Reuses the exact same modal/bubble UI Syndy's own chat
+// already has (see the mode toggle in the chat header) rather than a
+// separate screen — "utilise the chat infrastructure" was the actual
+// ask, not build a parallel one. Peer-to-peer (1:1) DMs are a deliberate
+// non-goal for this pass — flagged as a later add, not attempted here.
+let chatMode = 'syndy'; // or 'group'
+let groupChatPollHandle = null;
+let groupChatLastCount = 0;
+
+function sendChatMessage(){
+  if(chatMode === 'group') sendGroupChatMessage();
+  else sendSyndyMessage();
+}
+
+function switchChatMode(mode){
+  chatMode = mode;
+  document.querySelectorAll('#chatModeToggle .lb-time-btn').forEach(b => b.classList.toggle('active', b.dataset.chatMode === mode));
+  document.getElementById('syndyChatBody').innerHTML = '';
+  const input = document.getElementById('syndyChatInput');
+  if(mode === 'group'){
+    document.getElementById('syndyChatHeaderName').textContent = 'Group Chat';
+    document.getElementById('syndyChatHeaderStatus').textContent = 'Everyone can see this';
+    const icon = document.getElementById('syndyChatHeaderIcon');
+    if(icon) icon.style.display = 'none';
+    input.placeholder = 'Message the group…';
+    groupChatLastCount = 0;
+    setGroupChatLastSeen(Date.now()); // opening the tab counts as "seen" immediately, don't wait for the first poll
+    updateGroupChatUnreadBadge(false);
+    renderGroupChat(true);
+    if(!groupChatPollHandle) groupChatPollHandle = setInterval(() => renderGroupChat(false), 5000);
+  } else {
+    document.getElementById('syndyChatHeaderName').textContent = 'Syndy';
+    document.getElementById('syndyChatHeaderStatus').textContent = 'Online';
+    const icon = document.getElementById('syndyChatHeaderIcon');
+    if(icon) icon.style.display = '';
+    input.placeholder = 'Ask Syndy anything…';
+    if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; }
+    syndyMessages.forEach(m => syndyAppendMessage(m.role === 'user' ? 'user' : 'syndy', m.content));
+    if(syndyMessages.length === 0){
+      syndyAppendMessage('syndy', "G'day legend. What's on — footy, racing, or you after a multi built off real form?");
+    }
+  }
+  input.focus();
+}
+document.querySelectorAll('#chatModeToggle .lb-time-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchChatMode(btn.dataset.chatMode));
+});
+
+async function renderGroupChat(scrollToBottom){
+  try{
+    const res = await authedFetch('/groupChat/messages.json?orderBy="ts"&limitToLast=100');
+    const data = res.ok ? await res.json() : null;
+    const entries = data && typeof data === 'object' ? Object.values(data).sort((a, b) => (a.ts || 0) - (b.ts || 0)) : [];
+    if(entries.length === groupChatLastCount) return; // nothing new — skip the re-render so polling doesn't jitter the scroll position
+    groupChatLastCount = entries.length;
+    const body = document.getElementById('syndyChatBody');
+    body.innerHTML = '';
+    if(entries.length === 0){
+      const el = document.createElement('div');
+      el.className = 'syndy-msg syndy';
+      el.textContent = "Nobody's said anything yet — be the first.";
+      body.appendChild(el);
+      return;
+    }
+    entries.forEach(m => {
+      const isMe = m.senderUid === currentUserUid;
+      const el = document.createElement('div');
+      el.className = `syndy-msg ${isMe ? 'user' : 'syndy'}`;
+      el.innerHTML = `${!isMe ? `<span class="syndy-msg-sender">${escapeHtml(m.senderName || 'Someone')}</span>` : ''}${escapeHtml(m.text || '')}`;
+      body.appendChild(el);
+    });
+    // Modal is genuinely open and rendering right now — this counts as
+    // having seen everything up to the newest message, so the badge
+    // doesn't reappear the instant this closes over a stale timestamp.
+    const newest = entries[entries.length - 1];
+    if(newest && newest.ts) setGroupChatLastSeen(newest.ts);
+    if(scrollToBottom !== false) body.scrollTop = body.scrollHeight;
+  }catch(e){}
+}
+async function sendGroupChatMessage(){
+  const input = document.getElementById('syndyChatInput');
+  const text = input.value.trim();
+  if(!text || !currentUserUid) return;
+  input.value = '';
+  try{
+    await authedFetch('/groupChat/messages.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderUid: currentUserUid, senderName: currentUserName || 'Someone', text, ts: Date.now() })
+    });
+    hapticPulse(12); // a light confirmation tap the message actually went — reuses the same Vibration API helper the casino sounds already hook into
+    renderGroupChat(true);
+  }catch(e){
+    showToast("Couldn't send — try again");
+  }
+}
 
 function render(state){
   renderSyncStatusLine(state);
@@ -13719,6 +14107,7 @@ function startApp(){
     if(currentUserRole !== 'readonly') resolveMyMemberIndex(currentUserName).catch(() => {});
     renderHomeDigest();
     pollActsOfGod();
+    checkGroupChatUnread();
   });
   // Admin-only, self-gated — checks once per session whether a past month's
   // casino pot never got closed out, and distributes it automatically if
