@@ -2194,6 +2194,45 @@
   body.tier-gold .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #d4af37; }
   body.tier-platinum .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #6f93a8; }
   body.tier-diamond .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #2a9dc9, 0 0 8px rgba(127,216,255,.6); }
+  /* Roulette, Slots, and Hold'em were deliberately left out of the tier
+     treatment above — each has its own already-elaborate bespoke design
+     (gold bezel, gold cabinet, embossed velvet felt), and a blanket
+     hue-shift across the whole surface would cheapen that rather than
+     add to it. Instead, one small, genuinely tasteful accent per game,
+     on an element that doesn't fight the existing identity: the moving
+     ball (not the wheel itself), the reel window's inner glow (not the
+     already-gold cabinet frame), and your own seat specifically (not
+     the felt or the other seats). */
+  body.tier-bronze .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 9px 2px rgba(169,103,47,.65); }
+  body.tier-silver .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 9px 2px rgba(184,184,184,.65); }
+  body.tier-gold .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 9px 2px rgba(212,175,55,.7); }
+  body.tier-platinum .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 9px 2px rgba(111,147,168,.7); }
+  body.tier-diamond .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 11px 3px rgba(42,157,201,.8); }
+
+  body.tier-bronze .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(169,103,47,.55); }
+  body.tier-silver .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(184,184,184,.55); }
+  body.tier-gold .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(212,175,55,.6); }
+  body.tier-platinum .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(111,147,168,.6); }
+  body.tier-diamond .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(42,157,201,.7), 0 0 10px rgba(127,216,255,.4); }
+
+  /* Hold'em's "me" seat currently always glows brass regardless of
+     tier — now reflects the real one, same as everywhere else. */
+  body.tier-bronze .holdem-seat.me{ border-color:#a9672f; box-shadow:0 0 0 1px rgba(169,103,47,.4), 0 0 12px rgba(169,103,47,.35); }
+  body.tier-silver .holdem-seat.me{ border-color:#b8b8b8; box-shadow:0 0 0 1px rgba(184,184,184,.4), 0 0 12px rgba(184,184,184,.35); }
+  body.tier-gold .holdem-seat.me{ border-color:#d4af37; box-shadow:0 0 0 1px rgba(212,175,55,.45), 0 0 12px rgba(212,175,55,.4); }
+  body.tier-platinum .holdem-seat.me{ border-color:#6f93a8; box-shadow:0 0 0 1px rgba(111,147,168,.45), 0 0 12px rgba(111,147,168,.4); }
+  body.tier-diamond .holdem-seat.me{
+    border-color:#2a9dc9; box-shadow:0 0 0 1px rgba(42,157,201,.5), 0 0 14px rgba(127,216,255,.5);
+    animation: holdemSeatDiamondPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes holdemSeatDiamondPulse{
+    0%,100%{ filter:drop-shadow(0 0 2px rgba(42,157,201,.5)); }
+    50%{ filter:drop-shadow(0 0 6px rgba(42,157,201,.9)); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .holdem-seat.me{ animation:none; }
+  }
+
   /* Badges screen's own status card — a real card instead of a cramped
      inline text line, since this is the one place someone specifically
      comes to check where they stand. Big gem + tier name up top (the

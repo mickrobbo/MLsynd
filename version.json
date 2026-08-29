@@ -1,8 +1,7 @@
 {
-  "version": "2026-08-24.55",
+  "version": "2026-08-24.56",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\udcbe Closed the Group Chat backup gap \u2014 the Ledger's backup export now includes Group Chat, Syndy's Book, Leg Bets, and Acts of God history (none of it was covered before, since all of it lives outside the Ledger's own state). Clear Chat now also auto-archives everything it's about to delete before deleting it, rather than that data just being gone.",
-    "\ud83c\udf89 New: a direct \"you won\" push notification when a Syndy's Book market or Leg Bet resolves in your favour \u2014 previously the only way to find out was spotting the announcement in Group Chat. Works for both the automated scheduled resolution and a manual admin resolve. New send-payout-notify.mjs function, and syndy-book-scheduled.mjs updated \u2014 both need deploying."
+    "\ud83c\udfb0 Tier cosmetics now reach Roulette, Slots, and Hold'em \u2014 previously deliberately left out since a blanket hue-shift would've cheapened each game's own bespoke design (gold bezel, gold cabinet, embossed velvet felt). Instead, one tasteful accent per game: a tier-coloured glow on the Roulette ball itself, a tier-coloured rim on the Slots reel window, and Hold'em's \"you\" seat now reflects your real tier instead of always glowing brass. Pure CSS, reacts to the same tier state already tracked \u2014 no JS changes needed."
   ]
 }
