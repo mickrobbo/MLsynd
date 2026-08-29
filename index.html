@@ -2825,7 +2825,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.47"; // Group Chat polish: admin Clear Chat, typing indicator, avatars moved beside bubbles (not inline), full-width tab-style mode toggle, message entrance animation — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.48"; // taller chat sheet, new group-message push notification (excludes anyone already @mentioned), premium visual pass on bubbles/header/input/images — new send-group-notify.mjs needs deploying too — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10088,6 +10088,22 @@ async function sendMentionPush(uid, text){
     });
   }catch(e){} // fire-and-forget — a failed mention push shouldn't surface as an error to the sender, the message itself already sent fine
 }
+// General "new activity in Group Chat" push — everyone except the
+// sender and anyone already covered by a specific @mention push for
+// this same message (passed as excludeUids, so they don't get both).
+// Server-side cooldown per recipient (not per pair) keeps an active
+// conversation from pinging someone on every single message.
+async function sendGroupNotifyPush(text, hasImage, excludeUids){
+  try{
+    const auth = await getValidAuth();
+    if(!auth) return;
+    trackApiCall('send-group-notify');
+    await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-group-notify', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: auth.idToken, text, hasImage: !!hasImage, excludeUids: excludeUids || [] })
+    });
+  }catch(e){} // fire-and-forget, same reasoning as sendMentionPush
+}
 
 // ---- Syndy participating in-channel — only the sender's own client
 // calls syndy-chat.mjs (never every connected device), so this can
@@ -10141,6 +10157,10 @@ document.getElementById('chatImageInput').addEventListener('change', async (e) =
     }
     hapticPulse(12);
     renderGroupChat(true);
+    const mentionedUids = detectMentions(caption);
+    mentionedUids.forEach(uid => sendMentionPush(uid, caption));
+    sendGroupNotifyPush(caption, true, mentionedUids);
+    if(/@syndy\b/i.test(caption)) triggerSyndyInChannel(caption);
   }catch(e){
     showToast("Couldn't send image — try again");
   }
@@ -10330,7 +10350,9 @@ async function sendGroupChatMessage(){
     hapticPulse(12); // a light confirmation tap the message actually went — reuses the same Vibration API helper the casino sounds already hook into
     clearGroupChatTypingStatus();
     renderGroupChat(true);
-    detectMentions(text).forEach(uid => sendMentionPush(uid, text));
+    const mentionedUids = detectMentions(text);
+    mentionedUids.forEach(uid => sendMentionPush(uid, text));
+    sendGroupNotifyPush(text, false, mentionedUids);
     if(/@syndy\b/i.test(text)) triggerSyndyInChannel(text);
   }catch(e){
     input.value = text;

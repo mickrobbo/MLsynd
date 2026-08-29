@@ -3200,12 +3200,13 @@
 }
 
 /* ---- Syndy chat panel ---- */
-.syndy-chat-sheet{ padding:0; display:flex; flex-direction:column; height:min(72vh, 560px); overflow:hidden; position:relative; }
+.syndy-chat-sheet{ padding:0; display:flex; flex-direction:column; height:min(88vh, 720px); overflow:hidden; position:relative; }
 .syndy-chat-header{
-  display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line);
-  background:linear-gradient(180deg, rgba(255,214,120,.08), transparent); flex-shrink:0;
+  display:flex; align-items:center; gap:10px; padding:14px; border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(255,214,120,.12), rgba(255,214,120,.02) 70%, transparent); flex-shrink:0;
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset;
 }
-.syndy-chat-header img{ width:34px; height:34px; border-radius:50%; }
+.syndy-chat-header img{ width:34px; height:34px; border-radius:50%; box-shadow:0 0 0 2px rgba(255,214,120,.25), 0 2px 6px rgba(0,0,0,.4); }
 .syndy-chat-who{ flex:1; }
 .syndy-chat-name{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px; color:var(--brass-light); letter-spacing:.3px; }
 .syndy-chat-status{ font-size:10px; color:var(--win); }
@@ -3250,7 +3251,7 @@
 .chat-msg-avatar{ width:26px; height:26px; border-radius:50%; object-fit:cover; flex-shrink:0; margin-bottom:2px; border:1px solid var(--brass-dim); }
 @media (prefers-reduced-motion: reduce){ .chat-msg-row{ animation:none; } }
 .chat-typing-indicator{ padding:2px 16px 8px; font-size:11px; color:var(--muted); font-style:italic; flex-shrink:0; }
-.syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; }
+.syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; box-shadow:0 3px 10px rgba(0,0,0,.25); }
 .syndy-chat-body{ overflow-x:hidden; }
 .syndy-msg.syndy{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; white-space:normal; }
 .syndy-msg.syndy div{ margin-bottom:6px; }
@@ -3262,8 +3263,8 @@
 .syndy-msg-table{ border-collapse:collapse; font-size:11.5px; white-space:nowrap; }
 .syndy-msg-table th, .syndy-msg-table td{ padding:5px 8px; border-bottom:1px solid var(--line); text-align:left; }
 .syndy-msg-table th{ color:var(--brass-light); font-weight:700; border-bottom:1px solid var(--brass-dim); }
-.syndy-msg.user{ align-self:flex-end; background:linear-gradient(165deg, var(--brass-light), var(--brass)); color:#0E1A16; font-weight:600; border-bottom-right-radius:4px; }
-.syndy-msg.error{ align-self:center; color:var(--loss); font-size:11.5px; background:none; border:none; }
+.syndy-msg.user{ align-self:flex-end; background:linear-gradient(165deg, var(--brass-light), var(--brass)); color:#0E1A16; font-weight:600; border-bottom-right-radius:4px; box-shadow:0 3px 10px rgba(203,177,102,.3); }
+.syndy-msg.error{ align-self:center; color:var(--loss); font-size:11.5px; background:none; border:none; box-shadow:none; }
 .syndy-msg.typing{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; color:var(--muted); font-style:italic; }
 .syndy-msg-sender{ font-size:10px; font-weight:700; color:var(--brass); margin-bottom:3px; display:flex; align-items:center; }
 .syndy-msg.user .syndy-msg-sender{ color:rgba(14,26,22,.6); }
@@ -3271,13 +3272,14 @@
   display:block; font-size:9px; color:var(--muted); margin-top:4px; text-align:right; opacity:.7;
 }
 .syndy-msg.user .syndy-msg-time{ color:rgba(14,26,22,.5); }
+.chat-msg-avatar{ box-shadow:0 0 0 2px rgba(255,214,120,.15), 0 2px 5px rgba(0,0,0,.35); }
 
 /* ---- Pin bar — sits between the mode toggle and the message list,
    admin-only to set/clear. ---- */
 .chat-pinned-bar{
   display:flex; align-items:center; gap:8px; padding:8px 14px; flex-shrink:0;
-  background:rgba(203,177,102,.1); border-bottom:1px solid var(--brass-dim);
-  font-size:11.5px; color:var(--chalk);
+  background:linear-gradient(90deg, rgba(203,177,102,.14), rgba(203,177,102,.06)); border-bottom:1px solid var(--brass-dim);
+  font-size:11.5px; color:var(--chalk); box-shadow:0 2px 6px rgba(0,0,0,.15);
 }
 .chat-pinned-bar .icon{ flex-shrink:0; }
 .chat-pinned-bar .text{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -3287,7 +3289,7 @@
    same idea as every messaging app's "replying to" bar. ---- */
 .chat-reply-preview{
   display:flex; align-items:center; gap:8px; padding:8px 14px; flex-shrink:0;
-  background:rgba(0,0,0,.2); border-top:1px solid var(--line);
+  background:rgba(0,0,0,.22); border-top:1px solid var(--line); border-left:2px solid var(--brass);
   font-size:11px; color:var(--muted);
 }
 .chat-reply-preview .snippet{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -3306,8 +3308,11 @@
 
 /* Image attachment inside a bubble. */
 .syndy-msg img.chat-msg-image{
-  display:block; max-width:100%; border-radius:8px; margin-top:4px; cursor:pointer;
+  display:block; max-width:100%; border-radius:10px; margin-top:6px; cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.08);
+  transition:transform .15s ease;
 }
+.syndy-msg img.chat-msg-image:active{ transform:scale(.97); }
 
 /* @mention highlight inside message text. */
 .chat-mention{ color:var(--brass-light); font-weight:700; }
@@ -3341,12 +3346,20 @@
 .syndy-chat-input-row input{
   flex:1; background:var(--felt); border:1px solid var(--line); border-radius:999px; padding:10px 14px;
   color:var(--chalk); font-size:13px;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.35); transition:border-color .18s ease, box-shadow .18s ease;
+}
+.syndy-chat-input-row input:focus{
+  outline:none; border-color:var(--brass-dim);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.35), 0 0 0 2px rgba(203,177,102,.18);
 }
 .syndy-chat-send{
   width:38px; height:38px; border-radius:50%; border:none; background:linear-gradient(165deg, var(--brass-light), var(--brass));
   display:flex; align-items:center; justify-content:center; color:#0E1A16; font-weight:700; cursor:pointer; flex-shrink:0;
+  box-shadow:0 3px 10px rgba(203,177,102,.4), inset 0 1px 1px rgba(255,255,255,.4);
+  transition:transform .15s cubic-bezier(.34,1.56,.64,1), box-shadow .15s ease;
 }
-.syndy-chat-send:disabled{ opacity:.5; }
+.syndy-chat-send:active{ transform:scale(.9); box-shadow:0 1px 4px rgba(203,177,102,.4), inset 0 1px 1px rgba(255,255,255,.4); }
+.syndy-chat-send:disabled{ opacity:.5; box-shadow:none; }
 
 /* ---- Pot panel: collapsible details ---- */
 .casino-pot-details-toggle{

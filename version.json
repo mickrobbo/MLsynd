@@ -1,11 +1,9 @@
 {
-  "version": "2026-08-24.47",
+  "version": "2026-08-24.48",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\uddd1\ufe0f Group Chat: admin can now clear the entire chat (trash icon in the header) \u2014 needed a new Firebase rule since bulk-deleting the whole collection wasn't covered by the existing per-message rule.",
-    "\u2328\ufe0f Typing indicator \u2014 shows who's currently typing. Honest caveat: this app polls Group Chat every 5s rather than using a real-time listener, so it's laggy by design (~5s to appear/clear), not instant-messaging-precise.",
-    "\ud83d\udcac Avatars now sit beside each message bubble (standard chat-app layout) instead of inline inside the text \u2014 clearer at a glance who's saying what.",
-    "\ud83c\udfa8 Mode toggle rebuilt as a full-width tab-underline style instead of the old small pill pair \u2014 reads more clearly as two views of one thing.",
-    "\u2728 New messages now animate in with a subtle fade/rise instead of appearing instantly."
+    "\ud83d\udcac Chat window is now noticeably taller (was capped at 72vh/560px, now 88vh/720px) \u2014 fixes content getting cut off, especially images.",
+    "\ud83d\udd14 New: a push notification now goes out when someone posts in Group Chat \u2014 previously only @mentions triggered a push, so a regular message (even with a photo) never notified anyone who wasn't already looking. Rate-limited per recipient (one notification per 5 minutes even during an active back-and-forth) so it can't spam, and skips anyone already specifically @mentioned in the same message so they don't get double-pinged.",
+    "\u2728 Premium polish pass: deeper shadows on message bubbles, a richer header gradient, a recessed/glowing input field, a proper press-and-glow send button, and refined image styling with its own shadow and border."
   ]
 }
