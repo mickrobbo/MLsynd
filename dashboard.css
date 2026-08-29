@@ -3220,7 +3220,7 @@
   background-repeat:no-repeat; background-position:center 58%; background-size:300px auto;
 }
 .syndy-chat-body::before{
-  content:''; position:absolute; inset:0; background:var(--felt-2); opacity:.78; pointer-events:none; z-index:0;
+  content:''; position:absolute; inset:0; background:var(--felt-2); opacity:.88; pointer-events:none; z-index:0;
 }
 .syndy-chat-body > *{ position:relative; z-index:1; }
 .syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; }
@@ -3238,8 +3238,78 @@
 .syndy-msg.user{ align-self:flex-end; background:linear-gradient(165deg, var(--brass-light), var(--brass)); color:#0E1A16; font-weight:600; border-bottom-right-radius:4px; }
 .syndy-msg.error{ align-self:center; color:var(--loss); font-size:11.5px; background:none; border:none; }
 .syndy-msg.typing{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; color:var(--muted); font-style:italic; }
-.syndy-msg-sender{ font-size:10px; font-weight:700; color:var(--brass); margin-bottom:3px; display:block; }
+.syndy-msg-sender{ font-size:10px; font-weight:700; color:var(--brass); margin-bottom:3px; display:flex; align-items:center; }
 .syndy-msg.user .syndy-msg-sender{ color:rgba(14,26,22,.6); }
+.syndy-msg-time{
+  display:block; font-size:9px; color:var(--muted); margin-top:4px; text-align:right; opacity:.7;
+}
+.syndy-msg.user .syndy-msg-time{ color:rgba(14,26,22,.5); }
+
+/* ---- Pin bar — sits between the mode toggle and the message list,
+   admin-only to set/clear. ---- */
+.chat-pinned-bar{
+  display:flex; align-items:center; gap:8px; padding:8px 14px; flex-shrink:0;
+  background:rgba(203,177,102,.1); border-bottom:1px solid var(--brass-dim);
+  font-size:11.5px; color:var(--chalk);
+}
+.chat-pinned-bar .icon{ flex-shrink:0; }
+.chat-pinned-bar .text{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-pinned-bar .unpin{ flex-shrink:0; color:var(--muted); cursor:pointer; padding:2px 4px; font-size:14px; }
+
+/* ---- Reply preview — sits above the input row while composing a reply,
+   same idea as every messaging app's "replying to" bar. ---- */
+.chat-reply-preview{
+  display:flex; align-items:center; gap:8px; padding:8px 14px; flex-shrink:0;
+  background:rgba(0,0,0,.2); border-top:1px solid var(--line);
+  font-size:11px; color:var(--muted);
+}
+.chat-reply-preview .snippet{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.chat-reply-preview .snippet b{ color:var(--brass-light); }
+.chat-reply-preview .cancel{ flex-shrink:0; cursor:pointer; font-size:16px; color:var(--muted); }
+
+/* Quoted reply shown INSIDE a message bubble, above its own text. */
+.syndy-msg-reply-quote{
+  font-size:11px; padding:5px 8px; margin-bottom:6px; border-radius:6px;
+  background:rgba(0,0,0,.18); border-left:2px solid var(--brass); color:var(--muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.syndy-msg-reply-quote b{ color:var(--brass); }
+.syndy-msg.user .syndy-msg-reply-quote{ background:rgba(0,0,0,.1); border-left-color:rgba(14,26,22,.4); color:rgba(14,26,22,.6); }
+.syndy-msg.user .syndy-msg-reply-quote b{ color:rgba(14,26,22,.8); }
+
+/* Image attachment inside a bubble. */
+.syndy-msg img.chat-msg-image{
+  display:block; max-width:100%; border-radius:8px; margin-top:4px; cursor:pointer;
+}
+
+/* @mention highlight inside message text. */
+.chat-mention{ color:var(--brass-light); font-weight:700; }
+.syndy-msg.user .chat-mention{ color:#0E1A16; text-decoration:underline; }
+
+/* Reactions row below a bubble. */
+.syndy-msg-reactions{ display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.syndy-msg-reaction-pill{
+  display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:10px;
+  background:rgba(0,0,0,.25); border:1px solid var(--line); font-size:11px; cursor:pointer;
+}
+.syndy-msg-reaction-pill.mine{ background:rgba(203,177,102,.25); border-color:var(--brass); }
+.syndy-msg.user .syndy-msg-reaction-pill{ background:rgba(0,0,0,.12); border-color:rgba(14,26,22,.25); }
+.syndy-msg.user .syndy-msg-reaction-pill.mine{ background:rgba(14,26,22,.18); border-color:rgba(14,26,22,.5); }
+
+/* Long-press reaction/pin picker — floats near the message that was held. */
+.chat-reaction-picker{
+  position:fixed; z-index:10001; display:flex; align-items:center; gap:6px; padding:8px 10px;
+  background:var(--felt-3); border:1px solid var(--brass); border-radius:24px;
+  box-shadow:0 10px 28px rgba(0,0,0,.55);
+}
+.chat-reaction-picker-emoji{ font-size:20px; cursor:pointer; padding:2px; line-height:1; }
+.chat-reaction-picker-emoji:active{ transform:scale(1.3); }
+.chat-reaction-picker-pin{ font-size:16px; cursor:pointer; padding:2px 4px; border-left:1px solid var(--line); margin-left:2px; padding-left:8px; }
+
+.chat-image-btn{
+  background:none; border:none; font-size:20px; cursor:pointer; padding:4px 2px; flex-shrink:0; color:var(--chalk);
+}
+
 .syndy-chat-input-row{ display:flex; gap:8px; padding:10px; border-top:1px solid var(--line); flex-shrink:0; }
 .syndy-chat-input-row input{
   flex:1; background:var(--felt); border:1px solid var(--line); border-radius:999px; padding:10px 14px;

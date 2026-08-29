@@ -1,7 +1,13 @@
 {
-  "version": "2026-08-24.42",
+  "version": "2026-08-24.45",
   "date": "2026-08-27",
   "changes": [
-    "\ud83c\udfc9 New: Tipping category cosmetics \u2014 tipping-only members now get an emerald visual identity, separate from Casino tier (can show alongside a real tier, not instead of it). A small rugby-ball badge on their avatar (opposite corner from the tier gem), an emerald profile tint, and emerald table felt/card-backs/chip-rims when they're at the tables \u2014 shown on the Casino and Tipping ladders. Purely visual, doesn't touch anyone's actual role or access."
+    "\ud83d\udcac Group Chat, fully built out \u2014 all six pieces:",
+    "  \u2022 Reactions \u2014 long-press any message to drop an emoji on it, tap a reaction pill to toggle your own",
+    "  \u2022 @mentions \u2014 typing @Name sends that specific person a real push notification with the message context",
+    "  \u2022 Pin \u2014 admin can pin a message to the top from the same long-press menu",
+    "  \u2022 Reply threading \u2014 tap a message to reply directly to it, shown as a quoted snippet",
+    "  \u2022 Image sharing \u2014 a camera button next to the input, images compressed client-side before sending",
+    "  \u2022 Syndy in-channel \u2014 @Syndy in a message triggers a real reply from her, posted for everyone to see, not just privately"
   ]
 }

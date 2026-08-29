@@ -1646,13 +1646,19 @@
       <button type="button" class="lb-time-btn active" data-chat-mode="syndy">🤖 Syndy</button>
       <button type="button" class="lb-time-btn" data-chat-mode="group">💬 Group Chat</button>
     </div>
+    <div class="chat-pinned-bar" id="chatPinnedBar" style="display:none;"></div>
     <div class="syndy-chat-body" id="syndyChatBody"></div>
+    <div class="chat-reply-preview" id="chatReplyPreview" style="display:none;"></div>
     <div class="syndy-chat-input-row">
+      <input type="file" id="chatImageInput" accept="image/*" style="display:none;">
+      <button type="button" class="chat-image-btn" id="chatImageBtn" style="display:none;" title="Send an image">📷</button>
       <input type="text" id="syndyChatInput" placeholder="Ask Syndy anything…" autocomplete="off">
       <button type="button" class="syndy-chat-send" id="syndyChatSendBtn">➤</button>
     </div>
   </div>
 </div>
+
+<div class="chat-reaction-picker" id="chatReactionPicker" style="display:none;"></div>
 
 <div id="imgModal" class="img-modal">
   <img id="imgModalImg" src="" alt="Bet slip">
@@ -2817,7 +2823,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.42"; // Tipping category — emerald badge/felt/profile/ladder cosmetics for tipping-only members, separate visual axis from Casino tier — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.45"; // Group Chat: reactions, @mentions with push, pinning, reply threading, image sharing, Syndy participating in-channel — new send-mention.mjs needs deploying too — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4623,6 +4629,35 @@ async function renderHoldemSeatRing(){
 // Checked the real rules file before building this, not assumed.
 
 const avatarCache = {}; // uid -> data URI string, or null if confirmed no avatar set — caching null too avoids re-fetching "no avatar" repeatedly
+// General-purpose image compression for chat attachments — ported from
+// the same pattern the Ledger's bet-slip uploads already use (resize to
+// maxDim, re-encode as JPEG at a moderate quality), not the avatar crop
+// tool's version (that one's tightly coupled to its square-crop math).
+// Smaller target than slips here (700px/0.65) since chat can accumulate
+// many images over time, unlike a curated handful of weekly slips.
+function compressImageForChat(file, maxDim = 700, quality = 0.65){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > maxDim || h > maxDim){
+          if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
+          else{ w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 async function getAvatarDataUri(uid){
   if(uid in avatarCache) return avatarCache[uid];
   try{
@@ -7453,9 +7488,15 @@ async function renderXPLeaderboard(){
       const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
       const tierKey = casinoTierFor(r.prestige)?.key || null; // already have the prestige score for this row — no extra fetch needed for the rank card's tier
       // Board roster absence is the established proxy for "tipping-only"
-      // throughout this app (see openTippingOnlyProfile) — nobody with a
-      // real Board seat can ever be tipping-category by definition.
-      const isTippingCat = !(currentState.members || []).some(m => m.name === r.name);
+      // — but it MUST be checked by uid (r.uid === some member's
+      // linkedUid), never by name. Tipping display names are self-chosen
+      // by each person and have no guaranteed relationship to their
+      // Board name (e.g. "Bradley Alba" on Tipping vs "Brad" on Board) —
+      // comparing names meant this incorrectly badged EVERY row, not
+      // just genuinely tipping-only ones. Real bug, caught from a
+      // screenshot showing the badge on people who are clearly Board
+      // members with a linked account.
+      const isTippingCat = r.uid ? !(currentState.members || []).some(m => m.linkedUid === r.uid) : false;
       const primaryVal = isThisMonth ? (r.monthEarned != null ? '+' + r.monthEarned.toLocaleString() : '—') : (r.balance != null ? r.balance.toLocaleString() : '—');
       const secondaryLabel = isThisMonth ? `💰 ${r.balance != null ? r.balance.toLocaleString() : '—'} balance` : `🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime`;
       return `<div class="xp-lb-row" data-name="${escapeHtml(r.name)}" style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '13px 8px' : '10px 4px'}; border-bottom:1px solid var(--line); cursor:pointer; ${bg}">
@@ -8807,10 +8848,10 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     if(sheetEl){
       sheetEl.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-platinum', 'tier-diamond');
       if(t) sheetEl.classList.add(`tier-${t.key}`);
-      // Same board-roster-absence proxy used everywhere else in this app
-      // for "tipping-only" — a separate visual axis from tier, so this
-      // never removes the tier class above, just layers alongside it.
-      sheetEl.classList.toggle('tipping-category', forName ? !(currentState.members || []).some(m => m.name === forName) : false);
+      // MUST be checked by uid, not name — same root-cause bug as the
+      // ladders (Tipping display names are self-chosen and have no
+      // guaranteed relationship to Board names), fixed the same way.
+      sheetEl.classList.toggle('tipping-category', linkedUid ? !(currentState.members || []).some(m => m.linkedUid === linkedUid) : false);
     }
 
     // Prestige progress bar — how far toward the NEXT tier up. CASINO_TIERS
@@ -9793,6 +9834,7 @@ document.getElementById('syndyChatInput').addEventListener('keydown', (e) => {
 let chatMode = 'syndy'; // or 'group'
 let groupChatPollHandle = null;
 let groupChatLastCount = 0;
+let groupChatNameToUid = {}; // rebuilt on every render — see renderGroupChat
 
 function sendChatMessage(){
   if(chatMode === 'group') sendGroupChatMessage();
@@ -9809,6 +9851,7 @@ function switchChatMode(mode){
     document.getElementById('syndyChatHeaderStatus').textContent = 'Everyone can see this';
     const icon = document.getElementById('syndyChatHeaderIcon');
     if(icon) icon.style.display = 'none';
+    document.getElementById('chatImageBtn').style.display = '';
     input.placeholder = 'Message the group…';
     groupChatLastCount = 0;
     setGroupChatLastSeen(Date.now()); // opening the tab counts as "seen" immediately, don't wait for the first poll
@@ -9820,6 +9863,9 @@ function switchChatMode(mode){
     document.getElementById('syndyChatHeaderStatus').textContent = 'Online';
     const icon = document.getElementById('syndyChatHeaderIcon');
     if(icon) icon.style.display = '';
+    document.getElementById('chatImageBtn').style.display = 'none';
+    clearReplyTarget();
+    closeReactionPicker();
     input.placeholder = 'Ask Syndy anything…';
     if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; }
     syndyMessages.forEach(m => syndyAppendMessage(m.role === 'user' ? 'user' : 'syndy', m.content));
@@ -9833,12 +9879,272 @@ document.querySelectorAll('#chatModeToggle .lb-time-btn').forEach(btn => {
   btn.addEventListener('click', () => switchChatMode(btn.dataset.chatMode));
 });
 
+// ---- Reply-to state ----
+let chatReplyTarget = null; // { messageId, senderName, textSnippet } or null
+function setReplyTarget(messageId, senderName, text){
+  chatReplyTarget = { messageId, senderName, textSnippet: (text || '').slice(0, 80) };
+  const bar = document.getElementById('chatReplyPreview');
+  bar.innerHTML = `<span class="snippet">Replying to <b>${escapeHtml(senderName)}</b>: ${escapeHtml(chatReplyTarget.textSnippet)}</span><span class="cancel" id="chatReplyCancelBtn">✕</span>`;
+  bar.style.display = 'flex';
+  document.getElementById('chatReplyCancelBtn').addEventListener('click', clearReplyTarget);
+  document.getElementById('syndyChatInput').focus();
+}
+function clearReplyTarget(){
+  chatReplyTarget = null;
+  const bar = document.getElementById('chatReplyPreview');
+  if(bar){ bar.style.display = 'none'; bar.innerHTML = ''; }
+}
+
+// ---- Reaction / pin picker (long-press) ----
+const CHAT_QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥', '😮', '😢'];
+function openReactionPicker(x, y, messageId, senderName, text){
+  const picker = document.getElementById('chatReactionPicker');
+  const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const emojiHtml = CHAT_QUICK_REACTIONS.map(e => `<span class="chat-reaction-picker-emoji" data-emoji="${e}">${e}</span>`).join('');
+  const pinHtml = isAdmin ? `<span class="chat-reaction-picker-pin" id="chatPickerPinBtn" title="Pin this">📌</span>` : '';
+  picker.innerHTML = emojiHtml + pinHtml;
+  picker.style.display = 'flex';
+  // Rough width estimate before layout — good enough to keep it on-screen, not pixel-perfect
+  const estWidth = CHAT_QUICK_REACTIONS.length * 30 + (isAdmin ? 30 : 0) + 20;
+  const left = Math.min(Math.max(8, x - estWidth / 2), window.innerWidth - estWidth - 8);
+  const top = Math.max(8, y - 56);
+  picker.style.left = left + 'px';
+  picker.style.top = top + 'px';
+  picker.querySelectorAll('.chat-reaction-picker-emoji').forEach(el => {
+    el.addEventListener('click', () => {
+      toggleReaction(messageId, el.dataset.emoji);
+      closeReactionPicker();
+    });
+  });
+  if(isAdmin){
+    const pinBtn = document.getElementById('chatPickerPinBtn');
+    if(pinBtn) pinBtn.addEventListener('click', () => {
+      pinChatMessage(messageId, senderName, text);
+      closeReactionPicker();
+    });
+  }
+  hapticPulse(15); // confirms the long-press actually registered
+}
+function closeReactionPicker(){
+  const picker = document.getElementById('chatReactionPicker');
+  if(picker) picker.style.display = 'none';
+}
+document.addEventListener('click', (e) => {
+  const picker = document.getElementById('chatReactionPicker');
+  if(picker && picker.style.display !== 'none' && !picker.contains(e.target) && !e.target.closest('.syndy-msg')){
+    closeReactionPicker();
+  }
+});
+
+async function toggleReaction(messageId, emoji){
+  if(!currentUserUid || chatMode !== 'group') return;
+  try{
+    const path = `/groupChat/messages/${messageId}/reactions/${encodeURIComponent(emoji)}/${currentUserUid}.json`;
+    const res = await authedFetch(path);
+    const existing = res.ok ? await res.json() : null;
+    if(existing){
+      await authedFetch(path, { method: 'DELETE' });
+    } else {
+      await authedFetch(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true) });
+      hapticPulse(10);
+    }
+    renderGroupChat(false);
+  }catch(e){}
+}
+function renderReactionPills(messageId, reactions){
+  if(!reactions) return '';
+  const entries = Object.entries(reactions).filter(([, uids]) => uids && Object.keys(uids).length > 0);
+  if(entries.length === 0) return '';
+  const pills = entries.map(([emoji, uids]) => {
+    const count = Object.keys(uids).length;
+    const mine = uids[currentUserUid] ? ' mine' : '';
+    return `<span class="syndy-msg-reaction-pill${mine}" data-message-id="${messageId}" data-emoji="${escapeHtml(emoji)}">${emoji} ${count}</span>`;
+  }).join('');
+  return `<div class="syndy-msg-reactions">${pills}</div>`;
+}
+
+// ---- Pin ----
+async function pinChatMessage(messageId, senderName, text){
+  try{
+    await authedFetch('/groupChat/pinned.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId, senderName, text: (text || '').slice(0, 200), pinnedAt: Date.now(), pinnedBy: currentUserName })
+    });
+    showToast('📌 Pinned');
+    renderGroupChat(false);
+  }catch(e){
+    showToast('Could not pin — try again');
+  }
+}
+async function unpinChatMessage(){
+  try{
+    await authedFetch('/groupChat/pinned.json', { method: 'DELETE' });
+    showToast('Unpinned');
+    renderGroupChat(false);
+  }catch(e){
+    showToast('Could not unpin — try again');
+  }
+}
+
+// ---- @mention highlighting/detection — the visual highlight uses a
+// simple single-word regex (good enough for the common case, this
+// group's names are mostly one word); DETECTION for triggering the
+// actual push uses a full-name substring match against every known
+// sender instead, so a longer name like "Bradley Alba" still correctly
+// notifies even though it won't highlight both words visually. ----
+function highlightMentions(escapedText){
+  return escapedText.replace(/@(\w+)/g, '<span class="chat-mention">@$1</span>');
+}
+function detectMentions(text){
+  const lower = text.toLowerCase();
+  const matched = [];
+  Object.entries(groupChatNameToUid).forEach(([name, uid]) => {
+    if(uid && uid !== currentUserUid && lower.includes('@' + name)) matched.push(uid);
+  });
+  return matched;
+}
+async function sendMentionPush(uid, text){
+  try{
+    const auth = await getValidAuth();
+    if(!auth) return;
+    trackApiCall('send-mention');
+    await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-mention', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: auth.idToken, toUid: uid, messageText: text })
+    });
+  }catch(e){} // fire-and-forget — a failed mention push shouldn't surface as an error to the sender, the message itself already sent fine
+}
+
+// ---- Syndy participating in-channel — only the sender's own client
+// calls syndy-chat.mjs (never every connected device), so this can
+// never double-post regardless of how many people have the chat open.
+async function triggerSyndyInChannel(userText){
+  try{
+    const auth = await getValidAuth();
+    if(!auth) return;
+    trackApiCall('syndy-chat');
+    const res = await fetch('/.netlify/functions/syndy-chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: auth.idToken, messages: [{ role: 'user', content: userText }] })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.reply) return;
+    await authedFetch('/groupChat/messages.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderUid: 'syndy', senderName: 'Syndy', text: data.reply, ts: Date.now() })
+    });
+    renderGroupChat(true);
+  }catch(e){} // fire-and-forget, same reasoning as mention pushes — the user's own message already sent
+}
+
+// ---- Image attachment ----
+document.getElementById('chatImageBtn').addEventListener('click', () => {
+  document.getElementById('chatImageInput').click();
+});
+document.getElementById('chatImageInput').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if(!file || !currentUserUid) return;
+  try{
+    const dataUri = await compressImageForChat(file);
+    const input = document.getElementById('syndyChatInput');
+    const caption = input.value.trim();
+    input.value = '';
+    const replyTo = chatReplyTarget;
+    clearReplyTarget();
+    await authedFetch('/groupChat/messages.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderUid: currentUserUid, senderName: currentUserName || 'Someone', text: caption, imageData: dataUri, ts: Date.now(),
+        ...(replyTo ? { replyTo } : {})
+      })
+    });
+    hapticPulse(12);
+    renderGroupChat(true);
+  }catch(e){
+    showToast("Couldn't send image — try again");
+  }
+});
+
+// One-time delegated listeners on the chat body — set up once here, not
+// re-bound on every render, since renderGroupChat rebuilds the DOM
+// wholesale each time and per-element listeners would leak/duplicate.
+const chatBodyEl = document.getElementById('syndyChatBody');
+let chatLongPressTimer = null;
+let chatLongPressFired = false;
+let chatLongPressStartXY = null;
+chatBodyEl.addEventListener('pointerdown', (e) => {
+  if(chatMode !== 'group') return;
+  const msgEl = e.target.closest('.syndy-msg[data-message-id]');
+  if(!msgEl) return;
+  chatLongPressFired = false;
+  chatLongPressStartXY = { x: e.clientX, y: e.clientY };
+  chatLongPressTimer = setTimeout(() => {
+    chatLongPressFired = true;
+    openReactionPicker(e.clientX, e.clientY, msgEl.dataset.messageId, msgEl.dataset.senderName, msgEl.dataset.messageText);
+  }, 500);
+});
+chatBodyEl.addEventListener('pointermove', (e) => {
+  if(!chatLongPressTimer || !chatLongPressStartXY) return;
+  if(Math.abs(e.clientX - chatLongPressStartXY.x) > 10 || Math.abs(e.clientY - chatLongPressStartXY.y) > 10){
+    clearTimeout(chatLongPressTimer);
+    chatLongPressTimer = null;
+  }
+});
+['pointerup', 'pointercancel'].forEach(evt => {
+  chatBodyEl.addEventListener(evt, () => {
+    if(chatLongPressTimer){ clearTimeout(chatLongPressTimer); chatLongPressTimer = null; }
+  });
+});
+chatBodyEl.addEventListener('click', (e) => {
+  if(chatMode !== 'group') return;
+  const pill = e.target.closest('.syndy-msg-reaction-pill');
+  if(pill){ toggleReaction(pill.dataset.messageId, pill.dataset.emoji); return; }
+  if(e.target.classList.contains('chat-msg-image')){
+    document.getElementById('imgModalImg').src = e.target.src;
+    document.getElementById('imgModal').classList.add('open');
+    return;
+  }
+  const msgEl = e.target.closest('.syndy-msg[data-message-id]');
+  if(msgEl && !chatLongPressFired){
+    setReplyTarget(msgEl.dataset.messageId, msgEl.dataset.senderName, msgEl.dataset.messageText);
+  }
+  chatLongPressFired = false;
+});
+
 async function renderGroupChat(scrollToBottom){
   try{
+    const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    const pinnedRes = await authedFetch('/groupChat/pinned.json');
+    const pinned = pinnedRes.ok ? await pinnedRes.json() : null;
+    const pinBar = document.getElementById('chatPinnedBar');
+    if(pinBar){
+      if(pinned && pinned.text){
+        pinBar.style.display = 'flex';
+        pinBar.innerHTML = `<span class="icon">📌</span><span class="text"><b>${escapeHtml(pinned.senderName || 'Pinned')}:</b> ${escapeHtml(pinned.text)}</span>${isAdmin ? '<span class="unpin" id="chatUnpinBtn">✕</span>' : ''}`;
+        if(isAdmin){
+          const unpinBtn = document.getElementById('chatUnpinBtn');
+          if(unpinBtn) unpinBtn.addEventListener('click', unpinChatMessage);
+        }
+      } else {
+        pinBar.style.display = 'none';
+        pinBar.innerHTML = '';
+      }
+    }
+
     const res = await authedFetch('/groupChat/messages.json?orderBy="ts"&limitToLast=100');
     const data = res.ok ? await res.json() : null;
-    const entries = data && typeof data === 'object' ? Object.values(data).sort((a, b) => (a.ts || 0) - (b.ts || 0)) : [];
-    if(entries.length === groupChatLastCount) return; // nothing new — skip the re-render so polling doesn't jitter the scroll position
+    // Keeps the Firebase key (message id) alongside each message — needed
+    // for reactions/replies/pinning, all of which target a specific
+    // message. The earlier version discarded this via Object.values.
+    const entries = data && typeof data === 'object'
+      ? Object.entries(data).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0))
+      : [];
+    // The "skip if count unchanged" shortcut is ONLY safe for a passive
+    // background poll (scrollToBottom === false) — see the fix note from
+    // the previous bug report for why this must never apply to a
+    // deliberate action.
+    if(scrollToBottom === false && entries.length === groupChatLastCount) return;
     groupChatLastCount = entries.length;
     const body = document.getElementById('syndyChatBody');
     body.innerHTML = '';
@@ -9849,17 +10155,42 @@ async function renderGroupChat(scrollToBottom){
       body.appendChild(el);
       return;
     }
-    entries.forEach(m => {
+    const uniqueUids = [...new Set(entries.map(([, m]) => m.senderUid).filter(u => u && u !== 'syndy'))];
+    const avatarByUid = {};
+    await Promise.all(uniqueUids.map(async uid => { avatarByUid[uid] = await getAvatarDataUri(uid); }));
+
+    // Rebuilt fresh each render — the live lookup @mention detection
+    // uses when composing a NEW message, so it only ever knows about
+    // people who've actually posted (a reasonable scope: you can only
+    // @mention someone who's been part of the conversation).
+    groupChatNameToUid = {};
+    entries.forEach(([, m]) => {
+      if(m.senderUid && m.senderUid !== 'syndy' && m.senderName) groupChatNameToUid[m.senderName.toLowerCase()] = m.senderUid;
+    });
+
+    entries.forEach(([id, m]) => {
       const isMe = m.senderUid === currentUserUid;
+      const isSyndy = m.senderUid === 'syndy';
       const el = document.createElement('div');
       el.className = `syndy-msg ${isMe ? 'user' : 'syndy'}`;
-      el.innerHTML = `${!isMe ? `<span class="syndy-msg-sender">${escapeHtml(m.senderName || 'Someone')}</span>` : ''}${escapeHtml(m.text || '')}`;
+      el.dataset.messageId = id;
+      el.dataset.senderName = m.senderName || 'Someone';
+      el.dataset.messageText = m.text || '';
+      const avatar = isSyndy
+        ? `<img src="syndy-icon.png" alt="" style="width:20px; height:20px; border-radius:50%; object-fit:cover; flex-shrink:0; margin-right:6px;" onerror="this.style.display='none';">`
+        : avatarHtml(m.senderName, avatarByUid[m.senderUid], 20);
+      const meta = !isMe ? `<span class="syndy-msg-sender">${avatar}${escapeHtml(m.senderName || 'Someone')}</span>` : '';
+      const replyQuote = m.replyTo ? `<div class="syndy-msg-reply-quote"><b>${escapeHtml(m.replyTo.senderName || 'Someone')}</b> ${escapeHtml(m.replyTo.textSnippet || '')}</div>` : '';
+      const textHtml = m.text ? highlightMentions(escapeHtml(m.text)) : '';
+      const image = m.imageData ? `<img class="chat-msg-image" src="${m.imageData}" alt="">` : '';
+      const reactionsHtml = renderReactionPills(id, m.reactions);
+      el.innerHTML = `${meta}${replyQuote}${textHtml}${image}<span class="syndy-msg-time">${timeAgo(m.ts)}</span>${reactionsHtml}`;
       body.appendChild(el);
     });
     // Modal is genuinely open and rendering right now — this counts as
     // having seen everything up to the newest message, so the badge
     // doesn't reappear the instant this closes over a stale timestamp.
-    const newest = entries[entries.length - 1];
+    const newest = entries[entries.length - 1][1];
     if(newest && newest.ts) setGroupChatLastSeen(newest.ts);
     if(scrollToBottom !== false) body.scrollTop = body.scrollHeight;
   }catch(e){}
@@ -9869,13 +10200,20 @@ async function sendGroupChatMessage(){
   const text = input.value.trim();
   if(!text || !currentUserUid) return;
   input.value = '';
+  const replyTo = chatReplyTarget;
+  clearReplyTarget();
   try{
     await authedFetch('/groupChat/messages.json', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ senderUid: currentUserUid, senderName: currentUserName || 'Someone', text, ts: Date.now() })
+      body: JSON.stringify({
+        senderUid: currentUserUid, senderName: currentUserName || 'Someone', text, ts: Date.now(),
+        ...(replyTo ? { replyTo } : {})
+      })
     });
     hapticPulse(12); // a light confirmation tap the message actually went — reuses the same Vibration API helper the casino sounds already hook into
     renderGroupChat(true);
+    detectMentions(text).forEach(uid => sendMentionPush(uid, text));
+    if(/@syndy\b/i.test(text)) triggerSyndyInChannel(text);
   }catch(e){
     showToast("Couldn't send — try again");
   }
@@ -13879,10 +14217,13 @@ async function renderTippingLadder(games){
     // only, so if boardJokerActiveByUid hadn't loaded yet when this ran (a real
     // race on first load), or updated later, nothing ever told the ladder to
     // reflect it — it could sit wrong for a full 4-minute poll cycle or more.
-    // Same board-roster-absence proxy as the Casino ladder — not every
-    // row here is tipping-only, most are Board members who also tip, so
-    // this still needs a per-row check rather than assuming.
-    const isTippingCat = !(currentState.members || []).some(m => m.name === r.name);
+    // Board roster absence is the established proxy for "tipping-only" —
+    // MUST be checked by uid, not name. Tipping display names are self-
+    // chosen and have no guaranteed relationship to Board names (e.g.
+    // "Bradley Alba" on Tipping vs "Brad" on Board) — comparing names
+    // meant this incorrectly badged every row. Fixed to match the Casino
+    // ladder's fix.
+    const isTippingCat = r.uid ? !(currentState.members || []).some(m => m.linkedUid === r.uid) : false;
     html += `<tr class="${rowCls}"><td>${i+1}</td><td class="ladder-name-col" data-uid="${escapeHtml(r.uid)}" data-name="${escapeHtml(r.name)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${avatarRankCardHtml(r.name, avatarByUid[r.uid], tierKeyByUid[r.uid], 40, isTippingCat)}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
