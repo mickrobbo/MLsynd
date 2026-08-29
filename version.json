@@ -1,9 +1,8 @@
 {
-  "version": "2026-08-24.48",
+  "version": "2026-08-24.49",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\udcac Chat window is now noticeably taller (was capped at 72vh/560px, now 88vh/720px) \u2014 fixes content getting cut off, especially images.",
-    "\ud83d\udd14 New: a push notification now goes out when someone posts in Group Chat \u2014 previously only @mentions triggered a push, so a regular message (even with a photo) never notified anyone who wasn't already looking. Rate-limited per recipient (one notification per 5 minutes even during an active back-and-forth) so it can't spam, and skips anyone already specifically @mentioned in the same message so they don't get double-pinged.",
-    "\u2728 Premium polish pass: deeper shadows on message bubbles, a richer header gradient, a recessed/glowing input field, a proper press-and-glow send button, and refined image styling with its own shadow and border."
+    "Critical fix: @mention detection was built only from people who'd already posted a message in the current chat history \u2014 meaning nobody could be mentioned at all in a fresh or just-cleared chat (like right after using the new Clear Chat button), or before that person had said anything. Now built from the full roster (Board + Tipping-only) instead, same source the Casino leaderboard already uses.",
+    "Diagnostics now also checks whether send-mention.mjs and send-group-notify.mjs are actually deployed \u2014 same deployment-verification pattern already used for send-nudge.mjs, extended to the two newer push functions."
   ]
 }

@@ -2825,7 +2825,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.48"; // taller chat sheet, new group-message push notification (excludes anyone already @mentioned), premium visual pass on bubbles/header/input/images — new send-group-notify.mjs needs deploying too — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.49"; // CRITICAL FIX: @mention detection only ever knew about people who'd already posted in the chat — meaning nobody could be mentioned in a fresh or just-cleared chat. Now built from the full roster instead. Also added Diagnostics deployment checks for send-mention.mjs and send-group-notify.mjs — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10248,6 +10248,28 @@ async function renderGroupChat(scrollToBottom){
     groupChatLastCount = entries.length;
     const body = document.getElementById('syndyChatBody');
     body.innerHTML = '';
+
+    // Rebuilt from the FULL roster (Board + Tipping-only), not just past
+    // message senders — the earlier version only ever knew about people
+    // who'd already posted, meaning nobody could be @mentioned in a
+    // fresh or just-cleared chat, or before they'd said anything at
+    // all. Same linked+tippingOnly combination the Casino leaderboard
+    // already uses, so this needs no extra fetch beyond what's already
+    // in memory. tippingParticipantNames only knows someone once the
+    // Tipping ladder has rendered this session — a Tipping-only person
+    // who hasn't opened that tab yet won't be mentionable until they do,
+    // same known limitation as everywhere else this cache is used.
+    // Runs BEFORE the empty-chat early return below — a cleared or
+    // brand-new chat still needs this populated for the very first
+    // message to be able to mention anyone.
+    groupChatNameToUid = {};
+    (currentState.members || []).forEach(m => {
+      if(m.linkedUid && m.name) groupChatNameToUid[m.name.toLowerCase()] = m.linkedUid;
+    });
+    Object.entries(tippingParticipantNames || {}).forEach(([uid, name]) => {
+      if(name) groupChatNameToUid[name.toLowerCase()] = uid;
+    });
+
     if(entries.length === 0){
       const el = document.createElement('div');
       el.className = 'syndy-msg syndy';
@@ -10259,14 +10281,6 @@ async function renderGroupChat(scrollToBottom){
     const avatarByUid = {};
     await Promise.all(uniqueUids.map(async uid => { avatarByUid[uid] = await getAvatarDataUri(uid); }));
 
-    // Rebuilt fresh each render — the live lookup @mention detection
-    // uses when composing a NEW message, so it only ever knows about
-    // people who've actually posted (a reasonable scope: you can only
-    // @mention someone who's been part of the conversation).
-    groupChatNameToUid = {};
-    entries.forEach(([, m]) => {
-      if(m.senderUid && m.senderUid !== 'syndy' && m.senderName) groupChatNameToUid[m.senderName.toLowerCase()] = m.senderUid;
-    });
 
     entries.forEach(([id, m]) => {
       const isMe = m.senderUid === currentUserUid;
@@ -13284,6 +13298,40 @@ async function runFullHealthCheck(){
     }
   }catch(e){
     check('Nudge function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
+  }
+
+  // 26/27. Same check, same reasoning, for the two other new push
+  // functions that shipped since — each is its own file, each needs its
+  // own "did the deploy actually pick it up" verification.
+  try{
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-mention', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => null);
+    if(res.status === 400 && data && data.error){
+      check('Mention function deployed', 'pass', 'Reachable and responding correctly');
+    } else if(res.status === 404 || !data){
+      check('Mention function deployed', 'fail', `Doesn't appear to be deployed (HTTP ${res.status}, ${data ? 'valid' : 'no parseable'} JSON response) — add send-mention.mjs to your Netlify functions`);
+    } else {
+      check('Mention function deployed', 'warn', `Reachable but responded unexpectedly (HTTP ${res.status}): ${data.error || JSON.stringify(data)}`);
+    }
+  }catch(e){
+    check('Mention function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
+  }
+  try{
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-group-notify', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => null);
+    if(res.status === 400 && data && data.error){
+      check('Group notify function deployed', 'pass', 'Reachable and responding correctly');
+    } else if(res.status === 404 || !data){
+      check('Group notify function deployed', 'fail', `Doesn't appear to be deployed (HTTP ${res.status}, ${data ? 'valid' : 'no parseable'} JSON response) — add send-group-notify.mjs to your Netlify functions`);
+    } else {
+      check('Group notify function deployed', 'warn', `Reachable but responded unexpectedly (HTTP ${res.status}): ${data.error || JSON.stringify(data)}`);
+    }
+  }catch(e){
+    check('Group notify function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
   }
 
   return { results, latencyMs: firebaseLatencyMs };
