@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-24.63",
+  "version": "2026-08-24.65",
   "date": "2026-08-27",
   "changes": [
-    "\ud83c\udfa4 Syndy Voice now speaks with a real AI voice (Google Cloud TTS, WaveNet, en-AU) instead of the browser's built-in text-to-speech \u2014 previously voice quality varied a lot depending on whatever voice each person's phone or browser happened to ship with. New google-tts.mjs function needs deploying, and a new GOOGLE_TTS_API_KEY environment variable needs setting on Netlify (a Google Cloud API key with the Text-to-Speech API enabled). Diagnostics now checks this deployment too, and can tell the difference between \"not deployed\" and \"deployed but the API key is missing.\""
+    "\ud83c\udfb2 New dedicated Craps dice sound \u2014 a real rattle-and-settle (dense clacking, spacing out, finishing on a low thud), replacing the borrowed Roulette spin sweep that was only ever there because it happened to be the right length, not the right character. Same 2.1s duration, matches the dice tumble animation exactly.",
+    "\ud83d\udc1b Real bug found and fixed in Share My Season: rendered the canvas layout in Python first to actually check it rather than trust the coordinates on paper, and found the \"SEASON P/L\" label overlapping the big P/L number above it for large 4-digit amounts. Pushed the spacing out properly."
   ]
 }

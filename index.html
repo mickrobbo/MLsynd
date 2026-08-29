@@ -2900,7 +2900,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.63"; // Syndy Voice now uses Google Cloud TTS (WaveNet, en-AU-Wavenet-B) instead of browser speechSynthesis — a real, consistent AI voice everywhere instead of whatever voice each phone happened to ship with. New google-tts.mjs function needs deploying + GOOGLE_TTS_API_KEY env var set. Diagnostics now checks this deployment too, and distinguishes "not deployed" from "deployed but missing the API key" — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.65"; // New Craps dice sound (rattle-and-settle, replaces borrowed Roulette spin sweep) — casino-craps.js updated. Also fixed a real bug in Share My Season found by actually rendering the canvas layout in Python first: the P/L label overlapped the big number above it for large 4-digit amounts — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8691,10 +8691,16 @@ async function drawSeasonShareCard(m){
   const plText = `${pl < 0 ? '-' : '+'}$${Math.abs(pl).toFixed(2)}`;
   ctx.fillStyle = pl >= 0 ? '#6FA98A' : '#C1604A';
   ctx.font = '700 76px "Barlow Condensed", sans-serif';
-  ctx.fillText(plText, W / 2, 250);
+  ctx.fillText(plText, W / 2, 205);
   ctx.fillStyle = '#93a89c';
   ctx.font = '400 16px "IBM Plex Sans", sans-serif';
-  ctx.fillText('SEASON P/L', W / 2, 280);
+  // Real bug caught by actually rendering this layout (via a Python/PIL
+  // replica, checked against a deliberately long name and a large
+  // 4-digit negative P/L) rather than just trusting the coordinates on
+  // paper: the label sat only 30px below the P/L number's baseline,
+  // which a 76px font's own visual extent could overlap into. Pushed
+  // down from 280 to 305 to give real clearance.
+  ctx.fillText('SEASON P/L', W / 2, 305);
 
   const derived = computeDerived(m);
   const stats = [
@@ -8703,7 +8709,7 @@ async function drawSeasonShareCard(m){
     { label: 'LEGS PLACED', value: `${m.legs}` },
     { label: 'AVG ODDS', value: derived.avgLeg > 0 ? `@ ${derived.avgLeg.toFixed(2)}` : '—' },
   ];
-  const gridTop = 360;
+  const gridTop = 385; // pushed down from 360 to stay proportional after the label above moved
   const cellW = W / 2, cellH = 130;
   ctx.strokeStyle = 'rgba(239,234,216,0.1)';
   ctx.lineWidth = 1;
@@ -14030,6 +14036,24 @@ async function runFullHealthCheck(){
     }
   }catch(e){
     check('Google TTS function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
+  }
+
+  // Payout notify — genuinely missing from this list until now, unlike
+  // the other four push functions, which all had this check already.
+  try{
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-payout-notify', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => null);
+    if(res.status === 400 && data && data.error){
+      check('Payout notify function deployed', 'pass', 'Reachable and responding correctly');
+    } else if(res.status === 404 || !data){
+      check('Payout notify function deployed', 'fail', `Doesn't appear to be deployed (HTTP ${res.status}, ${data ? 'valid' : 'no parseable'} JSON response) — add send-payout-notify.mjs to your Netlify functions`);
+    } else {
+      check('Payout notify function deployed', 'warn', `Reachable but responded unexpectedly (HTTP ${res.status}): ${data.error || JSON.stringify(data)}`);
+    }
+  }catch(e){
+    check('Payout notify function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
   }
 
   return { results, latencyMs: firebaseLatencyMs };

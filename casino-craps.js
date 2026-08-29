@@ -123,6 +123,55 @@ async function crapsAnimateRoll(finalA, finalB){
   [c1, c2].forEach(c => c.classList.remove('tumbling'));
 }
 function crapsFmtChip(n){ return n >= 1000 ? (n % 1000 === 0 ? (n / 1000) + 'k' : (n / 1000).toFixed(1) + 'k') : String(n); }
+// A genuine dice rattle-and-settle — replaces bjPlaySpinSound, which was
+// borrowed from Roulette purely because it happened to be a 2.1s
+// descending sweep. That was purpose-built to suggest a ball losing
+// momentum, not dice tumbling — different character entirely, just the
+// right length by coincidence. This instead is a dense run of sharp,
+// woody/plasticky clacks (dice knocking together) that spaces out
+// toward the end and finishes on a lower thud as they come to rest —
+// same 2.1s total, matching crapsAnimateRoll's own duration exactly
+// (1680ms flicker + 420ms settle tail).
+function crapsPlayDiceSound(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const clackOffsets = [];
+  let t = 0;
+  // Dense rattle phase, roughly matching the flicker window (~1.68s)
+  while(t < 1.68){
+    t += 0.05 + Math.random() * 0.05;
+    clackOffsets.push(t);
+  }
+  // Settling phase — spacing out toward the end
+  [0.12, 0.22, 0.34].forEach(gap => { t += gap; clackOffsets.push(t); });
+  clackOffsets.forEach((offset, i) => {
+    const startAt = now + offset;
+    const dur = 0.035;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let j = 0; j < data.length; j++) data[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / data.length, 3);
+    const noise = ctx.createBufferSource(); noise.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2600 + Math.random() * 1400; // sharp, woody clack character, randomised per-hit so the rattle doesn't sound mechanically identical
+    filter.Q.value = 2.2;
+    const gain = ctx.createGain();
+    const isLast = i === clackOffsets.length - 1;
+    gain.gain.value = isLast ? 0.26 : 0.14 + Math.random() * 0.05;
+    noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    noise.start(startAt);
+  });
+  // Final low thud under the last clack, for a sense of real weight
+  // settling onto the felt rather than just stopping abruptly.
+  const thudAt = now + clackOffsets[clackOffsets.length - 1];
+  const thudOsc = ctx.createOscillator(); thudOsc.type = 'sine'; thudOsc.frequency.value = 90;
+  const thudGain = ctx.createGain();
+  thudGain.gain.setValueAtTime(0.0001, thudAt);
+  thudGain.gain.exponentialRampToValueAtTime(0.17, thudAt + 0.01);
+  thudGain.gain.exponentialRampToValueAtTime(0.0001, thudAt + 0.25);
+  thudOsc.connect(thudGain); thudGain.connect(ctx.destination);
+  thudOsc.start(thudAt); thudOsc.stop(thudAt + 0.3);
+}
 // Generic setter — handles both simple spots (key === amt-id, e.g. "pass")
 // and per-number spots (amt-id is "place-4", live/staged looked up by
 // number within the relevant object). Renders actual chip-pill tokens
@@ -301,7 +350,7 @@ async function crapsRollInner(){
   const b = 1 + Math.floor(Math.random() * 6);
   const total = a + b;
   const isHardRoll = a === b;
-  bjPlaySpinSound();
+  crapsPlayDiceSound();
   await crapsAnimateRoll(a, b);
 
   // Commit staged Pass/Don't Pass onto the felt if a point isn't already
