@@ -2986,7 +2986,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.67"; // Live Blackjack polish: real chip-rail buy-in (replaces prompt()), table chat (own /blackjackChat path), admin/creator delete with refunds. Fixed a real bug caught while building it (checked unreliable user.email instead of the verified token's own email) and a real architecture mistake (a second named export wouldn't have been reachable as its own endpoint — folded into the main handler instead). Also fixes the actual Hold'em issue: a table stuck at status 'hand_in_progress' blocked deletion for everyone including admin — admin now has a guaranteed force-delete path that doesn't depend on holdem-dealer.mjs's own logic at all. blackjack-table-dealer.mjs and firebase-rules.json (new /blackjackChat path) both updated — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.69"; // Found a genuinely different Hold'em bug from a live error report: holdem-dealer.mjs's own deleteTable action throws server-side ("Cannot read null.stack") on a non-stuck table with people seated — not the same status-based bug fixed before. Can't edit that file directly, so admin now always routes table deletion (both the list view's trash icon and the in-table one) through the already-working adminForceDeleteTable action instead, in both places — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4731,16 +4731,15 @@ async function renderHoldemTableList(){
     area.innerHTML = entries.map(([id, t]) => {
       const seated = Object.keys(t.seats || {}).length;
       const statusText = t.status === 'hand_in_progress' ? '🔴 Hand in progress' : '⏳ Waiting for players';
-      // Matches the dealer's own deleteTable rule exactly — creator, admin
-      // (case/whitespace-insensitive, same as the server), or a table
-      // that never recorded a creator at all (old test tables from before
-      // createdBy was tracked — nobody could ever be "the creator" of
-      // those, so they'd otherwise be permanently stuck with no delete
-      // button showing for anyone). Still blocked only while a hand's
-      // actually in progress. Seated-but-not-playing is fine to delete;
-      // the server cashes everyone still sitting there back to their real
-      // balance automatically.
-      const canDelete = t.status !== 'hand_in_progress' && (t.createdBy === currentUserUid || (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() || !t.createdBy);
+      // Admin always sees this button, hand-in-progress or not — the
+      // click handler below routes admin through the working
+      // force-delete path regardless (see its own comment for why: two
+      // separate real bugs in holdem-dealer.mjs's own deleteTable made
+      // relying on it unreliable in general, not just the stuck-status
+      // case). Non-admin creators still only see it on a non-stuck
+      // table, since they still go through the original action.
+      const isAdminRow = (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      const canDelete = isAdminRow || (t.status !== 'hand_in_progress' && (t.createdBy === currentUserUid || !t.createdBy));
       return `
         <div class="holdem-table-row">
           <div>
@@ -4765,7 +4764,23 @@ async function renderHoldemTableList(){
           : `Delete "${btn.dataset.name}"? This can't be undone.`;
         if(!confirm(warning)) return;
         try{
-          await holdemDealerCall(btn.dataset.id, 'deleteTable', {});
+          // Real bug found from a live report: holdem-dealer.mjs's own
+          // deleteTable action can throw server-side ("Cannot read
+          // properties of null (reading 'stack')") while refunding
+          // seated players — not the same stuck-status issue fixed
+          // earlier, a genuinely different bug inside that file, which
+          // isn't available to edit directly here. For admin, route
+          // around it entirely via the working adminForceDeleteTable
+          // action instead (already built, already handles refunds
+          // with proper null-checks). Non-admin creators still hit the
+          // original bug — there's no fix available for that case
+          // without access to holdem-dealer.mjs itself.
+          const isAdmin = (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+          if(isAdmin){
+            await mpBjDealerCall(btn.dataset.id, 'adminForceDeleteTable', { gameType: 'holdem' });
+          } else {
+            await holdemDealerCall(btn.dataset.id, 'deleteTable', {});
+          }
           renderHoldemTableList();
         }catch(e){
           alert(e.message);
@@ -4899,20 +4914,26 @@ async function renderHoldemSeatRing(){
 
     const deleteBtn = document.getElementById('holdemTableDeleteBtn');
     const isAdmin = (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
-    // Real bug this fixes: a table stuck with status permanently at
-    // 'hand_in_progress' (some hand that never properly resolved) made
-    // canDeleteThisTable false for EVERYONE, admin included — there was
-    // no way to ever clear it. Admin now gets a guaranteed-working
-    // force-delete path for exactly that stuck case, routed through
-    // blackjack-table-dealer.mjs's adminForceDeleteTable action rather
-    // than holdem-dealer.mjs's own (possibly-buggy) deleteTable — DB_SECRET
-    // can write to /holdemTables regardless of which function calls it,
-    // so this doesn't depend on whatever was blocking the normal path.
+    // Two real bugs led to this. First: a table stuck with status
+    // permanently at 'hand_in_progress' made canDeleteThisTable false
+    // for EVERYONE, admin included. Second, found later from a live
+    // report on a table that WASN'T stuck: holdem-dealer.mjs's own
+    // deleteTable action can throw server-side while refunding seated
+    // players regardless of status ("Cannot read properties of null
+    // (reading 'stack')") — a genuinely different bug inside that file,
+    // not available to edit directly here. Given that, admin now always
+    // routes through the working adminForceDeleteTable action rather
+    // than trying to detect which specific case applies — DB_SECRET can
+    // write to /holdemTables regardless of which function calls it, so
+    // this doesn't depend on whatever's wrong with the normal path.
+    // Non-admin creators still hit the original bug on a non-stuck
+    // table; there's no fix available for that case without access to
+    // holdem-dealer.mjs itself.
     const isStuck = table.status === 'hand_in_progress';
     const canDeleteNormally = !isStuck && (table.createdBy === currentUserUid || isAdmin || !table.createdBy);
-    const canForceDelete = isAdmin && isStuck;
+    const canForceDelete = isAdmin; // always, not just when stuck — see comment above
     deleteBtn.style.display = (canDeleteNormally || canForceDelete) ? 'inline-block' : 'none';
-    deleteBtn.title = canForceDelete ? 'Force delete (stuck table)' : 'Delete table';
+    deleteBtn.title = canForceDelete ? 'Delete table (admin)' : 'Delete table';
     deleteBtn.onclick = async () => {
       const seatedCount = Object.keys(seats).length;
       const warning = seatedCount > 0
@@ -14497,6 +14518,33 @@ async function runFullHealthCheck(){
     }
   }catch(e){
     check('Blackjack table dealer function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
+  }
+
+  // Real end-to-end check, added after a genuine failure the check
+  // above couldn't have caught: an empty-body POST never reaches the
+  // DB_SECRET → /users/{uid} read that every real action depends on,
+  // so "deployed" and "actually able to read from Firebase" are two
+  // different things. Uses the 'ping' action (verifies the token,
+  // confirms the user's approved, zero side effects) with a REAL
+  // session token this time, not an empty body.
+  try{
+    const auth = await getValidAuth();
+    if(!auth){
+      check('Blackjack table dealer Firebase access', 'warn', 'Could not test — no valid session to test with right now');
+    } else {
+      const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/blackjack-table-dealer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: auth.idToken, action: 'ping' })
+      });
+      const data = await res.json().catch(() => null);
+      if(res.status === 200 && data && data.ok){
+        check('Blackjack table dealer Firebase access', 'pass', 'DB_SECRET is working — can read /users correctly');
+      } else {
+        check('Blackjack table dealer Firebase access', 'fail', `DB_SECRET / Firebase read failing (HTTP ${res.status}): ${data && data.error ? data.error : 'no error detail returned'} — re-check FIREBASE_DB_SECRET in Netlify's env vars`);
+      }
+    }
+  }catch(e){
+    check('Blackjack table dealer Firebase access', 'fail', `Couldn't test it: ${e.message}`);
   }
 
   return { results, latencyMs: firebaseLatencyMs };

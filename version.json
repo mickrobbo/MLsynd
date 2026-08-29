@@ -1,9 +1,8 @@
 {
-  "version": "2026-08-24.67",
+  "version": "2026-08-24.69",
   "date": "2026-08-28",
   "changes": [
-    "\ud83c\udfb0 Live Blackjack polish: buy-in is now a real chip rail (tap chips to build an amount, Sit Down / Cancel) instead of a plain prompt() dialog, using the same chip-colour styling as the single-player Blackjack bet panel. Table Chat added, on its own /blackjackChat path. Table creator or admin can now delete a table, with every seated player automatically refunded first.",
-    "\ud83d\udc1b Two real mistakes caught and fixed while building this: an admin-check that read an unreliable /users field instead of the verified session's own email (same class of bug already caught once before elsewhere), and an architecture mistake where a second function export wouldn't actually have been reachable as its own endpoint \u2014 folded into the main handler instead of shipping something broken.",
-    "\ud83d\udd27 Fixed the actual Hold'em issue reported: a table stuck with status permanently at 'hand_in_progress' blocked deletion for everyone, admin included \u2014 there was no way to ever clear it. Admin now has a guaranteed-working force-delete path that goes straight through blackjack-table-dealer.mjs's own logic rather than depending on holdem-dealer.mjs's, so it can't be blocked by whatever was actually causing the original problem."
+    "Found a genuinely different Hold'em bug from a live error report: \"Something went wrong. (Cannot read properties of null (reading 'stack'))\" when deleting a table with 2 people seated \u2014 and importantly, that table was NOT stuck at 'hand_in_progress', so this isn't the same bug fixed a few versions back. holdem-dealer.mjs's own deleteTable action is throwing server-side while refunding seated players, and that file isn't available to edit directly here.",
+    "Admin's delete button now always routes through the already-working adminForceDeleteTable action instead of the original (proven unreliable) deleteTable \u2014 in both places it can be triggered: the trash icon directly on the table list, and the delete button inside an open table's own view. Non-admin table creators still go through the original action and could still hit this bug \u2014 there's no fix available for that case without access to holdem-dealer.mjs itself."
   ]
 }
