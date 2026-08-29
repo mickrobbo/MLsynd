@@ -1,8 +1,8 @@
 {
-  "version": "2026-08-24.54",
+  "version": "2026-08-24.55",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\udcdd New: Syndy's weekly recap \u2014 a real narrative posted to Group Chat, not a stat dump. Looks at the most recently saved week: who won, who's on a cold streak, who just broke a losing run, and who's still leading the season. Template-based with varied phrasing per beat (not a live LLM call, deliberately, for an unattended post), runs weekly.",
-    "\ud83c\udfc9 New: pre-round hype posts \u2014 checks real AFL fixture data daily, and once a new round's kickoff is within 48 hours, posts a hype message using real data: kickoff day, game count, and who's currently leading the Tipping ladder. Won't repeat for the same round."
+    "\ud83d\udcbe Closed the Group Chat backup gap \u2014 the Ledger's backup export now includes Group Chat, Syndy's Book, Leg Bets, and Acts of God history (none of it was covered before, since all of it lives outside the Ledger's own state). Clear Chat now also auto-archives everything it's about to delete before deleting it, rather than that data just being gone.",
+    "\ud83c\udf89 New: a direct \"you won\" push notification when a Syndy's Book market or Leg Bet resolves in your favour \u2014 previously the only way to find out was spotting the announcement in Group Chat. Works for both the automated scheduled resolution and a manual admin resolve. New send-payout-notify.mjs function, and syndy-book-scheduled.mjs updated \u2014 both need deploying."
   ]
 }

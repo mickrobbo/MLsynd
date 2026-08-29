@@ -2827,7 +2827,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.54"; // Chat alerts (flash+sound, toggleable), Syndy-run polls (@Syndy poll: X or Y, voting via the existing reaction system), Roast on demand (@Syndy roast Name, real stats) — syndy-chat.mjs also updated with app-mechanics knowledge, needs redeploying too — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.55"; // Group Chat backup gap closed (full backup + Ledger export now cover it, Clear Chat auto-archives), direct "you won" push for Syndy's Book/Leg Bet payouts — new send-payout-notify.mjs needs deploying, syndy-book-scheduled.mjs updated too — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7086,6 +7086,24 @@ async function awardXPToUidAsAdmin(uid, amount, reason){
     }
   }catch(e){}
 }
+// Direct "you won" push to a specific winner — the scheduled function's
+// own auto-resolution sends this same kind of push directly (it already
+// runs with full trust); this covers the OTHER path, an admin manually
+// resolving from the Dashboard, which needs a real server call since
+// browser JS can't send push notifications itself. Fire-and-forget —
+// never blocks or fails the actual payout, which has already happened
+// by the time this is called.
+async function sendPayoutNotifyPush(toUid, amount, reason){
+  try{
+    const auth = await getValidAuth();
+    if(!auth) return;
+    trackApiCall('send-payout-notify');
+    await fetch('https://mlsynddash.netlify.app/.netlify/functions/send-payout-notify', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: auth.idToken, toUid, amount, reason })
+    });
+  }catch(e){}
+}
 async function resolveBookMarket(marketId, outcome){
   if(!confirm(`Resolve this market as ${outcome.toUpperCase()}? This pays out everyone who backed the winning side and can't be undone.`)) return;
   try{
@@ -7113,7 +7131,9 @@ async function resolveBookMarket(marketId, outcome){
     const actualWorth = Math.max(0, Math.min(mkt.worth || 0, currentReserve));
     for(const [uid, s] of winners){
       const share = winPool > 0 ? Math.floor((s.amount / winPool) * actualWorth) : 0;
-      await awardXPToUidAsAdmin(uid, s.amount + share, `Syndy's Book payout — "${mkt.question}"`);
+      const payout = s.amount + share;
+      await awardXPToUidAsAdmin(uid, payout, `Syndy's Book payout — "${mkt.question}"`);
+      sendPayoutNotifyPush(uid, payout, `"${mkt.question}"`);
     }
     const reserveDelta = losePool - actualWorth;
     if(reserveDelta !== 0){
@@ -10101,12 +10121,23 @@ async function renderGroupChatTyping(){
 // existing per-message rule only ever covered writing ONE message at a
 // time, not the collection itself.
 document.getElementById('chatClearBtn').addEventListener('click', async () => {
-  if(!confirm('Clear the entire Group Chat? This deletes every message for everyone and cannot be undone.')) return;
+  if(!confirm("Clear the entire Group Chat? Everyone loses their view of it immediately — a copy is archived first (admin-readable via a direct Firebase lookup if it's ever genuinely needed back), but nobody will see it in the app again. This can't be undone from within the app itself.")) return;
   try{
+    // Archived before deleting — Clear Chat used to be genuinely
+    // unrecoverable, no backup path covered Group Chat at all. This
+    // doesn't restore it back into the live chat (that's a bigger,
+    // separate feature), but it means the data itself isn't just gone.
+    const existingRes = await authedFetch('/groupChat/messages.json');
+    const existing = existingRes.ok ? await existingRes.json() : null;
+    if(existing && Object.keys(existing).length > 0){
+      await authedFetch(`/groupChat/archived/${Date.now()}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(existing)
+      });
+    }
     const res = await authedFetch('/groupChat/messages.json', { method: 'DELETE' });
     if(!res.ok){ showToast('Could not clear — try again'); return; }
     await authedFetch('/groupChat/pinned.json', { method: 'DELETE' }).catch(() => {}); // a pin referencing a now-deleted message would be stale
-    showToast('🗑️ Chat cleared');
+    showToast('🗑️ Chat cleared (archived first)');
     groupChatLastCount = 0;
     renderGroupChat(true);
   }catch(e){
