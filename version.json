@@ -2,9 +2,7 @@
   "version": "2026-08-24.54",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\udd14 New: Chat Alerts \u2014 a genuinely new message now flashes the chat icon and plays a short chime, on top of the existing dot, since the dot alone was too easy to miss in a busy real-world environment. Toggleable off (e.g. at the footy) in the app footer.",
-    "\ud83d\udcca New: Syndy-run polls \u2014 \"@Syndy poll: pizza or Thai\" posts a real poll, voting straight through the existing reaction system (tap an option, live counts). Parsing is simple keyword-splitting, not an LLM call \u2014 reliable and free, won't perfectly handle very complex phrasing.",
-    "\ud83d\udd25 New: Roast on demand \u2014 \"@Syndy roast Name\" pulls their real season stats (win rate, P/L, average leg odds, worst and current losing streak) and builds a burn from whichever numbers are actually notable. Entirely client-side, no LLM call needed.",
-    "\ud83e\udd16 Syndy now knows how the app itself works \u2014 the Board, Casino, Tipping, Syndy's Book, Leg Bets, Acts of God, Group Chat \u2014 so she's a real first stop for \"how does X work\" questions, not just banter. syndy-chat.mjs updated, needs redeploying."
+    "\ud83d\udcdd New: Syndy's weekly recap \u2014 a real narrative posted to Group Chat, not a stat dump. Looks at the most recently saved week: who won, who's on a cold streak, who just broke a losing run, and who's still leading the season. Template-based with varied phrasing per beat (not a live LLM call, deliberately, for an unattended post), runs weekly.",
+    "\ud83c\udfc9 New: pre-round hype posts \u2014 checks real AFL fixture data daily, and once a new round's kickoff is within 48 hours, posts a hype message using real data: kickoff day, game count, and who's currently leading the Tipping ladder. Won't repeat for the same round."
   ]
 }
