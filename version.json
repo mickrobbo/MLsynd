@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.62",
+  "version": "2026-08-24.63",
   "date": "2026-08-27",
   "changes": [
-    "\ud83c\udfb0 Casino ambience replaced again \u2014 the synthesized jazz loop is out, real recorded casino-floor ambience is in. Blended from two Creative Commons Freesound recordings, trimmed to a clean 35s loop, levels balanced before mixing, crossfaded seam so it repeats without a click. Same play/pause behaviour as before: on in the Casino hub/lobby, off entirely at an actual table."
+    "\ud83c\udfa4 Syndy Voice now speaks with a real AI voice (Google Cloud TTS, WaveNet, en-AU) instead of the browser's built-in text-to-speech \u2014 previously voice quality varied a lot depending on whatever voice each person's phone or browser happened to ship with. New google-tts.mjs function needs deploying, and a new GOOGLE_TTS_API_KEY environment variable needs setting on Netlify (a Google Cloud API key with the Text-to-Speech API enabled). Diagnostics now checks this deployment too, and can tell the difference between \"not deployed\" and \"deployed but the API key is missing.\""
   ]
 }

@@ -2900,7 +2900,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.62"; // Casino ambience replaced again: jazz loop is out, real blended recorded casino ambience is in (two Freesound recordings, trimmed, level-balanced, crossfaded loop). New static asset casino-ambience.mp3 needs adding to the repo root alongside the other image assets — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.63"; // Syndy Voice now uses Google Cloud TTS (WaveNet, en-AU-Wavenet-B) instead of browser speechSynthesis — a real, consistent AI voice everywhere instead of whatever voice each phone happened to ship with. New google-tts.mjs function needs deploying + GOOGLE_TTS_API_KEY env var set. Diagnostics now checks this deployment too, and distinguishes "not deployed" from "deployed but missing the API key" — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5855,13 +5855,16 @@ function renderActOfGodBanner(){
 }
 setInterval(pollActsOfGod, 60000);
 
-// ---- Syndy Voice — real-time spoken reaction to a big live win, using
-// the browser's own built-in text-to-speech (Web Speech API). Free, no
-// API key, no server cost — the tradeoff is voice quality/character
-// varies a lot by device and browser, since it's whatever voice the
-// person's own phone/browser ships with, not a custom AI voice. Local
-// to whoever just won, not broadcast to anyone else — Web Speech only
-// ever speaks on the device that calls it.
+// ---- Syndy Voice — a genuine AI voice via Google Cloud Text-to-Speech
+// (WaveNet), replacing the earlier browser-native speechSynthesis
+// approach. That had no server cost and no API key, but voice quality
+// varied wildly by device/browser since it used whatever voice the
+// person's phone happened to ship with. This calls the new
+// google-tts.mjs function and plays back real synthesized audio
+// instead — a consistent voice everywhere, at the cost of a network
+// call per line. Still local to whoever just won, not broadcast —
+// nothing about this posts anywhere, it just plays audio on the
+// device that triggers it.
 const SYNDY_VOICE_SETTING_KEY = 'mlsynd-syndy-voice-enabled';
 function isSyndyVoiceEnabled(){
   try{ return localStorage.getItem(SYNDY_VOICE_SETTING_KEY) !== 'off'; }catch(e){ return true; }
@@ -5873,16 +5876,25 @@ const SYNDY_BIG_WIN_LINES = [
   'Now THAT is how you do it.',
   'The house is sweating a little after that one.',
 ];
-function syndySpeakBigWin(amount){
+async function syndySpeakBigWin(amount){
   if(!isSyndyVoiceEnabled()) return;
   try{
-    if(!window.speechSynthesis) return;
-    window.speechSynthesis.cancel(); // don't let reactions queue/stack if a couple of big wins land in quick succession
     const line = SYNDY_BIG_WIN_LINES[Math.floor(Math.random() * SYNDY_BIG_WIN_LINES.length)];
-    const utter = new SpeechSynthesisUtterance(`${line} Plus ${amount.toLocaleString()} X P.`); // "X P" spaced out — most TTS voices otherwise clip or mangle the bare acronym
-    utter.rate = 1.05;
-    utter.volume = 0.9;
-    window.speechSynthesis.speak(utter);
+    // "X P" spaced out, not the bare acronym — carried over from the old
+    // browser-TTS version's workaround. WaveNet likely handles "XP"
+    // fine on its own, but this costs nothing to keep and removes any
+    // doubt.
+    const text = `${line} Plus ${amount.toLocaleString()} X P.`;
+    const res = await fetch('/.netlify/functions/google-tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if(!res.ok) return; // a missed voice line shouldn't surface as an error to the winner — the XP/win itself already landed regardless
+    const data = await res.json();
+    if(!data.audioContent) return;
+    const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+    audio.volume = 0.9;
+    audio.play().catch(() => {}); // autoplay can be blocked in some contexts — fail silently rather than throw
   }catch(e){}
 }
 function updateSyndyVoiceToggleUI(){
@@ -13995,6 +14007,29 @@ async function runFullHealthCheck(){
     }
   }catch(e){
     check('Group notify function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
+  }
+
+  // Google TTS — same empty-body-returns-400-with-error test as the
+  // others, but this one ALSO needs GOOGLE_TTS_API_KEY actually set,
+  // which none of the other push functions require — a genuinely
+  // different failure mode (deployed but misconfigured) is worth
+  // distinguishing from not deployed at all.
+  try{
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/google-tts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => null);
+    if(res.status === 400 && data && data.error === 'Missing text'){
+      check('Google TTS function deployed', 'pass', 'Reachable and responding correctly');
+    } else if(res.status === 500 && data && data.error === 'Server not configured'){
+      check('Google TTS function deployed', 'warn', 'Deployed, but GOOGLE_TTS_API_KEY is not set as an environment variable — Syndy Voice will fail silently until this is added');
+    } else if(res.status === 404 || !data){
+      check('Google TTS function deployed', 'fail', `Doesn't appear to be deployed (HTTP ${res.status}, ${data ? 'valid' : 'no parseable'} JSON response) — add google-tts.mjs to your Netlify functions`);
+    } else {
+      check('Google TTS function deployed', 'warn', `Reachable but responded unexpectedly (HTTP ${res.status}): ${data.error || JSON.stringify(data)}`);
+    }
+  }catch(e){
+    check('Google TTS function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
   }
 
   return { results, latencyMs: firebaseLatencyMs };
