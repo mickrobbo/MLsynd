@@ -2823,7 +2823,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.45"; // Group Chat: reactions, @mentions with push, pinning, reply threading, image sharing, Syndy participating in-channel — new send-mention.mjs needs deploying too — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.46"; // Group Chat send now checks res.ok — a rejected write was previously silent (no throw, input cleared, empty state persists), which is very likely the actual cause of the repeated "message won't appear" report — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10052,13 +10052,19 @@ document.getElementById('chatImageInput').addEventListener('change', async (e) =
     input.value = '';
     const replyTo = chatReplyTarget;
     clearReplyTarget();
-    await authedFetch('/groupChat/messages.json', {
+    const res = await authedFetch('/groupChat/messages.json', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         senderUid: currentUserUid, senderName: currentUserName || 'Someone', text: caption, imageData: dataUri, ts: Date.now(),
         ...(replyTo ? { replyTo } : {})
       })
     });
+    if(!res.ok){
+      const errBody = await res.text().catch(() => '');
+      console.error('Group Chat image send failed:', res.status, errBody);
+      showToast(`Couldn't send image (${res.status}) — try again`);
+      return;
+    }
     hapticPulse(12);
     renderGroupChat(true);
   }catch(e){
@@ -10203,18 +10209,33 @@ async function sendGroupChatMessage(){
   const replyTo = chatReplyTarget;
   clearReplyTarget();
   try{
-    await authedFetch('/groupChat/messages.json', {
+    const res = await authedFetch('/groupChat/messages.json', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         senderUid: currentUserUid, senderName: currentUserName || 'Someone', text, ts: Date.now(),
         ...(replyTo ? { replyTo } : {})
       })
     });
+    // authedFetch does NOT throw on a rejected write (a Firebase
+    // permission error still resolves normally, just with res.ok=false)
+    // — this was a real gap: without checking it, a rejected write would
+    // silently proceed as if it succeeded, clear the input, and
+    // re-render whatever's ACTUALLY in Firebase (which could still be
+    // empty), with no error ever surfaced. Restores the typed text so
+    // nothing's lost on a genuine failure.
+    if(!res.ok){
+      const errBody = await res.text().catch(() => '');
+      console.error('Group Chat send failed:', res.status, errBody);
+      input.value = text;
+      showToast(`Couldn't send (${res.status}) — try again`);
+      return;
+    }
     hapticPulse(12); // a light confirmation tap the message actually went — reuses the same Vibration API helper the casino sounds already hook into
     renderGroupChat(true);
     detectMentions(text).forEach(uid => sendMentionPush(uid, text));
     if(/@syndy\b/i.test(text)) triggerSyndyInChannel(text);
   }catch(e){
+    input.value = text;
     showToast("Couldn't send — try again");
   }
 }
