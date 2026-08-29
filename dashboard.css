@@ -3296,6 +3296,24 @@
 .chat-reply-preview .snippet b{ color:var(--brass-light); }
 .chat-reply-preview .cancel{ flex-shrink:0; cursor:pointer; font-size:16px; color:var(--muted); }
 
+/* ---- @mention autocomplete — appears the instant "@" is typed,
+   narrows as you keep typing, sits directly above the input row so it
+   never covers the message list itself. ---- */
+.chat-mention-suggestions{
+  display:flex; flex-direction:column; max-height:160px; overflow-y:auto; flex-shrink:0;
+  background:var(--felt-3); border-top:1px solid var(--brass-dim);
+}
+.chat-mention-item{
+  display:flex; align-items:center; gap:8px; padding:8px 14px; cursor:pointer; font-size:13px; color:var(--chalk);
+  border-bottom:1px solid var(--line);
+}
+.chat-mention-item:last-child{ border-bottom:none; }
+.chat-mention-item:active{ background:rgba(203,177,102,.15); }
+.chat-mention-item img, .chat-mention-item .fallback{
+  width:22px; height:22px; border-radius:50%; object-fit:cover; flex-shrink:0; border:1px solid var(--brass-dim);
+}
+.chat-mention-item .fallback{ display:flex; align-items:center; justify-content:center; background:var(--felt); color:var(--brass-light); font-size:10px; font-weight:700; }
+
 /* Quoted reply shown INSIDE a message bubble, above its own text. */
 .syndy-msg-reply-quote{
   font-size:11px; padding:5px 8px; margin-bottom:6px; border-radius:6px;

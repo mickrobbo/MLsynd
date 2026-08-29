@@ -1,8 +1,7 @@
 {
-  "version": "2026-08-24.49",
+  "version": "2026-08-24.50",
   "date": "2026-08-27",
   "changes": [
-    "Critical fix: @mention detection was built only from people who'd already posted a message in the current chat history \u2014 meaning nobody could be mentioned at all in a fresh or just-cleared chat (like right after using the new Clear Chat button), or before that person had said anything. Now built from the full roster (Board + Tipping-only) instead, same source the Casino leaderboard already uses.",
-    "Diagnostics now also checks whether send-mention.mjs and send-group-notify.mjs are actually deployed \u2014 same deployment-verification pattern already used for send-nudge.mjs, extended to the two newer push functions."
+    "\ud83d\udcac New: @mention autocomplete \u2014 typing \"@\" now shows a live dropdown of the full roster, narrowing as you keep typing, tap to insert. Previously @mentions only worked silently at send time (checked against real names), with no UI at all while composing \u2014 that detection logic was correct, but there was no visible feedback, which read as \"not working\" even when it technically was."
   ]
 }

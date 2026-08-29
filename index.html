@@ -1651,6 +1651,7 @@
     <div class="syndy-chat-body" id="syndyChatBody"></div>
     <div class="chat-typing-indicator" id="chatTypingIndicator" style="display:none;"></div>
     <div class="chat-reply-preview" id="chatReplyPreview" style="display:none;"></div>
+    <div class="chat-mention-suggestions" id="chatMentionSuggestions" style="display:none;"></div>
     <div class="syndy-chat-input-row">
       <input type="file" id="chatImageInput" accept="image/*" style="display:none;">
       <button type="button" class="chat-image-btn" id="chatImageBtn" style="display:none;" title="Send an image">📷</button>
@@ -2825,7 +2826,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.49"; // CRITICAL FIX: @mention detection only ever knew about people who'd already posted in the chat — meaning nobody could be mentioned in a fresh or just-cleared chat. Now built from the full roster instead. Also added Diagnostics deployment checks for send-mention.mjs and send-group-notify.mjs — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.50"; // New: @mention autocomplete dropdown — appears live on "@", narrows as you type, tap to insert. Previously mentions only worked silently at send time with zero UI feedback while composing — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9839,6 +9840,7 @@ let chatMode = 'syndy'; // or 'group'
 let groupChatPollHandle = null;
 let groupChatLastCount = 0;
 let groupChatNameToUid = {}; // rebuilt on every render — see renderGroupChat
+let groupChatMentionables = []; // proper-case {name, uid} pairs, same rebuild — used by the @mention autocomplete dropdown
 
 function sendChatMessage(){
   if(chatMode === 'group') sendGroupChatMessage();
@@ -9877,6 +9879,7 @@ function switchChatMode(mode){
     document.getElementById('chatTypingIndicator').style.display = 'none';
     clearReplyTarget();
     closeReactionPicker();
+    closeMentionSuggestions();
     input.placeholder = 'Ask Syndy anything…';
     if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; }
     clearGroupChatTypingStatus(); // in case you were mid-typing when you switched away
@@ -9926,6 +9929,75 @@ function clearGroupChatTypingStatus(){
   if(!currentUserUid) return;
   authedFetch(`/groupChat/typing/${currentUserUid}.json`, { method: 'DELETE' }).catch(() => {});
 }
+
+// ---- @mention autocomplete — appears live as "@" is typed, narrows
+// with each character, tap a suggestion to insert it. Separate from
+// detectMentions (which only runs at send time, against the same
+// groupChatMentionables/groupChatNameToUid data) — this is purely the
+// while-typing UI on top of that already-correct detection logic.
+function getMentionQuery(text, cursorPos){
+  const beforeCursor = text.slice(0, cursorPos);
+  // "@" must sit at the very start of the message or right after a
+  // space — never mid-word (so a genuine email-looking "name@place"
+  // doesn't trigger it) — followed by word characters only, up to the
+  // cursor. A space after the @word closes the picker, same as every
+  // other chat app's mention UX.
+  const match = beforeCursor.match(/(?:^|\s)@(\w*)$/);
+  return match ? match[1] : null;
+}
+function renderMentionSuggestions(query){
+  const box = document.getElementById('chatMentionSuggestions');
+  if(!box) return;
+  const q = query.toLowerCase();
+  const matches = groupChatMentionables
+    .filter(p => p.uid !== currentUserUid && p.name.toLowerCase().startsWith(q))
+    .slice(0, 6);
+  if(matches.length === 0){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = matches.map(p => {
+    const avatarSrc = avatarCache[p.uid];
+    const avatarHtmlPart = avatarSrc
+      ? `<img src="${avatarSrc}" alt="">`
+      : `<span class="fallback">${escapeHtml((p.name || '?').trim().charAt(0).toUpperCase())}</span>`;
+    return `<div class="chat-mention-item" data-name="${escapeHtml(p.name)}">${avatarHtmlPart}<span>${escapeHtml(p.name)}</span></div>`;
+  }).join('');
+  box.querySelectorAll('.chat-mention-item').forEach(el => {
+    el.addEventListener('click', () => insertMention(el.dataset.name));
+  });
+  box.style.display = 'flex';
+}
+function closeMentionSuggestions(){
+  const box = document.getElementById('chatMentionSuggestions');
+  if(box){ box.style.display = 'none'; box.innerHTML = ''; }
+}
+function insertMention(name){
+  const input = document.getElementById('syndyChatInput');
+  const cursorPos = input.selectionStart;
+  const text = input.value;
+  const beforeCursor = text.slice(0, cursorPos);
+  const match = beforeCursor.match(/(?:^|\s)@(\w*)$/);
+  if(!match) return;
+  const atIndex = beforeCursor.lastIndexOf('@');
+  const newText = text.slice(0, atIndex) + '@' + name + ' ' + text.slice(cursorPos);
+  input.value = newText;
+  const newCursorPos = atIndex + name.length + 2;
+  input.setSelectionRange(newCursorPos, newCursorPos);
+  closeMentionSuggestions();
+  input.focus();
+}
+document.getElementById('syndyChatInput').addEventListener('input', (e) => {
+  if(chatMode !== 'group') return;
+  const query = getMentionQuery(e.target.value, e.target.selectionStart);
+  if(query !== null) renderMentionSuggestions(query);
+  else closeMentionSuggestions();
+});
+// Cursor can also move via arrow keys/tap without an 'input' event —
+// re-check on those too, so the picker correctly closes if you click
+// away from an in-progress @word rather than continuing to type it.
+document.getElementById('syndyChatInput').addEventListener('click', (e) => {
+  if(chatMode !== 'group') return;
+  const query = getMentionQuery(e.target.value, e.target.selectionStart);
+  if(query === null) closeMentionSuggestions();
+});
 async function renderGroupChatTyping(){
   if(chatMode !== 'group' || !currentUserUid) return;
   const el = document.getElementById('chatTypingIndicator');
@@ -10140,6 +10212,7 @@ document.getElementById('chatImageInput').addEventListener('change', async (e) =
     const input = document.getElementById('syndyChatInput');
     const caption = input.value.trim();
     input.value = '';
+    closeMentionSuggestions();
     const replyTo = chatReplyTarget;
     clearReplyTarget();
     const res = await authedFetch('/groupChat/messages.json', {
@@ -10263,11 +10336,18 @@ async function renderGroupChat(scrollToBottom){
     // brand-new chat still needs this populated for the very first
     // message to be able to mention anyone.
     groupChatNameToUid = {};
+    groupChatMentionables = []; // proper-case {name, uid} list — groupChatNameToUid only keeps lowercase keys, needed for detection but not for display/insertion
     (currentState.members || []).forEach(m => {
-      if(m.linkedUid && m.name) groupChatNameToUid[m.name.toLowerCase()] = m.linkedUid;
+      if(m.linkedUid && m.name){
+        groupChatNameToUid[m.name.toLowerCase()] = m.linkedUid;
+        groupChatMentionables.push({ name: m.name, uid: m.linkedUid });
+      }
     });
     Object.entries(tippingParticipantNames || {}).forEach(([uid, name]) => {
-      if(name) groupChatNameToUid[name.toLowerCase()] = uid;
+      if(name){
+        groupChatNameToUid[name.toLowerCase()] = uid;
+        groupChatMentionables.push({ name, uid });
+      }
     });
 
     if(entries.length === 0){
@@ -10337,6 +10417,7 @@ async function sendGroupChatMessage(){
   const text = input.value.trim();
   if(!text || !currentUserUid) return;
   input.value = '';
+  closeMentionSuggestions();
   const replyTo = chatReplyTarget;
   clearReplyTarget();
   try{
