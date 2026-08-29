@@ -3198,6 +3198,16 @@
   position:absolute; top:-1px; right:-1px; width:14px; height:14px; border-radius:50%;
   background:var(--loss); border:2px solid var(--ink); box-shadow:0 0 6px rgba(193,96,74,.8);
 }
+/* A brief flash on the whole FAB when a genuinely new message arrives —
+   the static dot alone was too easy to miss in a busy/bright real-world
+   environment (explicitly: "at the footy"). Runs a few pulses then
+   stops on its own, doesn't loop indefinitely. */
+.syndy-fab.chat-flash{ animation: chatFabFlash .5s ease-in-out 4; }
+@keyframes chatFabFlash{
+  0%,100%{ box-shadow:0 6px 18px rgba(0,0,0,.5), 0 0 0 3px rgba(203,177,102,.25); }
+  50%{ box-shadow:0 6px 26px rgba(193,96,74,.7), 0 0 0 6px rgba(193,96,74,.5); }
+}
+@media (prefers-reduced-motion: reduce){ .syndy-fab.chat-flash{ animation:none; } }
 
 /* ---- Syndy chat panel ---- */
 .syndy-chat-sheet{ padding:0; display:flex; flex-direction:column; height:min(88vh, 720px); overflow:hidden; position:relative; }
@@ -3226,7 +3236,7 @@
 .chat-mode-btn.active{ color:var(--brass-light); border-bottom-color:var(--brass); }
 .chat-mode-btn:active{ opacity:.7; }
 .syndy-chat-body{
-  flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch;
+  flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; justify-content:flex-end; gap:10px; -webkit-overflow-scrolling:touch;
   position:relative;
   background-image:url('syndy-chat-bg.png');
   background-repeat:no-repeat; background-position:center 58%; background-size:300px auto;
@@ -3244,10 +3254,10 @@
    children), so nothing conflicts between the two modes sharing the
    same bubble classes. */
 @keyframes chatMsgIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
-.chat-msg-row{ display:flex; align-items:flex-end; gap:6px; max-width:100%; animation: chatMsgIn .25s cubic-bezier(.16,1,.3,1); }
+.chat-msg-row{ display:flex; align-items:flex-end; gap:6px; max-width:82%; animation: chatMsgIn .25s cubic-bezier(.16,1,.3,1); }
 .chat-msg-row.other{ align-self:flex-start; }
 .chat-msg-row.mine{ align-self:flex-end; }
-.chat-msg-row.mine .syndy-msg, .chat-msg-row.other .syndy-msg{ align-self:auto; } /* 3-class selector genuinely outweighs .syndy-msg.user/.syndy-msg.syndy (2 classes each) regardless of cascade order — a same-specificity override here would've been fragile */
+.chat-msg-row.mine .syndy-msg, .chat-msg-row.other .syndy-msg{ align-self:auto; flex-shrink:1; min-width:0; max-width:100%; } /* 3-class selector genuinely outweighs .syndy-msg.user/.syndy-msg.syndy (2 classes each) regardless of cascade order — a same-specificity override here would've been fragile. min-width:0 overrides the flex default of min-width:auto, which was letting short text wrap oddly even with room available. max-width:100% here (not the base rule's 82%) since the ROW already owns that constraint now — applying it twice, once against a shrink-to-fit parent, was the actual bug */
 .chat-msg-avatar{ width:26px; height:26px; border-radius:50%; object-fit:cover; flex-shrink:0; margin-bottom:2px; border:1px solid var(--brass-dim); }
 @media (prefers-reduced-motion: reduce){ .chat-msg-row{ animation:none; } }
 .chat-typing-indicator{ padding:2px 16px 8px; font-size:11px; color:var(--muted); font-style:italic; flex-shrink:0; }
@@ -3345,6 +3355,25 @@
 .syndy-msg-reaction-pill.mine{ background:rgba(203,177,102,.25); border-color:var(--brass); }
 .syndy-msg.user .syndy-msg-reaction-pill{ background:rgba(0,0,0,.12); border-color:rgba(14,26,22,.25); }
 .syndy-msg.user .syndy-msg-reaction-pill.mine{ background:rgba(14,26,22,.18); border-color:rgba(14,26,22,.5); }
+
+/* ---- Syndy-run poll — option buttons replace the generic reaction
+   pill row for a poll message (same underlying reaction data, voting
+   IS reacting, just presented as a real poll rather than free-form
+   emoji). ---- */
+.chat-poll-options{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.chat-poll-option{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:8px 10px; border-radius:8px; background:rgba(0,0,0,.22); border:1px solid var(--line);
+  color:var(--chalk); font-size:12.5px; font-family:'IBM Plex Sans', sans-serif; cursor:pointer; text-align:left;
+}
+.chat-poll-option.mine{ background:rgba(203,177,102,.22); border-color:var(--brass); }
+.chat-poll-option-count{
+  font-family:'IBM Plex Mono', monospace; font-weight:700; color:var(--brass); flex-shrink:0;
+  min-width:18px; text-align:center;
+}
+.syndy-msg.user .chat-poll-option{ background:rgba(0,0,0,.1); border-color:rgba(14,26,22,.25); color:#0E1A16; }
+.syndy-msg.user .chat-poll-option.mine{ background:rgba(14,26,22,.15); border-color:rgba(14,26,22,.5); }
+.syndy-msg.user .chat-poll-option-count{ color:#0E1A16; }
 
 /* Long-press reaction/pin picker — floats near the message that was held. */
 .chat-reaction-picker{

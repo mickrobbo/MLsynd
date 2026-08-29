@@ -164,6 +164,7 @@
       <span id="syncStatusLine"></span>
       <span class="health-pill app-footer-health" id="healthPill" style="display:none;"></span>
       <button type="button" class="app-footer-toggle" id="syndyVoiceToggleBtn">🔊 Syndy Voice: On</button>
+      <button type="button" class="app-footer-toggle" id="chatAlertToggleBtn">🔔 Chat Alerts: On</button>
     </div>
     </div>
 
@@ -2826,7 +2827,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.53"; // Performance pass: Group Chat's 5s poll was re-downloading the entire up-to-100-message payload (embedded images included) every single time even when nothing changed — now does a tiny 1-message check first and only pays for the full fetch when something's actually new. Syndy 1:1 chat also now sends a bounded 20-message context window instead of the whole ever-growing session history — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.54"; // Chat alerts (flash+sound, toggleable), Syndy-run polls (@Syndy poll: X or Y, voting via the existing reaction system), Roast on demand (@Syndy roast Name, real stats) — syndy-chat.mjs also updated with app-mechanics knowledge, needs redeploying too — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9662,6 +9663,60 @@ function getGroupChatLastSeen(){
 function setGroupChatLastSeen(ts){
   try{ localStorage.setItem(GROUP_CHAT_LAST_SEEN_KEY, String(ts)); }catch(e){}
 }
+
+// ---- Chat alerts (flash + sound) — the static unread dot was too easy
+// to miss in a busy real-world environment ("at the footy"), so a
+// genuinely new message now also gets a brief visual flash on the FAB
+// and a short two-tone chime, both gated by one toggle. Same
+// localStorage on/off pattern as Syndy Voice.
+const CHAT_ALERT_SETTING_KEY = 'mlsynd-chat-alerts-enabled';
+function isChatAlertEnabled(){
+  try{ return localStorage.getItem(CHAT_ALERT_SETTING_KEY) !== 'off'; }catch(e){ return true; }
+}
+function updateChatAlertToggleUI(){
+  const btn = document.getElementById('chatAlertToggleBtn');
+  if(!btn) return;
+  const on = isChatAlertEnabled();
+  btn.textContent = on ? '🔔 Chat Alerts: On' : '🔕 Chat Alerts: Off';
+}
+document.getElementById('chatAlertToggleBtn').addEventListener('click', () => {
+  try{
+    const next = isChatAlertEnabled() ? 'off' : 'on';
+    localStorage.setItem(CHAT_ALERT_SETTING_KEY, next);
+  }catch(e){}
+  updateChatAlertToggleUI();
+});
+updateChatAlertToggleUI();
+function playChatAlertSound(){
+  try{
+    const ctx = bjGetAudioCtx();
+    if(!ctx) return;
+    // A short, pleasant two-note ding — distinct from the casino's own
+    // chip/chime sounds, deliberately gentle rather than urgent, since
+    // this can fire for any ordinary message, not just something big.
+    [660, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const startAt = ctx.currentTime + i * 0.11;
+      gain.gain.setValueAtTime(0, startAt);
+      gain.gain.linearRampToValueAtTime(0.12, startAt + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startAt + 0.28);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(startAt); osc.stop(startAt + 0.3);
+    });
+  }catch(e){}
+}
+function flashChatFab(){
+  const fab = document.getElementById('syndyFabBtn');
+  if(!fab) return;
+  fab.classList.remove('chat-flash');
+  void fab.offsetWidth; // force reflow so re-adding the class restarts the animation if it's still mid-flash from a moment ago
+  fab.classList.add('chat-flash');
+  setTimeout(() => fab.classList.remove('chat-flash'), 2200);
+}
+
 async function checkGroupChatUnread(){
   if(!currentUserUid) return;
   try{
@@ -9673,6 +9728,14 @@ async function checkGroupChatUnread(){
     const latest = entries[0];
     // Never badges for your own message — you already know you sent it.
     const isUnread = latest.ts > getGroupChatLastSeen() && latest.senderUid !== currentUserUid;
+    // Alerts fire only on the genuine not-unread → unread TRANSITION,
+    // not on every 60s poll for as long as the same message sits
+    // unread — otherwise this would chime/flash repeatedly for one
+    // single message just because you hadn't opened the chat yet.
+    if(isUnread && !groupChatUnreadActive && isChatAlertEnabled()){
+      playChatAlertSound();
+      flashChatFab();
+    }
     updateGroupChatUnreadBadge(isUnread);
   }catch(e){}
 }
@@ -10128,6 +10191,121 @@ function resolveGroupChatName(uid){
   return found ? found.name : 'Someone';
 }
 
+// ---- Syndy-run polls — "@Syndy poll: pizza or Thai" posts a real poll
+// message; voting reuses the EXISTING reaction system directly (tapping
+// an option calls toggleReaction, no separate voting mechanism built).
+// Parsing is deliberately simple keyword-splitting, not an LLM call —
+// reliable and free, at the cost of not handling arbitrarily complex
+// phrasing. Splits on the first " or "s found; anything after a
+// trailing marker word (for/on/at/tonight/etc.) is trimmed off each
+// option's label so "Thai for presentation night" becomes just "Thai".
+const POLL_EMOJI_DICTIONARY = {
+  pizza: '🍕', thai: '🍜', sushi: '🍣', burger: '🍔', burgers: '🍔', tacos: '🌮', taco: '🌮',
+  chinese: '🥡', indian: '🍛', curry: '🍛', kebab: '🥙', bbq: '🍖', barbecue: '🍖', pasta: '🍝',
+  beer: '🍺', beers: '🍺', wine: '🍷', drinks: '🍹', coffee: '☕', chicken: '🍗',
+  yes: '✅', no: '❌', maybe: '🤷',
+  home: '🏠', pub: '🍻', club: '🎉',
+};
+function pickPollEmoji(label, usedEmoji, fallbackIndex){
+  const lower = (label || '').toLowerCase();
+  for(const [word, emoji] of Object.entries(POLL_EMOJI_DICTIONARY)){
+    if(lower.includes(word) && !usedEmoji.has(emoji)) return emoji;
+  }
+  const numberEmoji = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+  return numberEmoji[fallbackIndex] || '❓';
+}
+function parsePollFromText(text){
+  const afterPoll = text.replace(/@syndy\b/i, '').replace(/\bpoll:?\s*/i, '').trim();
+  if(!afterPoll) return null;
+  const rawParts = afterPoll.split(/\s+or\s+/i);
+  let options;
+  if(rawParts.length < 2){
+    // No clear "X or Y" split found — fall back to a plain yes/no on
+    // the whole question rather than refuse to make a poll at all.
+    options = [{ label: 'Yes' }, { label: 'No' }];
+  } else {
+    const TRAILING_MARKER = /\s+(for|on|at|tonight|today|tomorrow|this)\b.*/i;
+    options = rawParts.slice(0, 5).map(part => {
+      const trimmed = part.replace(TRAILING_MARKER, '').trim();
+      return { label: trimmed || part.trim() };
+    });
+  }
+  const usedEmoji = new Set();
+  options.forEach((opt, i) => {
+    const emoji = pickPollEmoji(opt.label, usedEmoji, i);
+    usedEmoji.add(emoji);
+    opt.emoji = emoji;
+  });
+  return { question: afterPoll, options };
+}
+async function createSyndyPoll(rawText){
+  const parsed = parsePollFromText(rawText);
+  if(!parsed) return;
+  try{
+    await authedFetch('/groupChat/messages.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderUid: 'syndy', senderName: 'Syndy', text: `📊 Poll: ${parsed.question}`,
+        isPoll: true, pollOptions: parsed.options, ts: Date.now()
+      })
+    });
+    renderGroupChat(true);
+  }catch(e){
+    showToast("Couldn't create the poll — try again");
+  }
+}
+
+// ---- Roast on demand — "@Syndy roast Trasky" pulls his real season
+// stats (win rate, P/L, average leg odds, worst and current losing
+// streak) and builds a burn from whichever numbers are actually notable
+// — genuinely grounded in real data, not a generic insult, entirely
+// client-side and free (no LLM call needed for structured data
+// substitution like this).
+function computeRoastStats(nameQuery){
+  const member = (currentState.members || []).find(m => m.name.toLowerCase() === nameQuery.toLowerCase());
+  if(!member) return null;
+  const derived = computeDerived(member);
+  const history = currentState.history || [];
+  let curLoss = 0, worstLoss = 0;
+  history.forEach(week => {
+    const entry = week.groupEntries && week.groupEntries[member.name];
+    if(!entry || !entry.result || entry.result === 'MIA') return;
+    if(entry.result === 'Loss'){ curLoss++; worstLoss = Math.max(worstLoss, curLoss); }
+    else { curLoss = 0; } // a win OR a void both break the run
+  });
+  return {
+    name: member.name, pl: member.pl, wins: member.wins, losses: member.losses,
+    winPct: derived.winPct, avgLeg: derived.avgLeg, curLoss, worstLoss,
+  };
+}
+function buildRoastLine(stats){
+  const plText = `${stats.pl < 0 ? '-' : ''}$${Math.abs(stats.pl).toFixed(2)}`;
+  const candidates = [
+    `${stats.name}, sitting on a ${(stats.winPct * 100).toFixed(0)}% win rate and ${plText} P/L this season — the numbers don't lie, and they're not being kind.`,
+    `${stats.name}: ${stats.wins}-${stats.losses} on the season. A coin flip would've done about as well.`,
+  ];
+  if(stats.worstLoss >= 2) candidates.push(`${stats.name}'s worst run this season was ${stats.worstLoss} losses in a row. Somewhere out there, a bookie bought a boat.`);
+  if(stats.avgLeg > 0) candidates.push(`${stats.name} averages @${stats.avgLeg.toFixed(2)} odds — betting like the goal is to lose as slowly and expensively as possible.`);
+  if(stats.curLoss >= 2) candidates.push(`${stats.name} is currently on a ${stats.curLoss}-loss streak. The house doesn't even bother setting odds against him anymore.`);
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+async function createSyndyRoast(rawText){
+  const match = rawText.match(/@syndy\b.*\broast\s+(\S+)/i);
+  if(!match) return;
+  const nameQuery = match[1].replace(/[^a-zA-Z]/g, '');
+  const stats = computeRoastStats(nameQuery);
+  const text = stats
+    ? `🔥 ${buildRoastLine(stats)}`
+    : `Couldn't find anyone called "${nameQuery}" to roast — check the name and try again.`;
+  try{
+    await authedFetch('/groupChat/messages.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ senderUid: 'syndy', senderName: 'Syndy', text, ts: Date.now() })
+    });
+    renderGroupChat(true);
+  }catch(e){}
+}
+
 // ---- Pin ----
 async function pinChatMessage(messageId, senderName, text){
   try{
@@ -10290,6 +10468,14 @@ chatBodyEl.addEventListener('pointermove', (e) => {
 });
 chatBodyEl.addEventListener('click', (e) => {
   if(chatMode !== 'group') return;
+  const pollOption = e.target.closest('.chat-poll-option');
+  if(pollOption){
+    // Poll votes always go straight through — no toast, no long-press
+    // ceremony, just tap and it's counted (or un-counted, same toggle).
+    toggleReaction(pollOption.dataset.messageId, pollOption.dataset.emoji);
+    hapticPulse(10);
+    return;
+  }
   const pill = e.target.closest('.syndy-msg-reaction-pill');
   if(pill){
     // Shows who reacted AND toggles your own — one tap does both,
@@ -10471,8 +10657,22 @@ async function renderGroupChat(scrollToBottom){
       const replyQuote = m.replyTo ? `<div class="syndy-msg-reply-quote"><b>${escapeHtml(m.replyTo.senderName || 'Someone')}</b> ${escapeHtml(m.replyTo.textSnippet || '')}</div>` : '';
       const textHtml = m.text ? highlightMentions(escapeHtml(m.text)) : '';
       const image = m.imageData ? `<img class="chat-msg-image" src="${m.imageData}" alt="">` : '';
-      const reactionsHtml = renderReactionPills(id, m.reactions);
-      el.innerHTML = `${meta}${replyQuote}${textHtml}${image}<span class="syndy-msg-time">${timeAgo(m.ts)}</span>${reactionsHtml}`;
+      // A poll's votes ARE its reactions (same system, tapping an option
+      // below calls toggleReaction directly) — so a poll message shows
+      // its own option buttons instead of the generic reaction-pill row,
+      // never both, which would just be the same data shown twice.
+      let bottomHtml;
+      if(m.isPoll && Array.isArray(m.pollOptions)){
+        const optionsHtml = m.pollOptions.map(opt => {
+          const votes = (m.reactions && m.reactions[opt.emoji]) ? Object.keys(m.reactions[opt.emoji]) : [];
+          const mine = votes.includes(currentUserUid) ? ' mine' : '';
+          return `<button type="button" class="chat-poll-option${mine}" data-message-id="${id}" data-emoji="${escapeHtml(opt.emoji)}"><span class="chat-poll-option-label">${opt.emoji} ${escapeHtml(opt.label)}</span><span class="chat-poll-option-count">${votes.length}</span></button>`;
+        }).join('');
+        bottomHtml = `<div class="chat-poll-options">${optionsHtml}</div>`;
+      } else {
+        bottomHtml = renderReactionPills(id, m.reactions);
+      }
+      el.innerHTML = `${meta}${replyQuote}${textHtml}${image}<span class="syndy-msg-time">${timeAgo(m.ts)}</span>${bottomHtml}`;
       row.appendChild(el);
       body.appendChild(row);
     });
@@ -10520,7 +10720,9 @@ async function sendGroupChatMessage(){
     const mentionedUids = detectMentions(text);
     mentionedUids.forEach(uid => sendMentionPush(uid, text));
     sendGroupNotifyPush(text, false, mentionedUids);
-    if(/@syndy\b/i.test(text)) triggerSyndyInChannel(text);
+    if(/@syndy\b.*\bpoll\b/i.test(text)) createSyndyPoll(text);
+    else if(/@syndy\b.*\broast\b/i.test(text)) createSyndyRoast(text);
+    else if(/@syndy\b/i.test(text)) triggerSyndyInChannel(text);
   }catch(e){
     input.value = text;
     showToast("Couldn't send — try again");

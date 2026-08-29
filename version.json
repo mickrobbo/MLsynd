@@ -1,8 +1,10 @@
 {
-  "version": "2026-08-24.53",
+  "version": "2026-08-24.54",
   "date": "2026-08-27",
   "changes": [
-    "\u26a1 Performance pass on chat. Real finding: Group Chat's 5-second background poll was re-downloading the ENTIRE up-to-100-message payload \u2014 embedded images included \u2014 every single cycle, even when nothing had changed. The old \"skip if unchanged\" logic only ever skipped rebuilding the screen afterward, never the expensive fetch itself. Now does a tiny single-message check first and only pays for the full fetch when something's genuinely new. Tradeoff worth knowing: a reaction added to an older message won't show up via background polling anymore, only next time a new message arrives or you reopen the chat \u2014 traded for a much lighter poll, since speed was the actual complaint.",
-    "Syndy's 1:1 chat now sends a bounded 20-message window of context instead of the whole, ever-growing session history \u2014 a long conversation was genuinely getting slower and more expensive turn by turn since every reply resent the entire transcript so far."
+    "\ud83d\udd14 New: Chat Alerts \u2014 a genuinely new message now flashes the chat icon and plays a short chime, on top of the existing dot, since the dot alone was too easy to miss in a busy real-world environment. Toggleable off (e.g. at the footy) in the app footer.",
+    "\ud83d\udcca New: Syndy-run polls \u2014 \"@Syndy poll: pizza or Thai\" posts a real poll, voting straight through the existing reaction system (tap an option, live counts). Parsing is simple keyword-splitting, not an LLM call \u2014 reliable and free, won't perfectly handle very complex phrasing.",
+    "\ud83d\udd25 New: Roast on demand \u2014 \"@Syndy roast Name\" pulls their real season stats (win rate, P/L, average leg odds, worst and current losing streak) and builds a burn from whichever numbers are actually notable. Entirely client-side, no LLM call needed.",
+    "\ud83e\udd16 Syndy now knows how the app itself works \u2014 the Board, Casino, Tipping, Syndy's Book, Leg Bets, Acts of God, Group Chat \u2014 so she's a real first stop for \"how does X work\" questions, not just banter. syndy-chat.mjs updated, needs redeploying."
   ]
 }
