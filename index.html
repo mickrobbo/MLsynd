@@ -2826,7 +2826,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.50"; // New: @mention autocomplete dropdown — appears live on "@", narrows as you type, tap to insert. Previously mentions only worked silently at send time with zero UI feedback while composing — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.51"; // CRITICAL FIX: @mention dropdown was showing duplicates (e.g. "JOSH"/"Josh") — anyone who's both a Board member and has tipped was added twice, once under each name, since the tipping-side list wasn't excluding people already added from the Board roster — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10337,14 +10337,25 @@ async function renderGroupChat(scrollToBottom){
     // message to be able to mention anyone.
     groupChatNameToUid = {};
     groupChatMentionables = []; // proper-case {name, uid} list — groupChatNameToUid only keeps lowercase keys, needed for detection but not for display/insertion
+    const linkedUidsForMentions = new Set();
     (currentState.members || []).forEach(m => {
       if(m.linkedUid && m.name){
         groupChatNameToUid[m.name.toLowerCase()] = m.linkedUid;
         groupChatMentionables.push({ name: m.name, uid: m.linkedUid });
+        linkedUidsForMentions.add(m.linkedUid);
       }
     });
+    // Real bug, caught from a screenshot showing "JOSH"/"Josh" and
+    // "JOFFA"/"joffa" each listed twice: someone who's both a Board
+    // member AND has tipped shows up in tippingParticipantNames too,
+    // under whatever name they happened to set on their Tipping profile
+    // (independent of, and not necessarily matching the case of, their
+    // Board name). Without this filter they were added a second time
+    // under that separate name. Same linkedUids-exclusion the Casino
+    // leaderboard already applies correctly — this just hadn't been
+    // brought over here.
     Object.entries(tippingParticipantNames || {}).forEach(([uid, name]) => {
-      if(name){
+      if(name && !linkedUidsForMentions.has(uid)){
         groupChatNameToUid[name.toLowerCase()] = uid;
         groupChatMentionables.push({ name, uid });
       }

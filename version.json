@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.50",
+  "version": "2026-08-24.51",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\udcac New: @mention autocomplete \u2014 typing \"@\" now shows a live dropdown of the full roster, narrowing as you keep typing, tap to insert. Previously @mentions only worked silently at send time (checked against real names), with no UI at all while composing \u2014 that detection logic was correct, but there was no visible feedback, which read as \"not working\" even when it technically was."
+    "Critical fix: the @mention dropdown was listing duplicates \u2014 anyone who's both a Board member and has tipped (e.g. Josh, Joffa) appeared twice, once under their Board name and once under their separately self-set Tipping name. The tipping-side list wasn't excluding people already added from the Board roster, unlike the Casino leaderboard elsewhere in the app which already does this correctly. Fixed to match that same, correct pattern."
   ]
 }
