@@ -99,66 +99,93 @@ function bjPlaySpinSound(){
 }
 function bjWait(ms){ return new Promise(res => setTimeout(res, ms)); }
 
-// ---- Casino ambience — a very quiet filtered brown-noise loop for the
-// Casino hub/lobby/game-picker, off entirely while actually at a table
-// (where the per-action sounds above already carry the moment, and
-// shouldn't be competing with a background layer). Same brown-noise
-// technique as a leaky integrator over white noise, low-passed, just
-// like the rest of this file's sounds — no audio file involved.
-let ambientSource = null;
+// ---- Casino ambience — was a filtered brown-noise murmur; now a soft,
+// slow jazz chord loop instead (Dm7 - G7 - Cmaj7, with a light comping
+// re-strike halfway through each chord for a sense of gentle movement).
+// Synthesized entirely with oscillators — the same additive "soft
+// electric piano" approach used to generate the sample the person
+// actually listened to and approved before this went in, just now
+// scheduled live via Web Audio instead of a pre-rendered file. Off
+// entirely while actually at a table, same reasoning as before — the
+// per-action sounds already carry the moment there and shouldn't
+// compete with a background layer. Oscillators are one-shot (unlike
+// the old buffer, which could just set .loop = true), so this
+// re-schedules itself via setTimeout at the end of every full
+// progression rather than looping natively.
 let ambientGainNode = null;
 let ambientPlaying = false;
+let ambientLoopTimer = null;
+const AMBIENT_CHORDS = [
+  { notes: [50, 53, 57, 60], bass: 38 }, // Dm7
+  { notes: [55, 59, 62, 65], bass: 43 }, // G7
+  { notes: [48, 52, 55, 59], bass: 36 }, // Cmaj7
+];
+const AMBIENT_CHORD_LEN = 2.0; // seconds per chord — matches the "upbeat" tempo the person actually approved, not the original slower sample
+// Deliberately quieter than the old murmur's 0.024 — tonal, harmonic
+// content reads as far more present than filtered noise at the same
+// gain level, so this needed to sit lower to genuinely stay in the
+// background rather than draw attention the way the sample (mixed loud
+// enough to evaluate clearly) did.
+const AMBIENT_VOLUME = 0.014;
+function ambientNoteFreq(midi){ return 440 * Math.pow(2, (midi - 69) / 12); }
+function ambientPlayTone(ctx, destGain, freq, startTime, duration, amp, decayRate){
+  // Fundamental + two decaying harmonics — same technique as the
+  // Python-synthesized sample's soft_ep_tone, just live-scheduled here.
+  [1, 2, 3].forEach((harmonic, i) => {
+    const osc = ctx.createOscillator();
+    const toneGain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq * harmonic;
+    const harmAmp = i === 0 ? 1.0 : (i === 1 ? 0.35 : 0.15);
+    toneGain.gain.setValueAtTime(0.0001, startTime);
+    toneGain.gain.linearRampToValueAtTime(Math.max(0.0001, amp * harmAmp), startTime + 0.01);
+    toneGain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(toneGain); toneGain.connect(destGain);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.1);
+  });
+}
+function ambientScheduleLoop(){
+  if(!ambientPlaying || !ambientGainNode) return;
+  const ctx = bjAudioCtx;
+  if(!ctx) return;
+  let t = ctx.currentTime + 0.05;
+  AMBIENT_CHORDS.forEach(chordDef => {
+    const freqs = chordDef.notes.map(ambientNoteFreq);
+    freqs.forEach(f => ambientPlayTone(ctx, ambientGainNode, f, t, AMBIENT_CHORD_LEN, 0.85, 1.6));
+    ambientPlayTone(ctx, ambientGainNode, ambientNoteFreq(chordDef.bass), t, AMBIENT_CHORD_LEN, 1.1, 0.8);
+    // The mid-chord re-strike — quieter, shorter, the actual "groove"
+    // element that made this read as upbeat rather than just faster.
+    const halfT = t + AMBIENT_CHORD_LEN * 0.5;
+    const remaining = AMBIENT_CHORD_LEN * 0.5;
+    freqs.forEach(f => ambientPlayTone(ctx, ambientGainNode, f, halfT, remaining, 0.55, 1.8));
+    t += AMBIENT_CHORD_LEN;
+  });
+  const loopDurationMs = AMBIENT_CHORD_LEN * AMBIENT_CHORDS.length * 1000;
+  ambientLoopTimer = setTimeout(ambientScheduleLoop, loopDurationMs);
+}
 function startCasinoAmbience(){
   if(ambientPlaying) return;
   const ctx = bjGetAudioCtx(); if(!ctx) return;
   ambientPlaying = true;
-  const dur = 8;
-  const bufferSize = Math.floor(ctx.sampleRate * dur);
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  let lastOut = 0, peak = 0.0001;
-  for(let i = 0; i < bufferSize; i++){
-    const white = Math.random() * 2 - 1;
-    lastOut = (lastOut + 0.02 * white) / 1.02;
-    data[i] = lastOut;
-    peak = Math.max(peak, Math.abs(lastOut));
-  }
-  for(let i = 0; i < bufferSize; i++) data[i] /= peak; // normalize to full range, actual level set by the gain node below
-  // A short crossfade at the loop seam (matching the buffer's own start)
-  // so looping doesn't click — blend the tail into the head.
-  const fadeLen = Math.floor(ctx.sampleRate * 0.5);
-  for(let i = 0; i < fadeLen; i++){
-    const f = i / fadeLen;
-    const blended = data[bufferSize - fadeLen + i] * (1 - f) + data[i] * f;
-    data[i] = blended;
-    data[bufferSize - fadeLen + i] = blended;
-  }
-
-  const source = ctx.createBufferSource();
-  source.buffer = buffer;
-  source.loop = true;
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.value = 300;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.024, ctx.currentTime + 1.5); // turned down from 0.035 — quieter still, felt more than heard
-  source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-  source.start();
-  ambientSource = source;
+  gain.gain.linearRampToValueAtTime(AMBIENT_VOLUME, ctx.currentTime + 1.5);
+  gain.connect(ctx.destination);
   ambientGainNode = gain;
+  ambientScheduleLoop();
 }
 function stopCasinoAmbience(){
   if(!ambientPlaying) return;
   ambientPlaying = false;
+  if(ambientLoopTimer){ clearTimeout(ambientLoopTimer); ambientLoopTimer = null; }
   const ctx = bjAudioCtx;
-  const source = ambientSource, gain = ambientGainNode;
-  if(!ctx || !gain || !source){ return; }
+  const gain = ambientGainNode;
+  if(!ctx || !gain){ return; }
   gain.gain.cancelScheduledValues(ctx.currentTime);
   gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
-  setTimeout(() => { try{ source.stop(); }catch(e){} }, 900);
-  ambientSource = null;
+  setTimeout(() => { try{ gain.disconnect(); }catch(e){} }, 900);
   ambientGainNode = null;
 }
 // Checked from several trigger points (tab switches, showCasinoView,

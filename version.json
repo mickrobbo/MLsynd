@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.58",
+  "version": "2026-08-24.59",
   "date": "2026-08-27",
   "changes": [
-    "\ud83d\udcf0 New: Activity Feed \u2014 a dedicated card on Home (\"Recent Activity \u2192\") opening one combined, chronological view of recent Board week results, big Casino wins across everyone, and Syndy's own Group Chat highlights (markets, polls, recaps, Acts of God). Removed a real double-up along the way: the Home digest's old single \"recent win\" line (and the network fetch behind it) was a thinner version of what this now shows properly, so it's gone \u2014 the digest still covers open bounties, tipping lockouts, and active Acts of God events."
+    "\ud83c\udfb7 Casino ambience replaced \u2014 the filtered brown-noise murmur is out, a soft synthesized jazz chord loop is in (Dm7-G7-Cmaj7, with a light comping re-strike for a sense of movement). Deliberately mixed quieter than the murmur was \u2014 tonal content reads as more present than noise at the same volume, so this needed to sit lower to genuinely stay in the background rather than draw attention. Same trigger behaviour as before: off entirely at an actual table, only in the Casino hub/lobby."
   ]
 }
