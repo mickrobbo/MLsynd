@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-24.51",
+  "version": "2026-08-24.53",
   "date": "2026-08-27",
   "changes": [
-    "Critical fix: the @mention dropdown was listing duplicates \u2014 anyone who's both a Board member and has tipped (e.g. Josh, Joffa) appeared twice, once under their Board name and once under their separately self-set Tipping name. The tipping-side list wasn't excluding people already added from the Board roster, unlike the Casino leaderboard elsewhere in the app which already does this correctly. Fixed to match that same, correct pattern."
+    "\u26a1 Performance pass on chat. Real finding: Group Chat's 5-second background poll was re-downloading the ENTIRE up-to-100-message payload \u2014 embedded images included \u2014 every single cycle, even when nothing had changed. The old \"skip if unchanged\" logic only ever skipped rebuilding the screen afterward, never the expensive fetch itself. Now does a tiny single-message check first and only pays for the full fetch when something's genuinely new. Tradeoff worth knowing: a reaction added to an older message won't show up via background polling anymore, only next time a new message arrives or you reopen the chat \u2014 traded for a much lighter poll, since speed was the actual complaint.",
+    "Syndy's 1:1 chat now sends a bounded 20-message window of context instead of the whole, ever-growing session history \u2014 a long conversation was genuinely getting slower and more expensive turn by turn since every reply resent the entire transcript so far."
   ]
 }

@@ -2826,7 +2826,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.51"; // CRITICAL FIX: @mention dropdown was showing duplicates (e.g. "JOSH"/"Josh") — anyone who's both a Board member and has tipped was added twice, once under each name, since the tipping-side list wasn't excluding people already added from the Board roster — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.53"; // Performance pass: Group Chat's 5s poll was re-downloading the entire up-to-100-message payload (embedded images included) every single time even when nothing changed — now does a tiny 1-message check first and only pays for the full fetch when something's actually new. Syndy 1:1 chat also now sends a bounded 20-message context window instead of the whole ever-growing session history — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9799,9 +9799,18 @@ async function sendSyndyMessage(){
       return;
     }
     trackApiCall('syndy-chat');
+    // Send only a bounded recent window, not the whole session's
+    // history — syndyMessages itself keeps growing (needed so the full
+    // conversation still displays if you scroll back), but resending an
+    // ever-larger transcript on every single turn was a real, worsening
+    // performance cost: more tokens to process each call, meaning later
+    // messages in a long session were genuinely slower and pricier than
+    // earlier ones, unbounded. 20 messages (~10 exchanges) is plenty of
+    // real context for Syndy's kind of back-and-forth.
+    const recentHistory = syndyMessages.slice(-20);
     const res = await fetch('/.netlify/functions/syndy-chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: auth.idToken, messages: syndyMessages })
+      body: JSON.stringify({ idToken: auth.idToken, messages: recentHistory })
     });
     const data = await res.json();
     typingEl.remove();
@@ -9839,6 +9848,7 @@ document.getElementById('syndyChatInput').addEventListener('keydown', (e) => {
 let chatMode = 'syndy'; // or 'group'
 let groupChatPollHandle = null;
 let groupChatLastCount = 0;
+let groupChatLastKnownTs = 0; // latest message's timestamp — used by the lightweight background-poll check below to skip the full fetch entirely when nothing's actually new
 let groupChatNameToUid = {}; // rebuilt on every render — see renderGroupChat
 let groupChatMentionables = []; // proper-case {name, uid} pairs, same rebuild — used by the @mention autocomplete dropdown
 
@@ -10102,11 +10112,20 @@ function renderReactionPills(messageId, reactions){
   const entries = Object.entries(reactions).filter(([, uids]) => uids && Object.keys(uids).length > 0);
   if(entries.length === 0) return '';
   const pills = entries.map(([emoji, uids]) => {
-    const count = Object.keys(uids).length;
+    const uidList = Object.keys(uids);
+    const count = uidList.length;
     const mine = uids[currentUserUid] ? ' mine' : '';
-    return `<span class="syndy-msg-reaction-pill${mine}" data-message-id="${messageId}" data-emoji="${escapeHtml(emoji)}">${emoji} ${count}</span>`;
+    return `<span class="syndy-msg-reaction-pill${mine}" data-message-id="${messageId}" data-emoji="${escapeHtml(emoji)}" data-uids="${escapeHtml(uidList.join(','))}">${emoji} ${count}</span>`;
   }).join('');
   return `<div class="syndy-msg-reactions">${pills}</div>`;
+}
+// Resolves a uid to a display name using the same full-roster data the
+// @mention autocomplete already builds — no extra fetch needed, it's
+// already in memory by the time any reaction pill could be rendered.
+function resolveGroupChatName(uid){
+  if(uid === currentUserUid) return 'You';
+  const found = groupChatMentionables.find(p => p.uid === uid);
+  return found ? found.name : 'Someone';
 }
 
 // ---- Pin ----
@@ -10272,7 +10291,18 @@ chatBodyEl.addEventListener('pointermove', (e) => {
 chatBodyEl.addEventListener('click', (e) => {
   if(chatMode !== 'group') return;
   const pill = e.target.closest('.syndy-msg-reaction-pill');
-  if(pill){ toggleReaction(pill.dataset.messageId, pill.dataset.emoji); return; }
+  if(pill){
+    // Shows who reacted AND toggles your own — one tap does both,
+    // rather than needing a separate gesture just to see the names.
+    const uids = (pill.dataset.uids || '').split(',').filter(Boolean);
+    const names = uids.map(resolveGroupChatName);
+    if(names.length > 0){
+      const shown = names.length > 6 ? `${names.slice(0, 6).join(', ')} and ${names.length - 6} more` : names.join(', ');
+      showToast(`${pill.dataset.emoji} ${shown}`);
+    }
+    toggleReaction(pill.dataset.messageId, pill.dataset.emoji);
+    return;
+  }
   if(e.target.classList.contains('chat-msg-image')){
     document.getElementById('imgModalImg').src = e.target.src;
     document.getElementById('imgModal').classList.add('open');
@@ -10287,6 +10317,36 @@ chatBodyEl.addEventListener('click', (e) => {
 
 async function renderGroupChat(scrollToBottom){
   try{
+    // For a passive background poll ONLY (never a deliberate action —
+    // opening the tab, or right after sending, always needs genuinely
+    // fresh data): do a TINY check first — just the single latest
+    // message — before paying for the full up-to-100-message fetch.
+    // This was the real cause of the chat feeling slow. Every 5-second
+    // poll was re-downloading the ENTIRE recent-messages payload,
+    // embedded images included, even when nothing had changed at all —
+    // the old "skip if count unchanged" logic only ever skipped the DOM
+    // rebuild afterward, never the expensive fetch itself.
+    //
+    // Honest tradeoff this introduces: a reaction added to an OLDER
+    // message (not a brand new one) doesn't change that message's own
+    // timestamp, so it won't be caught by this lightweight check and
+    // won't show up via background polling anymore — only the next
+    // time a genuinely new message arrives, or you reopen the chat.
+    // Given the actual complaint was speed, and reactions updating in
+    // near-real-time for messages you're not actively looking at is a
+    // minor nicety, that felt like the right tradeoff to make.
+    if(scrollToBottom === false){
+      try{
+        const orderBy = encodeURIComponent('"ts"');
+        const peekRes = await authedFetch(`/groupChat/messages.json?orderBy=${orderBy}&limitToLast=1`);
+        const peekData = peekRes.ok ? await peekRes.json() : null;
+        const peekEntries = peekData && typeof peekData === 'object' ? Object.values(peekData) : [];
+        const latestTs = peekEntries.length > 0 ? (peekEntries[0].ts || 0) : 0;
+        if(latestTs === groupChatLastKnownTs) return; // confirmed nothing new — skip the full fetch entirely, this is the whole point
+        groupChatLastKnownTs = latestTs;
+      }catch(e){ return; } // if even the lightweight check fails (flaky connection), don't fall through to the expensive one
+    }
+
     const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
     const pinnedRes = await authedFetch('/groupChat/pinned.json');
     const pinned = pinnedRes.ok ? await pinnedRes.json() : null;
@@ -10319,6 +10379,7 @@ async function renderGroupChat(scrollToBottom){
     // deliberate action.
     if(scrollToBottom === false && entries.length === groupChatLastCount) return;
     groupChatLastCount = entries.length;
+    groupChatLastKnownTs = entries.length > 0 ? (entries[entries.length - 1][1].ts || 0) : 0; // keeps the lightweight-poll check above accurate after a full (deliberate) render too, not just when it set this itself
     const body = document.getElementById('syndyChatBody');
     body.innerHTML = '';
 
