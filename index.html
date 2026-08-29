@@ -1640,14 +1640,16 @@
         <div class="syndy-chat-name" id="syndyChatHeaderName">Syndy</div>
         <div class="syndy-chat-status" id="syndyChatHeaderStatus">Online</div>
       </div>
+      <button type="button" class="chat-clear-btn" id="chatClearBtn" style="display:none;" title="Clear chat">🗑️</button>
       <div class="syndy-chat-close" id="syndyChatCloseBtn">✕</div>
     </div>
-    <div class="chat-mode-toggle lb-time-toggle" id="chatModeToggle">
-      <button type="button" class="lb-time-btn active" data-chat-mode="syndy">🤖 Syndy</button>
-      <button type="button" class="lb-time-btn" data-chat-mode="group">💬 Group Chat</button>
+    <div class="chat-mode-toggle" id="chatModeToggle">
+      <button type="button" class="chat-mode-btn active" data-chat-mode="syndy">🤖 Syndy</button>
+      <button type="button" class="chat-mode-btn" data-chat-mode="group">💬 Group Chat</button>
     </div>
     <div class="chat-pinned-bar" id="chatPinnedBar" style="display:none;"></div>
     <div class="syndy-chat-body" id="syndyChatBody"></div>
+    <div class="chat-typing-indicator" id="chatTypingIndicator" style="display:none;"></div>
     <div class="chat-reply-preview" id="chatReplyPreview" style="display:none;"></div>
     <div class="syndy-chat-input-row">
       <input type="file" id="chatImageInput" accept="image/*" style="display:none;">
@@ -2823,7 +2825,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.46"; // Group Chat send now checks res.ok — a rejected write was previously silent (no throw, input cleared, empty state persists), which is very likely the actual cause of the repeated "message won't appear" report — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.47"; // Group Chat polish: admin Clear Chat, typing indicator, avatars moved beside bubbles (not inline), full-width tab-style mode toggle, message entrance animation — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9765,11 +9767,13 @@ document.getElementById('syndyFabBtn').addEventListener('click', () => {
 document.getElementById('syndyChatCloseBtn').addEventListener('click', () => {
   document.getElementById('syndyChatModal').classList.remove('open');
   if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; } // stop polling the moment nobody's looking at it
+  if(chatMode === 'group') clearGroupChatTypingStatus();
 });
 document.getElementById('syndyChatModal').addEventListener('click', (e) => {
   if(e.target.id === 'syndyChatModal'){
     document.getElementById('syndyChatModal').classList.remove('open');
     if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; }
+    if(chatMode === 'group') clearGroupChatTypingStatus();
   }
 });
 
@@ -9843,7 +9847,7 @@ function sendChatMessage(){
 
 function switchChatMode(mode){
   chatMode = mode;
-  document.querySelectorAll('#chatModeToggle .lb-time-btn').forEach(b => b.classList.toggle('active', b.dataset.chatMode === mode));
+  document.querySelectorAll('#chatModeToggle .chat-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.chatMode === mode));
   document.getElementById('syndyChatBody').innerHTML = '';
   const input = document.getElementById('syndyChatInput');
   if(mode === 'group'){
@@ -9852,22 +9856,30 @@ function switchChatMode(mode){
     const icon = document.getElementById('syndyChatHeaderIcon');
     if(icon) icon.style.display = 'none';
     document.getElementById('chatImageBtn').style.display = '';
+    const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    document.getElementById('chatClearBtn').style.display = isAdmin ? '' : 'none';
     input.placeholder = 'Message the group…';
     groupChatLastCount = 0;
     setGroupChatLastSeen(Date.now()); // opening the tab counts as "seen" immediately, don't wait for the first poll
     updateGroupChatUnreadBadge(false);
     renderGroupChat(true);
-    if(!groupChatPollHandle) groupChatPollHandle = setInterval(() => renderGroupChat(false), 5000);
+    renderGroupChatTyping();
+    if(!groupChatPollHandle){
+      groupChatPollHandle = setInterval(() => { renderGroupChat(false); renderGroupChatTyping(); }, 5000);
+    }
   } else {
     document.getElementById('syndyChatHeaderName').textContent = 'Syndy';
     document.getElementById('syndyChatHeaderStatus').textContent = 'Online';
     const icon = document.getElementById('syndyChatHeaderIcon');
     if(icon) icon.style.display = '';
     document.getElementById('chatImageBtn').style.display = 'none';
+    document.getElementById('chatClearBtn').style.display = 'none';
+    document.getElementById('chatTypingIndicator').style.display = 'none';
     clearReplyTarget();
     closeReactionPicker();
     input.placeholder = 'Ask Syndy anything…';
     if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; }
+    clearGroupChatTypingStatus(); // in case you were mid-typing when you switched away
     syndyMessages.forEach(m => syndyAppendMessage(m.role === 'user' ? 'user' : 'syndy', m.content));
     if(syndyMessages.length === 0){
       syndyAppendMessage('syndy', "G'day legend. What's on — footy, racing, or you after a multi built off real form?");
@@ -9875,7 +9887,7 @@ function switchChatMode(mode){
   }
   input.focus();
 }
-document.querySelectorAll('#chatModeToggle .lb-time-btn').forEach(btn => {
+document.querySelectorAll('#chatModeToggle .chat-mode-btn').forEach(btn => {
   btn.addEventListener('click', () => switchChatMode(btn.dataset.chatMode));
 });
 
@@ -9894,6 +9906,68 @@ function clearReplyTarget(){
   const bar = document.getElementById('chatReplyPreview');
   if(bar){ bar.style.display = 'none'; bar.innerHTML = ''; }
 }
+
+// ---- Typing indicator — genuinely honest about its own limitation:
+// this app polls Group Chat every 5s rather than using a real-time
+// listener, so "typing" status is only ever as fresh as the last poll —
+// up to a ~5s lag both appearing and clearing. Still adds real life to
+// the chat even with that lag, just not instant-messaging-precise.
+let chatTypingThrottleActive = false;
+document.getElementById('syndyChatInput').addEventListener('input', () => {
+  if(chatMode !== 'group' || !currentUserUid || chatTypingThrottleActive) return;
+  chatTypingThrottleActive = true;
+  setTimeout(() => { chatTypingThrottleActive = false; }, 2500); // one write per ~2.5s of continuous typing, not one per keystroke
+  authedFetch(`/groupChat/typing/${currentUserUid}.json`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: currentUserName || 'Someone', ts: Date.now() })
+  }).catch(() => {});
+});
+function clearGroupChatTypingStatus(){
+  if(!currentUserUid) return;
+  authedFetch(`/groupChat/typing/${currentUserUid}.json`, { method: 'DELETE' }).catch(() => {});
+}
+async function renderGroupChatTyping(){
+  if(chatMode !== 'group' || !currentUserUid) return;
+  const el = document.getElementById('chatTypingIndicator');
+  if(!el) return;
+  try{
+    const res = await authedFetch('/groupChat/typing.json');
+    const data = res.ok ? await res.json() : null;
+    const now = Date.now();
+    const activeNames = Object.entries(data || {})
+      .filter(([uid, t]) => uid !== currentUserUid && t && t.ts && (now - t.ts) < 4000)
+      .map(([, t]) => t.name || 'Someone');
+    if(activeNames.length === 0){
+      el.style.display = 'none';
+      return;
+    }
+    const text = activeNames.length === 1
+      ? `${activeNames[0]} is typing…`
+      : activeNames.length === 2
+        ? `${activeNames[0]} and ${activeNames[1]} are typing…`
+        : `${activeNames.length} people are typing…`;
+    el.textContent = text;
+    el.style.display = 'block';
+  }catch(e){}
+}
+
+// ---- Clear Chat (admin only) — bulk-deletes every message. Needed its
+// own Firebase rule (admin write on the whole messages node) since the
+// existing per-message rule only ever covered writing ONE message at a
+// time, not the collection itself.
+document.getElementById('chatClearBtn').addEventListener('click', async () => {
+  if(!confirm('Clear the entire Group Chat? This deletes every message for everyone and cannot be undone.')) return;
+  try{
+    const res = await authedFetch('/groupChat/messages.json', { method: 'DELETE' });
+    if(!res.ok){ showToast('Could not clear — try again'); return; }
+    await authedFetch('/groupChat/pinned.json', { method: 'DELETE' }).catch(() => {}); // a pin referencing a now-deleted message would be stale
+    showToast('🗑️ Chat cleared');
+    groupChatLastCount = 0;
+    renderGroupChat(true);
+  }catch(e){
+    showToast('Could not clear — try again');
+  }
+});
 
 // ---- Reaction / pin picker (long-press) ----
 const CHAT_QUICK_REACTIONS = ['👍', '❤️', '😂', '🔥', '😮', '😢'];
@@ -10177,21 +10251,44 @@ async function renderGroupChat(scrollToBottom){
     entries.forEach(([id, m]) => {
       const isMe = m.senderUid === currentUserUid;
       const isSyndy = m.senderUid === 'syndy';
+      const row = document.createElement('div');
+      row.className = `chat-msg-row ${isMe ? 'mine' : 'other'}`;
+      // Avatar sits BESIDE the bubble now, not inline inside it — only
+      // shown for other people's messages (yours doesn't need one, same
+      // convention as every other chat app).
+      if(!isMe){
+        const avatarSrc = isSyndy ? 'syndy-icon.png' : avatarByUid[m.senderUid];
+        if(avatarSrc){
+          const img = document.createElement('img');
+          img.className = 'chat-msg-avatar';
+          img.src = avatarSrc;
+          img.alt = '';
+          img.onerror = function(){ this.style.display = 'none'; };
+          row.appendChild(img);
+        } else {
+          // No real avatar on file — same initial-circle fallback avatarHtml
+          // already renders elsewhere, just built manually here since this
+          // needs to be a sibling of the bubble, not a string inside it.
+          const fallback = document.createElement('span');
+          fallback.className = 'chat-msg-avatar';
+          fallback.style.cssText = 'display:flex; align-items:center; justify-content:center; background:var(--felt-3); color:var(--brass-light); font-size:11px; font-weight:700;';
+          fallback.textContent = (m.senderName || '?').trim().charAt(0).toUpperCase();
+          row.appendChild(fallback);
+        }
+      }
       const el = document.createElement('div');
       el.className = `syndy-msg ${isMe ? 'user' : 'syndy'}`;
       el.dataset.messageId = id;
       el.dataset.senderName = m.senderName || 'Someone';
       el.dataset.messageText = m.text || '';
-      const avatar = isSyndy
-        ? `<img src="syndy-icon.png" alt="" style="width:20px; height:20px; border-radius:50%; object-fit:cover; flex-shrink:0; margin-right:6px;" onerror="this.style.display='none';">`
-        : avatarHtml(m.senderName, avatarByUid[m.senderUid], 20);
-      const meta = !isMe ? `<span class="syndy-msg-sender">${avatar}${escapeHtml(m.senderName || 'Someone')}</span>` : '';
+      const meta = !isMe ? `<span class="syndy-msg-sender">${escapeHtml(m.senderName || 'Someone')}</span>` : '';
       const replyQuote = m.replyTo ? `<div class="syndy-msg-reply-quote"><b>${escapeHtml(m.replyTo.senderName || 'Someone')}</b> ${escapeHtml(m.replyTo.textSnippet || '')}</div>` : '';
       const textHtml = m.text ? highlightMentions(escapeHtml(m.text)) : '';
       const image = m.imageData ? `<img class="chat-msg-image" src="${m.imageData}" alt="">` : '';
       const reactionsHtml = renderReactionPills(id, m.reactions);
       el.innerHTML = `${meta}${replyQuote}${textHtml}${image}<span class="syndy-msg-time">${timeAgo(m.ts)}</span>${reactionsHtml}`;
-      body.appendChild(el);
+      row.appendChild(el);
+      body.appendChild(row);
     });
     // Modal is genuinely open and rendering right now — this counts as
     // having seen everything up to the newest message, so the badge
@@ -10231,6 +10328,7 @@ async function sendGroupChatMessage(){
       return;
     }
     hapticPulse(12); // a light confirmation tap the message actually went — reuses the same Vibration API helper the casino sounds already hook into
+    clearGroupChatTypingStatus();
     renderGroupChat(true);
     detectMentions(text).forEach(uid => sendMentionPush(uid, text));
     if(/@syndy\b/i.test(text)) triggerSyndyInChannel(text);

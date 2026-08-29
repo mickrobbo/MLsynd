@@ -1,8 +1,11 @@
 {
-  "version": "2026-08-24.46",
+  "version": "2026-08-24.47",
   "date": "2026-08-27",
   "changes": [
-    "Group Chat send (text and image) now actually checks whether the write succeeded. authedFetch does NOT throw on a rejected write \u2014 a Firebase permission error still resolves normally, just with res.ok=false \u2014 so without this check, a rejected write would silently proceed as if it worked: input cleared, no error shown, and the chat re-renders whatever's ACTUALLY in Firebase (which could still be empty). This is very likely the real explanation for messages repeatedly not appearing. A failure now restores your typed text and shows the actual HTTP status so it's diagnosable instead of silent.",
-    "Added the missing index on Group Chat's timestamp field, matching the pattern already used elsewhere (XP logs) \u2014 wasn't causing outright failures but was a real gap worth closing."
+    "\ud83d\uddd1\ufe0f Group Chat: admin can now clear the entire chat (trash icon in the header) \u2014 needed a new Firebase rule since bulk-deleting the whole collection wasn't covered by the existing per-message rule.",
+    "\u2328\ufe0f Typing indicator \u2014 shows who's currently typing. Honest caveat: this app polls Group Chat every 5s rather than using a real-time listener, so it's laggy by design (~5s to appear/clear), not instant-messaging-precise.",
+    "\ud83d\udcac Avatars now sit beside each message bubble (standard chat-app layout) instead of inline inside the text \u2014 clearer at a glance who's saying what.",
+    "\ud83c\udfa8 Mode toggle rebuilt as a full-width tab-underline style instead of the old small pill pair \u2014 reads more clearly as two views of one thing.",
+    "\u2728 New messages now animate in with a subtle fade/rise instead of appearing instantly."
   ]
 }

@@ -3211,8 +3211,19 @@
 .syndy-chat-status{ font-size:10px; color:var(--win); }
 .syndy-chat-status::before{ content:'●'; margin-right:4px; font-size:8px; }
 .syndy-chat-close{ color:var(--muted); font-size:18px; cursor:pointer; padding:4px; }
-.chat-mode-toggle{ text-align:center; padding:8px 14px; border-bottom:1px solid var(--line); flex-shrink:0; }
-.chat-mode-toggle .lb-time-btn{ min-width:90px; }
+.chat-clear-btn{ background:none; border:none; font-size:15px; cursor:pointer; padding:4px 6px; color:var(--muted); opacity:.75; }
+.chat-clear-btn:active{ opacity:1; }
+/* Full-width tab-underline style — replaces the old small pill-pair,
+   reads more clearly as "two views of one thing" than a cramped pill
+   group did, and fills the header width rather than floating centered. */
+.chat-mode-toggle{ display:flex; border-bottom:1px solid var(--line); flex-shrink:0; }
+.chat-mode-btn{
+  flex:1; padding:10px 6px; text-align:center; background:none; border:none; cursor:pointer;
+  font-size:12px; font-weight:700; color:var(--muted); font-family:'Barlow Condensed', sans-serif;
+  letter-spacing:.3px; border-bottom:2px solid transparent; transition:color .15s ease, border-color .15s ease;
+}
+.chat-mode-btn.active{ color:var(--brass-light); border-bottom-color:var(--brass); }
+.chat-mode-btn:active{ opacity:.7; }
 .syndy-chat-body{
   flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch;
   position:relative;
@@ -3223,6 +3234,22 @@
   content:''; position:absolute; inset:0; background:var(--felt-2); opacity:.88; pointer-events:none; z-index:0;
 }
 .syndy-chat-body > *{ position:relative; z-index:1; }
+/* Row wrapper for Group Chat messages — avatar sits BESIDE the bubble
+   (standard chat-app convention) rather than inline inside it, which is
+   how the Syndy 1:1 chat's own .syndy-msg elements still render
+   (unwrapped, direct children of .syndy-chat-body — this new row is
+   additive, doesn't touch that). align-self on .syndy-msg itself has no
+   effect once nested in a row (align-self only applies to direct flex
+   children), so nothing conflicts between the two modes sharing the
+   same bubble classes. */
+@keyframes chatMsgIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+.chat-msg-row{ display:flex; align-items:flex-end; gap:6px; max-width:100%; animation: chatMsgIn .25s cubic-bezier(.16,1,.3,1); }
+.chat-msg-row.other{ align-self:flex-start; }
+.chat-msg-row.mine{ align-self:flex-end; }
+.chat-msg-row.mine .syndy-msg, .chat-msg-row.other .syndy-msg{ align-self:auto; } /* 3-class selector genuinely outweighs .syndy-msg.user/.syndy-msg.syndy (2 classes each) regardless of cascade order — a same-specificity override here would've been fragile */
+.chat-msg-avatar{ width:26px; height:26px; border-radius:50%; object-fit:cover; flex-shrink:0; margin-bottom:2px; border:1px solid var(--brass-dim); }
+@media (prefers-reduced-motion: reduce){ .chat-msg-row{ animation:none; } }
+.chat-typing-indicator{ padding:2px 16px 8px; font-size:11px; color:var(--muted); font-style:italic; flex-shrink:0; }
 .syndy-msg{ max-width:82%; padding:9px 12px; border-radius:14px; font-size:13px; line-height:1.45; white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere; }
 .syndy-chat-body{ overflow-x:hidden; }
 .syndy-msg.syndy{ align-self:flex-start; background:var(--felt); border:1px solid var(--brass-dim); border-bottom-left-radius:4px; white-space:normal; }
