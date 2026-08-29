@@ -1,8 +1,9 @@
 {
-  "version": "2026-08-24.65",
-  "date": "2026-08-27",
+  "version": "2026-08-24.67",
+  "date": "2026-08-28",
   "changes": [
-    "\ud83c\udfb2 New dedicated Craps dice sound \u2014 a real rattle-and-settle (dense clacking, spacing out, finishing on a low thud), replacing the borrowed Roulette spin sweep that was only ever there because it happened to be the right length, not the right character. Same 2.1s duration, matches the dice tumble animation exactly.",
-    "\ud83d\udc1b Real bug found and fixed in Share My Season: rendered the canvas layout in Python first to actually check it rather than trust the coordinates on paper, and found the \"SEASON P/L\" label overlapping the big P/L number above it for large 4-digit amounts. Pushed the spacing out properly."
+    "\ud83c\udfb0 Live Blackjack polish: buy-in is now a real chip rail (tap chips to build an amount, Sit Down / Cancel) instead of a plain prompt() dialog, using the same chip-colour styling as the single-player Blackjack bet panel. Table Chat added, on its own /blackjackChat path. Table creator or admin can now delete a table, with every seated player automatically refunded first.",
+    "\ud83d\udc1b Two real mistakes caught and fixed while building this: an admin-check that read an unreliable /users field instead of the verified session's own email (same class of bug already caught once before elsewhere), and an architecture mistake where a second function export wouldn't actually have been reachable as its own endpoint \u2014 folded into the main handler instead of shipping something broken.",
+    "\ud83d\udd27 Fixed the actual Hold'em issue reported: a table stuck with status permanently at 'hand_in_progress' blocked deletion for everyone, admin included \u2014 there was no way to ever clear it. Admin now has a guaranteed-working force-delete path that goes straight through blackjack-table-dealer.mjs's own logic rather than depending on holdem-dealer.mjs's, so it can't be blocked by whatever was actually causing the original problem."
   ]
 }

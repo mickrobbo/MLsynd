@@ -558,6 +558,7 @@
         <div id="holdemHistoryArea" style="margin-top:6px;"><div class="empty">Loading…</div></div>
       </details>
       <div class="holdem-chat-box">
+
         <div class="holdem-chat-label">💬 Table Chat</div>
         <div id="holdemTableChatMessages" class="holdem-chat-messages"></div>
         <div class="holdem-chat-input-row">
@@ -598,6 +599,90 @@
           <button type="button" class="pill-btn" id="holdemHandChatSendBtn">Send</button>
         </div>
         <div id="holdemHandChatCounter" class="holdem-chat-counter">0/160</div>
+      </div>
+    </div>
+
+
+    <!-- Multiplayer Blackjack — first pass: table browser + seat grid
+         only. Same "no direct writes" security model as Hold'em
+         (blackjack-table-dealer.mjs is the only thing that can touch
+         /blackjackTables — see firebase-rules.json). Actual card dealing
+         is a deliberate next step, not part of this pass. -->
+    <div class="panel casino-view" id="casinoMpBjBrowserView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:14px; margin:0;">🃏 Live Blackjack Tables</h2>
+        <button type="button" class="pill-btn" id="mpBjBrowserBackBtn">← Back</button>
+      </div>
+      <div class="hint" style="margin-bottom:10px;">Sit at a table with real people, same felt, same rules. Buy in with XP from your balance — cash out any time by standing up.</div>
+      <button type="button" class="pill-btn pill-btn-primary" id="newMpBjTableBtn" style="width:100%; margin-bottom:12px;">🃏 New Table</button>
+      <div id="newMpBjTableForm" style="display:none; margin-bottom:12px;">
+        <label class="form-field-label">Table name</label>
+        <input type="text" id="mpBjTableNameInput" class="form-input" placeholder="e.g. Friday Night">
+        <label class="form-field-label">Min buy-in (XP)</label>
+        <input type="number" id="mpBjTableMinInput" class="form-input" min="1" step="1" placeholder="e.g. 100">
+        <label class="form-field-label">Max buy-in (XP)</label>
+        <input type="number" id="mpBjTableMaxInput" class="form-input" min="1" step="1" placeholder="e.g. 2000">
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="pill-btn pill-btn-primary" id="createMpBjTableBtn" style="flex:1;">Create</button>
+          <button type="button" class="pill-btn" id="cancelNewMpBjTableBtn" style="flex:1;">Cancel</button>
+        </div>
+        <div class="status-msg" id="newMpBjTableStatus" style="margin-top:8px;"></div>
+      </div>
+      <div id="mpBjTableListArea"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="panel casino-view" id="casinoMpBjTableView">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
+        <h2 style="font-size:14px; margin:0;" id="mpBjTableViewTitle">🃏 Table</h2>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+          <button type="button" class="pill-btn" id="mpBjTableDeleteBtn" title="Delete table" style="display:none; padding:6px 10px;">🗑️</button>
+          <button type="button" class="pill-btn" id="mpBjTableBackBtn">← Back</button>
+        </div>
+      </div>
+      <div class="bj-table" style="padding:20px 10px 12px; text-align:center;">
+        <div class="mp-bj-dealer-label">DEALER</div>
+      </div>
+      <div id="mpBjSeatGrid" class="mp-bj-seat-grid"></div>
+
+      <!-- Buy-in panel — a real chip rail instead of a plain prompt(),
+           same denomination-colour chips the single-player Blackjack bet
+           panel uses (initChipRail is generic: it just adds data-val to
+           whatever input data-target points at). Hidden until an empty
+           seat is tapped. -->
+      <div id="mpBjBuyInPanel" style="display:none; margin-top:14px;">
+        <div style="display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;">
+          <div class="bj-chip" id="mpBjBuyInChipDisplay">0</div>
+          <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+            <label style="font-size:11px; color:var(--muted);" id="mpBjBuyInRangeLabel">Buy-in amount</label>
+            <input type="number" id="mpBjBuyInInput" min="0" step="10" value="0" readonly style="width:90px; text-align:center; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:8px; padding:8px; font-size:14px;">
+          </div>
+        </div>
+        <div class="chip-rail" data-target="mpBjBuyInInput">
+          <button type="button" class="table-chip chip-5" data-val="50">50</button>
+          <button type="button" class="table-chip chip-10" data-val="100">100</button>
+          <button type="button" class="table-chip chip-25" data-val="250">250</button>
+          <button type="button" class="table-chip chip-50" data-val="500">500</button>
+          <button type="button" class="table-chip chip-100" data-val="1000">1K</button>
+          <button type="button" class="table-chip chip-250" data-val="2500">2.5K</button>
+          <button type="button" class="chip-clear-btn" data-target="mpBjBuyInInput">Clear Chips</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button type="button" class="pill-btn pill-btn-primary" id="mpBjBuyInConfirmBtn" style="flex:1;">Sit Down</button>
+          <button type="button" class="pill-btn" id="mpBjBuyInCancelBtn" style="flex:1;">Cancel</button>
+        </div>
+      </div>
+
+      <div id="mpBjTableActions" style="margin-top:12px;"></div>
+      <div class="status-msg" id="mpBjTableActionStatus" style="margin-top:8px;"></div>
+
+      <div class="holdem-chat-box">
+        <div class="holdem-chat-label">💬 Table Chat</div>
+        <div id="mpBjTableChatMessages" class="holdem-chat-messages"></div>
+        <div class="holdem-chat-input-row">
+          <input type="text" id="mpBjTableChatInput" class="form-input" placeholder="Say something…" maxlength="160" style="margin-bottom:0;">
+          <button type="button" class="pill-btn" id="mpBjTableChatSendBtn">Send</button>
+        </div>
+        <div id="mpBjTableChatCounter" class="holdem-chat-counter">0/160</div>
       </div>
     </div>
 
@@ -860,6 +945,7 @@
         <button type="button" class="game-bubble" data-game="crash"><span class="game-bubble-icon">🚀</span><span class="game-bubble-label">Crash</span></button>
         <button type="button" class="game-bubble" data-game="doubleornothing"><span class="game-bubble-icon">🪙</span><span class="game-bubble-label">Double or Nothing</span></button>
         <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
+        <button type="button" class="game-bubble" id="hubMpBjBtn" style="position:relative;"><span class="game-bubble-icon">🃏</span><span class="game-bubble-label">Live Blackjack</span></button>
         <button type="button" class="game-bubble" id="hubChallengesBtn" style="position:relative;"><span class="game-bubble-icon">🥊</span><span class="game-bubble-label">Challenges</span><span class="casino-hub-badge" id="challengesHubBadge" style="display:none;"></span></button>
         <button type="button" class="game-bubble" id="hubBountiesBtn" style="position:relative;"><span class="game-bubble-icon">🎯</span><span class="game-bubble-label">Bounties</span><span class="casino-hub-badge" id="bountiesHubBadge" style="display:none;"></span></button>
       </div>
@@ -2900,7 +2986,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.65"; // New Craps dice sound (rattle-and-settle, replaces borrowed Roulette spin sweep) — casino-craps.js updated. Also fixed a real bug in Share My Season found by actually rendering the canvas layout in Python first: the P/L label overlapped the big number above it for large 4-digit amounts — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.67"; // Live Blackjack polish: real chip-rail buy-in (replaces prompt()), table chat (own /blackjackChat path), admin/creator delete with refunds. Fixed a real bug caught while building it (checked unreliable user.email instead of the verified token's own email) and a real architecture mistake (a second named export wouldn't have been reachable as its own endpoint — folded into the main handler instead). Also fixes the actual Hold'em issue: a table stuck at status 'hand_in_progress' blocked deletion for everyone including admin — admin now has a guaranteed force-delete path that doesn't depend on holdem-dealer.mjs's own logic at all. blackjack-table-dealer.mjs and firebase-rules.json (new /blackjackChat path) both updated — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4298,6 +4384,330 @@ document.getElementById('hubHoldemBtn').addEventListener('click', () => {
 });
 document.getElementById('holdemBrowserBackBtn').addEventListener('click', () => showCasinoView(null));
 
+// =====================================================================
+// MULTIPLAYER BLACKJACK — table browser + seat grid, first pass only.
+// Same security model as Hold'em: every write goes through the trusted
+// blackjack-table-dealer Netlify Function, never a direct Firebase
+// write — firebase-rules.json sets .write:false on /blackjackTables.
+// Reuses Hold'em's own ensureHoldemRealtimeAuth() for the live listener
+// rather than duplicating token-minting logic — that function just
+// signs the Firebase SDK in as the current uid, which is generic to any
+// realtime listener in this app, not actually Hold'em-specific despite
+// its name. No card dealing yet — sit, buy in, see who's seated, stand
+// up and cash out. That's the deliberate next step once this is
+// confirmed solid.
+async function mpBjDealerCall(tableId, action, extraParams){
+  const auth = await getValidAuth();
+  if(!auth) throw new Error('Session expired — sign in again.');
+  const res = await fetch('/.netlify/functions/blackjack-table-dealer', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: auth.idToken, tableId, action, ...extraParams })
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(data.error || 'Something went wrong.');
+  return data;
+}
+
+document.getElementById('hubMpBjBtn').addEventListener('click', () => {
+  renderMpBjTableList();
+  showCasinoView('casinoMpBjBrowserView');
+});
+document.getElementById('mpBjBrowserBackBtn').addEventListener('click', () => showCasinoView(null));
+
+async function renderMpBjTableList(){
+  const area = document.getElementById('mpBjTableListArea');
+  if(!area) return;
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const res = await authedFetch('/blackjackTables.json');
+    const tables = res.ok ? ((await res.json()) || {}) : {};
+    const entries = Object.entries(tables).sort((a, b) => {
+      const seatsA = Object.values(a[1].seats || {}).filter(Boolean).length;
+      const seatsB = Object.values(b[1].seats || {}).filter(Boolean).length;
+      return seatsB - seatsA; // tables with people at them surface first
+    });
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No tables open right now — start one above.</div>';
+      return;
+    }
+    area.innerHTML = entries.map(([id, t]) => {
+      const seatCount = Object.values(t.seats || {}).filter(Boolean).length;
+      return `
+        <div class="mp-bj-table-row" data-table-id="${escapeHtml(id)}">
+          <div>
+            <div class="mp-bj-table-row-name">${escapeHtml(t.name || 'Table')}</div>
+            <div class="mp-bj-table-row-meta">Buy-in ${t.minBuyIn}–${t.maxBuyIn} XP · started by ${escapeHtml(t.createdByName || 'Someone')}</div>
+          </div>
+          <div class="mp-bj-table-row-seats">${seatCount}/${t.maxSeats || 6}</div>
+        </div>
+      `;
+    }).join('');
+    area.querySelectorAll('.mp-bj-table-row').forEach(row => {
+      row.addEventListener('click', () => openMpBjTable(row.dataset.tableId));
+    });
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load tables — try again.</div>';
+  }
+}
+document.getElementById('newMpBjTableBtn').addEventListener('click', () => {
+  document.getElementById('newMpBjTableForm').style.display = 'block';
+});
+document.getElementById('cancelNewMpBjTableBtn').addEventListener('click', () => {
+  document.getElementById('newMpBjTableForm').style.display = 'none';
+});
+document.getElementById('createMpBjTableBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('newMpBjTableStatus');
+  const name = document.getElementById('mpBjTableNameInput').value.trim();
+  const minBuyIn = Math.floor(Number(document.getElementById('mpBjTableMinInput').value));
+  const maxBuyIn = Math.floor(Number(document.getElementById('mpBjTableMaxInput').value));
+  if(!name){ statusEl.textContent = 'Give the table a name.'; return; }
+  if(!(minBuyIn > 0)){ statusEl.textContent = 'Enter a minimum buy-in above 0.'; return; }
+  if(!(maxBuyIn >= minBuyIn)){ statusEl.textContent = 'Max buy-in must be at least the minimum.'; return; }
+  statusEl.textContent = 'Creating…';
+  try{
+    const result = await mpBjDealerCall(null, 'createTable', { name, minBuyIn, maxBuyIn });
+    document.getElementById('newMpBjTableForm').style.display = 'none';
+    showToast(`🃏 "${name}" table created`);
+    openMpBjTable(result.tableId);
+  }catch(e){
+    statusEl.textContent = e.message;
+  }
+});
+
+let mpBjCurrentTableId = null;
+let mpBjTableListenerRef = null;
+
+async function openMpBjTable(tableId){
+  mpBjCurrentTableId = tableId;
+  showCasinoView('casinoMpBjTableView');
+  renderMpBjSeatGrid();
+  renderMpBjChat(tableId, 'mpBjTableChatMessages');
+  wireMpBjChatUI(tableId, 'mpBjTableChatMessages', 'mpBjTableChatInput', 'mpBjTableChatCounter', 'mpBjTableChatSendBtn');
+
+  if(mpBjTableListenerRef) mpBjTableListenerRef.off('value');
+  try{
+    await ensureHoldemRealtimeAuth(); // generic despite the name — see comment above
+    mpBjTableListenerRef = firebase.database().ref(`/blackjackTables/${tableId}`);
+    mpBjTableListenerRef.on('value', () => {
+      if(mpBjCurrentTableId === tableId) renderMpBjSeatGrid();
+    });
+  }catch(e){
+    // Real-time auth failed — fall back to a single render rather than
+    // leaving the view stuck on "Loading". Live updates just won't
+    // arrive until the view is reopened.
+    renderMpBjSeatGrid();
+  }
+}
+document.getElementById('mpBjTableBackBtn').addEventListener('click', () => {
+  if(mpBjTableListenerRef){ mpBjTableListenerRef.off('value'); mpBjTableListenerRef = null; }
+  mpBjCurrentTableId = null;
+  closeMpBjBuyInPanel();
+  showCasinoView(null);
+});
+
+async function renderMpBjSeatGrid(){
+  if(!mpBjCurrentTableId) return;
+  const grid = document.getElementById('mpBjSeatGrid');
+  const titleEl = document.getElementById('mpBjTableViewTitle');
+  const actionsEl = document.getElementById('mpBjTableActions');
+  if(!grid) return;
+  try{
+    const res = await authedFetch(`/blackjackTables/${mpBjCurrentTableId}.json`);
+    const table = res.ok ? await res.json() : null;
+    if(!table){
+      grid.innerHTML = '<div class="empty">This table has closed.</div>';
+      if(actionsEl) actionsEl.innerHTML = '';
+      const deleteBtn = document.getElementById('mpBjTableDeleteBtn');
+      if(deleteBtn) deleteBtn.style.display = 'none';
+      return;
+    }
+    if(titleEl) titleEl.textContent = `🃏 ${table.name || 'Table'}`;
+
+    // Delete button — same creator-or-admin rule as Hold'em's own table
+    // delete, plus the fallback "no creator on record" case (an older
+    // or manually-created table) counting as deletable too.
+    const deleteBtn = document.getElementById('mpBjTableDeleteBtn');
+    if(deleteBtn){
+      const isAdmin = (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      const canDelete = table.createdBy === currentUserUid || isAdmin || !table.createdBy;
+      deleteBtn.style.display = canDelete ? 'inline-block' : 'none';
+      deleteBtn.onclick = async () => {
+        const seats = table.seats || {};
+        const seatedCount = Object.values(seats).filter(Boolean).length;
+        const warning = seatedCount > 0
+          ? `Delete "${table.name}"? ${seatedCount} player${seatedCount === 1 ? ' is' : 's are'} still seated — they'll be automatically cashed out to their real balance. This can't be undone.`
+          : `Delete "${table.name}"? This can't be undone.`;
+        if(!confirm(warning)) return;
+        try{
+          await mpBjDealerCall(mpBjCurrentTableId, 'deleteTable', {});
+          if(mpBjTableListenerRef){ mpBjTableListenerRef.off('value'); mpBjTableListenerRef = null; }
+          mpBjCurrentTableId = null;
+          renderMpBjTableList();
+          showCasinoView('casinoMpBjBrowserView');
+        }catch(e){
+          const statusEl = document.getElementById('mpBjTableActionStatus');
+          if(statusEl) statusEl.textContent = e.message;
+        }
+      };
+    }
+
+    const seats = table.seats || {};
+    const seatCount = table.maxSeats || 6;
+    const uniqueUids = Object.values(seats).filter(Boolean).map(s => s.uid);
+    const avatarByUid = {};
+    await Promise.all([...new Set(uniqueUids)].map(async uid => { avatarByUid[uid] = await getAvatarDataUri(uid); }));
+
+    let mySeatIndex = null;
+    const cells = [];
+    for(let i = 0; i < seatCount; i++){
+      const seat = seats[i];
+      if(seat){
+        if(seat.uid === currentUserUid) mySeatIndex = i;
+        const isMe = seat.uid === currentUserUid;
+        const avatarSrc = avatarByUid[seat.uid];
+        const avatarHtml = avatarSrc
+          ? `<img class="mp-bj-seat-avatar" src="${avatarSrc}" alt="">`
+          : `<span class="mp-bj-seat-avatar-fallback">${escapeHtml((seat.name || '?').trim().charAt(0).toUpperCase())}</span>`;
+        cells.push(`
+          <div class="mp-bj-seat occupied${isMe ? ' me' : ''}" data-seat-index="${i}">
+            ${avatarHtml}
+            <div class="mp-bj-seat-name">${escapeHtml(seat.name || 'Someone')}</div>
+            <div class="mp-bj-seat-stack">${seat.stack.toLocaleString()} XP</div>
+          </div>
+        `);
+      } else {
+        cells.push(`
+          <div class="mp-bj-seat" data-seat-index="${i}" data-empty="true">
+            <div class="mp-bj-seat-empty-icon">+</div>
+            <div class="mp-bj-seat-empty-label">Sit here</div>
+          </div>
+        `);
+      }
+    }
+    grid.innerHTML = cells.join('');
+    grid.querySelectorAll('.mp-bj-seat[data-empty="true"]').forEach(cell => {
+      cell.addEventListener('click', () => openMpBjBuyInPanel(table, Number(cell.dataset.seatIndex)));
+    });
+
+    if(actionsEl){
+      actionsEl.innerHTML = mySeatIndex != null
+        ? `<button type="button" class="pill-btn pill-btn-action" id="mpBjStandBtn" style="width:100%;">Stand up &amp; cash out</button>`
+        : '';
+      const standBtn = document.getElementById('mpBjStandBtn');
+      if(standBtn) standBtn.addEventListener('click', mpBjStandUp);
+    }
+  }catch(e){
+    grid.innerHTML = '<div class="empty">Could not load this table — try again.</div>';
+  }
+}
+
+// Buy-in via the real chip rail instead of prompt() — initChipRail
+// already wires every .chip-rail on the page once at load time (this
+// one's static HTML in casinoMpBjTableView, not dynamically injected,
+// specifically so that page-load wiring catches it — a rail added via
+// innerHTML afterward wouldn't get picked up automatically).
+let mpBjPendingSeatIndex = null;
+function openMpBjBuyInPanel(table, seatIndex){
+  mpBjPendingSeatIndex = seatIndex;
+  const panel = document.getElementById('mpBjBuyInPanel');
+  const rangeLabel = document.getElementById('mpBjBuyInRangeLabel');
+  const input = document.getElementById('mpBjBuyInInput');
+  const chipDisplay = document.getElementById('mpBjBuyInChipDisplay');
+  if(rangeLabel) rangeLabel.textContent = `Buy-in amount (${table.minBuyIn}–${table.maxBuyIn} XP)`;
+  if(input) input.value = 0;
+  if(chipDisplay) chipDisplay.textContent = '0';
+  if(panel) panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function closeMpBjBuyInPanel(){
+  mpBjPendingSeatIndex = null;
+  const panel = document.getElementById('mpBjBuyInPanel');
+  if(panel) panel.style.display = 'none';
+}
+// The chip display readout updates live as chips are tapped — same
+// "input" event initChipRail already dispatches after each tap.
+document.getElementById('mpBjBuyInInput').addEventListener('input', (e) => {
+  const chipDisplay = document.getElementById('mpBjBuyInChipDisplay');
+  if(chipDisplay) chipDisplay.textContent = e.target.value || '0';
+});
+document.getElementById('mpBjBuyInCancelBtn').addEventListener('click', closeMpBjBuyInPanel);
+document.getElementById('mpBjBuyInConfirmBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('mpBjTableActionStatus');
+  const amount = Math.floor(Number(document.getElementById('mpBjBuyInInput').value) || 0);
+  if(!(amount > 0)){ if(statusEl) statusEl.textContent = 'Add some chips first.'; return; }
+  if(mpBjPendingSeatIndex == null) return;
+  try{
+    await mpBjDealerCall(mpBjCurrentTableId, 'sit', { seatIndex: mpBjPendingSeatIndex, buyInAmount: amount });
+    showToast(`🪑 Seated with ${amount.toLocaleString()} XP`);
+    if(statusEl) statusEl.textContent = '';
+    closeMpBjBuyInPanel();
+  }catch(e){
+    if(statusEl) statusEl.textContent = e.message;
+  }
+});
+async function mpBjStandUp(){
+  const statusEl = document.getElementById('mpBjTableActionStatus');
+  try{
+    const result = await mpBjDealerCall(mpBjCurrentTableId, 'standUp', {});
+    showToast(`💰 Cashed out ${(result.stackReturned || 0).toLocaleString()} XP`);
+    if(statusEl) statusEl.textContent = '';
+  }catch(e){
+    if(statusEl) statusEl.textContent = e.message;
+  }
+}
+
+// ---- Blackjack table chat — same logic as Hold'em's own chat
+// functions, deliberately duplicated rather than parameterizing the
+// Hold'em versions with a path argument: the amount of shared logic is
+// small, and keeping /blackjackChat genuinely separate from
+// /holdemChat (rather than reusing Hold'em's path for a different
+// game's messages) is worth the minor duplication.
+let mpBjChatSeenKeys = {};
+async function renderMpBjChat(tableId, messagesId){
+  const area = document.getElementById(messagesId);
+  if(!area || !tableId) return;
+  try{
+    const res = await authedFetch(`/blackjackChat/${tableId}.json?orderBy=%22ts%22&limitToLast=30`);
+    const messages = res.ok ? ((await res.json()) || {}) : {};
+    const entries = Object.entries(messages).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0));
+    const wasAtBottom = area.scrollTop + area.clientHeight >= area.scrollHeight - 10;
+    const seenBefore = mpBjChatSeenKeys[messagesId];
+    const isFirstRenderForThisInstance = !seenBefore;
+    const uniqueUids = [...new Set(entries.map(([, m]) => m.uid).filter(Boolean))];
+    const tierBadgeByUid = {};
+    await Promise.all(uniqueUids.map(async uid => { tierBadgeByUid[uid] = await getCasinoTierBadgeHtml(uid); }));
+    area.innerHTML = entries.length === 0
+      ? ''
+      : entries.map(([key, m]) => {
+          const isNew = !isFirstRenderForThisInstance && seenBefore && !seenBefore.has(key);
+          const isMine = m.uid === currentUserUid;
+          return `<div class="holdem-chat-msg${isNew ? ' chat-msg-in' : ''}${isMine ? ' chat-msg-mine' : ''}">${isMine ? '' : `<b>${tierBadgeByUid[m.uid] || ''}${escapeHtml(m.name)}:</b> `}${escapeHtml(m.text)}</div>`;
+        }).join('');
+    mpBjChatSeenKeys[messagesId] = new Set(entries.map(([key]) => key));
+    if(wasAtBottom) area.scrollTop = area.scrollHeight;
+  }catch(e){}
+}
+async function sendMpBjChatMessage(tableId, inputId, counterId){
+  const input = document.getElementById(inputId);
+  const text = input.value.trim().slice(0, 160);
+  if(!text) return;
+  input.value = '';
+  updateHoldemChatCounter(inputId, counterId); // generic — just reads input length, no path dependency
+  try{
+    await authedFetch(`/blackjackChat/${tableId}.json`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid: currentUserUid, name: currentUserName, text, ts: Date.now() })
+    });
+  }catch(e){}
+}
+function wireMpBjChatUI(tableId, messagesId, inputId, counterId, sendBtnId){
+  const input = document.getElementById(inputId);
+  const sendBtn = document.getElementById(sendBtnId);
+  if(input) input.addEventListener('input', () => updateHoldemChatCounter(inputId, counterId));
+  if(sendBtn) sendBtn.addEventListener('click', () => sendMpBjChatMessage(tableId, inputId, counterId));
+  if(input) input.addEventListener('keydown', (e) => { if(e.key === 'Enter') sendMpBjChatMessage(tableId, inputId, counterId); });
+}
+
 async function renderHoldemTableList(){
   const area = document.getElementById('holdemTableListArea');
   if(!area) return;
@@ -4488,8 +4898,21 @@ async function renderHoldemSeatRing(){
     const mySeatIdx = Object.keys(seats).find(i => seats[i].uid === currentUserUid);
 
     const deleteBtn = document.getElementById('holdemTableDeleteBtn');
-    const canDeleteThisTable = table.status !== 'hand_in_progress' && (table.createdBy === currentUserUid || (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() || !table.createdBy);
-    deleteBtn.style.display = canDeleteThisTable ? 'inline-block' : 'none';
+    const isAdmin = (currentUserEmail || '').trim().toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    // Real bug this fixes: a table stuck with status permanently at
+    // 'hand_in_progress' (some hand that never properly resolved) made
+    // canDeleteThisTable false for EVERYONE, admin included — there was
+    // no way to ever clear it. Admin now gets a guaranteed-working
+    // force-delete path for exactly that stuck case, routed through
+    // blackjack-table-dealer.mjs's adminForceDeleteTable action rather
+    // than holdem-dealer.mjs's own (possibly-buggy) deleteTable — DB_SECRET
+    // can write to /holdemTables regardless of which function calls it,
+    // so this doesn't depend on whatever was blocking the normal path.
+    const isStuck = table.status === 'hand_in_progress';
+    const canDeleteNormally = !isStuck && (table.createdBy === currentUserUid || isAdmin || !table.createdBy);
+    const canForceDelete = isAdmin && isStuck;
+    deleteBtn.style.display = (canDeleteNormally || canForceDelete) ? 'inline-block' : 'none';
+    deleteBtn.title = canForceDelete ? 'Force delete (stuck table)' : 'Delete table';
     deleteBtn.onclick = async () => {
       const seatedCount = Object.keys(seats).length;
       const warning = seatedCount > 0
@@ -4497,7 +4920,11 @@ async function renderHoldemSeatRing(){
         : `Delete "${table.name}"? This can't be undone.`;
       if(!confirm(warning)) return;
       try{
-        await holdemDealerCall(holdemCurrentTableId, 'deleteTable', {});
+        if(canForceDelete){
+          await mpBjDealerCall(holdemCurrentTableId, 'adminForceDeleteTable', { gameType: 'holdem' });
+        } else {
+          await holdemDealerCall(holdemCurrentTableId, 'deleteTable', {});
+        }
         holdemCurrentTableId = null;
         renderHoldemTableList();
         showCasinoView('casinoHoldemBrowserView');
@@ -14054,6 +14481,22 @@ async function runFullHealthCheck(){
     }
   }catch(e){
     check('Payout notify function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
+  }
+
+  try{
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/blackjack-table-dealer', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+    });
+    const data = await res.json().catch(() => null);
+    if(res.status === 400 && data && data.error){
+      check('Blackjack table dealer function deployed', 'pass', 'Reachable and responding correctly');
+    } else if(res.status === 404 || !data){
+      check('Blackjack table dealer function deployed', 'fail', `Doesn't appear to be deployed (HTTP ${res.status}, ${data ? 'valid' : 'no parseable'} JSON response) — add blackjack-table-dealer.mjs to your Netlify functions`);
+    } else {
+      check('Blackjack table dealer function deployed', 'warn', `Reachable but responded unexpectedly (HTTP ${res.status}): ${data.error || JSON.stringify(data)}`);
+    }
+  }catch(e){
+    check('Blackjack table dealer function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
   }
 
   return { results, latencyMs: firebaseLatencyMs };
