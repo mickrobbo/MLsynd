@@ -98,6 +98,16 @@
     <div id="homeSubview-overview" class="home-subview">
     <div id="changelogBanner" style="display:none;"></div>
     <div class="panel" id="homeDigestWidget" style="display:none;"></div>
+    <div class="panel casino-teaser-panel" id="activityFeedTeaser">
+      <div class="casino-teaser-row">
+        <div class="casino-teaser-icon">📰</div>
+        <div class="casino-teaser-mid">
+          <div class="casino-teaser-lbl">Recent Activity</div>
+          <div class="casino-teaser-val" style="font-size:11px; color:var(--muted);">Board, Casino, Syndy — one feed</div>
+        </div>
+        <button type="button" class="pill-btn pill-btn-primary casino-teaser-btn" id="activityFeedOpenBtn">View →</button>
+      </div>
+    </div>
     <div id="weeklyReminderPanel" class="panel" style="display:none;">
       <h2>🔔 This week's outstanding items</h2>
       <div id="weeklyReminderList"></div>
@@ -1664,6 +1674,27 @@
 
 <div class="chat-reaction-picker" id="chatReactionPicker" style="display:none;"></div>
 
+<div id="onboardingModal" class="profile-modal">
+  <div class="profile-sheet onboarding-sheet">
+    <div class="onboarding-slide" id="onboardingSlide"></div>
+    <div class="onboarding-dots" id="onboardingDots"></div>
+    <div class="onboarding-footer">
+      <button type="button" class="pill-btn" id="onboardingSkipBtn">Skip</button>
+      <button type="button" class="pill-btn pill-btn-primary" id="onboardingNextBtn">Next</button>
+    </div>
+  </div>
+</div>
+
+<div id="activityFeedModal" class="profile-modal">
+  <div class="profile-sheet activity-feed-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <h2 style="margin:0; font-size:16px;">📰 Recent Activity</h2>
+      <button type="button" class="profile-close" id="activityFeedCloseBtn">✕</button>
+    </div>
+    <div id="activityFeedList"><div class="empty">Loading…</div></div>
+  </div>
+</div>
+
 <div id="imgModal" class="img-modal">
   <img id="imgModalImg" src="" alt="Bet slip">
 </div>
@@ -2827,7 +2858,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.56"; // Tier cosmetics extended to Roulette (ball glow), Slots (reel window rim), Hold'em (your own seat) — subtle accents, not hue-shifts, so each game's existing bespoke design stays intact — CSS only, no JS changes — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.58"; // New: Activity Feed — a dedicated teaser+modal on Home combining Board week saves, big Casino wins, and Syndy's Group Chat highlights into one chronological view. Removed the Home digest's old single "recent win" line as a real double-up now that this covers it properly — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5554,6 +5585,70 @@ async function refreshHoldemBadge(){
     badge.textContent = needsMe;
     badge.style.display = needsMe > 0 ? 'flex' : 'none';
   }catch(e){}
+}
+
+// ---- Onboarding — a short welcome sequence for genuinely new members,
+// shown once. "New" is determined from real data, not a simple
+// localStorage flag alone — an existing, long-time member's browser
+// just won't have this NEW flag set yet either, and surprising them
+// with a "here's how this app works" tour would be worse than not
+// building this at all. So: only shown when BOTH their lifetime Casino
+// XP is low (accounting for the 500 XP Syndy chat bonus everyone gets
+// once) AND they have no real Board history at all, past or present.
+const ONBOARDING_SEEN_KEY = 'mlsynd-onboarding-seen';
+const ONBOARDING_SLIDES = [
+  { icon: '👋', title: "Welcome to MLSynd", body: "A few things run here — real-money Board betting, a Casino XP economy, AFL Tipping, and a shared Group Chat. Quick tour, then you're loose." },
+  { icon: '📋', title: "The Board", body: "The syndicate's real-money weekly multi, plus individual side bets — tracked as season P/L. Board membership is $840/season in dues, paid off over time." },
+  { icon: '🎰', title: "The Casino", body: "A separate XP economy — not real money. Blackjack, Roulette, Craps, Slots, Hold'em and more, earning XP toward tiers with real cosmetic rewards. Bounties and Challenges let you wager XP against each other directly." },
+  { icon: '🏉', title: "Tipping", body: "The AFL tipping competition, its own ladder and season points — separate from the Board. You can join even without a Board seat." },
+  { icon: '💬', title: "Group Chat & Syndy", body: "One shared channel for everyone — reactions, images, polls. Type @Syndy anywhere in it to ask her something, get a real answer about how any of this works, or even ask her to run a poll or roast someone." },
+];
+let onboardingIdx = 0;
+function hasSeenOnboarding(){
+  try{ return localStorage.getItem(ONBOARDING_SEEN_KEY) === 'true'; }catch(e){ return true; } // fail open — a broken localStorage shouldn't force this every single load
+}
+function markOnboardingSeen(){
+  try{ localStorage.setItem(ONBOARDING_SEEN_KEY, 'true'); }catch(e){}
+}
+function renderOnboardingSlide(){
+  const slide = ONBOARDING_SLIDES[onboardingIdx];
+  const el = document.getElementById('onboardingSlide');
+  if(el){
+    el.innerHTML = `<div class="onboarding-slide-icon">${slide.icon}</div><div class="onboarding-slide-title">${escapeHtml(slide.title)}</div><div class="onboarding-slide-body">${escapeHtml(slide.body)}</div>`;
+  }
+  const dots = document.getElementById('onboardingDots');
+  if(dots){
+    dots.innerHTML = ONBOARDING_SLIDES.map((_, i) => `<span class="onboarding-dot${i === onboardingIdx ? ' active' : ''}"></span>`).join('');
+  }
+  const nextBtn = document.getElementById('onboardingNextBtn');
+  if(nextBtn) nextBtn.textContent = onboardingIdx === ONBOARDING_SLIDES.length - 1 ? "Let's go" : 'Next';
+}
+function closeOnboarding(){
+  document.getElementById('onboardingModal').classList.remove('open');
+  markOnboardingSeen();
+}
+document.getElementById('onboardingNextBtn').addEventListener('click', () => {
+  if(onboardingIdx < ONBOARDING_SLIDES.length - 1){
+    onboardingIdx++;
+    renderOnboardingSlide();
+  } else {
+    closeOnboarding();
+  }
+});
+document.getElementById('onboardingSkipBtn').addEventListener('click', closeOnboarding);
+async function maybeShowOnboarding(){
+  if(hasSeenOnboarding() || !currentUserUid || currentUserRole === 'readonly') return;
+  try{
+    const [lifetimeRes] = await Promise.all([authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`)]);
+    const lifetime = lifetimeRes.ok ? ((await lifetimeRes.json()) || 0) : 0;
+    if(lifetime > 1200) { markOnboardingSeen(); return; } // clearly been playing a while — not new, just never had this flag set
+    const lifetimeStats = currentUserName ? getLifetimeStats(currentUserName, currentState || {}) : null;
+    const hasBoardHistory = lifetimeStats && (lifetimeStats.wins + lifetimeStats.losses + lifetimeStats.voids) > 0;
+    if(hasBoardHistory){ markOnboardingSeen(); return; } // real season history — an existing member, not new
+    onboardingIdx = 0;
+    renderOnboardingSlide();
+    document.getElementById('onboardingModal').classList.add('open');
+  }catch(e){} // if this can't be determined confidently, err toward NOT showing it rather than risk surprising an existing member
 }
 
 async function ensureXPInitialized(){
@@ -14958,11 +15053,108 @@ document.getElementById('newsCategorySelect').addEventListener('change', () => {
   refreshNews();
 });
 
-// Home digest — a quick "what's happening" glance (open bounties, a
-// recent notable win, next tipping lockout), computed ONCE per session
-// rather than kept live, so it's genuinely cheap: no dedicated poller the
-// way the Casino ticker has, just a single pass right after the first
-// real data load.
+// ---- Activity Feed — one combined, chronological view: recent Board
+// week saves, big Casino wins (multiple, not just the single biggest
+// the Home digest shows), and Syndy's own Group Chat highlights
+// (markets, polls, recaps, Acts of God). Computed fresh each time it's
+// opened — this is a deliberate "look back" view, not something kept
+// live with its own poller.
+async function renderActivityFeed(){
+  const list = document.getElementById('activityFeedList');
+  if(!list) return;
+  list.innerHTML = '<div class="empty">Loading…</div>';
+  const items = [];
+
+  // Board — last few saved weeks, with the group's overall week P/L.
+  try{
+    const history = (currentState && currentState.history) || [];
+    history.slice(-6).forEach(w => {
+      if(!w || !w.savedAt) return;
+      const pl = weekGroupPl(w);
+      const plText = `${pl < 0 ? '-' : '+'}$${Math.abs(pl).toFixed(2)}`;
+      items.push({
+        icon: '📋', ts: w.savedAt,
+        text: `<b>${escapeHtml(w.label || 'A week')}</b> saved — group result ${plText}`,
+      });
+    });
+  }catch(e){}
+
+  // Casino — big wins across everyone, last 7 days, multiple shown (the
+  // Home digest only ever shows the single biggest — this is the fuller
+  // picture, which is the actual point of a dedicated feed).
+  try{
+    if(currentState && Array.isArray(currentState.members)){
+      const linked = currentState.members.filter(m => m.linkedUid);
+      const orderBy = encodeURIComponent('"ts"');
+      const perMember = await Promise.all(linked.map(async m => {
+        try{
+          const res = await authedFetch(`/xp/${m.linkedUid}/log.json?orderBy=${orderBy}&limitToLast=10`);
+          if(!res.ok) return [];
+          const data = await res.json();
+          return data && typeof data === 'object' ? Object.values(data).map(e => ({ name: m.name, ...e })) : [];
+        }catch(e){ return []; }
+      }));
+      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      perMember.flat()
+        .filter(e => e && typeof e.amount === 'number' && e.amount >= CASINO_TICKER_THRESHOLD_XP && e.ts >= weekAgo)
+        .forEach(e => {
+          items.push({
+            icon: '🎰', ts: e.ts,
+            text: `<b>${escapeHtml(e.name)}</b> won +${e.amount.toLocaleString()} XP — ${escapeHtml(e.reason || 'Casino')}`,
+          });
+        });
+    }
+  }catch(e){}
+
+  // Syndy's own Group Chat highlights — markets, polls, recaps, Acts of
+  // God, all already real messages, just surfaced here too so they're
+  // visible without having to scroll back through the whole chat.
+  try{
+    const orderBy = encodeURIComponent('"ts"');
+    const res = await authedFetch(`/groupChat/messages.json?orderBy=${orderBy}&limitToLast=30`);
+    const data = res.ok ? await res.json() : null;
+    const entries = data && typeof data === 'object' ? Object.values(data) : [];
+    entries.filter(m => m && m.senderUid === 'syndy' && m.text).forEach(m => {
+      items.push({ icon: '🤖', ts: m.ts, text: escapeHtml(m.text).slice(0, 160) });
+    });
+  }catch(e){}
+
+  items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  const top = items.slice(0, 40);
+  if(top.length === 0){
+    list.innerHTML = '<div class="empty">Nothing to show yet — check back once there\'s been some action.</div>';
+    return;
+  }
+  list.innerHTML = top.map(item => `
+    <div class="activity-item">
+      <span class="activity-item-icon">${item.icon}</span>
+      <div class="activity-item-body">
+        <div class="activity-item-text">${item.text}</div>
+        <div class="activity-item-time">${timeAgo(item.ts)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+document.getElementById('activityFeedOpenBtn').addEventListener('click', () => {
+  document.getElementById('activityFeedModal').classList.add('open');
+  renderActivityFeed();
+});
+document.getElementById('activityFeedCloseBtn').addEventListener('click', () => {
+  document.getElementById('activityFeedModal').classList.remove('open');
+});
+document.getElementById('activityFeedModal').addEventListener('click', (e) => {
+  if(e.target.id === 'activityFeedModal') document.getElementById('activityFeedModal').classList.remove('open');
+});
+
+// Home digest — a quick "what's happening" glance (open bounties, next
+// tipping lockout, an active Acts of God event), computed ONCE per
+// session rather than kept live, so it's genuinely cheap: no dedicated
+// poller the way the Casino ticker has, just a single pass right after
+// the first real data load. Used to also surface the single biggest
+// recent Casino win — removed once the Activity Feed shipped, since
+// that now covers the same ground properly (multiple wins, not just
+// one) right on the same page, rather than showing a thinner version
+// of the same thing twice.
 async function renderHomeDigest(){
   const el = document.getElementById('homeDigestWidget');
   if(!el || currentUserRole === 'readonly') return; // guests don't have Casino/Bounties activity worth digesting
@@ -14974,28 +15166,6 @@ async function renderHomeDigest(){
     const openCount = Object.values(bounties).filter(b => b && b.status === 'open').length;
     if(openCount > 0){
       parts.push(`<div class="home-digest-row">🎯 <b>${openCount}</b> ${openCount === 1 ? 'bounty' : 'bounties'} open right now</div>`);
-    }
-  }catch(e){}
-
-  try{
-    if(currentState && Array.isArray(currentState.members)){
-      const linked = currentState.members.filter(m => m.linkedUid);
-      const orderBy = encodeURIComponent('"ts"');
-      const perMember = await Promise.all(linked.map(async m => {
-        try{
-          const res = await authedFetch(`/xp/${m.linkedUid}/log.json?orderBy=${orderBy}&limitToLast=5`);
-          if(!res.ok) return [];
-          const data = await res.json();
-          return data && typeof data === 'object' ? Object.values(data).map(e => ({ name: m.name, ...e })) : [];
-        }catch(e){ return []; }
-      }));
-      const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
-      const recent = perMember.flat()
-        .filter(e => e && typeof e.amount === 'number' && e.amount >= CASINO_TICKER_THRESHOLD_XP && e.ts >= dayAgo)
-        .sort((a, b) => (b.amount || 0) - (a.amount || 0))[0];
-      if(recent){
-        parts.push(`<div class="home-digest-row">🎰 <b>${escapeHtml(recent.name)}</b> won +${recent.amount.toLocaleString()} XP — ${escapeHtml(recent.reason || 'Casino')}</div>`);
-      }
     }
   }catch(e){}
 
@@ -15045,6 +15215,7 @@ function startApp(){
     renderHomeDigest();
     pollActsOfGod();
     checkGroupChatUnread();
+    maybeShowOnboarding();
   });
   // Admin-only, self-gated — checks once per session whether a past month's
   // casino pot never got closed out, and distributes it automatically if

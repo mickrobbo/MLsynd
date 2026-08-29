@@ -1,7 +1,7 @@
 {
-  "version": "2026-08-24.56",
+  "version": "2026-08-24.58",
   "date": "2026-08-27",
   "changes": [
-    "\ud83c\udfb0 Tier cosmetics now reach Roulette, Slots, and Hold'em \u2014 previously deliberately left out since a blanket hue-shift would've cheapened each game's own bespoke design (gold bezel, gold cabinet, embossed velvet felt). Instead, one tasteful accent per game: a tier-coloured glow on the Roulette ball itself, a tier-coloured rim on the Slots reel window, and Hold'em's \"you\" seat now reflects your real tier instead of always glowing brass. Pure CSS, reacts to the same tier state already tracked \u2014 no JS changes needed."
+    "\ud83d\udcf0 New: Activity Feed \u2014 a dedicated card on Home (\"Recent Activity \u2192\") opening one combined, chronological view of recent Board week results, big Casino wins across everyone, and Syndy's own Group Chat highlights (markets, polls, recaps, Acts of God). Removed a real double-up along the way: the Home digest's old single \"recent win\" line (and the network fetch behind it) was a thinner version of what this now shows properly, so it's gone \u2014 the digest still covers open bounties, tipping lockouts, and active Acts of God events."
   ]
 }
