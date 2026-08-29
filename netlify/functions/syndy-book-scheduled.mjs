@@ -23,7 +23,18 @@
 // certainty.
 //
 // Needs the same env vars already set for the other functions in this
-// project: FIREBASE_DB_SECRET. No new ones.
+// project: FIREBASE_DB_SECRET, plus (new, for the "you won" push
+// notifications below) VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+// — already set for the other push-sending functions in this project,
+// nothing new to add there either.
+
+import webpush from "web-push";
+
+webpush.setVapidDetails(
+  process.env.VAPID_SUBJECT || "mailto:mlsynd00@gmail.com",
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
 
 const DB_BASE = "https://mlsynd-default-rtdb.firebaseio.com";
 const DB_SECRET = process.env.FIREBASE_DB_SECRET;
@@ -50,6 +61,25 @@ async function dbPost(path, value) {
 }
 async function postToGroupChat(text) {
   await dbPost("/groupChat/messages", { senderUid: "syndy", senderName: "Syndy", text, ts: Date.now() });
+}
+// Direct "you won" push to the specific winner — separate from the
+// Group Chat announcement, which everyone sees but doesn't personally
+// notify the winner themselves. Best-effort: a missing/dead
+// subscription just means no push goes out, never blocks the actual
+// payout, which has already happened by the time this is called.
+async function sendWinPush(uid, amount, reason) {
+  try {
+    const sub = await dbGet(`/pushSubscriptions/${uid}`);
+    if (!sub || !sub.endpoint) return;
+    await webpush.sendNotification(
+      sub,
+      JSON.stringify({ title: "🎉 You won!", body: `+${amount.toLocaleString()} XP — ${reason}`, url: "/" })
+    );
+  } catch (err) {
+    if (err.statusCode === 410 || err.statusCode === 404) {
+      await dbPut(`/pushSubscriptions/${uid}`, null); // dead subscription — clean it up
+    }
+  }
 }
 async function awardXp(uid, amount, reason) {
   const current = (await dbGet(`/xp/${uid}/balance`)) || 0;
@@ -350,6 +380,7 @@ async function tryResolveLegBet(betId, bet) {
     const payout = Math.floor(Math.floor(s.amount * odds) * scale);
     actuallyPaid += payout;
     await awardXp(uid, payout, `Syndy's Book leg bet payout — ${bet.playerName} to ${outcome} @ ${odds}`);
+    await sendWinPush(uid, payout, `Leg bet — ${bet.playerName} to ${outcome}`);
   }
   const losePool = losers.reduce((sum, [, s]) => sum + (s.amount || 0), 0);
   const reserveDelta = losePool - actuallyPaid;
@@ -441,7 +472,9 @@ async function tryResolveMarket(marketId, mkt) {
   const actualWorth = Math.max(0, Math.min(mkt.worth || 0, currentReserve));
   for (const [uid, s] of winners) {
     const share = winPool > 0 ? Math.floor((s.amount / winPool) * actualWorth) : 0;
-    await awardXp(uid, s.amount + share, `Syndy's Book payout — "${mkt.question}"`);
+    const payout = s.amount + share;
+    await awardXp(uid, payout, `Syndy's Book payout — "${mkt.question}"`);
+    await sendWinPush(uid, payout, `"${mkt.question}"`);
   }
   const reserveDelta = losePool - actualWorth;
   if (reserveDelta !== 0) {
