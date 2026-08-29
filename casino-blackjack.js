@@ -99,93 +99,65 @@ function bjPlaySpinSound(){
 }
 function bjWait(ms){ return new Promise(res => setTimeout(res, ms)); }
 
-// ---- Casino ambience — was a filtered brown-noise murmur; now a soft,
-// slow jazz chord loop instead (Dm7 - G7 - Cmaj7, with a light comping
-// re-strike halfway through each chord for a sense of gentle movement).
-// Synthesized entirely with oscillators — the same additive "soft
-// electric piano" approach used to generate the sample the person
-// actually listened to and approved before this went in, just now
-// scheduled live via Web Audio instead of a pre-rendered file. Off
-// entirely while actually at a table, same reasoning as before — the
-// per-action sounds already carry the moment there and shouldn't
-// compete with a background layer. Oscillators are one-shot (unlike
-// the old buffer, which could just set .loop = true), so this
-// re-schedules itself via setTimeout at the end of every full
-// progression rather than looping natively.
+// ---- Casino ambience — a real recorded casino-floor ambience, blended
+// from two Creative Commons Freesound recordings (chip sounds, distant
+// chatter, machine texture), trimmed to a clean loop with a crossfaded
+// seam, and level-balanced before mixing. Replaced the earlier
+// synthesized jazz chord loop, which itself had replaced the original
+// filtered-noise murmur — this is the third ambience approach in this
+// file's history, each superseding the last rather than layering on
+// top of it. Loaded once and cached as a decoded AudioBuffer, same
+// .loop = true approach the very first murmur version used (unlike the
+// jazz version in between, which had to self-reschedule since
+// oscillators can't natively loop).
+let ambientBuffer = null; // cached decoded buffer, fetched once
+let ambientBufferLoading = null; // in-flight load promise, avoids duplicate concurrent fetches if start is called again before the first load finishes
+let ambientSource = null;
 let ambientGainNode = null;
 let ambientPlaying = false;
-let ambientLoopTimer = null;
-const AMBIENT_CHORDS = [
-  { notes: [50, 53, 57, 60], bass: 38 }, // Dm7
-  { notes: [55, 59, 62, 65], bass: 43 }, // G7
-  { notes: [48, 52, 55, 59], bass: 36 }, // Cmaj7
-];
-const AMBIENT_CHORD_LEN = 2.0; // seconds per chord — matches the "upbeat" tempo the person actually approved, not the original slower sample
-// Deliberately quieter than the old murmur's 0.024 — tonal, harmonic
-// content reads as far more present than filtered noise at the same
-// gain level, so this needed to sit lower to genuinely stay in the
-// background rather than draw attention the way the sample (mixed loud
-// enough to evaluate clearly) did.
-const AMBIENT_VOLUME = 0.014;
-function ambientNoteFreq(midi){ return 440 * Math.pow(2, (midi - 69) / 12); }
-function ambientPlayTone(ctx, destGain, freq, startTime, duration, amp, decayRate){
-  // Fundamental + two decaying harmonics — same technique as the
-  // Python-synthesized sample's soft_ep_tone, just live-scheduled here.
-  [1, 2, 3].forEach((harmonic, i) => {
-    const osc = ctx.createOscillator();
-    const toneGain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq * harmonic;
-    const harmAmp = i === 0 ? 1.0 : (i === 1 ? 0.35 : 0.15);
-    toneGain.gain.setValueAtTime(0.0001, startTime);
-    toneGain.gain.linearRampToValueAtTime(Math.max(0.0001, amp * harmAmp), startTime + 0.01);
-    toneGain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-    osc.connect(toneGain); toneGain.connect(destGain);
-    osc.start(startTime);
-    osc.stop(startTime + duration + 0.1);
-  });
+// Starting point, not final — real recorded texture may need a
+// different level than either the old murmur (0.024) or jazz (0.014)
+// sat at; worth a listen live and an adjustment if it reads too loud
+// or too quiet.
+const AMBIENT_VOLUME = 0.05;
+function loadAmbientBuffer(ctx){
+  if(ambientBuffer) return Promise.resolve(ambientBuffer);
+  if(ambientBufferLoading) return ambientBufferLoading;
+  ambientBufferLoading = fetch('casino-ambience.mp3')
+    .then(res => res.arrayBuffer())
+    .then(data => ctx.decodeAudioData(data))
+    .then(buf => { ambientBuffer = buf; return buf; })
+    .catch(() => null);
+  return ambientBufferLoading;
 }
-function ambientScheduleLoop(){
-  if(!ambientPlaying || !ambientGainNode) return;
-  const ctx = bjAudioCtx;
-  if(!ctx) return;
-  let t = ctx.currentTime + 0.05;
-  AMBIENT_CHORDS.forEach(chordDef => {
-    const freqs = chordDef.notes.map(ambientNoteFreq);
-    freqs.forEach(f => ambientPlayTone(ctx, ambientGainNode, f, t, AMBIENT_CHORD_LEN, 0.85, 1.6));
-    ambientPlayTone(ctx, ambientGainNode, ambientNoteFreq(chordDef.bass), t, AMBIENT_CHORD_LEN, 1.1, 0.8);
-    // The mid-chord re-strike — quieter, shorter, the actual "groove"
-    // element that made this read as upbeat rather than just faster.
-    const halfT = t + AMBIENT_CHORD_LEN * 0.5;
-    const remaining = AMBIENT_CHORD_LEN * 0.5;
-    freqs.forEach(f => ambientPlayTone(ctx, ambientGainNode, f, halfT, remaining, 0.55, 1.8));
-    t += AMBIENT_CHORD_LEN;
-  });
-  const loopDurationMs = AMBIENT_CHORD_LEN * AMBIENT_CHORDS.length * 1000;
-  ambientLoopTimer = setTimeout(ambientScheduleLoop, loopDurationMs);
-}
-function startCasinoAmbience(){
+async function startCasinoAmbience(){
   if(ambientPlaying) return;
-  const ctx = bjGetAudioCtx(); if(!ctx) return;
-  ambientPlaying = true;
+  ambientPlaying = true; // set immediately so a stop() call that arrives while this is still loading is correctly respected below
+  const ctx = bjGetAudioCtx(); if(!ctx){ ambientPlaying = false; return; }
+  const buffer = await loadAmbientBuffer(ctx);
+  if(!buffer || !ambientPlaying) return; // failed to load, or stopped again before loading finished — don't start playback either way
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(AMBIENT_VOLUME, ctx.currentTime + 1.5);
-  gain.connect(ctx.destination);
+  source.connect(gain); gain.connect(ctx.destination);
+  source.start();
+  ambientSource = source;
   ambientGainNode = gain;
-  ambientScheduleLoop();
 }
 function stopCasinoAmbience(){
   if(!ambientPlaying) return;
   ambientPlaying = false;
-  if(ambientLoopTimer){ clearTimeout(ambientLoopTimer); ambientLoopTimer = null; }
   const ctx = bjAudioCtx;
-  const gain = ambientGainNode;
-  if(!ctx || !gain){ return; }
+  const source = ambientSource, gain = ambientGainNode;
+  if(!ctx || !gain || !source){ return; } // still loading, or never actually started — nothing to fade out
   gain.gain.cancelScheduledValues(ctx.currentTime);
   gain.gain.setValueAtTime(gain.gain.value, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
-  setTimeout(() => { try{ gain.disconnect(); }catch(e){} }, 900);
+  setTimeout(() => { try{ source.stop(); }catch(e){} }, 900);
+  ambientSource = null;
   ambientGainNode = null;
 }
 // Checked from several trigger points (tab switches, showCasinoView,

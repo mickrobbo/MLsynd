@@ -335,6 +335,9 @@
       </div>
       <div class="ghost-record-banner" id="ghostRecordBanner" style="display:none;"></div>
       <div id="leaderboardArea"></div>
+      <div style="text-align:center; margin-top:10px;">
+        <button type="button" class="pill-btn" id="hofOpenBtn">🏆 Records &amp; Rivalries</button>
+      </div>
     </div>
   </div>
 
@@ -1695,6 +1698,42 @@
   </div>
 </div>
 
+<div id="hofModal" class="profile-modal">
+  <div class="profile-sheet hof-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <h2 style="margin:0; font-size:16px;">🏆 Records &amp; Rivalries</h2>
+      <button type="button" class="profile-close" id="hofCloseBtn">✕</button>
+    </div>
+    <div class="chat-mode-toggle" id="hofModeToggle">
+      <button type="button" class="chat-mode-btn active" data-hof-mode="hof">Hall of Fame</button>
+      <button type="button" class="chat-mode-btn" data-hof-mode="rivalry">Rivalries</button>
+    </div>
+    <div id="hofView-hof" class="hof-view"></div>
+    <div id="hofView-rivalry" class="hof-view" style="display:none;">
+      <div class="hof-rivalry-picker">
+        <select id="hofRivalA" class="form-select"></select>
+        <span class="hof-rivalry-vs">vs</span>
+        <select id="hofRivalB" class="form-select"></select>
+      </div>
+      <div id="hofRivalryResult"></div>
+    </div>
+  </div>
+</div>
+
+<div id="shareSeasonModal" class="profile-modal">
+  <div class="profile-sheet share-season-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <h2 style="margin:0; font-size:16px;">📸 Share My Season</h2>
+      <button type="button" class="profile-close" id="shareSeasonCloseBtn">✕</button>
+    </div>
+    <canvas id="shareSeasonCanvas" width="700" height="700" style="width:100%; border-radius:12px; display:block;"></canvas>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button type="button" class="pill-btn pill-btn-primary" id="shareSeasonShareBtn" style="flex:1;">Share</button>
+      <button type="button" class="pill-btn" id="shareSeasonDownloadBtn" style="flex:1;">Download</button>
+    </div>
+  </div>
+</div>
+
 <div id="imgModal" class="img-modal">
   <img id="imgModalImg" src="" alt="Bet slip">
 </div>
@@ -1721,6 +1760,9 @@
     <div class="profile-action-row" id="profileActionRow" style="display:none;">
       <button type="button" class="pill-btn pill-btn-action" id="profileChallengeBtn">⚔️ Challenge</button>
       <button type="button" class="pill-btn pill-btn-action" id="profileNudgeBtn">👋 Nudge</button>
+    </div>
+    <div style="text-align:center; margin:6px 0 2px; display:none;" id="profileShareRow">
+      <button type="button" class="pill-btn" id="profileShareSeasonBtn">📸 Share My Season</button>
     </div>
     <div class="profile-stat-grid" id="profileStats"></div>
     <div class="ghost-record-close" id="profileGhostChase" style="display:none;"></div>
@@ -2858,7 +2900,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.59"; // Casino ambience replaced: was a filtered brown-noise murmur, now a soft synthesized jazz chord loop (Dm7-G7-Cmaj7 with a comping re-strike) — casino-blackjack.js updated, kept the same start/stop function names so no other trigger logic needed touching — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.62"; // Casino ambience replaced again: jazz loop is out, real blended recorded casino ambience is in (two Freesound recordings, trimmed, level-balanced, crossfaded loop). New static asset casino-ambience.mp3 needs adding to the repo root alongside the other image assets — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8529,6 +8571,13 @@ function openBoardProfile(m, name){
       actionRow.dataset.targetName = m.name;
     }
   }
+  // Share-my-season — own profile only, needs the real member object
+  // available when tapped, not just the name (avoids a second lookup).
+  const shareRow = document.getElementById('profileShareRow');
+  if(shareRow){
+    shareRow.style.display = isMe ? 'block' : 'none';
+    if(isMe) profileShareCurrentMember = m;
+  }
   const swipeHintEl = document.getElementById('profileSwipeHint');
   if(swipeHintEl) swipeHintEl.style.display = currentState.members.length > 1 ? 'block' : 'none';
 
@@ -8582,6 +8631,139 @@ function openBoardProfile(m, name){
   renderProfileAvatarSection(m);
   document.getElementById('profileModal').classList.add('open');
 }
+
+// ---- Share My Season — a real canvas-drawn card, generated fresh each
+// time it's opened (own profile only). Correction worth being honest
+// about: this does NOT reuse an existing "changelog poster" pipeline —
+// that was checked while building this and turned out not to exist at
+// all, the changelog banner is plain HTML. This is a from-scratch
+// Canvas 2D drawing.
+let profileShareCurrentMember = null;
+async function drawSeasonShareCard(m){
+  const canvas = document.getElementById('shareSeasonCanvas');
+  if(!canvas || !m) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Canvas text silently falls back to a default font unless the real
+  // one is confirmed loaded first — the page's own CSS loads these
+  // already, but that's no guarantee they're ready by the exact moment
+  // canvas drawing happens.
+  try{
+    await Promise.all([
+      document.fonts.load('700 52px "Barlow Condensed"'),
+      document.fonts.load('700 22px "Barlow Condensed"'),
+      document.fonts.load('700 34px "IBM Plex Mono"'),
+    ]);
+  }catch(e){}
+
+  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+  bgGrad.addColorStop(0, '#17402D');
+  bgGrad.addColorStop(1, '#08130F');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(203,177,102,0.4)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(6, 6, W - 12, H - 12);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#CBB166';
+  ctx.font = '700 22px "Barlow Condensed", sans-serif';
+  ctx.fillText('MLSYND — SEASON CARD', W / 2, 70);
+
+  ctx.fillStyle = '#F5E8A8';
+  ctx.font = '700 52px "Barlow Condensed", sans-serif';
+  ctx.fillText(m.name.toUpperCase(), W / 2, 140);
+
+  const pl = m.pl || 0;
+  const plText = `${pl < 0 ? '-' : '+'}$${Math.abs(pl).toFixed(2)}`;
+  ctx.fillStyle = pl >= 0 ? '#6FA98A' : '#C1604A';
+  ctx.font = '700 76px "Barlow Condensed", sans-serif';
+  ctx.fillText(plText, W / 2, 250);
+  ctx.fillStyle = '#93a89c';
+  ctx.font = '400 16px "IBM Plex Sans", sans-serif';
+  ctx.fillText('SEASON P/L', W / 2, 280);
+
+  const derived = computeDerived(m);
+  const stats = [
+    { label: 'RECORD', value: `${m.wins}-${m.losses}-${m.voids}` },
+    { label: 'WIN %', value: `${(derived.winPct * 100).toFixed(0)}%` },
+    { label: 'LEGS PLACED', value: `${m.legs}` },
+    { label: 'AVG ODDS', value: derived.avgLeg > 0 ? `@ ${derived.avgLeg.toFixed(2)}` : '—' },
+  ];
+  const gridTop = 360;
+  const cellW = W / 2, cellH = 130;
+  ctx.strokeStyle = 'rgba(239,234,216,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(W / 2, gridTop - 45); ctx.lineTo(W / 2, gridTop + cellH + 15); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(60, gridTop + cellH / 2 - 20); ctx.lineTo(W - 60, gridTop + cellH / 2 - 20); ctx.stroke();
+  stats.forEach((s, i) => {
+    const col = i % 2, row = Math.floor(i / 2);
+    const cx = cellW * col + cellW / 2;
+    const cy = gridTop + row * cellH;
+    ctx.fillStyle = '#EFEAD8';
+    ctx.font = '700 34px "IBM Plex Mono", monospace';
+    ctx.fillText(s.value, cx, cy);
+    ctx.fillStyle = '#93a89c';
+    ctx.font = '400 13px "IBM Plex Sans", sans-serif';
+    ctx.fillText(s.label, cx, cy + 26);
+  });
+
+  ctx.fillStyle = '#7d6a34';
+  ctx.font = '400 13px "IBM Plex Mono", monospace';
+  ctx.fillText('mlsynddash.netlify.app', W / 2, H - 30);
+}
+function shareSeasonFileName(){
+  const n = (profileShareCurrentMember && profileShareCurrentMember.name) || 'card';
+  return `mlsynd-season-${n.toLowerCase().replace(/\s+/g, '-')}.png`;
+}
+document.getElementById('profileShareSeasonBtn').addEventListener('click', async () => {
+  if(!profileShareCurrentMember) return;
+  document.getElementById('shareSeasonModal').classList.add('open');
+  await drawSeasonShareCard(profileShareCurrentMember);
+});
+document.getElementById('shareSeasonCloseBtn').addEventListener('click', () => {
+  document.getElementById('shareSeasonModal').classList.remove('open');
+});
+document.getElementById('shareSeasonModal').addEventListener('click', (e) => {
+  if(e.target.id === 'shareSeasonModal') document.getElementById('shareSeasonModal').classList.remove('open');
+});
+document.getElementById('shareSeasonDownloadBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('shareSeasonCanvas');
+  canvas.toBlob(blob => {
+    if(!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = shareSeasonFileName();
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+});
+document.getElementById('shareSeasonShareBtn').addEventListener('click', () => {
+  const canvas = document.getElementById('shareSeasonCanvas');
+  canvas.toBlob(async blob => {
+    if(!blob) return;
+    const fileName = shareSeasonFileName();
+    const file = new File([blob], fileName, { type: 'image/png' });
+    if(navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
+      try{ await navigator.share({ files: [file], title: 'My MLSynd Season' }); }catch(e){} // cancelled share sheet — not an error
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Native sharing not available on this device — downloaded instead');
+    }
+  }, 'image/png');
+});
+
 // Scoped-down profile for a Tipping-only account — real, approved member
 // with genuine Casino/Tipping access and activity, just never on the
 // Board roster. Shows everything uid-based (avatar, badges, tier,
@@ -10798,7 +10980,7 @@ async function renderGroupChat(scrollToBottom){
       } else {
         bottomHtml = renderReactionPills(id, m.reactions);
       }
-      el.innerHTML = `${meta}${replyQuote}${textHtml}${image}<span class="syndy-msg-time">${timeAgo(m.ts)}</span>${bottomHtml}`;
+      el.innerHTML = `${meta}${replyQuote}${textHtml}${image}${bottomHtml}<span class="syndy-msg-time">${timeAgo(m.ts)}</span>`;
       row.appendChild(el);
       body.appendChild(row);
     });
@@ -15145,6 +15327,147 @@ document.getElementById('activityFeedCloseBtn').addEventListener('click', () => 
 document.getElementById('activityFeedModal').addEventListener('click', (e) => {
   if(e.target.id === 'activityFeedModal') document.getElementById('activityFeedModal').classList.remove('open');
 });
+
+// ---- Hall of Fame & Rivalries ----
+// Some records are genuinely lifetime (P/L, win %, legs, avg odds,
+// seasons played) — computed via getLifetimeStats across BOTH the
+// season archive and the live season, same source the Ghosts banner
+// already reads. Streak records are honestly scoped to THIS season
+// only, labelled as such — the archive only preserves each past
+// season's aggregate totals, not the week-by-week sequence a streak
+// needs, so a genuine cross-season streak can't be reconstructed from
+// what's actually stored.
+function computeHallOfFame(state){
+  const allNames = new Set((state.members || []).map(m => m.name));
+  (state.seasonArchive || []).forEach(season => {
+    (season.members || []).forEach(m => allNames.add(m.name));
+  });
+  const liveNames = new Set((state.members || []).map(m => m.name));
+  const MIN_DECIDED = 10; // minimum sample for a win% record to mean anything
+  const MIN_ODDS_SAMPLE = 5;
+
+  const records = Array.from(allNames).map(name => {
+    const lt = getLifetimeStats(name, state);
+    return { name, ...lt, isGhost: !liveNames.has(name) }; // getLifetimeStats already computes avgLeg — no need to redo that math here
+  });
+
+  const topBy = (arr, key) => arr.reduce((best, r) => (!best || r[key] > best[key]) ? r : best, null);
+
+  const bestPl = topBy(records, 'pl');
+  const bestWinPct = topBy(records.filter(r => (r.wins + r.losses) >= MIN_DECIDED), 'winPct');
+  const mostLegs = topBy(records, 'legs');
+  const bestAvgOdds = topBy(records.filter(r => r.oddsCount >= MIN_ODDS_SAMPLE), 'avgLeg');
+  const mostSeasons = topBy(records, 'seasonsPlayed');
+
+  let bestWinStreak = null, bestLossStreak = null;
+  (state.members || []).forEach(m => {
+    let curWin = 0, bestW = 0, curLoss = 0, bestL = 0;
+    (state.history || []).forEach(week => {
+      const entry = week.groupEntries && week.groupEntries[m.name];
+      if(!entry || !entry.result || entry.result === 'MIA') return;
+      if(entry.result === 'Win'){ curWin++; curLoss = 0; bestW = Math.max(bestW, curWin); }
+      else if(entry.result === 'Loss'){ curLoss++; curWin = 0; bestL = Math.max(bestL, curLoss); }
+      else { curWin = 0; curLoss = 0; }
+    });
+    if(bestW > 0 && (!bestWinStreak || bestW > bestWinStreak.streak)) bestWinStreak = { name: m.name, streak: bestW, isGhost: false };
+    if(bestL > 0 && (!bestLossStreak || bestL > bestLossStreak.streak)) bestLossStreak = { name: m.name, streak: bestL, isGhost: false };
+  });
+
+  return { records, bestPl, bestWinPct, mostLegs, bestAvgOdds, mostSeasons, bestWinStreak, bestLossStreak };
+}
+function hofRecordCardHtml(icon, label, entry, valueText, scopeNote){
+  if(!entry) return '';
+  const nameClass = entry.isGhost ? 'hof-record-name ghost' : 'hof-record-name';
+  return `
+    <div class="hof-record-card">
+      <span class="hof-record-icon">${icon}</span>
+      <div class="hof-record-mid">
+        <div class="hof-record-label">${escapeHtml(label)}</div>
+        <div class="${nameClass}">${escapeHtml(entry.name)}</div>
+        ${scopeNote ? `<div class="hof-record-scope">${escapeHtml(scopeNote)}</div>` : ''}
+      </div>
+      <div class="hof-record-val">${valueText}</div>
+    </div>
+  `;
+}
+function renderHofView(){
+  const el = document.getElementById('hofView-hof');
+  if(!el || !currentState) return;
+  const hof = computeHallOfFame(currentState);
+  const parts = [];
+  if(hof.bestPl) parts.push(hofRecordCardHtml('💰', 'Highest Lifetime P/L', hof.bestPl, `${hof.bestPl.pl < 0 ? '-' : ''}$${Math.abs(hof.bestPl.pl).toFixed(2)}`));
+  if(hof.bestWinPct) parts.push(hofRecordCardHtml('📈', 'Best Lifetime Win %', hof.bestWinPct, `${(hof.bestWinPct.winPct * 100).toFixed(0)}%`, 'min. 10 decided legs'));
+  if(hof.bestWinStreak) parts.push(hofRecordCardHtml('🔥', 'Longest Win Streak', hof.bestWinStreak, `${hof.bestWinStreak.streak}`, 'this season only'));
+  if(hof.bestLossStreak) parts.push(hofRecordCardHtml('🧊', 'Longest Losing Streak', hof.bestLossStreak, `${hof.bestLossStreak.streak}`, 'this season only'));
+  if(hof.mostLegs) parts.push(hofRecordCardHtml('🎯', 'Most Legs Placed', hof.mostLegs, `${hof.mostLegs.legs}`, 'lifetime'));
+  if(hof.bestAvgOdds) parts.push(hofRecordCardHtml('🎲', 'Best Average Leg Odds', hof.bestAvgOdds, `@ ${hof.bestAvgOdds.avgLeg.toFixed(2)}`, 'min. 5 legs, lifetime'));
+  if(hof.mostSeasons) parts.push(hofRecordCardHtml('📅', 'Most Seasons Played', hof.mostSeasons, `${hof.mostSeasons.seasonsPlayed}`));
+  el.innerHTML = parts.length > 0 ? parts.join('') : '<div class="empty">Not enough history yet for any records.</div>';
+}
+function populateRivalryPickers(){
+  if(!currentState) return;
+  const allNames = new Set((currentState.members || []).map(m => m.name));
+  (currentState.seasonArchive || []).forEach(season => (season.members || []).forEach(m => allNames.add(m.name)));
+  const names = Array.from(allNames).sort();
+  const selA = document.getElementById('hofRivalA');
+  const selB = document.getElementById('hofRivalB');
+  if(!selA || !selB) return;
+  const optionsHtml = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  selA.innerHTML = optionsHtml;
+  selB.innerHTML = optionsHtml;
+  if(names.length > 1) selB.selectedIndex = 1;
+  renderRivalryComparison();
+}
+function hofRivalryRowHtml(label, valA, valB, aWins, formatFn){
+  const fa = formatFn ? formatFn(valA) : valA;
+  const fb = formatFn ? formatFn(valB) : valB;
+  return `
+    <div class="hof-rivalry-row">
+      <span class="hof-rivalry-val${aWins === true ? ' winning' : ''}">${fa}</span>
+      <span class="hof-rivalry-lbl">${escapeHtml(label)}</span>
+      <span class="hof-rivalry-val${aWins === false ? ' winning' : ''}">${fb}</span>
+    </div>
+  `;
+}
+function renderRivalryComparison(){
+  const el = document.getElementById('hofRivalryResult');
+  const nameA = document.getElementById('hofRivalA').value;
+  const nameB = document.getElementById('hofRivalB').value;
+  if(!el || !nameA || !nameB || !currentState) return;
+  if(nameA === nameB){ el.innerHTML = '<div class="empty">Pick two different people.</div>'; return; }
+  const a = getLifetimeStats(nameA, currentState);
+  const b = getLifetimeStats(nameB, currentState);
+  const money = v => `${v < 0 ? '-' : ''}$${Math.abs(v).toFixed(2)}`;
+  const pct = v => `${(v * 100).toFixed(0)}%`;
+  el.innerHTML = [
+    hofRivalryRowHtml('P/L', a.pl, b.pl, a.pl > b.pl ? true : (b.pl > a.pl ? false : null), money),
+    hofRivalryRowHtml('Win %', a.winPct, b.winPct, a.winPct > b.winPct ? true : (b.winPct > a.winPct ? false : null), pct),
+    hofRivalryRowHtml('Legs', a.legs, b.legs, a.legs > b.legs ? true : (b.legs > a.legs ? false : null)),
+    hofRivalryRowHtml('Ind. Wins', a.indWin, b.indWin, a.indWin > b.indWin ? true : (b.indWin > a.indWin ? false : null)),
+    hofRivalryRowHtml('Seasons', a.seasonsPlayed, b.seasonsPlayed, a.seasonsPlayed > b.seasonsPlayed ? true : (b.seasonsPlayed > a.seasonsPlayed ? false : null)),
+  ].join('');
+}
+document.getElementById('hofOpenBtn').addEventListener('click', () => {
+  document.getElementById('hofModal').classList.add('open');
+  renderHofView();
+  populateRivalryPickers();
+});
+document.getElementById('hofCloseBtn').addEventListener('click', () => {
+  document.getElementById('hofModal').classList.remove('open');
+});
+document.getElementById('hofModal').addEventListener('click', (e) => {
+  if(e.target.id === 'hofModal') document.getElementById('hofModal').classList.remove('open');
+});
+document.querySelectorAll('#hofModeToggle .chat-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.hofMode;
+    document.querySelectorAll('#hofModeToggle .chat-mode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('hofView-hof').style.display = mode === 'hof' ? 'block' : 'none';
+    document.getElementById('hofView-rivalry').style.display = mode === 'rivalry' ? 'block' : 'none';
+  });
+});
+document.getElementById('hofRivalA').addEventListener('change', renderRivalryComparison);
+document.getElementById('hofRivalB').addEventListener('change', renderRivalryComparison);
 
 // Home digest — a quick "what's happening" glance (open bounties, next
 // tipping lockout, an active Acts of God event), computed ONCE per

@@ -2621,6 +2621,32 @@
   .activity-item-text b{ color:var(--brass-light); }
   .activity-item-time{ font-size:10px; color:var(--muted); margin-top:2px; }
 
+  /* ---- Hall of Fame / Rivalries ---- */
+  .hof-sheet{ max-height:82vh; overflow-y:auto; }
+  .hof-view{ padding-top:12px; }
+  .hof-record-card{
+    display:flex; align-items:center; gap:12px; padding:12px 10px; border-bottom:1px solid var(--line);
+  }
+  .hof-record-card:last-child{ border-bottom:none; }
+  .hof-record-icon{ font-size:24px; flex-shrink:0; width:32px; text-align:center; }
+  .hof-record-mid{ flex:1; min-width:0; }
+  .hof-record-label{ font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .hof-record-name{ font-size:14px; font-weight:700; color:var(--brass-light); margin-top:1px; }
+  .hof-record-name.ghost::after{ content:' 👻'; }
+  .hof-record-val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:15px; color:var(--chalk); flex-shrink:0; }
+  .hof-record-scope{ font-size:9.5px; color:var(--muted); font-style:italic; margin-top:1px; }
+
+  .hof-rivalry-picker{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .hof-rivalry-picker select{ flex:1; }
+  .hof-rivalry-vs{ font-family:'Barlow Condensed', sans-serif; font-weight:700; color:var(--brass); font-size:13px; flex-shrink:0; }
+  .hof-rivalry-row{ display:flex; align-items:center; padding:10px 4px; border-bottom:1px solid var(--line); }
+  .hof-rivalry-row:last-child{ border-bottom:none; }
+  .hof-rivalry-val{ flex:1; text-align:center; font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--muted); }
+  .hof-rivalry-val.winning{ color:var(--brass-light); font-weight:700; }
+  .hof-rivalry-lbl{ width:90px; flex-shrink:0; text-align:center; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+
+  .share-season-sheet{ max-height:88vh; overflow-y:auto; }
+
   td.profile-link{ cursor:pointer; text-decoration:underline; text-decoration-color:var(--brass-dim); text-underline-offset:3px; }
   td.profile-link:active{ color:var(--brass); }
 
@@ -3416,7 +3442,8 @@
 .syndy-msg.user .chat-mention{ color:#0E1A16; text-decoration:underline; }
 
 /* Reactions row below a bubble. */
-.syndy-msg-reactions{ display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.syndy-msg-reactions{ display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; padding-top:6px; border-top:1px solid rgba(255,255,255,.06); }
+.syndy-msg.user .syndy-msg-reactions{ border-top-color:rgba(14,26,22,.15); }
 .syndy-msg-reaction-pill{
   display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:10px;
   background:rgba(0,0,0,.25); border:1px solid var(--line); font-size:11px; cursor:pointer;
