@@ -2817,7 +2817,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.41"; // Leg Bets (fixed odds, Syndy-priced from real win rates, exposure-capped) + Group Chat unread badge on the chat icon — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.42"; // Tipping category — emerald badge/felt/profile/ladder cosmetics for tipping-only members, separate visual axis from Casino tier — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3388,6 +3388,11 @@ async function checkCasinoTierUpForCurrentUser(){
     const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
     const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(currentUserUid), tippingPoints);
     applyCasinoTierCosmetics(prestige);
+    // currentUserRole is the reliable self-check here (unlike the board-
+    // roster-absence proxy used for OTHER people's rows, which we can't
+    // apply to felt cosmetics anyway — those only ever reflect your own
+    // status, not whoever you're sitting across from).
+    document.body.classList.toggle('tipping-category', currentUserRole === 'tipping');
     await checkCasinoTierUp(prestige);
   }catch(e){}
 }
@@ -4659,14 +4664,18 @@ function avatarHtml(name, dataUri, sizePx){
 // undefined for someone with no tier yet — renders as a plain photo with
 // no glow/emblem in that case, same graceful "nothing yet" as the gem
 // badge already did.
-function avatarRankCardHtml(name, dataUri, tierKey, sizePx){
+function avatarRankCardHtml(name, dataUri, tierKey, sizePx, isTippingCategory){
   const size = sizePx || 40;
   const tierCls = tierKey ? `tier-${tierKey}` : '';
   const inner = dataUri
     ? `<img src="${dataUri}" alt="" style="width:${size}px; height:${size}px;">`
     : `<span class="avatar-rankcard-fallback" style="width:${size}px; height:${size}px; font-size:${Math.round(size * 0.42)}px;">${escapeHtml((name || '?').trim().charAt(0).toUpperCase())}</span>`;
   const emblem = tierKey ? `<span class="avatar-rankcard-emblem ${tierCls}"><span class="avatar-rankcard-emblem-gem"></span></span>` : '';
-  return `<span class="avatar-rankcard ${tierCls}" style="width:${size}px; height:${size}px;">${inner}${emblem}</span>`;
+  // Opposite corner from the tier emblem (top-right vs its bottom-right)
+  // so a tipping-category member who's ALSO earned a real Casino tier
+  // can show both at once without them colliding.
+  const tippingBadge = isTippingCategory ? `<span class="avatar-rankcard-tipping-badge" title="Tipping"><span>🏉</span></span>` : '';
+  return `<span class="avatar-rankcard ${tierCls}" style="width:${size}px; height:${size}px;">${inner}${emblem}${tippingBadge}</span>`;
 }
 // Same idea as getCasinoTierBadgeHtml but returns just the tier key
 // (bronze/silver/gold/platinum/diamond/null) instead of pre-built badge
@@ -7443,11 +7452,15 @@ async function renderXPLeaderboard(){
       // as an actual "heater" worth calling out on the board.
       const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
       const tierKey = casinoTierFor(r.prestige)?.key || null; // already have the prestige score for this row — no extra fetch needed for the rank card's tier
+      // Board roster absence is the established proxy for "tipping-only"
+      // throughout this app (see openTippingOnlyProfile) — nobody with a
+      // real Board seat can ever be tipping-category by definition.
+      const isTippingCat = !(currentState.members || []).some(m => m.name === r.name);
       const primaryVal = isThisMonth ? (r.monthEarned != null ? '+' + r.monthEarned.toLocaleString() : '—') : (r.balance != null ? r.balance.toLocaleString() : '—');
       const secondaryLabel = isThisMonth ? `💰 ${r.balance != null ? r.balance.toLocaleString() : '—'} balance` : `🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime`;
       return `<div class="xp-lb-row" data-name="${escapeHtml(r.name)}" style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '13px 8px' : '10px 4px'}; border-bottom:1px solid var(--line); cursor:pointer; ${bg}">
         <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
-        ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40)}
+        ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40, isTippingCat)}
         <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${streakBadge}</span>
         <span style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
           <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${primaryVal}</span>
@@ -8794,6 +8807,10 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     if(sheetEl){
       sheetEl.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-platinum', 'tier-diamond');
       if(t) sheetEl.classList.add(`tier-${t.key}`);
+      // Same board-roster-absence proxy used everywhere else in this app
+      // for "tipping-only" — a separate visual axis from tier, so this
+      // never removes the tier class above, just layers alongside it.
+      sheetEl.classList.toggle('tipping-category', forName ? !(currentState.members || []).some(m => m.name === forName) : false);
     }
 
     // Prestige progress bar — how far toward the NEXT tier up. CASINO_TIERS
@@ -13862,7 +13879,11 @@ async function renderTippingLadder(games){
     // only, so if boardJokerActiveByUid hadn't loaded yet when this ran (a real
     // race on first load), or updated later, nothing ever told the ladder to
     // reflect it — it could sit wrong for a full 4-minute poll cycle or more.
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td class="ladder-name-col" data-uid="${escapeHtml(r.uid)}" data-name="${escapeHtml(r.name)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${avatarRankCardHtml(r.name, avatarByUid[r.uid], tierKeyByUid[r.uid], 40)}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    // Same board-roster-absence proxy as the Casino ladder — not every
+    // row here is tipping-only, most are Board members who also tip, so
+    // this still needs a per-row check rather than assuming.
+    const isTippingCat = !(currentState.members || []).some(m => m.name === r.name);
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td class="ladder-name-col" data-uid="${escapeHtml(r.uid)}" data-name="${escapeHtml(r.name)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${avatarRankCardHtml(r.name, avatarByUid[r.uid], tierKeyByUid[r.uid], 40, isTippingCat)}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
   area.innerHTML = html;

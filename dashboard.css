@@ -2707,6 +2707,41 @@
     .profile-sheet.tier-diamond::before{ animation:none; }
   }
 
+  /* ---- Tipping category — a separate visual axis from Casino tier
+     (someone can be both a real tier AND tipping-category at once, so
+     this never replaces tier cosmetics, it layers alongside them).
+     Same tint/glow pattern as the tier profiles above, just its own
+     colour and its own class, not part of the tier-{key} family. ---- */
+  .profile-sheet.tipping-category{ background:linear-gradient(180deg, #0f3324 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(46,204,113,.55); }
+  .profile-sheet.tipping-category::before{ opacity:1; --tier-glow: rgba(46,204,113,.3); }
+
+  /* ---- Tipping category — table felt / card back / chip rim, applied
+     for the SIGNED-IN VIEWER's own tipping-category status (see
+     applyTippingCategoryCosmetics), same reach/scope as the tier
+     cosmetics above — purely visual, purely local to what you see. ---- */
+  body.tipping-category .bj-table, body.tipping-category .craps-table-felt{
+    background:
+      radial-gradient(ellipse at 32% 20%, rgba(255,255,255,.07) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 50% 32%, #123d28 0%, #0a2418 60%, #05130c 100%);
+  }
+  body.tipping-category .playing-card.pc-back{ background: repeating-linear-gradient(45deg, #2ECC71, #2ECC71 4px, #123d28 4px, #123d28 8px); border-color:#9bf0c0; }
+  body.tipping-category .playing-card.pc-back::after{ border-color:#9bf0c0; }
+  body.tipping-category .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #2ECC71; }
+
+  /* ---- Tipping category badge — a small emerald rugby-ball emblem,
+     positioned opposite the tier emblem (top-right vs its bottom-right)
+     so both can show on the same avatar without colliding. Same rotated
+     -square gem shape as the tier emblem for visual consistency, an
+     actual emoji rather than the tier badge's plain gem — deliberate
+     exception here, confirmed against a live preview before building. */
+  .avatar-rankcard-tipping-badge{
+    position:absolute; top:-4px; right:-4px; width:16px; height:16px; border-radius:4px;
+    transform:rotate(45deg); display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(155deg, #9bf0c0, #2ECC71 55%, #187a45);
+    border:2px solid var(--ink); box-shadow:0 2px 5px rgba(0,0,0,.5); z-index:2;
+  }
+  .avatar-rankcard-tipping-badge span{ transform:rotate(-45deg); font-size:8px; line-height:1; }
+
   /* ---- Flair line — one auto-generated fact string under the name. ---- */
   .profile-flair{
     font-size:11.5px; color:var(--muted); text-align:center; margin-top:4px;

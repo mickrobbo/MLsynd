@@ -1,8 +1,7 @@
 {
-  "version": "2026-08-24.41",
+  "version": "2026-08-24.42",
   "date": "2026-08-27",
   "changes": [
-    "\ud83c\udfaf New: Leg Bets \u2014 fixed-odds betting on whether a person's next real group leg wins or loses. Syndy prices the odds from their real historical win rate (not the actual leg's real odds, since those aren't knowable until the result already is), fully automated, exposure-capped per side so a single bet can never threaten more than a bounded slice of the reserve. Resolves against their actual next real result once the Ledger records it \u2014 refunds everyone automatically if no result shows up within 9 days.",
-    "\ud83d\udd14 The chat icon now shows a real notification badge for unread Group Chat messages, not just the old weekly-checklist nag \u2014 clears the moment you open Group Chat."
+    "\ud83c\udfc9 New: Tipping category cosmetics \u2014 tipping-only members now get an emerald visual identity, separate from Casino tier (can show alongside a real tier, not instead of it). A small rugby-ball badge on their avatar (opposite corner from the tier gem), an emerald profile tint, and emerald table felt/card-backs/chip-rims when they're at the tables \u2014 shown on the Casino and Tipping ladders. Purely visual, doesn't touch anyone's actual role or access."
   ]
 }
