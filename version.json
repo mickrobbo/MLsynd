@@ -1,7 +1,8 @@
 {
-  "version": "2026-08-24.81",
+  "version": "2026-08-24.82",
   "date": "2026-08-30",
   "changes": [
-    "Fixed a real gap in the previous ambience fix. That fix only ever stopped the lobby noise once, at the exact moment a Live Blackjack table opens \u2014 but the app's own ambience-reconciling logic also runs independently whenever the screen locks and unlocks, or the app is switched away from and back to, and since the table view still isn't recognized as \"a game\" by that check, any one of those could quietly restart the ambience mid-session without ever actually leaving the table. Now re-checked on every 3-second poll tick too, not just once at entry, so it can't stay wrong for more than a few seconds no matter what tries to restart it."
+    "Fixed the real cause of \"both my cards show at the same time\" (dealer's own animation was already fine). Whoever taps Deal gets an immediate re-render right after their own server call succeeds, and the real-time listener ALSO fires independently for that same underlying write \u2014 often within milliseconds. That second render used to see the animation-tracking state already marked as done from the first one, so it rendered the exact same cards again instantly with zero animation, visually snapping mid-animation to the final static state. This mattered most for whoever actually dealt, since only their client gets both triggers firing back to back.",
+    "Fixed by delaying when a card gets marked as \"already animated\" until the animation would have genuinely finished playing \u2014 a near-simultaneous second render now re-plays the same animation instead of cutting it short. Confirmed the fix with a direct timing simulation before shipping it, not just reasoned through it. Applied to both the dealer's own cards and every seat's hand."
   ]
 }

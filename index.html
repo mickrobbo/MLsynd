@@ -3031,7 +3031,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.81"; // Fixed a real gap in the earlier ambience fix, found from a live report: that fix only stopped the lobby ambience once, at the moment the table opens — but reconcileCasinoAmbience() also fires independently on visibilitychange (screen lock/unlock, switching apps and back), and since the table view still isn't recognized by the .casino-game-panel check it uses, any one of those could silently restart the ambience mid-session without the player ever leaving the table. Now re-asserted on every 3s poll tick too, not just at entry, so it can't stay wrong for more than a few seconds regardless of what tries to restart it — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.82"; // Fixed the real cause of "both my cards show at the same time" from a live report — the dealer who taps Deal gets an immediate post-action re-render right after their own server call succeeds, AND the real-time listener fires independently for that same underlying write, often within milliseconds. That second render used to see the animation-tracking state already updated from the first one, so it rendered the same cards again instantly with no animation at all — visually snapping mid-animation to the static end state. Now delays marking cards as "seen" until the animation would have actually finished, so a near-simultaneous second render re-plays the same animation instead of cutting it short. Confirmed with a direct simulation before shipping, not just reasoned about. Applied to both the dealer's cards and each seat's own hand — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4780,7 +4780,18 @@ async function renderMpBjSeatGridInner(){
           : '<div class="playing-card pc-back" style="width:30px; height:43px; border-radius:4px;"></div>';
         dealerCardsEl.innerHTML = mpBjRenderHand([table.dealerUpCard], isFreshDeal ? 0 : null) + backCardHtml;
         if(isFreshDeal) setTimeout(bjPlayCardSound, MP_BJ_CARD_STAGGER_MS); // the up-card's own sound comes from mpBjRenderHand/bjRenderCards; this covers the hole card specifically, since it bypasses that path as a bare static string
-        mpBjPrevState.dealerCardsShown = true;
+        // Same delayed-marking fix as the seat cards below, applied here
+        // too for consistency even though it's less visually obvious on
+        // a face-down card back — the underlying double-render race
+        // (an immediate post-action render plus the listener firing
+        // independently for the same write) could affect this the same
+        // way, it would just show as the hole card skipping its own
+        // animation rather than "both cards at once".
+        if(isFreshDeal){
+          setTimeout(() => { mpBjPrevState.dealerCardsShown = true; }, MP_BJ_CARD_STAGGER_MS * 2 + 500);
+        } else {
+          mpBjPrevState.dealerCardsShown = true;
+        }
       } else if(table.lastHandResult && table.lastHandResult.dealerHand){
         // Index 1 onward: the up-card (index 0) was already shown and
         // animated during the deal itself — only the hole-card reveal
@@ -4845,7 +4856,29 @@ async function renderMpBjSeatGridInner(){
           const seatOffset = (isFreshDealNow && isFreshSeatDeal) ? runningSoundOffset : 0;
           handHtml = `<div class="mp-bj-seat-cards">${mpBjRenderHand(seat.hand, animateFrom, seatOffset)}</div><div class="mp-bj-seat-bet-tag">${mpBjHandValue(seat.hand)}${seat.handStatus === 'busted' ? ' (bust)' : ''}</div>`;
           if(isFreshDealNow && isFreshSeatDeal) runningSoundOffset += seat.hand.length * MP_BJ_CARD_STAGGER_MS;
-          mpBjPrevState.seatHandLengths[i] = seat.hand.length;
+          // Real bug fixed here, from a live report: whoever actually
+          // triggers an action (e.g. tapping Deal) gets an immediate
+          // re-render right after their own server call succeeds — AND
+          // the real-time listener fires independently for that same
+          // underlying write, often within milliseconds. That second
+          // render used to see seatHandLengths already updated from the
+          // first one, so animateFrom came back null and it rendered
+          // the SAME cards again instantly with no animation at all —
+          // visually snapping mid-animation straight to the static end
+          // state, which read as "both cards appear at once". Delaying
+          // this update until the animation would have actually
+          // finished playing means a render that fires again inside
+          // that window re-plays the same animation instead of cutting
+          // it short — same visual result either way, just never
+          // interrupted.
+          if(animateFrom != null){
+            const newCardCount = seat.hand.length - animateFrom;
+            const animDurationMs = seatOffset + newCardCount * MP_BJ_CARD_STAGGER_MS + 500; // 500 matches mp-bj-card-dealt's own animation-duration
+            const targetLen = seat.hand.length;
+            setTimeout(() => { mpBjPrevState.seatHandLengths[i] = targetLen; }, animDurationMs);
+          } else {
+            mpBjPrevState.seatHandLengths[i] = seat.hand.length;
+          }
         } else {
           handHtml = seat.currentBet > 0 ? `<div class="mp-bj-seat-bet-tag">Bet: ${seat.currentBet.toLocaleString()} XP</div>` : '';
           mpBjPrevState.seatHandLengths[i] = 0; // reset so the next deal animates from scratch
