@@ -151,12 +151,16 @@
     100%{ opacity:1; transform: translateY(0) translateX(0) rotate(0deg) scale(1); }
   }
   .playing-card.pc-dealt{ animation: cardDealIn .4s cubic-bezier(.22,.9,.32,1.15) both; }
-  /* Live multiplayer Blackjack specifically wanted its own cards a
-     touch slower than single-player's own pace — scoped via this
-     second, more specific class rather than changing pc-dealt's own
-     duration, so single-player Blackjack isn't affected by a change
-     requested only for the live table. */
-  .playing-card.mp-bj-card-dealt{ animation-duration: .5s; }
+  /* mp-bj-card-dealt intentionally has no rules of its own anymore — it
+     briefly set a slower .5s duration for the live table specifically,
+     but a later, more direct request asked for this to genuinely
+     mirror single-player Blackjack's own timing rather than run its
+     own custom pace. Left as a marker class on the live table's cards
+     (harmless, matches pc-dealt's own .4s with nothing to override)
+     rather than removed from the JS that still applies it, since
+     removing it there isn't needed to fix the actual behaviour and
+     would just be extra risk for no visual difference.
+  */
 
   /* Dealer's hole card: a real 3D flip rather than a swap, front=back
      pattern, back=the actual card, rotated into view on reveal. */
@@ -840,6 +844,15 @@
   .mp-bj-dealer-total{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--brass); margin-top:6px; min-height:16px; position:relative; z-index:1; }
   .mp-bj-seat.my-turn{ box-shadow:0 0 0 2px var(--win), 0 0 14px rgba(111,169,138,.5); }
   .mp-bj-seat-bet-tag{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--brass-light); margin-top:2px; }
+  /* Bet history strip — same colour language as .roulette-history-chip
+     (win/loss/push), scaled down to fit a seat cell rather than the
+     full-size version used elsewhere. */
+  .mp-bj-seat-history{ display:flex; gap:2px; justify-content:center; margin-top:3px; flex-wrap:wrap; }
+  .mp-bj-history-chip{
+    width:12px; height:12px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:6px; font-weight:700; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.5); flex-shrink:0;
+  }
+  .mp-bj-pp-outcome{ animation: outcomeGlow .6s cubic-bezier(.3,1.6,.4,1) both; }
   .mp-bj-hand-result{
     background:linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim); border-radius:12px;
     padding:12px; margin-top:12px; text-align:center; font-size:12px;

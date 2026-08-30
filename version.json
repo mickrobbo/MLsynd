@@ -1,9 +1,11 @@
 {
-  "version": "2026-08-24.83",
+  "version": "2026-08-24.87",
   "date": "2026-08-30",
   "changes": [
-    "Watched the actual screen recording sent in and traced the real animation glitch, rather than guessing from a description. The dealer's hole-card reveal was never a real flip \u2014 it was a plain DOM swap: the face-down card was destroyed and a new face-up card popped in near-instantly. Single-player Blackjack has had a genuine 3D card flip for this exact moment the entire time (a real CSS rotation, not a swap) \u2014 it just was never brought over to the live multiplayer table.",
-    "Rebuilt the live table's reveal on that same real flip pattern. The one genuine architectural difference: single-player can bake both card faces into the DOM right from the deal, since there's no actual secret to keep in a fully client-side game. This table can't \u2014 the hole card's real value is genuinely unknown here until the server sends it at settlement \u2014 so the flip element is built face-down at deal time with its face-up side left empty, then populated for real and rotated only once the reveal data actually arrives.",
-    "Verified this behaves correctly before shipping it: captured a real mid-rotation screenshot showing the card actually mid-flip, not just reasoned about it in the abstract."
+    "Split \u2014 the last piece of the Blackjack polish arc, now built and verified. Tracks a genuinely second, independent hand per seat rather than reworking the whole model around always-two-hands, the same \"parallel track, only populated when actually used\" approach single-player Blackjack itself takes for its own split.",
+    "New split action on the server, with the same value-match rule single-player uses (a Ten and a King can split together, not just exact rank matches). Hit and Stand both hand off between the two sub-hands within the same seat's own turn before moving on to the next seat. Double is blocked after a split, and a seat can only split once \u2014 same simplified rule set single-player already settled on.",
+    "Settlement now evaluates each sub-hand independently against the dealer. This was verified with two direct simulations before shipping, not just written and trusted: one confirming a split hand that wins one side and busts the other nets exactly zero, and a second confirming specifically that a split hand landing on 21 pays as a regular win, not a blackjack \u2014 both came back correct.",
+    "On the table itself: both hands now show side by side with a marker for whichever one is currently active, a Split button that only ever appears when splitting is actually legal, and the results panel breaks a split hand into its own two lines plus the combined total rather than a single outcome word that wouldn't mean anything for two separate hands.",
+    "Also fixed a real bug caught by an actual render before shipping, not assumed away: four action buttons at equal width didn't fit the row \u2014 Split was genuinely getting clipped at the edge. Switched to a percentage-based width so it wraps into a clean 2x2 grid instead."
   ]
 }

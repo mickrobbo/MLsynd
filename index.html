@@ -642,6 +642,7 @@
         <div id="mpBjDealerCardsArea" class="mp-bj-dealer-cards"></div>
         <div id="mpBjDealerTotal" class="mp-bj-dealer-total"></div>
       </div>
+      <div class="croupier-caption" id="mpBjCroupierMsg"></div>
       <div id="mpBjSeatGrid" class="mp-bj-seat-grid"></div>
       <div id="mpBjLastHandResult" class="mp-bj-hand-result" style="display:none;"></div>
 
@@ -666,24 +667,36 @@
           <button type="button" class="table-chip chip-50" data-val="50">50</button>
           <button type="button" class="table-chip chip-100" data-val="100">100</button>
           <button type="button" class="table-chip chip-250" data-val="250">250</button>
-          <button type="button" class="table-chip chip-500" data-val="500">500</button>
-          <button type="button" class="table-chip chip-1000" data-val="1000">1K</button>
-          <button type="button" class="table-chip chip-2500" data-val="2500">2.5K</button>
           <button type="button" class="chip-clear-btn" data-target="mpBjBetInput">Clear Chips</button>
         </div>
+        <input type="checkbox" id="mpBjPerfectPairsCheck" style="display:none;">
+        <div id="mpBjPPAmountRow" class="hint" style="display:none; text-align:center; margin-top:10px;">
+          Perfect Pairs bet: <input type="number" id="mpBjPerfectPairsAmount" min="10" step="10" value="20" readonly style="width:56px; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:6px; padding:4px; text-align:center; font-size:12px;">
+        </div>
+        <div class="chip-rail chip-rail-small" data-target="mpBjPerfectPairsAmount" id="mpBjPPChipRail" style="display:none;">
+          <button type="button" class="table-chip chip-5" data-val="5">5</button>
+          <button type="button" class="table-chip chip-10" data-val="10">10</button>
+          <button type="button" class="table-chip chip-25" data-val="25">25</button>
+          <button type="button" class="chip-clear-btn" data-target="mpBjPerfectPairsAmount">Clear Chips</button>
+        </div>
         <div style="display:flex; gap:8px; margin-top:12px;">
-          <button type="button" class="pill-btn pill-btn-primary" id="mpBjSetBetBtn" style="flex:1;">Place Bet</button>
+          <button type="button" id="mpBjPerfectPairsToggle" class="pill-btn pp-toggle-pill"><span class="pp-pill-icon"><span>♥</span></span>Perfect Pairs</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button type="button" class="pill-btn pill-btn-primary" id="mpBjSetBetBtn" style="flex:1;">Bet</button>
           <button type="button" class="pill-btn pill-btn-primary" id="mpBjDealBtn" style="flex:1; display:none;">🃏 Deal</button>
         </div>
         <div id="mpBjAutoDealHint" style="display:none; text-align:center; font-size:10.5px; color:var(--muted); margin-top:8px;">Auto-dealing in ~30s if nobody deals first</div>
+        <div id="mpBjPPOutcomeMsg" style="text-align:center; margin-top:8px; font-size:12px; min-height:16px;"></div>
       </div>
 
       <!-- Hit/Stand/Double — only ever shown when it's genuinely your
            turn (table.currentTurnSeatIndex matches your own seat). -->
-      <div id="mpBjHandActionsPanel" style="display:none; margin-top:14px; gap:8px;">
-        <button type="button" class="pill-btn pill-btn-primary" id="mpBjHitBtn" style="flex:1;">Hit</button>
-        <button type="button" class="pill-btn pill-btn-primary" id="mpBjStandActionBtn" style="flex:1;">Stand</button>
-        <button type="button" class="pill-btn" id="mpBjDoubleBtn" style="flex:1;">Double</button>
+      <div id="mpBjHandActionsPanel" style="display:none; margin-top:14px; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="pill-btn pill-btn-primary" id="mpBjHitBtn" style="flex:1 1 45%;">Hit</button>
+        <button type="button" class="pill-btn pill-btn-primary" id="mpBjStandActionBtn" style="flex:1 1 45%;">Stand</button>
+        <button type="button" class="pill-btn" id="mpBjDoubleBtn" style="flex:1 1 45%;">Double</button>
+        <button type="button" class="pill-btn" id="mpBjSplitBtn" style="flex:1 1 45%;">Split</button>
       </div>
 
       <!-- Buy-in panel — a real chip rail instead of a plain prompt(),
@@ -706,9 +719,6 @@
           <button type="button" class="table-chip chip-50" data-val="50">50</button>
           <button type="button" class="table-chip chip-100" data-val="100">100</button>
           <button type="button" class="table-chip chip-250" data-val="250">250</button>
-          <button type="button" class="table-chip chip-500" data-val="500">500</button>
-          <button type="button" class="table-chip chip-1000" data-val="1000">1K</button>
-          <button type="button" class="table-chip chip-2500" data-val="2500">2.5K</button>
           <button type="button" class="chip-clear-btn" data-target="mpBjBuyInInput">Clear Chips</button>
         </div>
         <div style="display:flex; gap:8px; margin-top:12px;">
@@ -3031,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.83"; // Real find from a screen recording, not a guess: the dealer's hole-card reveal was never actually a flip at all — it was a plain DOM swap (old face-down card destroyed, new face-up one popped in near-instantly), while single-player Blackjack already had a genuine 3D flip (pc-flip-wrap/pc-flip-inner) for this exact moment the whole time. Rebuilt the live table's reveal on that same real pattern — the flip-wrap gets built face-down at deal time with its face-up side left empty (the actual hole card value is genuinely unknown here until the server reveals it, unlike single-player which can bake both faces in from the start), then populated and rotated for real once the reveal data actually arrives. Verified with a real mid-rotation screenshot before shipping, not just reasoned through — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.87"; // Split, the last remaining piece of the Blackjack polish arc. Tracks a genuinely second, independent hand per seat (hand2/currentBet2/handStatus2/activeHandIdx) rather than reworking the whole model around always-two-hands — same "parallel track, only populated when actually used" approach single-player itself uses. New split server action, hit/stand updated to hand off between the two sub-hands within the same seat's turn before advancing to the next seat, double blocked after a split and split blocked after itself (same simplified rule set single-player already settled on), settlement evaluates each sub-hand separately (a split 21 correctly does NOT count as a natural blackjack, verified with a direct simulation, not just written and trusted). Client shows both hands with an indicator for which is active, a Split button that only appears when it's actually legal, and split-aware result text. Also fixed a real clipping bug caught by an actual render before shipping: 4 buttons at equal flex:1 didn't fit this row's width — "Split" was getting cut off at the edge, not just tight. Switched to a 45% flex-basis so it wraps into a clean 2x2 grid instead — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4586,11 +4596,14 @@ function mpBjParseCard(cardStr){
   const suit = MP_BJ_SUIT_MAP[cardStr[1]] || cardStr[1];
   return { rank, suit };
 }
-// Slowed down a touch from single-player Blackjack's own 130ms default
-// (bjRenderCards) — kept as its own constant here rather than touching
-// that shared default, since single-player shouldn't be affected by a
-// change requested specifically for the live multiplayer table.
-const MP_BJ_CARD_STAGGER_MS = 180;
+// Matches single-player Blackjack's own bjRenderCards default exactly
+// (130ms) — a prior "slow it down a touch" request had this at 180,
+// but a later, more direct request asked for it to genuinely mirror
+// single-player's timing rather than run its own custom pace. Kept as
+// its own constant rather than removed outright, so this table's
+// several call sites stay consistent with each other and the intent
+// (match single-player) is documented in one place.
+const MP_BJ_CARD_STAGGER_MS = 130;
 // animateFromIndex, when given, renders cards before it statically and
 // cards from it onward with the real deal-in animation + card sound
 // (via bjRenderCards' own animate flag) — lets a re-render only animate
@@ -4764,9 +4777,21 @@ async function renderMpBjSeatGridInner(){
     if(dealerCardsEl){
       const existingFlipWrap = document.getElementById('mpBjHoleCardWrap');
       if(isPlaying && table.dealerUpCard){
-        const isFreshDeal = !mpBjPrevState.dealerCardsShown;
+        // Real hardening here: this used to rely ONLY on the delayed
+        // dealerCardsShown flag below to know whether a fresh render
+        // needs to rebuild the flip-wrap or leave it alone. That flag
+        // is deliberately delayed (to survive a near-simultaneous
+        // second render right after dealing), which meant a render
+        // arriving in that same window could still see it as false and
+        // rebuild anyway — destroying and recreating the flip-wrap,
+        // restarting the up-card's own deal animation along with it.
+        // Checking whether the element genuinely already exists in the
+        // DOM closes that gap directly, rather than just narrowing the
+        // timing window it could occur in.
+        const isFreshDeal = !mpBjPrevState.dealerCardsShown && !existingFlipWrap;
         isFreshDealNow = isFreshDeal;
         if(isFreshDeal){
+          croupierSay('mpBjCroupierMsg', CROUPIER_LINES.bjShuffle);
           // Real gap fixed here, found from a screen recording: this
           // used to just swap the face-down card's DOM content for the
           // revealed one on settlement — no flip, no transition, the
@@ -4788,7 +4813,7 @@ async function renderMpBjSeatGridInner(){
               <div class="pc-flip-face pc-flip-back playing-card" id="mpBjHoleCardBack"></div>
             </div></div>`;
           setTimeout(bjPlayCardSound, MP_BJ_CARD_STAGGER_MS); // the up-card's own sound comes from mpBjRenderHand/bjRenderCards; this covers the hole card's own appearance specifically
-          setTimeout(() => { mpBjPrevState.dealerCardsShown = true; }, MP_BJ_CARD_STAGGER_MS * 2 + 500); // same delayed-marking fix as the seat cards below — a near-simultaneous second render (immediate post-action + the listener firing for the same write) shouldn't rebuild this and destroy the flip-wrap mid-animation
+          setTimeout(() => { mpBjPrevState.dealerCardsShown = true; }, MP_BJ_CARD_STAGGER_MS * 2 + 400); // same delayed-marking fix as the seat cards below — a near-simultaneous second render (immediate post-action + the listener firing for the same write) shouldn't rebuild this and destroy the flip-wrap mid-animation
         }
         // Not a fresh deal — genuinely nothing new to show (the hole
         // card is still face-down either way), so the DOM is left
@@ -4886,7 +4911,43 @@ async function renderMpBjSeatGridInner(){
           ? `<img class="mp-bj-seat-avatar" src="${avatarSrc}" alt="">`
           : `<span class="mp-bj-seat-avatar-fallback">${escapeHtml((seat.name || '?').trim().charAt(0).toUpperCase())}</span>`;
         let handHtml;
-        if(seat.inHand && seat.hand && seat.hand.length > 0){
+        if(seat.isSplit && seat.inHand){
+          // Split seat: two genuinely independent hands, each tracked
+          // under its own key (i for hand 1, i+'_split2' for hand 2) so
+          // their deal-in animations can't collide or interfere with
+          // each other — same delayed-marking pattern as the single-hand
+          // case below, just duplicated per hand rather than refactored
+          // into a shared helper, to avoid touching that already-working
+          // path while adding this.
+          const prevLen1 = mpBjPrevState.seatHandLengths[i] || 0;
+          const animateFrom1 = seat.hand.length > prevLen1 ? prevLen1 : null;
+          const hand1Html = `<div class="mp-bj-seat-cards">${mpBjRenderHand(seat.hand, animateFrom1, 0)}</div><div class="mp-bj-seat-bet-tag">Hand 1: ${mpBjHandValue(seat.hand)}${seat.handStatus === 'busted' ? ' (bust)' : ''}${seat.activeHandIdx === 0 ? ' 👈' : ''}</div>`;
+          if(animateFrom1 != null){
+            const newCount1 = seat.hand.length - animateFrom1;
+            const dur1 = newCount1 * MP_BJ_CARD_STAGGER_MS + 400;
+            const target1 = seat.hand.length;
+            setTimeout(() => { mpBjPrevState.seatHandLengths[i] = target1; }, dur1);
+          } else {
+            mpBjPrevState.seatHandLengths[i] = seat.hand.length;
+          }
+          const key2 = i + '_split2';
+          const prevLen2 = mpBjPrevState.seatHandLengths[key2] || 0;
+          const animateFrom2 = seat.hand2 && seat.hand2.length > prevLen2 ? prevLen2 : null;
+          const hand2Html = seat.hand2
+            ? `<div class="mp-bj-seat-cards">${mpBjRenderHand(seat.hand2, animateFrom2, 0)}</div><div class="mp-bj-seat-bet-tag">Hand 2: ${mpBjHandValue(seat.hand2)}${seat.handStatus2 === 'busted' ? ' (bust)' : ''}${seat.activeHandIdx === 1 ? ' 👈' : ''}</div>`
+            : '';
+          if(seat.hand2){
+            if(animateFrom2 != null){
+              const newCount2 = seat.hand2.length - animateFrom2;
+              const dur2 = newCount2 * MP_BJ_CARD_STAGGER_MS + 400;
+              const target2 = seat.hand2.length;
+              setTimeout(() => { mpBjPrevState.seatHandLengths[key2] = target2; }, dur2);
+            } else {
+              mpBjPrevState.seatHandLengths[key2] = seat.hand2.length;
+            }
+          }
+          handHtml = hand1Html + hand2Html;
+        } else if(seat.inHand && seat.hand && seat.hand.length > 0){
           const prevLen = mpBjPrevState.seatHandLengths[i] || 0;
           const isFreshSeatDeal = prevLen === 0 && seat.hand.length > 0;
           const animateFrom = seat.hand.length > prevLen ? prevLen : null;
@@ -4910,15 +4971,41 @@ async function renderMpBjSeatGridInner(){
           // interrupted.
           if(animateFrom != null){
             const newCardCount = seat.hand.length - animateFrom;
-            const animDurationMs = seatOffset + newCardCount * MP_BJ_CARD_STAGGER_MS + 500; // 500 matches mp-bj-card-dealt's own animation-duration
+            const animDurationMs = seatOffset + newCardCount * MP_BJ_CARD_STAGGER_MS + 400; // 400 matches pc-dealt's own animation-duration (mp-bj-card-dealt no longer overrides it)
             const targetLen = seat.hand.length;
             setTimeout(() => { mpBjPrevState.seatHandLengths[i] = targetLen; }, animDurationMs);
           } else {
             mpBjPrevState.seatHandLengths[i] = seat.hand.length;
           }
         } else {
-          handHtml = seat.currentBet > 0 ? `<div class="mp-bj-seat-bet-tag">Bet: ${seat.currentBet.toLocaleString()} XP</div>` : '';
+          handHtml = seat.currentBet > 0
+            ? `<div class="mp-bj-seat-bet-tag">Bet: ${seat.currentBet.toLocaleString()} XP${seat.ppBet > 0 ? ` + PP ${seat.ppBet.toLocaleString()}` : ''}</div>`
+            : '';
           mpBjPrevState.seatHandLengths[i] = 0; // reset so the next deal animates from scratch
+          mpBjPrevState.seatHandLengths[i + '_split2'] = 0; // same reset for hand 2's tracking, so a stale length from a previous split doesn't linger into the next one
+        }
+        // Bet history strip — last 8 results, most recent shown last
+        // (matches the order they're stored in), small enough to fit
+        // under a seat cell without crowding the rest of it.
+        const historyHtml = seat.history && seat.history.length > 0
+          ? `<div class="mp-bj-seat-history">${seat.history.map(h => {
+              const bg = h === 'W' ? 'var(--win)' : (h === 'L' ? 'var(--loss)' : 'rgb(91,141,190)');
+              return `<div class="mp-bj-history-chip" style="background:${bg};">${h}</div>`;
+            }).join('')}</div>`
+          : '';
+        // Perfect Pairs outcome — a brief, one-time message right after
+        // a fresh deal that included a side bet, same "shown once,
+        // reacted to on the freshness transition" pattern as everything
+        // else on this table (the win/lose chime, the croupier line).
+        let ppHtml = '';
+        if(isFreshDealNow && table.lastPerfectPairsResults){
+          const myPP = table.lastPerfectPairsResults.find(r => r.uid === seat.uid);
+          if(myPP){
+            const color = myPP.net > 0 ? 'var(--win)' : 'var(--loss)';
+            const sign = myPP.net > 0 ? '+' : '';
+            ppHtml = `<div class="mp-bj-pp-outcome" style="font-size:9.5px; color:${color}; margin-top:2px;">${myPP.label === 'no pair' ? 'PP: no pair' : `PP: ${myPP.label}!`} (${sign}${myPP.net} XP)</div>`;
+            if(myPP.uid === currentUserUid && myPP.net > 0) bjPlaySideBetDing();
+          }
         }
         cells.push(`
           <div class="mp-bj-seat occupied${isMe ? ' me' : ''}${isMyTurn ? ' my-turn' : ''}" data-seat-index="${i}">
@@ -4926,6 +5013,8 @@ async function renderMpBjSeatGridInner(){
             <div class="mp-bj-seat-name">${escapeHtml(seat.name || 'Someone')}</div>
             <div class="mp-bj-seat-stack">${(seat.stack || 0).toLocaleString()} XP</div>
             ${handHtml}
+            ${ppHtml}
+            ${historyHtml}
           </div>
         `);
       } else {
@@ -4942,26 +5031,55 @@ async function renderMpBjSeatGridInner(){
       cell.addEventListener('click', () => openMpBjBuyInPanel(table, Number(cell.dataset.seatIndex)));
     });
 
-    // Win/lose chime — fires once per genuinely new settlement (guarded
-    // by endedAt, not just "a result exists"), and only for MY OWN
-    // result specifically, matched by uid rather than name so it can't
-    // mismatch if two people happen to share a display name. Delayed to
-    // land after the dealer's own reveal animation actually finishes
-    // playing out, rather than firing immediately alongside it — that
-    // reveal animates from index 1 onward (hole card + any hit cards
-    // drawn during the dealer's own play), each staggered
-    // MP_BJ_CARD_STAGGER_MS apart with its own 500ms deal-in (matching
-    // mp-bj-card-dealt's own animation-duration), so this waits for the
-    // last of those to visually settle before the chime plays over top.
+    // Win/lose reaction — fires once per genuinely new settlement
+    // (guarded by endedAt, not just "a result exists"), keyed to MY OWN
+    // result specifically (matched by uid, not name, so it can't
+    // mismatch on a shared display name), same scope as everything else
+    // here. Delayed to land after the dealer's own reveal animation
+    // actually finishes playing out, rather than firing immediately
+    // alongside it — that reveal animates from index 1 onward (hole
+    // card + any hit cards drawn during the dealer's own play), each
+    // staggered MP_BJ_CARD_STAGGER_MS apart with its own 400ms deal-in
+    // (matching pc-dealt's own animation-duration), so this waits for
+    // the last of those to visually settle first.
+    //
+    // Everything below is reused directly from single-player Blackjack
+    // rather than rebuilt — same croupier lines (CROUPIER_LINES/
+    // croupierSay), same table flash/shake classes (already scoped to
+    // .panel and .bj-table generically, not single-player-specific
+    // element IDs), same confetti burst (bjLaunchConfetti). The live
+    // table earns the same table-reacts-to-you feel single-player
+    // already has, instead of a quieter, more clinical experience.
     if(isFreshSettlement){
-      if(mySeatIndex != null){
-        const myResult = table.lastHandResult.results.find(r => r.uid === currentUserUid);
-        if(myResult && myResult.net !== 0){
-          const dealerRevealCount = Math.max(0, (table.lastHandResult.dealerHand || []).length - 1);
-          const revealDurationMs = dealerRevealCount > 0 ? (dealerRevealCount - 1) * MP_BJ_CARD_STAGGER_MS + 500 : 0;
-          setTimeout(() => bjPlayChime(myResult.net > 0), revealDurationMs);
+      const dealerRevealCount = Math.max(0, (table.lastHandResult.dealerHand || []).length - 1);
+      const revealDurationMs = dealerRevealCount > 0 ? (dealerRevealCount - 1) * MP_BJ_CARD_STAGGER_MS + 400 : 0;
+      const myResult = mySeatIndex != null ? table.lastHandResult.results.find(r => r.uid === currentUserUid) : null;
+      setTimeout(() => {
+        const outcomeLines = {
+          bust: CROUPIER_LINES.bjBust, blackjack: CROUPIER_LINES.bjBlackjack,
+          win: CROUPIER_LINES.bjWin, lose: CROUPIER_LINES.bjLoss, push: CROUPIER_LINES.bjPush,
+        };
+        if(myResult){
+          croupierSay('mpBjCroupierMsg', outcomeLines[myResult.outcome] || CROUPIER_LINES.bjWin);
+        } else if(table.lastHandResult.dealerBust){
+          // Wasn't dealt into this hand (just watching, or sat down too
+          // late) — the dealer busting is still true for the whole
+          // table regardless of who was actually playing, so that's a
+          // reasonable thing to announce either way.
+          croupierSay('mpBjCroupierMsg', CROUPIER_LINES.bjDealerBust);
         }
-      }
+        if(myResult && myResult.net !== 0){
+          bjPlayChime(myResult.net > 0);
+          const tableEl = document.getElementById('casinoMpBjTableView');
+          const resultEl2 = document.getElementById('mpBjLastHandResult');
+          if(myResult.net > 0){
+            if(tableEl){ tableEl.classList.remove('pc-flash-gold'); void tableEl.offsetWidth; tableEl.classList.add('pc-flash-gold'); setTimeout(() => tableEl.classList.remove('pc-flash-gold'), 700); }
+            if(resultEl2) bjLaunchConfetti(resultEl2, myResult.outcome === 'blackjack' ? 42 : 22);
+          } else {
+            if(tableEl){ tableEl.classList.remove('pc-shake', 'pc-flash-red'); void tableEl.offsetWidth; tableEl.classList.add('pc-shake', 'pc-flash-red'); setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700); }
+          }
+        }
+      }, revealDurationMs);
       mpBjPrevState.lastHandEndedAt = table.lastHandResult.endedAt;
     }
 
@@ -4980,19 +5098,29 @@ async function renderMpBjSeatGridInner(){
       }
     }
 
-    // Hit/Stand/Double — only when it's genuinely my turn. Double only
-    // offered on a genuine first-two-card hand with enough stack left
-    // to cover doubling the bet — same checks the server itself
-    // enforces, shown here so the button doesn't invite a request that
-    // would just come back as an error.
+    // Hit/Stand/Double/Split — only when it's genuinely my turn. Double
+    // and Split are both only offered when the checks they'd actually
+    // need to pass server-side are already true here — same simplified
+    // rule set as single-player: no doubling after a split, and split
+    // itself only ever available on a genuine first-two-card pair (by
+    // value, not exact rank — a Ten and a King count) with enough stack
+    // for the matching second bet.
     if(handActionsPanel){
       const isMyTurnNow = isPlaying && mySeatIndex != null && Number(table.currentTurnSeatIndex) === mySeatIndex;
       handActionsPanel.style.display = isMyTurnNow ? 'flex' : 'none';
       if(isMyTurnNow){
         const doubleBtn = document.getElementById('mpBjDoubleBtn');
         if(doubleBtn){
-          const canDouble = mySeat.hand && mySeat.hand.length === 2 && (mySeat.stack || 0) >= (mySeat.currentBet || 0);
+          const canDouble = !mySeat.isSplit && mySeat.hand && mySeat.hand.length === 2 && (mySeat.stack || 0) >= (mySeat.currentBet || 0);
           doubleBtn.style.display = canDouble ? 'inline-block' : 'none';
+        }
+        const splitBtn = document.getElementById('mpBjSplitBtn');
+        if(splitBtn){
+          const cardValue = (c) => { const r = c[0]; return r === 'A' ? 11 : (r === 'T' || r === 'J' || r === 'Q' || r === 'K' ? 10 : Number(r)); };
+          const canSplit = !mySeat.isSplit && mySeat.hand && mySeat.hand.length === 2
+            && cardValue(mySeat.hand[0]) === cardValue(mySeat.hand[1])
+            && (mySeat.stack || 0) >= (mySeat.currentBet || 0);
+          splitBtn.style.display = canSplit ? 'inline-block' : 'none';
         }
       }
     }
@@ -5013,10 +5141,22 @@ async function renderMpBjSeatGridInner(){
         const lines = table.lastHandResult.results.map(r => {
           const cls = r.net > 0 ? 'win' : (r.net < 0 ? 'lose' : '');
           const sign = r.net > 0 ? '+' : '';
+          // A split hand gets its own two-part line (each sub-hand's own
+          // outcome) plus the combined total, rather than a single
+          // outcome word that wouldn't mean anything for a hand that
+          // was actually two separate hands.
+          if(r.outcome === 'split' && r.subResults){
+            const subText = r.subResults.map((s, idx) => `Hand ${idx + 1}: ${s.outcome}${s.net !== 0 ? ` (${s.net > 0 ? '+' : ''}${s.net})` : ''}`).join(' · ');
+            return `<div class="mp-bj-hand-result-line ${cls}">${escapeHtml(r.name)} — ${subText} — Total: ${sign}${r.net} XP</div>`;
+          }
           return `<div class="mp-bj-hand-result-line ${cls}">${escapeHtml(r.name)} — ${r.outcome}${r.net !== 0 ? ` (${sign}${r.net} XP)` : ''}</div>`;
         }).join('');
         resultEl.innerHTML = `<div class="mp-bj-hand-result-title">Last hand</div>${lines}`;
         resultEl.style.display = 'block';
+        // Same pop-in used for single-player's own outcome text — only
+        // on a genuinely fresh settlement, not replayed on every poll
+        // tick this same result happens to still be showing.
+        if(isFreshSettlement){ resultEl.classList.remove('bj-outcome-pop'); void resultEl.offsetWidth; resultEl.classList.add('bj-outcome-pop'); }
       } else {
         resultEl.style.display = 'none';
       }
@@ -5041,15 +5181,20 @@ async function renderMpBjSeatGridInner(){
 // same noticeable-delay problem that was fixed there.
 document.getElementById('mpBjBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('mpBjBetChipDisplay');
-  if(chip) chip.textContent = e.target.value || '0';
+  if(!chip) return;
+  chip.textContent = e.target.value || '0';
+  chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
 });
 document.getElementById('mpBjSetBetBtn').addEventListener('click', async () => {
   const statusEl = document.getElementById('mpBjTableActionStatus');
   const amount = Math.floor(Number(document.getElementById('mpBjBetInput').value) || 0);
+  const ppOn = document.getElementById('mpBjPerfectPairsCheck').checked;
+  const ppAmount = ppOn ? Math.floor(Number(document.getElementById('mpBjPerfectPairsAmount').value) || 0) : 0;
   if(!(amount > 0)){ if(statusEl) statusEl.textContent = 'Add some chips first.'; return; }
+  if(ppOn && !(ppAmount > 0)){ if(statusEl) statusEl.textContent = 'Add some Perfect Pairs chips, or turn the toggle off.'; return; }
   try{
-    await mpBjDealerCall(mpBjCurrentTableId, 'setBet', { betAmount: amount });
-    showToast(`🎲 Bet ${amount.toLocaleString()} XP`);
+    await mpBjDealerCall(mpBjCurrentTableId, 'setBet', { betAmount: amount, ppBetAmount: ppAmount });
+    showToast(ppAmount > 0 ? `🎲 Bet ${amount.toLocaleString()} XP + Perfect Pairs ${ppAmount.toLocaleString()} XP` : `🎲 Bet ${amount.toLocaleString()} XP`);
     if(statusEl) statusEl.textContent = '';
     renderMpBjSeatGrid();
   }catch(e){
@@ -5097,6 +5242,17 @@ document.getElementById('mpBjDoubleBtn').addEventListener('click', async () => {
     if(statusEl) statusEl.textContent = e.message;
   }
 });
+document.getElementById('mpBjSplitBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('mpBjTableActionStatus');
+  try{
+    await mpBjDealerCall(mpBjCurrentTableId, 'split', {});
+    bjPlayChipSound();
+    if(statusEl) statusEl.textContent = '';
+    renderMpBjSeatGrid();
+  }catch(e){
+    if(statusEl) statusEl.textContent = e.message;
+  }
+});
 
 // Buy-in via the real chip rail instead of prompt() — initChipRail
 // already wires every .chip-rail on the page once at load time (this
@@ -5125,7 +5281,9 @@ function closeMpBjBuyInPanel(){
 // "input" event initChipRail already dispatches after each tap.
 document.getElementById('mpBjBuyInInput').addEventListener('input', (e) => {
   const chipDisplay = document.getElementById('mpBjBuyInChipDisplay');
-  if(chipDisplay) chipDisplay.textContent = e.target.value || '0';
+  if(!chipDisplay) return;
+  chipDisplay.textContent = e.target.value || '0';
+  chipDisplay.classList.remove('pc-chip-pulse'); void chipDisplay.offsetWidth; chipDisplay.classList.add('pc-chip-pulse');
 });
 document.getElementById('mpBjBuyInCancelBtn').addEventListener('click', closeMpBjBuyInPanel);
 document.getElementById('mpBjBuyInConfirmBtn').addEventListener('click', async () => {
@@ -8983,6 +9141,7 @@ function wirePPTogglePill(pillId, checkboxId, amountRowId, railId){
 }
 wirePPTogglePill('bjPerfectPairsToggle', 'bjPerfectPairsCheck', 'bjPPAmountRow', 'bjPPChipRail');
 wirePPTogglePill('warPerfectPairsToggle', 'warPerfectPairsCheck', 'warPPAmountRow', 'warPPChipRail');
+wirePPTogglePill('mpBjPerfectPairsToggle', 'mpBjPerfectPairsCheck', 'mpBjPPAmountRow', 'mpBjPPChipRail');
 
 </script>
 <script src="casino-baccarat.js"></script>
