@@ -185,6 +185,7 @@ async function advanceTurnOrSettle(tableId, table, seats, deck, dealerHand, from
     return { table, settled: true };
   }
   table.seats = seats;
+  table.status = "playing"; // real bug fixed here: this was never being set anywhere in the file — table.status stayed "waiting" through an entire hand, which meant the client's isPlaying check (dealer cards, turn highlight, Hit/Stand/Double visibility) never once turned true
   table.currentTurnSeatIndex = nextTurn;
   await dbPut(`/blackjackTables/${tableId}`, table);
   await dbPut(`/blackjackTableSecrets/${tableId}`, { dealerHand, deck });
