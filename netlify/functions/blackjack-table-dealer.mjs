@@ -79,6 +79,19 @@ async function adjustXp(uid, delta, reason) {
   await dbPost(`/xp/${uid}/log`, { amount: delta, reason, balanceAfter: next, ts: Date.now() });
   return next;
 }
+// Logs an XP-log entry WITHOUT touching the real balance — for a hand's
+// result specifically, where the actual balance change only ever
+// happens later, in one lump sum, at cash-out (a table's stack is
+// deliberately separate from the global balance while someone's seated,
+// same as a real casino's chips). Lets the Floor feed and personal XP
+// log show each hand as real activity, rather than only ever showing
+// the eventual net cash-out. Both renderXPLog and renderCasinoFloorFeed
+// only ever read amount/reason (confirmed by checking their own code,
+// not assumed) — neither depends on balanceAfter, so omitting it here
+// is safe.
+async function logXpEvent(uid, amount, reason) {
+  await dbPost(`/xp/${uid}/log`, { amount, reason, ts: Date.now() });
+}
 
 // ---- Cards ----
 // Two-character strings: rank + suit, e.g. "AS" (Ace of Spades), "TH"
@@ -152,7 +165,7 @@ function playDealerAndSettle(seats, deck, dealerHand) {
       else { outcome = "lose"; }
     }
     seat.stack = (seat.stack || 0) + payout;
-    results.push({ name: seat.name, outcome, net: payout - bet });
+    results.push({ uid: seat.uid, name: seat.name, outcome, net: payout - bet });
     seat.hand = [];
     seat.currentBet = 0;
     seat.inHand = false;
@@ -182,6 +195,20 @@ async function advanceTurnOrSettle(tableId, table, seats, deck, dealerHand, from
     };
     await dbPut(`/blackjackTables/${tableId}`, table);
     await dbPut(`/blackjackTableSecrets/${tableId}`, null);
+    // Logs each seat's net result to their own XP log — doesn't touch
+    // the actual balance (see logXpEvent's own comment for why), purely
+    // so the Floor feed and personal XP log have a real entry for the
+    // hand itself. Pushes excluded (net === 0, nothing actually won or
+    // lost worth showing). Awaited with individually-caught failures
+    // rather than fire-and-forget — this is a serverless function, and
+    // returning the response before these actually finish risks the
+    // execution context being frozen mid-write.
+    const outcomeLabels = { bust: "bust", blackjack: "blackjack!", win: "win", lose: "loss" };
+    await Promise.all(
+      settled.results
+        .filter(r => r.net !== 0)
+        .map(r => logXpEvent(r.uid, r.net, `Live Blackjack ${outcomeLabels[r.outcome] || r.outcome} — ${table.name}`).catch(() => {}))
+    );
     return { table, settled: true };
   }
   table.seats = seats;
@@ -304,7 +331,7 @@ export default async (req) => {
       if (amount > balance) {
         return new Response(JSON.stringify({ error: `You only have ${balance} XP` }), { status: 400 });
       }
-      await adjustXp(uid, -amount, `Blackjack table buy-in — ${table.name}`);
+      await adjustXp(uid, -amount, `Live Blackjack table buy-in — ${table.name}`);
       const seat = { uid, name: displayName, stack: amount, joinedAt: Date.now() };
       await dbPut(`/blackjackTables/${tableId}/seats/${seatIndex}`, seat);
       return new Response(JSON.stringify({ seat }), { status: 200 });
@@ -459,7 +486,7 @@ export default async (req) => {
       // Refund an active bet too, not just the remaining stack — a bet
       // staged but not yet dealt is still real XP that was deducted.
       const stack = (seats[myIndex].stack || 0) + (seats[myIndex].currentBet || 0);
-      if (stack > 0) await adjustXp(uid, stack, `Blackjack table cash out — ${table.name}`);
+      if (stack > 0) await adjustXp(uid, stack, `Live Blackjack table cash out — ${table.name}`);
       await dbPut(`/blackjackTables/${tableId}/seats/${myIndex}`, null);
       // If the table's now empty, close it out rather than leaving an
       // abandoned empty table sitting in the browser list indefinitely.
@@ -484,7 +511,7 @@ export default async (req) => {
         const s = seats[idx];
         // Refund a staged bet too, same reasoning as standUp above.
         const total = s ? (s.stack || 0) + (s.currentBet || 0) : 0;
-        if (s && total > 0) await adjustXp(s.uid, total, `Blackjack table closed — ${table.name} (refund)`);
+        if (s && total > 0) await adjustXp(s.uid, total, `Live Blackjack table closed — ${table.name} (refund)`);
       }
       await dbPut(`/blackjackTables/${tableId}`, null);
       await dbPut(`/blackjackTableSecrets/${tableId}`, null);
