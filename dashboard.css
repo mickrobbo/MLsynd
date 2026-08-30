@@ -1121,6 +1121,12 @@
   .table-chip.chip-50{ background: radial-gradient(circle at 35% 30%, #5b9fd6, #2a6ca8 60%, #1a4a78); }
   .table-chip.chip-100{ background: radial-gradient(circle at 35% 30%, #2a2a2a, #0d0d0d 60%, #000); border-color:var(--brass-light); }
   .table-chip.chip-250{ background: radial-gradient(circle at 35% 30%, #b568d8, #7a2fa0 60%, #4f1c69); }
+  /* Three new denominations added for the Blackjack table buy-in rail —
+     distinct from the original six's palette (gold/silver/green/blue/
+     black/purple), warm-to-bold progression as the value climbs. */
+  .table-chip.chip-500{ background: radial-gradient(circle at 35% 30%, #ffb066, #e07a1f 60%, #a3540f); color:#2a1503; text-shadow:none; }
+  .table-chip.chip-1000{ background: radial-gradient(circle at 35% 30%, #ff8a7a, #c1372a 60%, #7a1c14); border-color:var(--brass-light); }
+  .table-chip.chip-2500{ background: radial-gradient(circle at 35% 30%, #6fe0d0, #1a8f80 60%, #0d5850); border-color:var(--brass-light); }
   @keyframes chipTapPop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.25) translateY(-4px); } 100%{ transform:scale(1); } }
   .table-chip.pc-chip-tap{ animation: chipTapPop .3s cubic-bezier(.34,1.6,.5,1); }
   /* Roulette's "select a denomination" chip tray — the currently-selected
