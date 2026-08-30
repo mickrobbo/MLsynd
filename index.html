@@ -2987,7 +2987,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.71"; // Live Blackjack: removed the max buy-in limit entirely (min only now), fixed real seating lag (sit/stand now re-render immediately instead of waiting on the real-time listener), chip rail expanded from 6 to 9 (added 5/10/25 with their real values, 3 new colours for 500/1K/2.5K) — blackjack-table-dealer.mjs and dashboard.css both updated — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.72"; // Live Blackjack — real hand-dealing logic built server-side: full deck/shuffle/hand-value/dealer-AI/payout logic, five new actions (setBet, dealHand, hit, stand, double), solo-friendly by design (only seats with a bet get dealt in, so playing alone against the dealer just works and others simply wait to join the next hand). Dealer's hole card kept genuinely hidden in a new .read:false /blackjackTableSecrets path until reveal. Server foundation only this pass — client UI (cards, turn indicator, hit/stand/double buttons) is the next step. blackjack-table-dealer.mjs and firebase-rules.json both updated — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

@@ -1,9 +1,10 @@
 {
-  "version": "2026-08-24.71",
+  "version": "2026-08-24.72",
   "date": "2026-08-28",
   "changes": [
-    "Live Blackjack: removed the max buy-in limit entirely \u2014 tables now only set a minimum, buy in for as much as you want above that (up to your real XP balance, obviously).",
-    "Fixed real seating lag \u2014 sitting down or standing up used to wait entirely on the real-time listener to eventually pick up the change before the seat grid updated, which could take a noticeable moment. Now re-renders immediately for whoever just acted.",
-    "Chip rail expanded from 6 to 9 \u2014 added 5, 10, and 25 with their real values (the existing 6 were quietly repurposed with different values before; now every chip everywhere in the app means what it says), plus 3 new colours for 500/1K/2.5K."
+    "\ud83c\udfb0 Live Blackjack: real hand-dealing logic, server side. Full deck build/shuffle, hand-value calculation, dealer AI (stands on any 17, matching the app's own existing reference text elsewhere), and payout settlement (blackjack pays 3:2, regular win 1:1, push returns the bet). Five new actions: setBet, dealHand, hit, stand, double.",
+    "Solo-friendly by design: only seats with a bet currently staged get dealt into a hand. Sit down and bet alone \u2014 dealing plays out immediately against just the dealer. Anyone who sits down without betting simply watches until the next round, rather than being pulled into a hand already in progress.",
+    "Dealer's hole card is genuinely hidden until reveal \u2014 the full dealer hand and remaining deck live in a new /blackjackTableSecrets path, set to .read:false for everyone (server included, only reachable via this function's own authenticated calls), same security posture Hold'em uses for its own hidden hand data.",
+    "Server foundation only this pass \u2014 the client UI (showing cards, whose turn it is, hit/stand/double buttons) is the deliberate next step, not part of this one."
   ]
 }
