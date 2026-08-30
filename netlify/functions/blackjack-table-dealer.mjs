@@ -11,6 +11,18 @@
 // step once this is confirmed solid, same order Hold'em itself was
 // built in.
 //
+// AUTH: back to the same legacy database secret pattern (?auth=SECRET)
+// every other function in this project uses. Briefly migrated to an
+// OAuth2 access-token approach after this Firebase project's console
+// initially appeared not to expose a database secret at all on mobile —
+// it turned out to just be hard to find (present on desktop), and the
+// actual root cause was that FIREBASE_DB_SECRET had been set to the
+// service account's private key by mistake, not the real database
+// secret. With the real one in place now, there's no reason to carry
+// the extra complexity of JWT signing and a token exchange — reverted
+// to match the same simple, proven pattern every other function here
+// already uses.
+//
 // Needs the same env vars already set for the other functions in this
 // project: FIREBASE_DB_SECRET, FIREBASE_WEB_API_KEY. No new ones.
 
@@ -94,6 +106,16 @@ export default async (req) => {
     const user = await requireApprovedUser(auth.uid);
     const uid = auth.uid;
     const displayName = user.name || "Someone";
+
+    // No-op diagnostic — exercises the exact same verifyFirebaseIdToken
+    // → requireApprovedUser path every other action depends on (the
+    // DB_SECRET → /users/{uid} read specifically), with zero side
+    // effects. Added after a real failure where that read 401'd — the
+    // deployment check alone (an empty POST body) never reached this
+    // far, so it couldn't have caught this class of problem.
+    if (action === "ping") {
+      return new Response(JSON.stringify({ ok: true, uid, name: displayName }), { status: 200 });
+    }
 
     // Admin force-delete, both game types — handled here, BEFORE the
     // generic /blackjackTables lookup below, since this needs to work
