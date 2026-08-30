@@ -3031,7 +3031,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.78"; // The three previously-flagged-not-fixed items, now fixed: (1) cross-seat card sound stagger on a multi-seat deal — seats now play in sequence rather than each independently starting from 0ms and clustering into simultaneous bursts, verified via direct simulation; (2) win/lose chime now delayed to land after the dealer's reveal animation actually finishes, not fired alongside it; (3) individual Live Blackjack hand results now logged to the winner/loser's own XP log (log-only, doesn't touch the real balance — that still only changes at buy-in/cash-out), so they show up in the Floor feed and personal XP log as real activity, not just the eventual lump-sum cash-out. blackjack-table-dealer.mjs updated — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.79"; // Home tab audit: What's Happening now actually refreshes (was computed once at app load and never again — real bug); found and fixed a genuine name collision where two unrelated functions were both called renderActivityFeed, silently breaking the Diag panel's own activity view since the second definition overwrote the first. Rebuilt on-this-day.mjs from scratch on Perplexity's search-grounded Agent API (same architecture syndy-chat.mjs already uses, adopted specifically because a non-search LLM call is what caused fabricated stories in an earlier build) — should fix "used to show real facts, now it's all over the shop", plus a shared server-side daily cache so 11 members don't trigger 11 separate API calls for the same date. MLSynd-history half of On This Day untouched, as asked. New /onThisDayCache Firebase path, server-only — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14976,6 +14976,18 @@ async function runFullHealthCheck(){
     check('Blackjack table dealer Firebase access', 'fail', `Couldn't test it: ${e.message}`);
   }
 
+  try{
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/on-this-day', { method: 'GET' });
+    const data = await res.json().catch(() => null);
+    if(res.ok && data && typeof data.found === 'boolean'){
+      check('On This Day function deployed', 'pass', `Reachable and responding correctly (found: ${data.found})`);
+    } else {
+      check('On This Day function deployed', 'fail', `Doesn't appear to be deployed correctly (HTTP ${res.status}, ${data ? 'valid' : 'no parseable'} JSON response) — add on-this-day.mjs to your Netlify functions`);
+    }
+  }catch(e){
+    check('On This Day function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
+  }
+
   return { results, latencyMs: firebaseLatencyMs };
 }
 
@@ -15362,7 +15374,15 @@ async function loadActivityData(){
   entries.sort((a, b) => b.ts - a.ts);
   return entries; // full 14-day set — renderActivityFeed caps its own display to 30, but the Weekly Report needs the true 7-day total, not a possibly-truncated one
 }
-function renderActivityFeed(entries){
+// Real bug caught and fixed here: this used to be named renderActivityFeed
+// too, same name as the unrelated Home-tab Activity Feed modal function
+// further down this file — the second definition silently overwrote this
+// one (JS allows function redeclaration), so the one call site below was
+// actually invoking the WRONG function the whole time, passing `entries`
+// to a function that takes no parameters and ignores it entirely. This
+// diag panel's own activity area was never actually getting populated by
+// that call. Renamed to make the two genuinely distinct.
+function renderDiagActivityFeed(entries){
   const area = document.getElementById('activityFeedArea');
   if(!area) return;
   if(entries.length === 0){ area.innerHTML = '<div class="empty">No casino activity recorded yet.</div>'; return; }
@@ -15613,7 +15633,7 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
       const activityPromise = loadActivityData();
       const timeSpentPromise = loadTimeSpentData(7);
       activityPromise.then(entries => {
-        renderActivityFeed(entries);
+        renderDiagActivityFeed(entries);
         renderActivityGraph(entries);
       });
       timeSpentPromise.then(({ tabTotals, gameTotals }) => {
@@ -16552,6 +16572,14 @@ function startApp(){
   refreshBoardJokerData();
   startTabScopedPolling(refreshBoardJokerData, 240000, ['board', 'tipping']); // Joker icons render on BOTH the Board leaderboard and Tipping's own Ladder sub-view — every 4 min, only while one of those is showing
   startTabScopedPolling(pollCasinoTicker, 8000, ['casino']); // "live room" ticker — frequent polling that feels live (this app doesn't use Firebase's real-time SDK), only while Casino is actually open
+  // Real bug fixed here: renderHomeDigest used to only ever run once, at
+  // the initial call above right after the first data load — nothing
+  // ever re-ran it, so a claimed bounty, an expired tipping lockout, or
+  // an ended Act of God would all sit stale on screen for the rest of
+  // the session no matter how long it stayed open. 60s matches
+  // pollActsOfGod's own cadence, since this already surfaces Acts of
+  // God data too — only while the Home tab is actually showing.
+  startTabScopedPolling(renderHomeDigest, 60000, ['balance']);
   ensureXPInitialized().then(() => {
     checkAndAwardTippingXP();
     // Home tab's Casino XP teaser — hidden for guest/readonly sessions

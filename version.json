@@ -1,9 +1,10 @@
 {
-  "version": "2026-08-24.78",
+  "version": "2026-08-24.79",
   "date": "2026-08-30",
   "changes": [
-    "Fixed the three items flagged-but-not-fixed from the last audit. Card sounds no longer cluster when multiple seats get dealt at once \u2014 each seat's cards now play in sequence around the table (verified with a direct simulation of the timing, not just assumed), rather than every seat independently starting its own stagger from 0ms and overlapping.",
-    "Win/lose chime now waits for the dealer's reveal animation to actually finish before playing, instead of firing at the same moment the reveal starts.",
-    "Individual Live Blackjack hand results are now logged to the winner or loser's own XP log \u2014 doesn't touch the real balance (that's still only ever adjusted at buy-in and cash-out), purely so each hand shows up as real activity in the Floor feed and personal XP log, not just the eventual lump-sum cash-out."
+    "What's Happening (Home tab) now actually refreshes \u2014 it used to be computed exactly once at app load and never again, so a claimed bounty, an expired tipping lockout, or an ended Act of God would all sit stale on screen for however long the session stayed open. Now checks every 60s while the Home tab's showing.",
+    "Found and fixed a real bug while investigating: two unrelated functions were both named renderActivityFeed \u2014 the Home tab's Activity Feed modal, and a completely separate one for the admin Diag panel. JS silently let the second definition overwrite the first, so the Diag panel's own activity view was calling the wrong function the whole time and never actually populating. Renamed to make them genuinely distinct.",
+    "Rebuilt on-this-day.mjs from scratch on Perplexity's search-grounded Agent API \u2014 the same architecture Syndy's own chat already uses, adopted there specifically because a plain LLM call without real search caused fabricated, overconfident stories in an earlier build. That's almost certainly the same failure \"used to show real sports facts, now it's all over the shop\" was describing. Also added a shared server-side cache keyed by date, so the whole group shares one real lookup per day instead of each of up to 11 members independently triggering their own.",
+    "The MLSynd half of On This Day (a member's own biggest XP swing on this date in a past year) wasn't touched \u2014 confirmed it was already working correctly and left it exactly as it was."
   ]
 }
