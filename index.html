@@ -637,7 +637,7 @@
           <button type="button" class="pill-btn" id="mpBjTableBackBtn">← Back</button>
         </div>
       </div>
-      <div class="bj-table" style="padding:20px 10px 12px; text-align:center;">
+      <div class="bj-table" style="padding:28px 14px 20px; text-align:center; min-height:140px;">
         <div class="mp-bj-dealer-label">DEALER</div>
         <div id="mpBjDealerCardsArea" class="mp-bj-dealer-cards"></div>
         <div id="mpBjDealerTotal" class="mp-bj-dealer-total"></div>
@@ -3031,7 +3031,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.79"; // Home tab audit: What's Happening now actually refreshes (was computed once at app load and never again — real bug); found and fixed a genuine name collision where two unrelated functions were both called renderActivityFeed, silently breaking the Diag panel's own activity view since the second definition overwrote the first. Rebuilt on-this-day.mjs from scratch on Perplexity's search-grounded Agent API (same architecture syndy-chat.mjs already uses, adopted specifically because a non-search LLM call is what caused fabricated stories in an earlier build) — should fix "used to show real facts, now it's all over the shop", plus a shared server-side daily cache so 11 members don't trigger 11 separate API calls for the same date. MLSynd-history half of On This Day untouched, as asked. New /onThisDayCache Firebase path, server-only — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.81"; // Fixed a real gap in the earlier ambience fix, found from a live report: that fix only stopped the lobby ambience once, at the moment the table opens — but reconcileCasinoAmbience() also fires independently on visibilitychange (screen lock/unlock, switching apps and back), and since the table view still isn't recognized by the .casino-game-panel check it uses, any one of those could silently restart the ambience mid-session without the player ever leaving the table. Now re-asserted on every 3s poll tick too, not just at entry, so it can't stay wrong for more than a few seconds regardless of what tries to restart it — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4549,6 +4549,19 @@ async function openMpBjTable(tableId){
     if(mpBjCurrentTableId !== tableId) return;
     renderMpBjSeatGrid();
     renderMpBjChat(tableId, 'mpBjTableChatMessages');
+    // Real gap in the earlier ambience fix, found from a live report:
+    // that fix only ever stopped the ambience ONCE, at the moment this
+    // table opens. reconcileCasinoAmbience() also fires independently
+    // on visibilitychange (screen lock/unlock, switching apps and back)
+    // — and since this table view still isn't recognized by its own
+    // .casino-game-panel check, any one of those could silently restart
+    // the ambience mid-session without the player ever having left the
+    // table. Re-asserting it here on every poll tick, not just at
+    // entry, means it can't stay wrong for more than a few seconds
+    // regardless of what else tries to restart it — cheap to call
+    // repeatedly, since stopCasinoAmbience() itself no-ops immediately
+    // if it's already stopped.
+    stopCasinoAmbience();
   }, 3000);
 }
 document.getElementById('mpBjTableBackBtn').addEventListener('click', () => {
@@ -4573,6 +4586,11 @@ function mpBjParseCard(cardStr){
   const suit = MP_BJ_SUIT_MAP[cardStr[1]] || cardStr[1];
   return { rank, suit };
 }
+// Slowed down a touch from single-player Blackjack's own 130ms default
+// (bjRenderCards) — kept as its own constant here rather than touching
+// that shared default, since single-player shouldn't be affected by a
+// change requested specifically for the live multiplayer table.
+const MP_BJ_CARD_STAGGER_MS = 180;
 // animateFromIndex, when given, renders cards before it statically and
 // cards from it onward with the real deal-in animation + card sound
 // (via bjRenderCards' own animate flag) — lets a re-render only animate
@@ -4592,12 +4610,12 @@ function mpBjParseCard(cardStr){
 // single-player Blackjack also depends on — this mirrors its animated
 // path exactly, just with an extra offset added to every delay.
 function mpBjRenderCardsWithOffset(cards, baseOffsetMs, staggerMs){
-  const stagger = staggerMs || 130;
+  const stagger = staggerMs || MP_BJ_CARD_STAGGER_MS;
   return cards.map((c, i) => {
     const delay = baseOffsetMs + i * stagger;
     const isRed = c.suit === '♥' || c.suit === '♦';
     setTimeout(bjPlayCardSound, delay);
-    return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
+    return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt mp-bj-card-dealt" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
   }).join('');
 }
 function mpBjRenderHand(cardStrings, animateFromIndex, baseOffsetMs){
@@ -4607,7 +4625,7 @@ function mpBjRenderHand(cardStrings, animateFromIndex, baseOffsetMs){
   }
   const staticPart = bjRenderCards(cards.slice(0, animateFromIndex), false);
   const newCards = cards.slice(animateFromIndex);
-  const animatedPart = baseOffsetMs ? mpBjRenderCardsWithOffset(newCards, baseOffsetMs) : bjRenderCards(newCards, true);
+  const animatedPart = mpBjRenderCardsWithOffset(newCards, baseOffsetMs || 0, MP_BJ_CARD_STAGGER_MS);
   return staticPart + animatedPart;
 }
 function mpBjHandValue(cardStrings){
@@ -4752,14 +4770,16 @@ async function renderMpBjSeatGridInner(){
         // static string — it just appeared with no animation at all,
         // inconsistent with everything else on the table. pc-dealt is
         // generic (applies to any .playing-card, back or face), so this
-        // reuses it directly rather than needing new CSS — delayed 130ms
-        // to land right after the up-card's own deal-in finishes,
-        // matching the same stagger bjRenderCards uses between cards.
+        // reuses it directly rather than needing new CSS — delayed to
+        // land right after the up-card's own deal-in finishes, matching
+        // the same MP_BJ_CARD_STAGGER_MS stagger used everywhere else on
+        // this table. mp-bj-card-dealt alongside it for the slower
+        // multiplayer-specific animation duration.
         const backCardHtml = isFreshDeal
-          ? '<div class="playing-card pc-back pc-dealt" style="width:30px; height:43px; border-radius:4px; animation-delay:130ms;"></div>'
+          ? `<div class="playing-card pc-back pc-dealt mp-bj-card-dealt" style="width:30px; height:43px; border-radius:4px; animation-delay:${MP_BJ_CARD_STAGGER_MS}ms;"></div>`
           : '<div class="playing-card pc-back" style="width:30px; height:43px; border-radius:4px;"></div>';
         dealerCardsEl.innerHTML = mpBjRenderHand([table.dealerUpCard], isFreshDeal ? 0 : null) + backCardHtml;
-        if(isFreshDeal) setTimeout(bjPlayCardSound, 130); // the up-card's own sound comes from mpBjRenderHand/bjRenderCards; this covers the hole card specifically, since it bypasses that path as a bare static string
+        if(isFreshDeal) setTimeout(bjPlayCardSound, MP_BJ_CARD_STAGGER_MS); // the up-card's own sound comes from mpBjRenderHand/bjRenderCards; this covers the hole card specifically, since it bypasses that path as a bare static string
         mpBjPrevState.dealerCardsShown = true;
       } else if(table.lastHandResult && table.lastHandResult.dealerHand){
         // Index 1 onward: the up-card (index 0) was already shown and
@@ -4773,7 +4793,16 @@ async function renderMpBjSeatGridInner(){
       }
     }
     if(dealerTotalEl){
-      dealerTotalEl.textContent = table.lastHandResult
+      // Real bug fixed here, a genuine information leak: this only ever
+      // checked whether lastHandResult existed, never whether it was
+      // for the hand actually happening right now. table.lastHandResult
+      // is only ever SET on the server (never cleared when a new hand
+      // starts), so it was showing the PREVIOUS hand's dealer total the
+      // entire time a new hand was in progress — sitting right under
+      // the current, still-genuinely-hidden hole card, easy to mistake
+      // for the live total. Now requires the table to have actually
+      // stopped playing, not just "some past result exists somewhere".
+      dealerTotalEl.textContent = (!isPlaying && table.lastHandResult)
         ? `Total: ${table.lastHandResult.dealerTotal}${table.lastHandResult.dealerBust ? ' (bust)' : ''}`
         : '';
     }
@@ -4790,14 +4819,14 @@ async function renderMpBjSeatGridInner(){
     // Cross-seat sound stagger: only matters on a genuinely fresh deal
     // (isFreshDealNow) — a single seat hitting mid-hand never overlaps
     // with anything else, so this offset stays 0 (equivalent to the old
-    // per-seat-independent behaviour) outside that moment. Starts at
-    // 260ms so the whole seat sequence begins right after the dealer's
-    // own up-card + hole-card sequence (0ms, 130ms) has had a moment to
-    // register, then advances by each seat's own card count × 130ms as
-    // it goes — seat 0 first, then seat 1 starts right where seat 0's
-    // cards finish, and so on, rather than every seat starting from 0
-    // independently and producing a cluster of simultaneous sounds.
-    let runningSoundOffset = isFreshDealNow ? 260 : 0;
+    // per-seat-independent behaviour) outside that moment. Starts after
+    // the dealer's own up-card + hole-card sequence (0ms, one stagger
+    // interval) has had a moment to register, then advances by each
+    // seat's own card count × the stagger as it goes — seat 0 first,
+    // then seat 1 starts right where seat 0's cards finish, and so on,
+    // rather than every seat starting from 0 independently and
+    // producing a cluster of simultaneous sounds.
+    let runningSoundOffset = isFreshDealNow ? MP_BJ_CARD_STAGGER_MS * 2 : 0;
     for(let i = 0; i < seatCount; i++){
       const seat = seats[i];
       if(seat){
@@ -4815,7 +4844,7 @@ async function renderMpBjSeatGridInner(){
           const animateFrom = seat.hand.length > prevLen ? prevLen : null;
           const seatOffset = (isFreshDealNow && isFreshSeatDeal) ? runningSoundOffset : 0;
           handHtml = `<div class="mp-bj-seat-cards">${mpBjRenderHand(seat.hand, animateFrom, seatOffset)}</div><div class="mp-bj-seat-bet-tag">${mpBjHandValue(seat.hand)}${seat.handStatus === 'busted' ? ' (bust)' : ''}</div>`;
-          if(isFreshDealNow && isFreshSeatDeal) runningSoundOffset += seat.hand.length * 130;
+          if(isFreshDealNow && isFreshSeatDeal) runningSoundOffset += seat.hand.length * MP_BJ_CARD_STAGGER_MS;
           mpBjPrevState.seatHandLengths[i] = seat.hand.length;
         } else {
           handHtml = seat.currentBet > 0 ? `<div class="mp-bj-seat-bet-tag">Bet: ${seat.currentBet.toLocaleString()} XP</div>` : '';
@@ -4850,15 +4879,16 @@ async function renderMpBjSeatGridInner(){
     // land after the dealer's own reveal animation actually finishes
     // playing out, rather than firing immediately alongside it — that
     // reveal animates from index 1 onward (hole card + any hit cards
-    // drawn during the dealer's own play), each staggered 130ms with
-    // its own ~400ms deal-in, so this waits for the last of those to
-    // visually settle before the chime plays over top of it.
+    // drawn during the dealer's own play), each staggered
+    // MP_BJ_CARD_STAGGER_MS apart with its own 500ms deal-in (matching
+    // mp-bj-card-dealt's own animation-duration), so this waits for the
+    // last of those to visually settle before the chime plays over top.
     if(isFreshSettlement){
       if(mySeatIndex != null){
         const myResult = table.lastHandResult.results.find(r => r.uid === currentUserUid);
         if(myResult && myResult.net !== 0){
           const dealerRevealCount = Math.max(0, (table.lastHandResult.dealerHand || []).length - 1);
-          const revealDurationMs = dealerRevealCount > 0 ? (dealerRevealCount - 1) * 130 + 400 : 0;
+          const revealDurationMs = dealerRevealCount > 0 ? (dealerRevealCount - 1) * MP_BJ_CARD_STAGGER_MS + 500 : 0;
           setTimeout(() => bjPlayChime(myResult.net > 0), revealDurationMs);
         }
       }
@@ -4897,9 +4927,17 @@ async function renderMpBjSeatGridInner(){
       }
     }
 
-    // Last hand's result — shown until the next bet gets placed, at
-    // which point table.lastHandResult is cleared server-side by the
-    // next dealHand call.
+    // Last hand's result — explicitly labelled "Last hand" so it stays
+    // meaningful even while it persists through the whole next hand's
+    // betting and play. Correction to a stale comment that used to sit
+    // here: table.lastHandResult is never actually cleared server-side
+    // at any point — it only gets overwritten the next time a hand
+    // settles, not "cleared when the next bet is placed" as previously
+    // (incorrectly) claimed. That's fine for this panel specifically
+    // since it's clearly labelled as the last hand, but it's exactly
+    // why the dealer total display above needed its own isPlaying
+    // check — that one wasn't labelled "last hand" and so was reading
+    // as live information about a hand still in progress.
     if(resultEl){
       if(table.lastHandResult && table.lastHandResult.results && table.lastHandResult.results.length > 0){
         const lines = table.lastHandResult.results.map(r => {

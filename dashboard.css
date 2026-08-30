@@ -151,6 +151,12 @@
     100%{ opacity:1; transform: translateY(0) translateX(0) rotate(0deg) scale(1); }
   }
   .playing-card.pc-dealt{ animation: cardDealIn .4s cubic-bezier(.22,.9,.32,1.15) both; }
+  /* Live multiplayer Blackjack specifically wanted its own cards a
+     touch slower than single-player's own pace — scoped via this
+     second, more specific class rather than changing pc-dealt's own
+     duration, so single-player Blackjack isn't affected by a change
+     requested only for the live table. */
+  .playing-card.mp-bj-card-dealt{ animation-duration: .5s; }
 
   /* Dealer's hole card: a real 3D flip rather than a swap, front=back
      pattern, back=the actual card, rotated into view on reveal. */

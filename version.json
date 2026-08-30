@@ -1,10 +1,7 @@
 {
-  "version": "2026-08-24.79",
+  "version": "2026-08-24.81",
   "date": "2026-08-30",
   "changes": [
-    "What's Happening (Home tab) now actually refreshes \u2014 it used to be computed exactly once at app load and never again, so a claimed bounty, an expired tipping lockout, or an ended Act of God would all sit stale on screen for however long the session stayed open. Now checks every 60s while the Home tab's showing.",
-    "Found and fixed a real bug while investigating: two unrelated functions were both named renderActivityFeed \u2014 the Home tab's Activity Feed modal, and a completely separate one for the admin Diag panel. JS silently let the second definition overwrite the first, so the Diag panel's own activity view was calling the wrong function the whole time and never actually populating. Renamed to make them genuinely distinct.",
-    "Rebuilt on-this-day.mjs from scratch on Perplexity's search-grounded Agent API \u2014 the same architecture Syndy's own chat already uses, adopted there specifically because a plain LLM call without real search caused fabricated, overconfident stories in an earlier build. That's almost certainly the same failure \"used to show real sports facts, now it's all over the shop\" was describing. Also added a shared server-side cache keyed by date, so the whole group shares one real lookup per day instead of each of up to 11 members independently triggering their own.",
-    "The MLSynd half of On This Day (a member's own biggest XP swing on this date in a past year) wasn't touched \u2014 confirmed it was already working correctly and left it exactly as it was."
+    "Fixed a real gap in the previous ambience fix. That fix only ever stopped the lobby noise once, at the exact moment a Live Blackjack table opens \u2014 but the app's own ambience-reconciling logic also runs independently whenever the screen locks and unlocks, or the app is switched away from and back to, and since the table view still isn't recognized as \"a game\" by that check, any one of those could quietly restart the ambience mid-session without ever actually leaving the table. Now re-checked on every 3-second poll tick too, not just once at entry, so it can't stay wrong for more than a few seconds no matter what tries to restart it."
   ]
 }
