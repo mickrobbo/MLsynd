@@ -1,8 +1,7 @@
 {
-  "version": "2026-08-24.69",
+  "version": "2026-08-24.70",
   "date": "2026-08-28",
   "changes": [
-    "Found a genuinely different Hold'em bug from a live error report: \"Something went wrong. (Cannot read properties of null (reading 'stack'))\" when deleting a table with 2 people seated \u2014 and importantly, that table was NOT stuck at 'hand_in_progress', so this isn't the same bug fixed a few versions back. holdem-dealer.mjs's own deleteTable action is throwing server-side while refunding seated players, and that file isn't available to edit directly here.",
-    "Admin's delete button now always routes through the already-working adminForceDeleteTable action instead of the original (proven unreliable) deleteTable \u2014 in both places it can be triggered: the trash icon directly on the table list, and the delete button inside an open table's own view. Non-admin table creators still go through the original action and could still hit this bug \u2014 there's no fix available for that case without access to holdem-dealer.mjs itself."
+    "Root cause confirmed and fixed: FIREBASE_DB_SECRET had accidentally been set to the service account's private key rather than the real Realtime Database secret. The real secret does exist for this project \u2014 it just wasn't visible on Firebase console's mobile view, only found by switching to desktop. With the correct value now in place, reverted blackjack-table-dealer.mjs's brief detour into OAuth2/service-account authentication back to the same simple, proven DB_SECRET pattern every other function in this project already uses. No new env vars needed \u2014 just the corrected FIREBASE_DB_SECRET value already in place on Netlify."
   ]
 }

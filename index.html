@@ -2986,7 +2986,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.69"; // Found a genuinely different Hold'em bug from a live error report: holdem-dealer.mjs's own deleteTable action throws server-side ("Cannot read null.stack") on a non-stuck table with people seated — not the same status-based bug fixed before. Can't edit that file directly, so admin now always routes table deletion (both the list view's trash icon and the in-table one) through the already-working adminForceDeleteTable action instead, in both places — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.70"; // Reverted blackjack-table-dealer.mjs's brief OAuth2 detour back to the standard DB_SECRET pattern — the actual root cause of the 401 was found: FIREBASE_DB_SECRET had been set to the service account's private key by mistake, not the real database secret (which does exist, just wasn't visible on Firebase console's mobile view). With the real secret now in place, no reason to carry the extra complexity — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
