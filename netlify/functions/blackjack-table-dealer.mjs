@@ -122,18 +122,47 @@ function handValue(cards) {
   return total;
 }
 function isBlackjack(cards) { return cards.length === 2 && handValue(cards) === 21; }
+// Perfect Pairs side bet — same simplified 2-tier rule single-player
+// Blackjack already uses (bjEvaluatePerfectPairs): a pair by rank, then
+// Colored Pair (both cards the same colour, ×12) or Mixed Pair
+// (different colours, ×6). Resolves instantly at deal time, entirely
+// separate from the main hand's own outcome — not something that waits
+// for hit/stand/settle the way the main bet does.
+function cardColor(card) { return (card[1] === "H" || card[1] === "D") ? "red" : "black"; }
+function evaluatePerfectPairs(hand) {
+  if (hand.length < 2 || hand[0][0] !== hand[1][0]) return null;
+  const sameColor = cardColor(hand[0]) === cardColor(hand[1]);
+  return sameColor ? { label: "Colored Pair", mult: 12 } : { label: "Mixed Pair", mult: 6 };
+}
 
 // Turn order walks seat indices in order, wrapping once, skipping any
 // seat that isn't actually mid-hand (not betting this round, or already
-// finished acting). Returns null once nobody's left to act — dealer's
-// turn.
+// finished acting). A split seat counts as still active if EITHER of
+// its two hands still needs a decision, not just the first one — the
+// actual transition from hand 1 to hand 2 happens inside hit/stand
+// themselves (see activeHandFields), this only needs to know whether
+// the seat as a whole still has something left to do. Returns null
+// once nobody's left to act — dealer's turn.
 function findNextActiveSeat(seats, fromIndex) {
   for (let offset = 1; offset <= MAX_SEATS; offset++) {
     const idx = (fromIndex + offset) % MAX_SEATS;
     const seat = seats[idx];
-    if (seat && seat.inHand && seat.handStatus === "playing") return idx;
+    if (!seat || !seat.inHand) continue;
+    const stillActive = seat.handStatus === "playing" || (seat.isSplit && seat.handStatus2 === "playing");
+    if (stillActive) return idx;
   }
   return null;
+}
+// Returns which set of hand/bet/status fields represent the seat's
+// CURRENTLY ACTIVE hand — hand/currentBet/handStatus normally, or
+// hand2/currentBet2/handStatus2 once split AND activeHandIdx has moved
+// to the second hand. Centralizes this so hit/stand/double don't each
+// need their own if(isSplit) branching to find the right fields.
+function activeHandFields(seat) {
+  if (seat.isSplit && seat.activeHandIdx === 1) {
+    return { handKey: "hand2", betKey: "currentBet2", statusKey: "handStatus2" };
+  }
+  return { handKey: "hand", betKey: "currentBet", statusKey: "handStatus" };
 }
 
 // Dealer reveals and plays out their hand, then settles every seat still
@@ -148,28 +177,68 @@ function playDealerAndSettle(seats, deck, dealerHand) {
   const dealerBust = dealerTotal > 21;
   const dealerBJ = isBlackjack(dealerHand);
 
+  // Settles ONE hand against the dealer — shared by the normal
+  // single-hand path and each half of a split, so the actual win/lose/
+  // push/blackjack logic exists in exactly one place rather than being
+  // duplicated for split seats.
+  function settleOneHand(hand, bet, status, isSplitHand) {
+    let payout = 0, outcome;
+    if (status === "busted") { outcome = "bust"; }
+    // A split hand never counts as a natural blackjack even landing on
+    // 21 with two cards — standard rule, matching single-player
+    // Blackjack's own comment on this exact point.
+    else if (!isSplitHand && isBlackjack(hand) && dealerBJ) { payout = bet; outcome = "push"; }
+    else if (!isSplitHand && isBlackjack(hand)) { payout = Math.floor(bet * 2.5); outcome = "blackjack"; }
+    else if (dealerBust) { payout = bet * 2; outcome = "win"; }
+    else {
+      const total = handValue(hand);
+      if (total > dealerTotal) { payout = bet * 2; outcome = "win"; }
+      else if (total === dealerTotal) { payout = bet; outcome = "push"; }
+      else { outcome = "lose"; }
+    }
+    return { payout, outcome };
+  }
+
   const results = [];
   for (const idx of Object.keys(seats)) {
     const seat = seats[idx];
     if (!seat || !seat.inHand) continue;
-    const bet = seat.currentBet || 0;
-    let payout = 0, outcome;
-    if (seat.handStatus === "busted") { outcome = "bust"; }
-    else if (isBlackjack(seat.hand) && dealerBJ) { payout = bet; outcome = "push"; }
-    else if (isBlackjack(seat.hand)) { payout = Math.floor(bet * 2.5); outcome = "blackjack"; }
-    else if (dealerBust) { payout = bet * 2; outcome = "win"; }
-    else {
-      const playerTotal = handValue(seat.hand);
-      if (playerTotal > dealerTotal) { payout = bet * 2; outcome = "win"; }
-      else if (playerTotal === dealerTotal) { payout = bet; outcome = "push"; }
-      else { outcome = "lose"; }
+    let totalPayout, totalBet, net, outcome, subResults = null;
+    if (seat.isSplit) {
+      const h1 = settleOneHand(seat.hand, seat.currentBet || 0, seat.handStatus, true);
+      const h2 = settleOneHand(seat.hand2, seat.currentBet2 || 0, seat.handStatus2, true);
+      totalPayout = h1.payout + h2.payout;
+      totalBet = (seat.currentBet || 0) + (seat.currentBet2 || 0);
+      net = totalPayout - totalBet;
+      outcome = "split"; // client renders subResults for the actual per-hand detail
+      subResults = [
+        { outcome: h1.outcome, net: h1.payout - (seat.currentBet || 0) },
+        { outcome: h2.outcome, net: h2.payout - (seat.currentBet2 || 0) },
+      ];
+    } else {
+      const h1 = settleOneHand(seat.hand, seat.currentBet || 0, seat.handStatus, false);
+      totalPayout = h1.payout;
+      totalBet = seat.currentBet || 0;
+      net = h1.payout - totalBet;
+      outcome = h1.outcome;
     }
-    seat.stack = (seat.stack || 0) + payout;
-    results.push({ uid: seat.uid, name: seat.name, outcome, net: payout - bet });
+    seat.stack = (seat.stack || 0) + totalPayout;
+    results.push({ uid: seat.uid, name: seat.name, outcome, net, subResults });
+    // Bet history strip — last 8 results per seat, most recent LAST
+    // (the client reverses for display, same convention single-player's
+    // own bjHistory/bjRenderHistory already uses). A split hand counts
+    // as one combined W/L/P based on its total, not two separate chips.
+    const historyChar = net > 0 ? "W" : (net === 0 ? "P" : "L");
+    seat.history = [...(seat.history || []), historyChar].slice(-8);
     seat.hand = [];
     seat.currentBet = 0;
+    seat.hand2 = null;
+    seat.currentBet2 = 0;
+    seat.isSplit = false;
+    seat.activeHandIdx = 0;
     seat.inHand = false;
     seat.handStatus = null;
+    seat.handStatus2 = null;
   }
   return { seats, dealerHand, dealerTotal, dealerBust, dealerBJ, results };
 }
@@ -228,7 +297,7 @@ export default async (req) => {
   }
 
   try {
-    const { idToken, action, tableId, name, minBuyIn, seatIndex, buyInAmount, gameType, betAmount } = await req.json();
+    const { idToken, action, tableId, name, minBuyIn, seatIndex, buyInAmount, gameType, betAmount, ppBetAmount } = await req.json();
     if (!idToken || !action) {
       return new Response(JSON.stringify({ error: "Missing idToken or action" }), { status: 400 });
     }
@@ -280,7 +349,7 @@ export default async (req) => {
         // stack; Hold'em seats don't have this field at all, so the
         // (s.currentBet || 0) fallback is what makes this safe for both
         // game types sharing this one code path.
-        const total = s ? (s.stack || 0) + (s.currentBet || 0) : 0;
+        const total = s ? (s.stack || 0) + (s.currentBet || 0) + (s.currentBet2 || 0) + (s.ppBet || 0) : 0;
         if (s && s.uid && total > 0) await adjustXp(s.uid, total, `Table force-closed by admin — ${forceTable.name || "table"} (refund)`);
       }
       await dbPut(path, null);
@@ -348,18 +417,20 @@ export default async (req) => {
       }
       const seat = seats[myIndex];
       const amount = Math.floor(Number(betAmount) || 0);
-      if (amount < 0) {
+      const ppAmount = Math.floor(Number(ppBetAmount) || 0);
+      if (amount < 0 || ppAmount < 0) {
         return new Response(JSON.stringify({ error: "Invalid bet" }), { status: 400 });
       }
-      // Refund whatever was already staged before applying the new
-      // amount — otherwise changing your bet before the deal double-
-      // deducts from your stack.
-      const availableForBet = (seat.stack || 0) + (seat.currentBet || 0);
-      if (amount > availableForBet) {
+      // Refund whatever was already staged (both the main bet AND any
+      // Perfect Pairs side bet) before applying the new amounts —
+      // otherwise changing your bet before the deal double-deducts.
+      const availableForBet = (seat.stack || 0) + (seat.currentBet || 0) + (seat.ppBet || 0);
+      if (amount + ppAmount > availableForBet) {
         return new Response(JSON.stringify({ error: `You only have ${availableForBet} XP available` }), { status: 400 });
       }
-      seat.stack = availableForBet - amount;
+      seat.stack = availableForBet - amount - ppAmount;
       seat.currentBet = amount;
+      seat.ppBet = ppAmount;
       await dbPut(`/blackjackTables/${tableId}/seats/${myIndex}`, seat);
       return new Response(JSON.stringify({ seat }), { status: 200 });
     }
@@ -379,6 +450,7 @@ export default async (req) => {
         return new Response(JSON.stringify({ error: "Nobody's placed a bet yet" }), { status: 400 });
       }
       const deck = buildShuffledDeck();
+      const ppResults = [];
       bettingIndices.forEach(i => {
         seats[i].hand = [deck.pop(), deck.pop()];
         seats[i].inHand = true;
@@ -386,9 +458,31 @@ export default async (req) => {
         // stood immediately rather than waiting on a hit/stand that
         // would never make sense to offer.
         seats[i].handStatus = isBlackjack(seats[i].hand) ? "stood" : "playing";
+        // Perfect Pairs resolves INSTANTLY right here, at the deal —
+        // same as single-player Blackjack, a genuinely separate side
+        // bet from the main hand's own outcome, not something that
+        // waits for hit/stand/settle.
+        if (seats[i].ppBet > 0) {
+          const pp = evaluatePerfectPairs(seats[i].hand);
+          const ppBetAmt = seats[i].ppBet;
+          const ppPayout = pp ? ppBetAmt * pp.mult : 0;
+          seats[i].stack = (seats[i].stack || 0) + ppPayout;
+          ppResults.push({ uid: seats[i].uid, name: seats[i].name, label: pp ? pp.label : "no pair", net: ppPayout - ppBetAmt });
+        }
+        seats[i].ppBet = 0; // resolved — cleared so it doesn't linger into how the next hand displays
       });
       const dealerHand = [deck.pop(), deck.pop()];
       table.dealerUpCard = dealerHand[0];
+      // Transient — the client reacts to this once, on the same
+      // fresh-deal transition it already tracks for the dealer's own
+      // cards, then it's just overwritten by the next hand's own
+      // (possibly empty) result. Not cleared explicitly for that reason.
+      table.lastPerfectPairsResults = ppResults.length > 0 ? ppResults : null;
+      if (ppResults.length > 0) {
+        await Promise.all(ppResults.map(r =>
+          logXpEvent(r.uid, r.net, `Live Blackjack Perfect Pairs (${r.label})`).catch(() => {})
+        ));
+      }
       // fromSeatIndex -1 wraps to 0 via the modulo in findNextActiveSeat,
       // so turn order genuinely starts from seat 0, not seat 1.
       const result = await advanceTurnOrSettle(tableId, table, seats, deck, dealerHand, -1);
@@ -410,13 +504,25 @@ export default async (req) => {
       }
       const deck = secrets.deck;
       const seat = seats[myIndex];
-      seat.hand.push(deck.pop());
-      if (handValue(seat.hand) > 21) {
-        seat.handStatus = "busted";
+      const { handKey, statusKey } = activeHandFields(seat);
+      seat[handKey].push(deck.pop());
+      if (handValue(seat[handKey]) > 21) {
+        seat[statusKey] = "busted";
+        // If this was hand 1 of a split and hand 2 still needs playing,
+        // move to it directly — same seat's turn continues, this does
+        // NOT advance to the next seat yet.
+        if (seat.isSplit && seat.activeHandIdx === 0) {
+          seat.activeHandIdx = 1;
+          table.seats = seats;
+          await dbPut(`/blackjackTables/${tableId}`, table);
+          await dbPut(`/blackjackTableSecrets/${tableId}`, { dealerHand: secrets.dealerHand, deck });
+          return new Response(JSON.stringify({ table }), { status: 200 });
+        }
         const result = await advanceTurnOrSettle(tableId, table, seats, deck, secrets.dealerHand, Number(myIndex));
         return new Response(JSON.stringify(result), { status: 200 });
       }
-      // Not bust — stays their turn, they can hit again or stand next.
+      // Not bust — stays their turn on the same active hand, they can
+      // hit again or stand next.
       table.seats = seats;
       await dbPut(`/blackjackTables/${tableId}`, table);
       await dbPut(`/blackjackTableSecrets/${tableId}`, { dealerHand: secrets.dealerHand, deck });
@@ -436,7 +542,17 @@ export default async (req) => {
       if (!secrets || !secrets.deck || !secrets.dealerHand) {
         return new Response(JSON.stringify({ error: "Table state is out of sync — try refreshing" }), { status: 500 });
       }
-      seats[myIndex].handStatus = "stood";
+      const seat = seats[myIndex];
+      const { statusKey } = activeHandFields(seat);
+      seat[statusKey] = "stood";
+      // Same hand-1-to-hand-2 handoff as hit, above.
+      if (seat.isSplit && seat.activeHandIdx === 0) {
+        seat.activeHandIdx = 1;
+        table.seats = seats;
+        await dbPut(`/blackjackTables/${tableId}`, table);
+        await dbPut(`/blackjackTableSecrets/${tableId}`, { dealerHand: secrets.dealerHand, deck: secrets.deck });
+        return new Response(JSON.stringify({ table }), { status: 200 });
+      }
       const result = await advanceTurnOrSettle(tableId, table, seats, secrets.deck, secrets.dealerHand, Number(myIndex));
       return new Response(JSON.stringify(result), { status: 200 });
     }
@@ -451,6 +567,13 @@ export default async (req) => {
         return new Response(JSON.stringify({ error: "It's not your turn" }), { status: 403 });
       }
       const seat = seats[myIndex];
+      // Simplified rule set, same as single-player: no doubling down
+      // after a split. Every real casino varies on this, so rather than
+      // guess at "the" rule this picks the same simplest consistent one
+      // single-player already settled on.
+      if (seat.isSplit) {
+        return new Response(JSON.stringify({ error: "Can't double after a split" }), { status: 400 });
+      }
       if (seat.hand.length !== 2) {
         return new Response(JSON.stringify({ error: "Can only double on your first two cards" }), { status: 400 });
       }
@@ -471,6 +594,56 @@ export default async (req) => {
       return new Response(JSON.stringify(result), { status: 200 });
     }
 
+    if (action === "split") {
+      if (table.status !== "playing") {
+        return new Response(JSON.stringify({ error: "No hand in progress" }), { status: 400 });
+      }
+      const seats = table.seats || {};
+      const myIndex = Object.keys(seats).find(i => seats[i] && seats[i].uid === uid);
+      if (myIndex == null || Number(myIndex) !== Number(table.currentTurnSeatIndex)) {
+        return new Response(JSON.stringify({ error: "It's not your turn" }), { status: 403 });
+      }
+      const seat = seats[myIndex];
+      if (seat.isSplit) {
+        return new Response(JSON.stringify({ error: "You can only split once per hand" }), { status: 400 });
+      }
+      if (!seat.hand || seat.hand.length !== 2) {
+        return new Response(JSON.stringify({ error: "Can only split your first two cards" }), { status: 400 });
+      }
+      // Matches by VALUE, not exact rank — same rule single-player uses
+      // (bjCardValue), so a Ten and a King can be split together, same
+      // as any real Blackjack table allows.
+      const cardValue = (c) => { const r = c[0]; return r === "A" ? 11 : (r === "T" || r === "J" || r === "Q" || r === "K" ? 10 : Number(r)); };
+      if (cardValue(seat.hand[0]) !== cardValue(seat.hand[1])) {
+        return new Response(JSON.stringify({ error: "Can only split a pair" }), { status: 400 });
+      }
+      if ((seat.stack || 0) < seat.currentBet) {
+        return new Response(JSON.stringify({ error: "Not enough XP to split" }), { status: 400 });
+      }
+      const secrets = await dbGet(`/blackjackTableSecrets/${tableId}`);
+      if (!secrets || !secrets.deck || !secrets.dealerHand) {
+        return new Response(JSON.stringify({ error: "Table state is out of sync — try refreshing" }), { status: 500 });
+      }
+      const deck = secrets.deck;
+      const [cardA, cardB] = seat.hand;
+      seat.stack -= seat.currentBet; // matching bet for the new second hand
+      seat.isSplit = true;
+      seat.hand = [cardA, deck.pop()];
+      seat.hand2 = [cardB, deck.pop()];
+      seat.currentBet2 = seat.currentBet;
+      // A split hand never counts as a natural blackjack (see
+      // playDealerAndSettle's own comment on this) — but landing on 21
+      // here still has nothing left to decide, same as single-player's
+      // own immediate-advance-on-21 behaviour after a split.
+      seat.handStatus = handValue(seat.hand) === 21 ? "stood" : "playing";
+      seat.handStatus2 = "playing";
+      seat.activeHandIdx = seat.handStatus === "playing" ? 0 : 1;
+      table.seats = seats;
+      await dbPut(`/blackjackTables/${tableId}`, table);
+      await dbPut(`/blackjackTableSecrets/${tableId}`, { dealerHand: secrets.dealerHand, deck });
+      return new Response(JSON.stringify({ table }), { status: 200 });
+    }
+
     if (action === "standUp") {
       const seats = table.seats || {};
       const myIndex = Object.keys(seats).find(i => seats[i] && seats[i].uid === uid);
@@ -485,7 +658,7 @@ export default async (req) => {
       }
       // Refund an active bet too, not just the remaining stack — a bet
       // staged but not yet dealt is still real XP that was deducted.
-      const stack = (seats[myIndex].stack || 0) + (seats[myIndex].currentBet || 0);
+      const stack = (seats[myIndex].stack || 0) + (seats[myIndex].currentBet || 0) + (seats[myIndex].ppBet || 0);
       if (stack > 0) await adjustXp(uid, stack, `Live Blackjack table cash out — ${table.name}`);
       await dbPut(`/blackjackTables/${tableId}/seats/${myIndex}`, null);
       // If the table's now empty, close it out rather than leaving an
@@ -510,7 +683,7 @@ export default async (req) => {
       for (const idx of Object.keys(seats)) {
         const s = seats[idx];
         // Refund a staged bet too, same reasoning as standUp above.
-        const total = s ? (s.stack || 0) + (s.currentBet || 0) : 0;
+        const total = s ? (s.stack || 0) + (s.currentBet || 0) + (s.currentBet2 || 0) + (s.ppBet || 0) : 0;
         if (s && total > 0) await adjustXp(s.uid, total, `Live Blackjack table closed — ${table.name} (refund)`);
       }
       await dbPut(`/blackjackTables/${tableId}`, null);
