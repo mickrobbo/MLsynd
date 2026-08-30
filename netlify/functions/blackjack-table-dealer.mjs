@@ -94,7 +94,7 @@ export default async (req) => {
   }
 
   try {
-    const { idToken, action, tableId, name, minBuyIn, maxBuyIn, seatIndex, buyInAmount, gameType } = await req.json();
+    const { idToken, action, tableId, name, minBuyIn, seatIndex, buyInAmount, gameType } = await req.json();
     if (!idToken || !action) {
       return new Response(JSON.stringify({ error: "Missing idToken or action" }), { status: 400 });
     }
@@ -150,12 +150,11 @@ export default async (req) => {
     if (action === "createTable") {
       const cleanName = (name || "").trim().slice(0, 40) || `${displayName}'s Table`;
       const cleanMin = Math.max(1, Math.floor(Number(minBuyIn) || 100));
-      const cleanMax = Math.max(cleanMin, Math.floor(Number(maxBuyIn) || cleanMin * 20));
       const seats = {};
       for (let i = 0; i < MAX_SEATS; i++) seats[i] = null;
       const table = {
         name: cleanName, createdBy: uid, createdByName: displayName, createdAt: Date.now(),
-        maxSeats: MAX_SEATS, minBuyIn: cleanMin, maxBuyIn: cleanMax, seats, status: "waiting",
+        maxSeats: MAX_SEATS, minBuyIn: cleanMin, seats, status: "waiting",
       };
       const created = await dbPost("/blackjackTables", table);
       return new Response(JSON.stringify({ tableId: created.name, table }), { status: 200 });
@@ -183,9 +182,9 @@ export default async (req) => {
         return new Response(JSON.stringify({ error: "You're already seated at this table" }), { status: 409 });
       }
       const amount = Math.floor(Number(buyInAmount) || 0);
-      const min = table.minBuyIn || 1, max = table.maxBuyIn || min;
-      if (amount < min || amount > max) {
-        return new Response(JSON.stringify({ error: `Buy-in must be between ${min} and ${max} XP` }), { status: 400 });
+      const min = table.minBuyIn || 1;
+      if (amount < min) {
+        return new Response(JSON.stringify({ error: `Buy-in must be at least ${min} XP` }), { status: 400 });
       }
       const balance = await getXpBalance(uid);
       if (amount > balance) {
