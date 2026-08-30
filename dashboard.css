@@ -769,6 +769,48 @@
   .holdem-chat-counter{ font-size:9.5px; color:var(--muted); text-align:right; margin-top:3px; }
   .holdem-chat-counter.near-limit{ color:var(--loss); }
 
+  /* ---- Multiplayer Blackjack — table browser + seat grid, first pass.
+     Deliberately a simple grid rather than Hold'em's absolute-positioned
+     oval ring: a real Blackjack table is a semicircle facing one
+     dealer, not a full ring, so a grid is both more accurate to the
+     actual shape and simpler to keep reliable on mobile. ---- */
+  .mp-bj-dealer-label{
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:13px; letter-spacing:3px;
+    color:var(--brass-light); text-shadow:0 0 12px rgba(255,224,150,.3); position:relative; z-index:1;
+  }
+  .mp-bj-seat-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:14px; }
+  .mp-bj-seat{
+    background:linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--line);
+    border-radius:12px; padding:10px 6px; text-align:center; min-height:80px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    box-shadow:0 4px 10px rgba(0,0,0,.35); cursor:pointer; position:relative;
+  }
+  .mp-bj-seat.occupied{ border-color:var(--brass-dim); cursor:default; }
+  .mp-bj-seat.occupied::before{
+    content:''; position:absolute; top:0; left:8px; right:8px; height:2px; border-radius:2px;
+    background: linear-gradient(90deg, transparent, var(--brass) 50%, transparent);
+    opacity:.75; pointer-events:none;
+  }
+  .mp-bj-seat.me{ border-color:var(--brass); box-shadow:0 0 0 1px rgba(203,177,102,.3), 0 0 12px rgba(203,177,102,.25); }
+  .mp-bj-seat-avatar{ width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--brass-dim); }
+  .mp-bj-seat-avatar-fallback{
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--brass-dim);
+    display:flex; align-items:center; justify-content:center; background:var(--felt); color:var(--brass-light);
+    font-size:13px; font-weight:700;
+  }
+  .mp-bj-seat-name{ font-size:11px; font-weight:700; color:var(--chalk); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mp-bj-seat-stack{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--brass); }
+  .mp-bj-seat-empty-icon{ font-size:20px; color:var(--muted); opacity:.6; }
+  .mp-bj-seat-empty-label{ font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .mp-bj-table-row{
+    display:flex; align-items:center; justify-content:space-between; padding:10px 6px; border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .mp-bj-table-row:last-child{ border-bottom:none; }
+  .mp-bj-table-row-name{ font-size:13px; font-weight:700; color:var(--brass-light); }
+  .mp-bj-table-row-meta{ font-size:11px; color:var(--muted); margin-top:1px; }
+  .mp-bj-table-row-seats{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--chalk); flex-shrink:0; }
+
   /* ---- In-hand seat status rows ---- */
   .holdem-hand-seat{
     display:flex; align-items:center; gap:8px; padding:8px 6px; border-bottom:1px solid var(--line);
