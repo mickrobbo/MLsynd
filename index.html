@@ -639,8 +639,51 @@
       </div>
       <div class="bj-table" style="padding:20px 10px 12px; text-align:center;">
         <div class="mp-bj-dealer-label">DEALER</div>
+        <div id="mpBjDealerCardsArea" class="mp-bj-dealer-cards"></div>
+        <div id="mpBjDealerTotal" class="mp-bj-dealer-total"></div>
       </div>
       <div id="mpBjSeatGrid" class="mp-bj-seat-grid"></div>
+      <div id="mpBjLastHandResult" class="mp-bj-hand-result" style="display:none;"></div>
+
+      <!-- Bet panel — set your own bet on your own seat while the table's
+           idle, same chip-rail pattern as the buy-in panel below it.
+           Anyone with a bet staged can hit Deal — dealing only pulls in
+           seats that currently have one, which is the entire mechanism
+           that makes solo play and mid-session joining work without any
+           special-casing elsewhere. -->
+      <div id="mpBjBetPanel" style="display:none; margin-top:14px;">
+        <div style="display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;">
+          <div class="bj-chip" id="mpBjBetChipDisplay">0</div>
+          <div style="display:flex; flex-direction:column; gap:6px; align-items:center;">
+            <label style="font-size:11px; color:var(--muted);">Your bet</label>
+            <input type="number" id="mpBjBetInput" min="0" step="10" value="0" readonly style="width:90px; text-align:center; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk); border-radius:8px; padding:8px; font-size:14px;">
+          </div>
+        </div>
+        <div class="chip-rail" data-target="mpBjBetInput">
+          <button type="button" class="table-chip chip-5" data-val="5">5</button>
+          <button type="button" class="table-chip chip-10" data-val="10">10</button>
+          <button type="button" class="table-chip chip-25" data-val="25">25</button>
+          <button type="button" class="table-chip chip-50" data-val="50">50</button>
+          <button type="button" class="table-chip chip-100" data-val="100">100</button>
+          <button type="button" class="table-chip chip-250" data-val="250">250</button>
+          <button type="button" class="table-chip chip-500" data-val="500">500</button>
+          <button type="button" class="table-chip chip-1000" data-val="1000">1K</button>
+          <button type="button" class="table-chip chip-2500" data-val="2500">2.5K</button>
+          <button type="button" class="chip-clear-btn" data-target="mpBjBetInput">Clear Chips</button>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button type="button" class="pill-btn pill-btn-primary" id="mpBjSetBetBtn" style="flex:1;">Place Bet</button>
+          <button type="button" class="pill-btn pill-btn-primary" id="mpBjDealBtn" style="flex:1; display:none;">🃏 Deal</button>
+        </div>
+      </div>
+
+      <!-- Hit/Stand/Double — only ever shown when it's genuinely your
+           turn (table.currentTurnSeatIndex matches your own seat). -->
+      <div id="mpBjHandActionsPanel" style="display:none; margin-top:14px; gap:8px;">
+        <button type="button" class="pill-btn pill-btn-primary" id="mpBjHitBtn" style="flex:1;">Hit</button>
+        <button type="button" class="pill-btn pill-btn-primary" id="mpBjStandActionBtn" style="flex:1;">Stand</button>
+        <button type="button" class="pill-btn" id="mpBjDoubleBtn" style="flex:1;">Double</button>
+      </div>
 
       <!-- Buy-in panel — a real chip rail instead of a plain prompt(),
            same denomination-colour chips the single-player Blackjack bet
@@ -2987,7 +3030,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.72"; // Live Blackjack — real hand-dealing logic built server-side: full deck/shuffle/hand-value/dealer-AI/payout logic, five new actions (setBet, dealHand, hit, stand, double), solo-friendly by design (only seats with a bet get dealt in, so playing alone against the dealer just works and others simply wait to join the next hand). Dealer's hole card kept genuinely hidden in a new .read:false /blackjackTableSecrets path until reveal. Server foundation only this pass — client UI (cards, turn indicator, hit/stand/double buttons) is the next step. blackjack-table-dealer.mjs and firebase-rules.json both updated — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.73"; // Live Blackjack: full client UI for real hand play — bet chip rail, Deal button, dealer cards (up-card + hidden hole card during play, full reveal after settlement), per-seat hands with live totals, turn highlight, Hit/Stand/Double (Double only shown when actually legal), last-hand results panel. Reuses the single-player Blackjack's own card rendering (bjRenderCards/bjPipHtml) via a small format conversion rather than duplicating it. Visually verified via real render, not just code review — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4504,11 +4547,36 @@ document.getElementById('mpBjTableBackBtn').addEventListener('click', () => {
   showCasinoView(null);
 });
 
+// Server cards are 2-char strings like "AS" (Ace of Spades), "TH" (Ten
+// of Hearts) — "T" not "10" so every card is a consistent length.
+// Existing card rendering (bjPipHtml/bjRenderCards, from single-player
+// Blackjack) expects {rank, suit} objects with unicode suit symbols, so
+// this converts rather than duplicating that rendering logic from
+// scratch — same visual cards, no new CSS needed for the faces
+// themselves.
+const MP_BJ_SUIT_MAP = { S: '♠', H: '♥', D: '♦', C: '♣' };
+function mpBjParseCard(cardStr){
+  const rank = cardStr[0] === 'T' ? '10' : cardStr[0];
+  const suit = MP_BJ_SUIT_MAP[cardStr[1]] || cardStr[1];
+  return { rank, suit };
+}
+function mpBjRenderHand(cardStrings){
+  return bjRenderCards((cardStrings || []).map(mpBjParseCard), false); // never animated here — the whole table re-renders on every state change via the real-time listener, so per-card deal animation would replay on cards already on the table, not just new ones
+}
+function mpBjHandValue(cardStrings){
+  return bjHandTotal((cardStrings || []).map(mpBjParseCard));
+}
+
 async function renderMpBjSeatGrid(){
   if(!mpBjCurrentTableId) return;
   const grid = document.getElementById('mpBjSeatGrid');
   const titleEl = document.getElementById('mpBjTableViewTitle');
   const actionsEl = document.getElementById('mpBjTableActions');
+  const dealerCardsEl = document.getElementById('mpBjDealerCardsArea');
+  const dealerTotalEl = document.getElementById('mpBjDealerTotal');
+  const betPanel = document.getElementById('mpBjBetPanel');
+  const handActionsPanel = document.getElementById('mpBjHandActionsPanel');
+  const resultEl = document.getElementById('mpBjLastHandResult');
   if(!grid) return;
   try{
     const res = await authedFetch(`/blackjackTables/${mpBjCurrentTableId}.json`);
@@ -4516,6 +4584,8 @@ async function renderMpBjSeatGrid(){
     if(!table){
       grid.innerHTML = '<div class="empty">This table has closed.</div>';
       if(actionsEl) actionsEl.innerHTML = '';
+      if(betPanel) betPanel.style.display = 'none';
+      if(handActionsPanel) handActionsPanel.style.display = 'none';
       const deleteBtn = document.getElementById('mpBjTableDeleteBtn');
       if(deleteBtn) deleteBtn.style.display = 'none';
       return;
@@ -4550,6 +4620,26 @@ async function renderMpBjSeatGrid(){
       };
     }
 
+    // Dealer's own cards — up-card only while a hand's in progress (the
+    // hole card is genuinely never sent to the client, not just hidden
+    // by CSS, until the hand actually settles), full hand + total once
+    // table.lastHandResult exists from the most recent settlement.
+    const isPlaying = table.status === 'playing';
+    if(dealerCardsEl){
+      if(isPlaying && table.dealerUpCard){
+        dealerCardsEl.innerHTML = mpBjRenderHand([table.dealerUpCard]) + '<div class="playing-card pc-back" style="width:30px; height:43px; border-radius:4px;"></div>';
+      } else if(table.lastHandResult && table.lastHandResult.dealerHand){
+        dealerCardsEl.innerHTML = mpBjRenderHand(table.lastHandResult.dealerHand);
+      } else {
+        dealerCardsEl.innerHTML = '';
+      }
+    }
+    if(dealerTotalEl){
+      dealerTotalEl.textContent = table.lastHandResult
+        ? `Total: ${table.lastHandResult.dealerTotal}${table.lastHandResult.dealerBust ? ' (bust)' : ''}`
+        : '';
+    }
+
     const seats = table.seats || {};
     const seatCount = table.maxSeats || 6;
     const uniqueUids = Object.values(seats).filter(Boolean).map(s => s.uid);
@@ -4557,21 +4647,27 @@ async function renderMpBjSeatGrid(){
     await Promise.all([...new Set(uniqueUids)].map(async uid => { avatarByUid[uid] = await getAvatarDataUri(uid); }));
 
     let mySeatIndex = null;
+    let mySeat = null;
     const cells = [];
     for(let i = 0; i < seatCount; i++){
       const seat = seats[i];
       if(seat){
-        if(seat.uid === currentUserUid) mySeatIndex = i;
         const isMe = seat.uid === currentUserUid;
+        if(isMe){ mySeatIndex = i; mySeat = seat; }
+        const isMyTurn = isPlaying && Number(table.currentTurnSeatIndex) === i;
         const avatarSrc = avatarByUid[seat.uid];
         const avatarHtml = avatarSrc
           ? `<img class="mp-bj-seat-avatar" src="${avatarSrc}" alt="">`
           : `<span class="mp-bj-seat-avatar-fallback">${escapeHtml((seat.name || '?').trim().charAt(0).toUpperCase())}</span>`;
+        const handHtml = seat.inHand && seat.hand && seat.hand.length > 0
+          ? `<div class="mp-bj-seat-cards">${mpBjRenderHand(seat.hand)}</div><div class="mp-bj-seat-bet-tag">${mpBjHandValue(seat.hand)}${seat.handStatus === 'busted' ? ' (bust)' : ''}</div>`
+          : (seat.currentBet > 0 ? `<div class="mp-bj-seat-bet-tag">Bet: ${seat.currentBet.toLocaleString()} XP</div>` : '');
         cells.push(`
-          <div class="mp-bj-seat occupied${isMe ? ' me' : ''}" data-seat-index="${i}">
+          <div class="mp-bj-seat occupied${isMe ? ' me' : ''}${isMyTurn ? ' my-turn' : ''}" data-seat-index="${i}">
             ${avatarHtml}
             <div class="mp-bj-seat-name">${escapeHtml(seat.name || 'Someone')}</div>
-            <div class="mp-bj-seat-stack">${seat.stack.toLocaleString()} XP</div>
+            <div class="mp-bj-seat-stack">${(seat.stack || 0).toLocaleString()} XP</div>
+            ${handHtml}
           </div>
         `);
       } else {
@@ -4588,6 +4684,52 @@ async function renderMpBjSeatGrid(){
       cell.addEventListener('click', () => openMpBjBuyInPanel(table, Number(cell.dataset.seatIndex)));
     });
 
+    // Bet panel — only while I'm seated, the table's idle, and I'm not
+    // already mid-hand from a previous round that hasn't cleared yet.
+    if(betPanel){
+      const showBetPanel = mySeat != null && !isPlaying && !mySeat.inHand;
+      betPanel.style.display = showBetPanel ? 'block' : 'none';
+      if(showBetPanel){
+        const dealBtn = document.getElementById('mpBjDealBtn');
+        const anyoneBetting = Object.values(seats).some(s => s && s.currentBet > 0);
+        if(dealBtn) dealBtn.style.display = anyoneBetting ? 'inline-block' : 'none';
+      }
+    }
+
+    // Hit/Stand/Double — only when it's genuinely my turn. Double only
+    // offered on a genuine first-two-card hand with enough stack left
+    // to cover doubling the bet — same checks the server itself
+    // enforces, shown here so the button doesn't invite a request that
+    // would just come back as an error.
+    if(handActionsPanel){
+      const isMyTurnNow = isPlaying && mySeatIndex != null && Number(table.currentTurnSeatIndex) === mySeatIndex;
+      handActionsPanel.style.display = isMyTurnNow ? 'flex' : 'none';
+      if(isMyTurnNow){
+        const doubleBtn = document.getElementById('mpBjDoubleBtn');
+        if(doubleBtn){
+          const canDouble = mySeat.hand && mySeat.hand.length === 2 && (mySeat.stack || 0) >= (mySeat.currentBet || 0);
+          doubleBtn.style.display = canDouble ? 'inline-block' : 'none';
+        }
+      }
+    }
+
+    // Last hand's result — shown until the next bet gets placed, at
+    // which point table.lastHandResult is cleared server-side by the
+    // next dealHand call.
+    if(resultEl){
+      if(table.lastHandResult && table.lastHandResult.results && table.lastHandResult.results.length > 0){
+        const lines = table.lastHandResult.results.map(r => {
+          const cls = r.net > 0 ? 'win' : (r.net < 0 ? 'lose' : '');
+          const sign = r.net > 0 ? '+' : '';
+          return `<div class="mp-bj-hand-result-line ${cls}">${escapeHtml(r.name)} — ${r.outcome}${r.net !== 0 ? ` (${sign}${r.net} XP)` : ''}</div>`;
+        }).join('');
+        resultEl.innerHTML = `<div class="mp-bj-hand-result-title">Last hand</div>${lines}`;
+        resultEl.style.display = 'block';
+      } else {
+        resultEl.style.display = 'none';
+      }
+    }
+
     if(actionsEl){
       actionsEl.innerHTML = mySeatIndex != null
         ? `<button type="button" class="pill-btn pill-btn-action" id="mpBjStandBtn" style="width:100%;">Stand up &amp; cash out</button>`
@@ -4599,6 +4741,69 @@ async function renderMpBjSeatGrid(){
     grid.innerHTML = '<div class="empty">Could not load this table — try again.</div>';
   }
 }
+
+// ---- Bet / Deal / Hit / Stand / Double — the actual hand-play actions.
+// Each fires the server call then immediately re-renders the seat grid
+// itself, same "don't wait on the real-time listener" lag fix already
+// applied to sit/standUp — otherwise every one of these would have the
+// same noticeable-delay problem that was fixed there.
+document.getElementById('mpBjBetInput').addEventListener('input', (e) => {
+  const chip = document.getElementById('mpBjBetChipDisplay');
+  if(chip) chip.textContent = e.target.value || '0';
+});
+document.getElementById('mpBjSetBetBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('mpBjTableActionStatus');
+  const amount = Math.floor(Number(document.getElementById('mpBjBetInput').value) || 0);
+  if(!(amount > 0)){ if(statusEl) statusEl.textContent = 'Add some chips first.'; return; }
+  try{
+    await mpBjDealerCall(mpBjCurrentTableId, 'setBet', { betAmount: amount });
+    showToast(`🎲 Bet ${amount.toLocaleString()} XP`);
+    if(statusEl) statusEl.textContent = '';
+    renderMpBjSeatGrid();
+  }catch(e){
+    if(statusEl) statusEl.textContent = e.message;
+  }
+});
+document.getElementById('mpBjDealBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('mpBjTableActionStatus');
+  try{
+    await mpBjDealerCall(mpBjCurrentTableId, 'dealHand', {});
+    if(statusEl) statusEl.textContent = '';
+    renderMpBjSeatGrid();
+  }catch(e){
+    if(statusEl) statusEl.textContent = e.message;
+  }
+});
+document.getElementById('mpBjHitBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('mpBjTableActionStatus');
+  try{
+    await mpBjDealerCall(mpBjCurrentTableId, 'hit', {});
+    if(statusEl) statusEl.textContent = '';
+    renderMpBjSeatGrid();
+  }catch(e){
+    if(statusEl) statusEl.textContent = e.message;
+  }
+});
+document.getElementById('mpBjStandActionBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('mpBjTableActionStatus');
+  try{
+    await mpBjDealerCall(mpBjCurrentTableId, 'stand', {});
+    if(statusEl) statusEl.textContent = '';
+    renderMpBjSeatGrid();
+  }catch(e){
+    if(statusEl) statusEl.textContent = e.message;
+  }
+});
+document.getElementById('mpBjDoubleBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('mpBjTableActionStatus');
+  try{
+    await mpBjDealerCall(mpBjCurrentTableId, 'double', {});
+    if(statusEl) statusEl.textContent = '';
+    renderMpBjSeatGrid();
+  }catch(e){
+    if(statusEl) statusEl.textContent = e.message;
+  }
+});
 
 // Buy-in via the real chip rail instead of prompt() — initChipRail
 // already wires every .chip-rail on the page once at load time (this

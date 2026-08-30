@@ -811,6 +811,31 @@
   .mp-bj-table-row-meta{ font-size:11px; color:var(--muted); margin-top:1px; }
   .mp-bj-table-row-seats{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--chalk); flex-shrink:0; }
 
+  /* ---- Live hand play — dealer/seat cards are a smaller variant of the
+     single-player Blackjack card (same proportions, roughly scaled),
+     since multiple seats plus the dealer all need to fit in the same
+     view at once. ---- */
+  .mp-bj-dealer-cards, .mp-bj-seat-cards{ display:flex; justify-content:center; gap:4px; flex-wrap:wrap; position:relative; z-index:1; }
+  .mp-bj-dealer-cards{ margin-top:10px; min-height:0; }
+  .mp-bj-seat-cards{ margin-top:4px; }
+  .mp-bj-dealer-cards .playing-card, .mp-bj-seat-cards .playing-card{ width:30px; height:43px; border-radius:4px; }
+  .mp-bj-dealer-cards .pc-pip, .mp-bj-seat-cards .pc-pip{ font-size:7px; }
+  .mp-bj-dealer-cards .pc-pip-tl, .mp-bj-seat-cards .pc-pip-tl{ top:2px; left:2px; }
+  .mp-bj-dealer-cards .pc-pip-br, .mp-bj-seat-cards .pc-pip-br{ bottom:2px; right:2px; }
+  .mp-bj-dealer-cards .pc-suit-mini, .mp-bj-seat-cards .pc-suit-mini{ font-size:6px; margin-top:0; }
+  .mp-bj-dealer-cards .pc-suit-big, .mp-bj-seat-cards .pc-suit-big{ font-size:14px; }
+  .mp-bj-dealer-total{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--brass); margin-top:6px; min-height:16px; position:relative; z-index:1; }
+  .mp-bj-seat.my-turn{ box-shadow:0 0 0 2px var(--win), 0 0 14px rgba(111,169,138,.5); }
+  .mp-bj-seat-bet-tag{ font-family:'IBM Plex Mono', monospace; font-size:10px; color:var(--brass-light); margin-top:2px; }
+  .mp-bj-hand-result{
+    background:linear-gradient(165deg, var(--felt-2), var(--felt-3)); border:1px solid var(--brass-dim); border-radius:12px;
+    padding:12px; margin-top:12px; text-align:center; font-size:12px;
+  }
+  .mp-bj-hand-result-title{ font-family:'Barlow Condensed', sans-serif; font-weight:700; color:var(--brass-light); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px; font-size:12px; }
+  .mp-bj-hand-result-line{ padding:3px 0; }
+  .mp-bj-hand-result-line.win{ color:var(--win); }
+  .mp-bj-hand-result-line.lose{ color:var(--loss); }
+
   /* ---- In-hand seat status rows ---- */
   .holdem-hand-seat{
     display:flex; align-items:center; gap:8px; padding:8px 6px; border-bottom:1px solid var(--line);

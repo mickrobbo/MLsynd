@@ -1,10 +1,9 @@
 {
-  "version": "2026-08-24.72",
+  "version": "2026-08-24.73",
   "date": "2026-08-28",
   "changes": [
-    "\ud83c\udfb0 Live Blackjack: real hand-dealing logic, server side. Full deck build/shuffle, hand-value calculation, dealer AI (stands on any 17, matching the app's own existing reference text elsewhere), and payout settlement (blackjack pays 3:2, regular win 1:1, push returns the bet). Five new actions: setBet, dealHand, hit, stand, double.",
-    "Solo-friendly by design: only seats with a bet currently staged get dealt into a hand. Sit down and bet alone \u2014 dealing plays out immediately against just the dealer. Anyone who sits down without betting simply watches until the next round, rather than being pulled into a hand already in progress.",
-    "Dealer's hole card is genuinely hidden until reveal \u2014 the full dealer hand and remaining deck live in a new /blackjackTableSecrets path, set to .read:false for everyone (server included, only reachable via this function's own authenticated calls), same security posture Hold'em uses for its own hidden hand data.",
-    "Server foundation only this pass \u2014 the client UI (showing cards, whose turn it is, hit/stand/double buttons) is the deliberate next step, not part of this one."
+    "\ud83c\udfb0 Live Blackjack is now actually playable, not just seating. Set a bet on your own seat with a real chip rail, tap Deal once anyone's got a bet staged (yourself included \u2014 solo works, nobody else required). Dealer shows a real up-card with the hole card genuinely face-down (not just hidden by CSS \u2014 the actual card data isn't sent to your device until it's revealed). Your own hand shows real cards and a live total, your seat gets a visible highlight when it's your turn, and Hit/Stand/Double appear only then \u2014 Double only offered when it's actually legal to use.",
+    "After a hand settles, a results panel shows who won, lost, or pushed and by how much, staying visible until the next bet gets placed.",
+    "Reuses the exact same card rendering the single-player Blackjack table already uses (same visual cards, same styling) via a small format conversion, rather than building a second card-drawing system from scratch."
   ]
 }
