@@ -1,7 +1,9 @@
 {
-  "version": "2026-08-24.74",
-  "date": "2026-08-28",
+  "version": "2026-08-24.78",
+  "date": "2026-08-30",
   "changes": [
-    "Fixed a real bug caught from a live screenshot: cards were being dealt correctly, but the table never actually entered 'playing' status anywhere in the code \u2014 it stayed 'waiting' through the whole hand. That one missing line meant the dealer's cards never showed, the turn highlight never appeared, and Hit/Stand/Double never showed up even though a real hand was genuinely in progress underneath. Also means the existing 'a hand is already in progress' safety checks on setBet and dealHand were silently doing nothing this whole time \u2014 both now actually work as intended."
+    "Fixed the three items flagged-but-not-fixed from the last audit. Card sounds no longer cluster when multiple seats get dealt at once \u2014 each seat's cards now play in sequence around the table (verified with a direct simulation of the timing, not just assumed), rather than every seat independently starting its own stagger from 0ms and overlapping.",
+    "Win/lose chime now waits for the dealer's reveal animation to actually finish before playing, instead of firing at the same moment the reveal starts.",
+    "Individual Live Blackjack hand results are now logged to the winner or loser's own XP log \u2014 doesn't touch the real balance (that's still only ever adjusted at buy-in and cash-out), purely so each hand shows up as real activity in the Floor feed and personal XP log, not just the eventual lump-sum cash-out."
   ]
 }
