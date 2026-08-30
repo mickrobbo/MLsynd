@@ -3030,7 +3030,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.73"; // Live Blackjack: full client UI for real hand play — bet chip rail, Deal button, dealer cards (up-card + hidden hole card during play, full reveal after settlement), per-seat hands with live totals, turn highlight, Hit/Stand/Double (Double only shown when actually legal), last-hand results panel. Reuses the single-player Blackjack's own card rendering (bjRenderCards/bjPipHtml) via a small format conversion rather than duplicating it. Visually verified via real render, not just code review — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.74"; // Fixed a real bug from a live screenshot: table.status was never actually being set to "playing" anywhere in blackjack-table-dealer.mjs — it stayed "waiting" through an entire hand, so the client's isPlaying check never turned true, meaning no dealer cards ever showed and Hit/Stand/Double never appeared even after a hand was genuinely dealt. Also silently meant the "hand already in progress" guards on setBet/dealHand were doing nothing — both now actually work — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
