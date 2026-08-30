@@ -1,8 +1,9 @@
 {
-  "version": "2026-08-24.82",
+  "version": "2026-08-24.83",
   "date": "2026-08-30",
   "changes": [
-    "Fixed the real cause of \"both my cards show at the same time\" (dealer's own animation was already fine). Whoever taps Deal gets an immediate re-render right after their own server call succeeds, and the real-time listener ALSO fires independently for that same underlying write \u2014 often within milliseconds. That second render used to see the animation-tracking state already marked as done from the first one, so it rendered the exact same cards again instantly with zero animation, visually snapping mid-animation to the final static state. This mattered most for whoever actually dealt, since only their client gets both triggers firing back to back.",
-    "Fixed by delaying when a card gets marked as \"already animated\" until the animation would have genuinely finished playing \u2014 a near-simultaneous second render now re-plays the same animation instead of cutting it short. Confirmed the fix with a direct timing simulation before shipping it, not just reasoned through it. Applied to both the dealer's own cards and every seat's hand."
+    "Watched the actual screen recording sent in and traced the real animation glitch, rather than guessing from a description. The dealer's hole-card reveal was never a real flip \u2014 it was a plain DOM swap: the face-down card was destroyed and a new face-up card popped in near-instantly. Single-player Blackjack has had a genuine 3D card flip for this exact moment the entire time (a real CSS rotation, not a swap) \u2014 it just was never brought over to the live multiplayer table.",
+    "Rebuilt the live table's reveal on that same real flip pattern. The one genuine architectural difference: single-player can bake both card faces into the DOM right from the deal, since there's no actual secret to keep in a fully client-side game. This table can't \u2014 the hole card's real value is genuinely unknown here until the server sends it at settlement \u2014 so the flip element is built face-down at deal time with its face-up side left empty, then populated for real and rotated only once the reveal data actually arrives.",
+    "Verified this behaves correctly before shipping it: captured a real mid-rotation screenshot showing the card actually mid-flip, not just reasoned about it in the abstract."
   ]
 }

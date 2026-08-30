@@ -825,6 +825,13 @@
   .mp-bj-dealer-cards{ margin-top:10px; min-height:0; }
   .mp-bj-seat-cards{ margin-top:4px; }
   .mp-bj-dealer-cards .playing-card, .mp-bj-seat-cards .playing-card{ width:30px; height:43px; border-radius:4px; }
+  /* Real hole-card flip for the live table, matching single-player
+     Blackjack's own genuine 3D rotation (pc-flip-wrap/pc-flip-inner)
+     instead of the plain DOM-swap this table used before — sized down
+     to match this table's smaller 30x43 cards, same pattern already
+     used for Hold'em's own result-card sizing below. */
+  .mp-bj-dealer-cards .pc-flip-wrap{ width:30px; height:43px; }
+  .mp-bj-dealer-cards .pc-flip-wrap .playing-card{ width:30px; height:43px; border-radius:4px; }
   .mp-bj-dealer-cards .pc-pip, .mp-bj-seat-cards .pc-pip{ font-size:7px; }
   .mp-bj-dealer-cards .pc-pip-tl, .mp-bj-seat-cards .pc-pip-tl{ top:2px; left:2px; }
   .mp-bj-dealer-cards .pc-pip-br, .mp-bj-seat-cards .pc-pip-br{ bottom:2px; right:2px; }

@@ -3031,7 +3031,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.82"; // Fixed the real cause of "both my cards show at the same time" from a live report — the dealer who taps Deal gets an immediate post-action re-render right after their own server call succeeds, AND the real-time listener fires independently for that same underlying write, often within milliseconds. That second render used to see the animation-tracking state already updated from the first one, so it rendered the same cards again instantly with no animation at all — visually snapping mid-animation to the static end state. Now delays marking cards as "seen" until the animation would have actually finished, so a near-simultaneous second render re-plays the same animation instead of cutting it short. Confirmed with a direct simulation before shipping, not just reasoned about. Applied to both the dealer's cards and each seat's own hand — remember to match this in version.json on deploy
+const APP_VERSION = "2026-08-24.83"; // Real find from a screen recording, not a guess: the dealer's hole-card reveal was never actually a flip at all — it was a plain DOM swap (old face-down card destroyed, new face-up one popped in near-instantly), while single-player Blackjack already had a genuine 3D flip (pc-flip-wrap/pc-flip-inner) for this exact moment the whole time. Rebuilt the live table's reveal on that same real pattern — the flip-wrap gets built face-down at deal time with its face-up side left empty (the actual hole card value is genuinely unknown here until the server reveals it, unlike single-player which can bake both faces in from the start), then populated and rotated for real once the reveal data actually arrives. Verified with a real mid-rotation screenshot before shipping, not just reasoned through — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4762,41 +4762,78 @@ async function renderMpBjSeatGridInner(){
     const isFreshSettlement = table.lastHandResult && table.lastHandResult.endedAt !== mpBjPrevState.lastHandEndedAt;
     let isFreshDealNow = false; // hoisted out of the dealer block below — the seat loop further down needs this too, to know whether to start its own cross-seat sound stagger at all
     if(dealerCardsEl){
+      const existingFlipWrap = document.getElementById('mpBjHoleCardWrap');
       if(isPlaying && table.dealerUpCard){
         const isFreshDeal = !mpBjPrevState.dealerCardsShown;
         isFreshDealNow = isFreshDeal;
-        // Real gap fixed here: the up-card got a proper deal animation
-        // via mpBjRenderHand, but this face-down card was always a bare
-        // static string — it just appeared with no animation at all,
-        // inconsistent with everything else on the table. pc-dealt is
-        // generic (applies to any .playing-card, back or face), so this
-        // reuses it directly rather than needing new CSS — delayed to
-        // land right after the up-card's own deal-in finishes, matching
-        // the same MP_BJ_CARD_STAGGER_MS stagger used everywhere else on
-        // this table. mp-bj-card-dealt alongside it for the slower
-        // multiplayer-specific animation duration.
-        const backCardHtml = isFreshDeal
-          ? `<div class="playing-card pc-back pc-dealt mp-bj-card-dealt" style="width:30px; height:43px; border-radius:4px; animation-delay:${MP_BJ_CARD_STAGGER_MS}ms;"></div>`
-          : '<div class="playing-card pc-back" style="width:30px; height:43px; border-radius:4px;"></div>';
-        dealerCardsEl.innerHTML = mpBjRenderHand([table.dealerUpCard], isFreshDeal ? 0 : null) + backCardHtml;
-        if(isFreshDeal) setTimeout(bjPlayCardSound, MP_BJ_CARD_STAGGER_MS); // the up-card's own sound comes from mpBjRenderHand/bjRenderCards; this covers the hole card specifically, since it bypasses that path as a bare static string
-        // Same delayed-marking fix as the seat cards below, applied here
-        // too for consistency even though it's less visually obvious on
-        // a face-down card back — the underlying double-render race
-        // (an immediate post-action render plus the listener firing
-        // independently for the same write) could affect this the same
-        // way, it would just show as the hole card skipping its own
-        // animation rather than "both cards at once".
         if(isFreshDeal){
-          setTimeout(() => { mpBjPrevState.dealerCardsShown = true; }, MP_BJ_CARD_STAGGER_MS * 2 + 500);
-        } else {
-          mpBjPrevState.dealerCardsShown = true;
+          // Real gap fixed here, found from a screen recording: this
+          // used to just swap the face-down card's DOM content for the
+          // revealed one on settlement — no flip, no transition, the
+          // old element vanished and a new one popped in near-instantly.
+          // Single-player Blackjack already has a genuine 3D flip for
+          // exactly this moment (pc-flip-wrap/pc-flip-inner, a CSS
+          // transition triggered by a class toggle) — it can bake both
+          // card faces into the DOM from the very start since there's
+          // no real secret to keep in a fully client-side game. This
+          // table can't do that the same way: the hole card's actual
+          // value is genuinely unknown here until the server reveals
+          // it. So the flip-wrap gets built now with its face-down
+          // side showing and its face-up side left EMPTY — populated
+          // for real only once the reveal data actually arrives below,
+          // right before triggering the same rotation.
+          dealerCardsEl.innerHTML = mpBjRenderHand([table.dealerUpCard], 0) +
+            `<div class="pc-flip-wrap" id="mpBjHoleCardWrap"><div class="pc-flip-inner">
+              <div class="pc-flip-face pc-flip-front playing-card pc-back"></div>
+              <div class="pc-flip-face pc-flip-back playing-card" id="mpBjHoleCardBack"></div>
+            </div></div>`;
+          setTimeout(bjPlayCardSound, MP_BJ_CARD_STAGGER_MS); // the up-card's own sound comes from mpBjRenderHand/bjRenderCards; this covers the hole card's own appearance specifically
+          setTimeout(() => { mpBjPrevState.dealerCardsShown = true; }, MP_BJ_CARD_STAGGER_MS * 2 + 500); // same delayed-marking fix as the seat cards below — a near-simultaneous second render (immediate post-action + the listener firing for the same write) shouldn't rebuild this and destroy the flip-wrap mid-animation
         }
+        // Not a fresh deal — genuinely nothing new to show (the hole
+        // card is still face-down either way), so the DOM is left
+        // completely untouched here. This matters: rebuilding it would
+        // destroy and recreate the existing flip-wrap element, silently
+        // resetting it back to its un-flipped state the next time this
+        // renders, even after a real reveal had already happened.
       } else if(table.lastHandResult && table.lastHandResult.dealerHand){
-        // Index 1 onward: the up-card (index 0) was already shown and
-        // animated during the deal itself — only the hole-card reveal
-        // and anything drawn during the dealer's own play are new here.
-        dealerCardsEl.innerHTML = mpBjRenderHand(table.lastHandResult.dealerHand, isFreshSettlement ? 1 : null);
+        if(isFreshSettlement && existingFlipWrap){
+          // The genuine flip reveal: now that the real hole card value
+          // has actually arrived from the server, populate the
+          // flip-wrap's hidden face with it, then trigger the exact
+          // same class-toggle single-player Blackjack uses for its own
+          // flip — a real 3D rotation on the SAME element that's been
+          // sitting there face-down, not a swap to a different one.
+          const holeCard = table.lastHandResult.dealerHand[1];
+          const backFace = document.getElementById('mpBjHoleCardBack');
+          if(holeCard && backFace){
+            const parsed = mpBjParseCard(holeCard);
+            const isRed = parsed.suit === '♥' || parsed.suit === '♦';
+            backFace.className = `pc-flip-face pc-flip-back playing-card ${isRed ? 'pc-red' : 'pc-black'}`;
+            backFace.innerHTML = bjPipHtml(parsed);
+          }
+          bjPlayCardSound();
+          existingFlipWrap.classList.add('pc-flipped');
+          // Any further cards (drawn during the dealer's own play, past
+          // the initial two) animate in normally, appended alongside
+          // the flip-wrap — not replacing it — after giving the flip
+          // itself a moment to visually finish first.
+          if(table.lastHandResult.dealerHand.length > 2){
+            const extraCards = table.lastHandResult.dealerHand.slice(2).map(mpBjParseCard);
+            setTimeout(() => {
+              dealerCardsEl.insertAdjacentHTML('beforeend', mpBjRenderCardsWithOffset(extraCards, 0, MP_BJ_CARD_STAGGER_MS));
+            }, 650); // .55s flip duration + a small buffer
+          }
+        } else if(!existingFlipWrap){
+          // No flip-wrap present to animate — arrived after the fact
+          // (e.g. opening this table mid-settlement, or a poll tick well
+          // past the reveal) — show the final state directly rather
+          // than trying to animate a reveal that already happened.
+          dealerCardsEl.innerHTML = mpBjRenderHand(table.lastHandResult.dealerHand, null);
+        }
+        // else: isFreshSettlement is false but a flip-wrap still exists
+        // — this settlement was already shown and flipped; left exactly
+        // as it ended up rather than re-rendered.
         mpBjPrevState.dealerCardsShown = false; // reset for the next deal
       } else {
         dealerCardsEl.innerHTML = '';
