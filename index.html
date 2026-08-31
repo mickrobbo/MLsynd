@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-08-24.87"; // Split, the last remaining piece of the Blackjack polish arc. Tracks a genuinely second, independent hand per seat (hand2/currentBet2/handStatus2/activeHandIdx) rather than reworking the whole model around always-two-hands — same "parallel track, only populated when actually used" approach single-player itself uses. New split server action, hit/stand updated to hand off between the two sub-hands within the same seat's turn before advancing to the next seat, double blocked after a split and split blocked after itself (same simplified rule set single-player already settled on), settlement evaluates each sub-hand separately (a split 21 correctly does NOT count as a natural blackjack, verified with a direct simulation, not just written and trusted). Client shows both hands with an indicator for which is active, a Split button that only appears when it's actually legal, and split-aware result text. Also fixed a real clipping bug caught by an actual render before shipping: 4 buttons at equal flex:1 didn't fit this row's width — "Split" was getting cut off at the edge, not just tight. Switched to a 45% flex-basis so it wraps into a clean 2x2 grid instead — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-01.1"; // Fixed a real bug where the Monthly Casino Pot could pay out more than once: the scheduled server job and this app's own "close out last month" check (autoCheckCasinoPotRollover) had zero coordination between them, and the app's check re-ran on every new browser session/tab/device, not just once ever — so multiple copies could all read the same open pot before any of them deleted it, each crediting a full share and drawing its own jackpot winner. Both now acquire a shared Firebase lock (ETag conditional write) before touching anything, and a second check against /casinoPot/history stops the same month being paid out twice even if a lock ever went stale. Also changed the pot split per request: the 60% pool is now shared evenly among everyone eligible instead of weighted by how much each person lost — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7478,6 +7478,35 @@ async function findStaleCasinoPotMonths(){
   }
 }
 
+// ---- Distribution lock -------------------------------------------------
+// This client-side distributeCasinoPot() and the server-side scheduled
+// function (netlify/functions/casino-pot-distribute-scheduled.js) both
+// touch the exact same /casinoPot data with no coordination between them.
+// That's the real cause of the triple-payout bug: autoCheckCasinoPotRollover
+// runs once per browser session, but "session" is just a JS variable — a
+// second tab, a second device, or reopening the app all reset it, so this
+// function could (and did) run more than once, and could also race the
+// scheduled function firing at the same time. Both now check the same
+// Firebase-level lock (ETag conditional write = real compare-and-swap)
+// before touching anything, so whichever one gets there first blocks
+// every other concurrent attempt, client or server.
+const CASINO_POT_LOCK_STALE_MS = 10 * 60 * 1000;
+async function acquireCasinoPotLock(){
+  const getRes = await authedFetch('/casinoPot/distributionLock.json', { headers: { 'X-Firebase-ETag': 'true' } });
+  const etag = getRes.headers.get('ETag');
+  const current = await getRes.json().catch(() => null);
+  const now = Date.now();
+  if(current && current.ts && (now - current.ts) < CASINO_POT_LOCK_STALE_MS) return false;
+  const putRes = await authedFetch('/casinoPot/distributionLock.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', 'If-Match': etag }, body: JSON.stringify({ ts: now })
+  });
+  if(putRes.status === 412) return false;
+  return putRes.ok;
+}
+async function releaseCasinoPotLock(){
+  try{ await authedFetch('/casinoPot/distributionLock.json', { method: 'DELETE' }); }catch(e){}
+}
+
 // Admin-only (enforced both by the UI that calls this and by Firebase
 // rules on /casinoPot/history + the parent /casinoPot/months/$month node).
 // monthKeys can be one month (manual early close) or several (merged
@@ -7486,6 +7515,18 @@ async function findStaleCasinoPotMonths(){
 async function distributeCasinoPot(monthKeys){
   if(!monthKeys || monthKeys.length === 0) return { skipped: true };
 
+  let gotLock = false;
+  try{ gotLock = await acquireCasinoPotLock(); }catch(e){ return { skipped: true, reason: 'lock check failed' }; }
+  if(!gotLock) return { skipped: true, reason: 'locked — another distribution is already running' };
+
+  try{
+    return await distributeCasinoPotLocked(monthKeys);
+  }finally{
+    await releaseCasinoPotLock();
+  }
+}
+
+async function distributeCasinoPotLocked(monthKeys){
   const combinedLosses = {};
   const combinedPlayCounts = {};
   for(const monthKey of monthKeys){
@@ -7495,6 +7536,15 @@ async function distributeCasinoPot(monthKeys){
   }
   const totalPot = sumLosses(combinedLosses);
   const label = monthKeys.length === 1 ? monthKeys[0] : `${monthKeys[0]}..${monthKeys[monthKeys.length - 1]}`;
+
+  // Belt-and-braces idempotency check, same as the scheduled function: if
+  // this label is already recorded in history, never credit it again even
+  // if a stale lock somehow let two runs both get this far.
+  try{
+    const histRes = await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`);
+    const existingHistory = await histRes.json();
+    if(existingHistory) return { skipped: true, reason: 'already distributed (idempotency check)', label };
+  }catch(e){}
 
   const allUids = new Set([...Object.keys(combinedLosses), ...Object.keys(combinedPlayCounts)]);
   const eligible = [];
@@ -7514,24 +7564,23 @@ async function distributeCasinoPot(monthKeys){
   const proportionalPool = Math.floor(totalPot * 0.6);
   const jackpotPool = totalPot - proportionalPool; // remainder, not a second floor() — avoids losing a few XP to rounding
 
-  const eligibleWithLosses = eligible.filter(uid => (combinedLosses[uid] || 0) > 0);
-  const totalEligibleLosses = eligibleWithLosses.reduce((s, uid) => s + (combinedLosses[uid] || 0), 0);
+  // Split evenly across everyone eligible — NOT weighted by how much each
+  // person lost. Changed per request.
   const proportional = {};
-  if(totalEligibleLosses > 0){
-    eligibleWithLosses.forEach(uid => {
-      proportional[uid] = Math.floor(proportionalPool * (combinedLosses[uid] / totalEligibleLosses));
-    });
+  if(eligible.length > 0){
+    const share = Math.floor(proportionalPool / eligible.length);
+    eligible.forEach(uid => { proportional[uid] = share; });
   }
-  // Jackpot pool is deliberately separate from the proportional-split
-  // eligibility above: anyone who played at all this month gets an equal
-  // shot, full stop — no weighting by how much they lost, how often they
-  // played, or anything else. That's everyone in combinedPlayCounts.
+  // Jackpot pool is deliberately separate from the eligibility above:
+  // anyone who played at all this month gets an equal shot, full stop —
+  // no weighting by how much they lost, how often they played, or
+  // anything else. That's everyone in combinedPlayCounts.
   const jackpotCandidates = Object.keys(combinedPlayCounts).filter(uid => (combinedPlayCounts[uid] || 0) > 0);
   const jackpotPoolCandidates = jackpotCandidates.length > 0 ? jackpotCandidates : eligible;
   const jackpotWinner = jackpotPoolCandidates[Math.floor(Math.random() * jackpotPoolCandidates.length)];
 
   for(const uid of Object.keys(proportional)){
-    await creditPotXP(uid, proportional[uid], `Monthly Casino Pot – Proportional (${label})`);
+    await creditPotXP(uid, proportional[uid], `Monthly Casino Pot – Even Split (${label})`);
   }
   await creditPotXP(jackpotWinner, jackpotPool, `Monthly Casino Pot – Jackpot (${label})`);
 
@@ -9034,7 +9083,7 @@ const CASINO_RULES = {
     <h3>Where it comes from</h3>
     <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the month, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
     <h3>How it's split</h3>
-    <p><b>60%</b> is shared out proportionally by how much each eligible member personally lost that month — lose more, get a bigger slice of that 60%. <b>40%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that month — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <p><b>60%</b> is split evenly among everyone eligible that month — same share for everyone, regardless of how much you personally lost. <b>40%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that month — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Eligibility</h3>
     <p>You qualify for the 60% share if you played the tables <b>20 times or more</b> this month, <b>or</b> earned any real (non-casino) XP this month — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
     <h3>Timing</h3>
