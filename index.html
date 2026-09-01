@@ -754,7 +754,7 @@
       <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
       <button type="button" class="casino-pot-details-toggle" id="potDetailsToggleBtn">▾ Details</button>
       <div class="casino-pot-details" id="casinoPotDetailsWrap">
-        <div class="casino-pot-split-legend"><span>60% SHARED</span><span>40% JACKPOT</span></div>
+        <div class="casino-pot-split-legend"><span>70% SHARED</span><span>30% JACKPOT</span></div>
         <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
         <div id="casinoPotMeWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);"></div>
         <div style="text-align:center; margin-top:10px;">
@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-01.1"; // Fixed a real bug where the Monthly Casino Pot could pay out more than once: the scheduled server job and this app's own "close out last month" check (autoCheckCasinoPotRollover) had zero coordination between them, and the app's check re-ran on every new browser session/tab/device, not just once ever — so multiple copies could all read the same open pot before any of them deleted it, each crediting a full share and drawing its own jackpot winner. Both now acquire a shared Firebase lock (ETag conditional write) before touching anything, and a second check against /casinoPot/history stops the same month being paid out twice even if a lock ever went stale. Also changed the pot split per request: the 60% pool is now shared evenly among everyone eligible instead of weighted by how much each person lost — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-01.2"; // Changed the Monthly Casino Pot split per request: jackpot is now 30% (was 40%), and the remaining 70% (was 60%) splits evenly among everyone eligible — same even-split rule as before, just a different ratio. No other logic changed — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7561,7 +7561,7 @@ async function distributeCasinoPotLocked(monthKeys){
     return { skipped: true, rolled: true, totalPot };
   }
 
-  const proportionalPool = Math.floor(totalPot * 0.6);
+  const proportionalPool = Math.floor(totalPot * 0.7);
   const jackpotPool = totalPot - proportionalPool; // remainder, not a second floor() — avoids losing a few XP to rounding
 
   // Split evenly across everyone eligible — NOT weighted by how much each
@@ -9083,9 +9083,9 @@ const CASINO_RULES = {
     <h3>Where it comes from</h3>
     <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the month, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
     <h3>How it's split</h3>
-    <p><b>60%</b> is split evenly among everyone eligible that month — same share for everyone, regardless of how much you personally lost. <b>40%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that month — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <p><b>70%</b> is split evenly among everyone eligible that month — same share for everyone, regardless of how much you personally lost. <b>30%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that month — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Eligibility</h3>
-    <p>You qualify for the 60% share if you played the tables <b>20 times or more</b> this month, <b>or</b> earned any real (non-casino) XP this month — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
+    <p>You qualify for the 70% share if you played the tables <b>20 times or more</b> this month, <b>or</b> earned any real (non-casino) XP this month — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
     <h3>Timing</h3>
     <p>The month locks the moment the calendar rolls over (AEST), and the pot is redistributed automatically at <b>8am AEST on the 1st</b>. If nobody qualified in a given month, the pot simply rolls into the next one rather than disappearing.</p>
   `},
