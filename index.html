@@ -746,15 +746,15 @@
          else (split bar, contribution, eligibility, history, admin) lives
          behind the Details toggle. -->
     <div class="panel" id="casinoPotPanel">
-      <h2 class="casino-panel-h2">🏆 Monthly Casino Pot</h2>
+      <h2 class="casino-panel-h2">🏆 Casino Pot</h2>
       <div class="casino-pot-glow">
         <div class="casino-pot-total" id="casinoPotTotal">0 XP</div>
-        <div class="casino-pot-sub">this month's pot so far</div>
+        <div class="casino-pot-sub">this period's pot so far</div>
       </div>
       <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
       <button type="button" class="casino-pot-details-toggle" id="potDetailsToggleBtn">▾ Details</button>
       <div class="casino-pot-details" id="casinoPotDetailsWrap">
-        <div class="casino-pot-split-legend"><span>70% SHARED</span><span>30% JACKPOT</span></div>
+        <div class="casino-pot-split-legend"><span>75% SHARED</span><span>25% JACKPOT</span></div>
         <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
         <div id="casinoPotMeWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);"></div>
         <div style="text-align:center; margin-top:10px;">
@@ -763,7 +763,7 @@
         </div>
         <div id="casinoPotHistoryArea" style="display:none; margin-top:10px;"><div class="empty">Loading…</div></div>
         <div id="casinoPotAdminWrap" style="display:none; margin-top:12px; text-align:center; border-top:1px solid var(--line); padding-top:12px;">
-          <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close month &amp; distribute pot</button>
+          <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close period &amp; distribute pot</button>
           <div class="status-msg" id="casinoPotAdminStatus"></div>
         </div>
       </div>
@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-01.2"; // Changed the Monthly Casino Pot split per request: jackpot is now 30% (was 40%), and the remaining 70% (was 60%) splits evenly among everyone eligible — same even-split rule as before, just a different ratio. No other logic changed — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-01.4"; // Casino Pot even-split and jackpot payouts no longer count toward Player Tier, per request — creditPotXP (both this copy and the scheduled function's) now credits balance and logs the payout as before, but deliberately stops bumping lifetimeEarned, which is the only one of Tier's three inputs (lifetimeEarned + Board Season Score + Tipping points) this touches. The money is still real and spendable, it just doesn't move tier status — only genuine game wins, tipping, and board results do that now. Triple-checked the whole distribution path end to end while making this change: lock + idempotency check both still correctly gate every write, 1st/16th 8am timing intact, 75/25 split intact, transition-window guard intact — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3696,7 +3696,7 @@ async function renderCasinoBadgesView(){
     rows.push(casinoBadgeRowHtml(
       '🏆',
       jackpotWins > 1 ? `Jackpot Winner ×${jackpotWins}` : 'Jackpot Winner',
-      'Win the Monthly Casino Pot jackpot at least once.',
+      'Win the Casino Pot jackpot at least once.',
       ids.includes('jackpot-winner')
     ));
     XP_MILESTONE_BADGES.forEach(b => {
@@ -3779,7 +3779,7 @@ async function creditMyChallengeXP(amount, reason){
     }
     // Deliberately NOT routed through trackCasinoPotContribution — a
     // challenge stake moves between two members, it isn't a loss to the
-    // house, so it shouldn't feed the monthly Casino Pot the way a real
+    // house, so it shouldn't feed the Casino Pot the way a real
     // Blackjack/Roulette/etc. loss does.
     updateXPBalanceDisplay(next);
   }catch(e){}
@@ -4213,7 +4213,7 @@ async function creditMyBountyXP(amount, reason){
     }
     // Same reasoning as Challenges — this moves XP between members (or
     // refunds your own), it isn't a loss to the house, so it doesn't feed
-    // the monthly Casino Pot the way a real game loss does.
+    // the Casino Pot the way a real game loss does.
     updateXPBalanceDisplay(next);
   }catch(e){}
 }
@@ -7085,7 +7085,7 @@ async function awardXP(amount, reason, opts){
         });
       }catch(e){}
     }
-    // Monthly Casino Pot — every casino win/loss (identified by reason text,
+    // Casino Pot — every casino win/loss (identified by reason text,
     // since this function is already the one central choke point every
     // casino game funnels through) feeds the shared pot. Losses fund it;
     // any casino play (win or lose) counts toward the activity-eligibility
@@ -7177,29 +7177,55 @@ let sessionLossNudgeShown = false;
 const SESSION_LOSS_NUDGE_THRESHOLD = 500;
 const CASINO_POT_TIMEZONE = 'Australia/Melbourne'; // AEST/AEDT — the actual cutoff authority, not each device's local clock
 
-// Pinned to AEST/AEDT specifically (via Intl, so daylight saving is handled
-// automatically) rather than each player's own device timezone — someone
-// with their phone set to a different zone shouldn't be able to end up in
-// the "wrong" month's bucket right around the boundary.
-function casinoPotMonthKey(d){
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CASINO_POT_TIMEZONE, year: 'numeric', month: '2-digit' }).formatToParts(d || new Date());
+// Changed from monthly to twice-monthly per request (smaller, more
+// frequent payouts instead of one lump sum) — each calendar month is now
+// two periods: the 1st through the 15th, and the 16th through the last
+// day of the month. Distribution runs 8am on whichever of the 1st/16th
+// closes that period. Period key format is "YYYY-MM-01" or "YYYY-MM-16"
+// (the period's own start date) — deliberately still stored under the
+// same /casinoPot/months path server-side (that node's Firebase rule is a
+// $monthKey wildcard, so it accepts any child key shape) rather than
+// migrating to a new path, to avoid touching security rules for a pure
+// bucketing-scheme change.
+//
+// Pinned to AEST/AEDT specifically (via Intl, so daylight saving is
+// handled automatically) rather than each player's own device timezone —
+// someone with their phone set to a different zone shouldn't be able to
+// end up in the "wrong" period's bucket right around the boundary.
+function casinoPotPeriodKey(d){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CASINO_POT_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d || new Date());
   const y = parts.find(p => p.type === 'year').value;
   const m = parts.find(p => p.type === 'month').value;
-  return `${y}-${m}`;
+  const day = Number(parts.find(p => p.type === 'day').value);
+  const periodStartDay = day <= 15 ? '01' : '16';
+  return `${y}-${m}-${periodStartDay}`;
 }
 
-// Midnight AEST on the 1st of next month is the real cutoff (equivalent to
-// 23:59:59 AEST on the last day of this one) — computed by asking what
-// month AEST is currently in, then finding the first moment that no longer
-// reports that same month key, via a coarse-to-fine search. Avoids hand-
-// rolling AEST/AEDT day-count and daylight-saving edge cases.
+// One-off transition per request: the switch to twice-monthly happened
+// mid-period (Sept 1, 2026), and today's partial 1st-15th period was
+// deliberately NOT carried into the new twice-monthly cadence — the first
+// period actually tracked and paid out under the new system is the 16th
+// through the 30th, distributed 8am Oct 1. trackCasinoPotContribution
+// below simply doesn't record anything before this instant, so nothing
+// needs to exist or be cleaned up for the skipped 1st-15th window — it's
+// just silently not tracked, once, and this guard is inert forever after.
+const CASINO_POT_START_MS = 1789480800000; // 2026-09-16T00:00:00 Australia/Melbourne (AEST)
+
+// Midnight AEST/AEDT at the start of the next period is the real cutoff
+// (equivalent to 23:59:59 at the end of the current one) — computed by
+// asking what period AEST/AEDT is currently in, then finding the first
+// moment that no longer reports that same period key, via a coarse-to-
+// fine search. Avoids hand-rolling AEST/AEDT day-count and daylight-
+// saving edge cases. Before CASINO_POT_START_MS, there's no "current
+// period" to count down to yet, so this instead counts down to launch.
 function casinoPotCutoffDate(){
-  const nowKey = casinoPotMonthKey();
+  if(Date.now() < CASINO_POT_START_MS) return new Date(CASINO_POT_START_MS);
+  const nowKey = casinoPotPeriodKey();
   let lo = Date.now();
-  let hi = lo + 32 * 24 * 60 * 60 * 1000; // definitely into next month
+  let hi = lo + 17 * 24 * 60 * 60 * 1000; // definitely into the next period (longest possible period is ~16 days)
   for(let i = 0; i < 40; i++){ // binary search to the minute is plenty precise for a countdown
     const mid = Math.floor((lo + hi) / 2);
-    if(casinoPotMonthKey(new Date(mid)) === nowKey) lo = mid; else hi = mid;
+    if(casinoPotPeriodKey(new Date(mid)) === nowKey) lo = mid; else hi = mid;
   }
   return new Date(hi);
 }
@@ -7208,13 +7234,14 @@ function casinoPotCutoffDate(){
 // overwrites (that's exactly the race-condition class this project has
 // been bitten by before — two concurrent casino sessions would clobber
 // each other's update). Instead each player only ever writes their own
-// uid leaf under the CURRENT real-world month's bucket, the same safe
+// uid leaf under the CURRENT real-world period's bucket, the same safe
 // per-user-path pattern already used for the rest of the XP system. The
 // displayed pot total is derived by summing those leaves, never stored
 // as its own counter — so there's nothing shared to race on.
 async function trackCasinoPotContribution(uid, amount, reason){
   if(!CASINO_POT_REASON_PATTERN.test(reason || '')) return;
-  const monthKey = casinoPotMonthKey();
+  if(Date.now() < CASINO_POT_START_MS) return; // one-off transition window, see CASINO_POT_START_MS above
+  const monthKey = casinoPotPeriodKey();
   try{
     const pcRes = await authedFetch(`/casinoPot/months/${monthKey}/playCounts/${uid}.json`);
     if(!pcRes.ok){
@@ -7362,7 +7389,7 @@ async function renderCasinoPotPanel(){
   const totalEl = document.getElementById('casinoPotTotal');
   if(!totalEl) return;
   renderCasinoPotCountdown();
-  const monthKey = casinoPotMonthKey();
+  const monthKey = casinoPotPeriodKey();
   const { losses, playCounts, readFailed } = await fetchCasinoPotMonth(monthKey);
   const total = sumLosses(losses);
   totalEl.textContent = readFailed ? '— XP' : `${total.toLocaleString()} XP`;
@@ -7378,11 +7405,11 @@ async function renderCasinoPotPanel(){
       const sharePct = total > 0 ? Math.round((myLoss / total) * 100) : 0;
       const contribLine = myLoss > 0
         ? `You've put in <b>${myLoss.toLocaleString()} XP</b> this month (${sharePct}% of the pot).`
-        : `You haven't lost anything into this month's pot yet.`;
+        : `You haven't lost anything into this period's pot yet.`;
       const eligible = await isEligibleForPot(currentUserUid, monthKey, myPlays);
       const eligLine = eligible
         ? `✅ You're eligible for this month's payout.`
-        : `${CASINO_POT_ELIGIBLE_PLAYS - myPlays} more play${(CASINO_POT_ELIGIBLE_PLAYS - myPlays) === 1 ? '' : 's'} to qualify (or any real XP win this month also qualifies you).`;
+        : `${CASINO_POT_ELIGIBLE_PLAYS - myPlays} more play${(CASINO_POT_ELIGIBLE_PLAYS - myPlays) === 1 ? '' : 's'} to qualify (or any real XP win this period also qualifies you).`;
       meWrap.innerHTML = `
         <div class="casino-pot-me-line">${contribLine}</div>
         <div class="casino-pot-me-line ${eligible ? 'eligible' : ''}">${eligLine}</div>
@@ -7395,31 +7422,31 @@ async function renderCasinoPotPanel(){
   if(adminWrap) adminWrap.style.display = isAdmin ? 'block' : 'none';
 }
 
-// Who counts as eligible for a given month's redistribution: played 20+
-// times that month, OR earned any real (non-casino) XP that month —
+// Who counts as eligible for a given period's redistribution: played 20+
+// times that period, OR earned any real (non-casino) XP that period —
 // checked by scanning their log, since that's the only place "when" is
 // recorded per-transaction.
 async function isEligibleForPot(uid, monthKey, playCount){
   if(playCount >= CASINO_POT_ELIGIBLE_PLAYS) return true;
   try{
-    // Query only this month's slice of the log via its existing ts index
+    // Query only this period's slice of the log via its existing ts index
     // (already set in firebase-rules.json), instead of downloading the
-    // member's ENTIRE XP history just to check one month — that log only
+    // member's ENTIRE XP history just to check one period — that log only
     // grows across a season, so this was getting slower every week and
     // was a real contributor to Casino feeling slow to open. Only safe to
-    // range-query when checking the CURRENT month specifically — need a
-    // reference timestamp inside the target month to binary-search its
+    // range-query when checking the CURRENT period specifically — need a
+    // reference timestamp inside the target period to binary-search its
     // real AEST/AEDT-aware boundaries, same proven technique
-    // casinoPotCutoffDate already uses. Past months or the multi-month
-    // rollover's combined label ("2026-06..2026-08") fall back to the
-    // full-log scan below, unchanged.
-    if(monthKey === casinoPotMonthKey()){
+    // casinoPotCutoffDate already uses. Past periods or the multi-period
+    // rollover's combined label fall back to the full-log scan below,
+    // unchanged.
+    if(monthKey === casinoPotPeriodKey()){
       const endMs = casinoPotCutoffDate().getTime();
-      let lo = endMs - 32 * 24 * 60 * 60 * 1000; // definitely into the previous month
+      let lo = endMs - 17 * 24 * 60 * 60 * 1000; // definitely into the previous period (longest period is ~16 days)
       let hi = endMs;
       for(let i = 0; i < 40; i++){
         const mid = Math.floor((lo + hi) / 2);
-        if(casinoPotMonthKey(new Date(mid)) === monthKey) hi = mid; else lo = mid;
+        if(casinoPotPeriodKey(new Date(mid)) === monthKey) hi = mid; else lo = mid;
       }
       const startMs = hi;
       const orderBy = encodeURIComponent('"ts"');
@@ -7432,13 +7459,23 @@ async function isEligibleForPot(uid, monthKey, playCount){
     return Object.values(log).some(entry => {
       if(!entry || !(entry.amount > 0)) return false;
       if(CASINO_POT_REASON_PATTERN.test(entry.reason || '')) return false;
-      return casinoPotMonthKey(new Date(entry.ts)) === monthKey;
+      return casinoPotPeriodKey(new Date(entry.ts)) === monthKey;
     });
   }catch(e){
     return false;
   }
 }
 
+// Deliberately does NOT bump lifetimeEarned — per request, Casino Pot
+// even-split and jackpot payouts should NOT count toward Player Tier.
+// Tier (computePrestigeScore above) is lifetimeEarned + Board Season
+// Score + Tipping points, so leaving lifetimeEarned untouched here is the
+// whole fix: the money is still real and spendable (balance is credited,
+// and it's logged for a full audit trail), it just doesn't move the tier
+// needle. Ordinary casino GAME wins (winning a hand of Blackjack etc.)
+// are credited elsewhere, not through this function, and are unaffected —
+// only the periodic pot distribution and jackpot draw are excluded from
+// tier.
 async function creditPotXP(uid, amount, reason){
   if(!(amount > 0)) return;
   try{
@@ -7452,26 +7489,22 @@ async function creditPotXP(uid, amount, reason){
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
     });
-    const ltRes = await authedFetch(`/xp/${uid}/lifetimeEarned.json`);
-    const lt = (await ltRes.json()) || 0;
-    await authedFetch(`/xp/${uid}/lifetimeEarned.json`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lt + amount)
-    });
   }catch(e){}
 }
 
-// Finds any month bucket(s) under /casinoPot/months that aren't the
-// current real-world month — i.e. months that ended but were never
-// closed out. Normally at most one (last month), but if the admin hasn't
-// opened the app in a while there could be several; those get merged
-// into a single distribution rather than run one at a time, which is
-// also how "no one eligible → roll into next month" naturally falls out
-// (an unclosed month just sits here until it's merged into a later run).
+// Finds any period bucket(s) under /casinoPot/months that aren't the
+// current real-world period (1st-15th / 16th-end of month) — i.e. periods
+// that ended but were never closed out. Normally at most one (the last
+// period), but if the admin hasn't opened the app in a while there could
+// be several; those get merged into a single distribution rather than run
+// one at a time, which is also how "no one eligible → roll into next
+// period" naturally falls out (an unclosed period just sits here until
+// it's merged into a later run).
 async function findStaleCasinoPotMonths(){
   try{
     const res = await authedFetch('/casinoPot/months.json');
     const all = (await res.json()) || {};
-    const nowKey = casinoPotMonthKey();
+    const nowKey = casinoPotPeriodKey();
     return Object.keys(all).filter(k => k !== nowKey).sort();
   }catch(e){
     return [];
@@ -7561,7 +7594,7 @@ async function distributeCasinoPotLocked(monthKeys){
     return { skipped: true, rolled: true, totalPot };
   }
 
-  const proportionalPool = Math.floor(totalPot * 0.7);
+  const proportionalPool = Math.floor(totalPot * 0.75);
   const jackpotPool = totalPot - proportionalPool; // remainder, not a second floor() — avoids losing a few XP to rounding
 
   // Split evenly across everyone eligible — NOT weighted by how much each
@@ -7580,9 +7613,9 @@ async function distributeCasinoPotLocked(monthKeys){
   const jackpotWinner = jackpotPoolCandidates[Math.floor(Math.random() * jackpotPoolCandidates.length)];
 
   for(const uid of Object.keys(proportional)){
-    await creditPotXP(uid, proportional[uid], `Monthly Casino Pot – Even Split (${label})`);
+    await creditPotXP(uid, proportional[uid], `Casino Pot – Even Split (${label})`);
   }
-  await creditPotXP(jackpotWinner, jackpotPool, `Monthly Casino Pot – Jackpot (${label})`);
+  await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`);
 
   const historyEntry = { month: label, totalPot, proportional, jackpotWinner, jackpotAmount: jackpotPool, participants: jackpotPoolCandidates, distributedAt: Date.now() };
   try{
@@ -7791,13 +7824,13 @@ document.getElementById('casinoPotRulesBtn').addEventListener('click', () => ope
 document.getElementById('closeMonthPotBtn').addEventListener('click', async () => {
   const btn = document.getElementById('closeMonthPotBtn');
   const status = document.getElementById('casinoPotAdminStatus');
-  if(!confirm('Close out the current month and distribute the pot now? This normally happens automatically once the month rolls over — only do this to force it early.')) return;
+  if(!confirm('Close out the current period and distribute the pot now? This normally happens automatically 8am on the 1st and 16th — only do this to force it early.')) return;
   btn.disabled = true;
   status.className = 'status-msg';
   status.textContent = 'Distributing…';
   try{
     const stale = await findStaleCasinoPotMonths();
-    const monthKeys = [...stale, casinoPotMonthKey()];
+    const monthKeys = [...stale, casinoPotPeriodKey()];
     const result = await distributeCasinoPot(monthKeys);
     if(result.skipped){
       status.className = 'status-msg';
@@ -7992,15 +8025,15 @@ async function renderCasinoFloorFeed(){
     }));
     const flat = perMember.flat();
 
-    // Biggest win spotlight — scoped to the current calendar month
+    // Biggest win spotlight — scoped to the current pot period
     // specifically (the feed below is "most recent 50" which could dip
-    // into last month during a quiet spell; the spotlight shouldn't).
+    // into the previous period during a quiet spell; the spotlight shouldn't).
     if(spotlightEl){
-      const monthKey = casinoPotMonthKey();
-      const monthWins = flat.filter(e => (e.amount > 0) && casinoPotMonthKey(new Date(e.ts || 0)) === monthKey);
+      const monthKey = casinoPotPeriodKey();
+      const monthWins = flat.filter(e => (e.amount > 0) && casinoPotPeriodKey(new Date(e.ts || 0)) === monthKey);
       const biggest = monthWins.reduce((best, e) => (!best || e.amount > best.amount) ? e : best, null);
       spotlightEl.innerHTML = biggest
-        ? `🔥 Biggest win this month: <b>${escapeHtml(biggest.name)}</b> +${biggest.amount.toLocaleString()} (${escapeHtml(biggest.reason || '')})`
+        ? `🔥 Biggest win this period: <b>${escapeHtml(biggest.name)}</b> +${biggest.amount.toLocaleString()} (${escapeHtml(biggest.reason || '')})`
         : '';
     }
 
@@ -9079,15 +9112,15 @@ const CASINO_RULES = {
     <h3>Payouts (multiplier on your bet)</h3>
     <p>Royal Flush 250:1 &middot; Straight Flush 50:1 &middot; Four of a Kind 25:1 &middot; Full House 9:1 &middot; Flush 6:1 &middot; Straight 4:1 &middot; Three of a Kind 3:1 &middot; Two Pair 2:1 &middot; Tens or Better (a pair of 10/J/Q/K/A) 1:1. Anything weaker than a pair of Tens returns nothing.</p>
   `},
-  casinopot: { title: '🏆 Monthly Casino Pot', body: `
+  casinopot: { title: '🏆 Casino Pot', body: `
     <h3>Where it comes from</h3>
-    <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the month, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
+    <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the period, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
     <h3>How it's split</h3>
-    <p><b>70%</b> is split evenly among everyone eligible that month — same share for everyone, regardless of how much you personally lost. <b>30%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that month — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <p><b>75%</b> is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Eligibility</h3>
-    <p>You qualify for the 70% share if you played the tables <b>20 times or more</b> this month, <b>or</b> earned any real (non-casino) XP this month — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
+    <p>You qualify for the 75% share if you played the tables <b>20 times or more</b> this period, <b>or</b> earned any real (non-casino) XP this period — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
     <h3>Timing</h3>
-    <p>The month locks the moment the calendar rolls over (AEST), and the pot is redistributed automatically at <b>8am AEST on the 1st</b>. If nobody qualified in a given month, the pot simply rolls into the next one rather than disappearing.</p>
+    <p>The pot pays out twice a month instead of once, to keep payouts smaller and more regular rather than one big lump sum: the 1st–15th locks and pays out <b>8am AEST on the 16th</b>, and the 16th–end of month locks and pays out <b>8am AEST on the 1st</b>. If nobody qualified in a given period, the pot simply rolls into the next one rather than disappearing.</p>
   `},
   tiers: { title: '🏅 Player Tiers', body: `
     <h3>What the badge means</h3>
@@ -9129,7 +9162,7 @@ const CASINO_RULES_HUB_ORDER = [
   ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
   ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['plinko', '🔴 Plinko'], ['bigwheel', '🛞 Big Wheel'], ['mines', '💣 Mines'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
   ['crash', '🚀 Crash'], ['doubleornothing', '🪙 Double or Nothing'],
-  ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Monthly Casino Pot'], ['tiers', '🏅 Player Tiers']
+  ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Casino Pot'], ['tiers', '🏅 Player Tiers']
 ];
 document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
   `<button type="button" data-rules-key="${key}">${label}</button>`).join('');
@@ -10668,7 +10701,7 @@ async function renderFormGuide(){
 
     let casinoLeaderName = null, casinoLeaderCount = 0;
     try{
-      const monthKey = casinoPotMonthKey(new Date());
+      const monthKey = casinoPotPeriodKey(new Date());
       const potData = await fetchCasinoPotMonth(monthKey);
       Object.entries(potData.playCounts || {}).forEach(([uid, count]) => {
         if(count > casinoLeaderCount){
@@ -10697,7 +10730,7 @@ async function renderFormGuide(){
       lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🔥</span><span class="form-guide-text"><b>${escapeHtml(streakLeader.name)}</b> is on a ${streakLeader.streak}-win Casino heater</span></div>`);
     }
     if(casinoLeaderName){
-      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎰</span><span class="form-guide-text"><b>${escapeHtml(casinoLeaderName)}</b> — most active at the tables this month (${casinoLeaderCount} plays)</span></div>`);
+      lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎰</span><span class="form-guide-text"><b>${escapeHtml(casinoLeaderName)}</b> — most active at the tables this period (${casinoLeaderCount} plays)</span></div>`);
     }
     area.innerHTML = lines.length ? lines.join('') : '<div class="empty">Not enough activity yet to build a form guide.</div>';
   }catch(e){
@@ -14971,7 +15004,7 @@ async function runFullHealthCheck(){
   // This is the same path production casino play writes to.
   if(currentUserUid){
     try{
-      const monthKey = casinoPotMonthKey();
+      const monthKey = casinoPotPeriodKey();
       const path = `/casinoPot/months/${monthKey}/playCounts/${currentUserUid}.json`;
       const getRes = await authedFetch(path);
       if(!getRes.ok){
