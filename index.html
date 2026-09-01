@@ -235,7 +235,7 @@
     </div>
     <div class="panel">
       <button type="button" id="runHealthCheckBtn">🩺 Run Full System Check</button>
-      <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data (including duplicate account links), season history, tipping reads, Joker validity, Casino XP/badge integrity, dues consistency, individual bet drafts, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
+      <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data (including duplicate account links), season history, tipping reads, Joker validity, Casino XP/badge integrity, Casino Pot distribution health (stuck locks, overdue payouts, legacy data), dues consistency, individual bet drafts, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
       <div id="healthCheckResults" style="margin-top:10px;"></div>
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
     </div>
@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-01.7"; // Reversed the pre-launch transition per request: tracking now starts immediately (today, Sept 1) instead of waiting until Sept 16, so the first payment lands 8am AEST Sept 16 rather than Oct 1. Safe to do since balance/lifetimeEarned/the pot were already fully reset earlier — there was no bad data left to protect against, so the wait was no longer needed. Removed CASINO_POT_START_MS and every branch that referenced it entirely, rather than just moving the date, since today's partial 1st-15th window is now just an ordinary (if slightly short) tracked period like any other going forward — no special-casing required — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-01.8"; // Added Casino Pot diagnostics to the Diag tab's Full System Check, per request, so faults surface proactively instead of needing another 3am incident to notice: (1) distribution lock health — flags a lock older than its 10-min self-heal window, real evidence a run crashed before cleaning up; (2) overdue distribution — the most actionable one, flags any closed period bucket that should've been paid out and deleted but wasn't, meaning real XP is stuck; (3) legacy period-key format — flags any leftover old-style "YYYY-MM" bucket that the new twice-monthly logic can't see at all; (4) weeklyTopupLastRun shape — regression guard for the exact object-instead-of-timestamp mistake the Sept 1 full-reset script made. Also noted plainly in a comment why the scheduled function itself can't be pinged like the other Netlify functions on this list (no public URL) and that the duplicate .mjs/.js situation found this week wouldn't be caught by any live check — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -15334,6 +15334,91 @@ async function runFullHealthCheck(){
   }catch(e){
     check('On This Day function deployed', 'fail', `Couldn't reach it at all: ${e.message}`);
   }
+
+  // Casino Pot distribution lock health — /casinoPot/distributionLock is
+  // deleted in a `finally` block the instant a distribution run finishes
+  // (success or failure), so it existing at all outside that brief window
+  // means a run crashed hard enough to skip even its own cleanup. The
+  // code self-heals after 10 minutes (a stale lock stops blocking new
+  // runs), but a lock that's OLDER than that and still sitting here is
+  // real evidence something crashed recently — worth a look at Netlify's
+  // function logs even though nothing is currently broken by it.
+  try{
+    const res = await authedFetch('/casinoPot/distributionLock.json');
+    const lock = res.ok ? await res.json() : null;
+    if(!lock){
+      check('Casino Pot distribution lock', 'pass', 'No lock held — normal state outside an active run');
+    } else {
+      const ageMin = Math.round((Date.now() - (lock.ts || 0)) / 60000);
+      check('Casino Pot distribution lock', ageMin < 10 ? 'pass' : 'warn',
+        ageMin < 10 ? `Lock held ${ageMin} min ago — likely an active run right now` : `Lock is ${ageMin} min old and still present — a run may have crashed before cleaning up. Self-heals after 10 min either way, but worth checking Netlify's function logs for casino-pot-distribute-scheduled`);
+    }
+  }catch(e){
+    check('Casino Pot distribution lock', 'fail', e.message);
+  }
+
+  // Casino Pot overdue distribution — the single most actionable check on
+  // this whole list, direct descendant of the actual bug that started
+  // this: any bucket under /casinoPot/months OTHER than the current
+  // period is, by definition, a CLOSED period that should already have
+  // been distributed and deleted by the scheduled function or the app's
+  // own catch-up check. Its continued presence means real XP is sitting
+  // undelivered — check Netlify's function logs for
+  // casino-pot-distribute-scheduled if this ever fires.
+  try{
+    const res = await authedFetch('/casinoPot/months.json');
+    const all = res.ok ? ((await res.json()) || {}) : {};
+    const currentKey = casinoPotPeriodKey();
+    const stale = Object.keys(all).filter(k => k !== currentKey);
+    check('Casino Pot overdue distribution', stale.length === 0 ? 'pass' : 'fail',
+      stale.length === 0 ? `Only the current period (${currentKey}) is open, as expected` : `${stale.length} closed period(s) never distributed: ${stale.join(', ')} — real XP is sitting undelivered`);
+  }catch(e){
+    check('Casino Pot overdue distribution', 'fail', e.message);
+  }
+
+  // Casino Pot legacy period-key format — a defensive check for the
+  // migration this month: any bucket under /casinoPot/months in the OLD
+  // "YYYY-MM" monthly format (no "-01"/"-16" day suffix) would be
+  // completely invisible to the current twice-monthly distribution logic
+  // forever, since it only ever looks for the new key shape. Shouldn't
+  // exist post-migration, but if it does, it's real money that needs a
+  // manual look rather than something that'll ever resolve on its own.
+  try{
+    const res = await authedFetch('/casinoPot/months.json');
+    const all = res.ok ? ((await res.json()) || {}) : {};
+    const legacy = Object.keys(all).filter(k => !/^\d{4}-\d{2}-(01|16)$/.test(k));
+    check('Casino Pot key format', legacy.length === 0 ? 'pass' : 'fail',
+      legacy.length === 0 ? 'All bucket keys use the current period format' : `Old-format bucket(s) found, invisible to current distribution logic: ${legacy.join(', ')}`);
+  }catch(e){
+    check('Casino Pot key format', 'fail', e.message);
+  }
+
+  // weeklyTopupLastRun data shape — regression guard for a real mistake
+  // made during the Sept 1 full reset: a script that iterated every key
+  // under /xp treated this scheduler-bookkeeping timestamp as if it were
+  // a user record and gave it a {balance, lifetimeEarned, log} shape
+  // instead. Whatever job reads this to decide "has it been a week yet"
+  // needs a plain number here, not an object.
+  try{
+    const res = await authedFetch('/xp/weeklyTopupLastRun.json');
+    const val = res.ok ? await res.json() : null;
+    const ok = val == null || typeof val === 'number';
+    check('weeklyTopupLastRun shape', ok ? 'pass' : 'fail',
+      ok ? (val == null ? 'Not set yet' : `Valid timestamp — ${timeAgo(val)}`) : `Wrong shape (${JSON.stringify(val).slice(0,80)}) — should be a plain timestamp number, not an object. Delete this node in Firebase console and re-add it as a number.`);
+  }catch(e){
+    check('weeklyTopupLastRun shape', 'fail', e.message);
+  }
+
+  // Casino Pot distribution schedule can't be pinged directly like the
+  // other functions on this list — it's a Netlify *scheduled* function,
+  // which deliberately has no public URL to send a test request to. The
+  // three checks above (lock health, overdue periods, key format) are
+  // the real proxy for "is it actually working": if those all pass, the
+  // schedule is functioning correctly regardless of not being pingable
+  // directly. Worth a manual look in Netlify's Functions tab occasionally
+  // to confirm exactly one casino-pot-distribute-scheduled function
+  // exists — a duplicate (e.g. a stray .mjs alongside the real .js) has
+  // happened once already and wouldn't show up in any check here.
 
   return { results, latencyMs: firebaseLatencyMs };
 }
