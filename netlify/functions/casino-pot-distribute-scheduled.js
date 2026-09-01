@@ -1,10 +1,12 @@
-// Runs hourly and only actually distributes when it's 8am on the 1st of
-// the month in Australia/Melbourne time — same self-gating pattern as
-// check-lockouts-scheduled.js. Checking the real AEST/AEDT wall-clock hour
-// via Intl (rather than hand-picking a single UTC cron time) means this
-// stays correct through daylight-saving changes automatically, and running
+// Runs hourly and only actually distributes when it's 8am on the 1st or
+// 16th of the month in Australia/Melbourne time — same self-gating
+// pattern as check-lockouts-scheduled.js. Twice-monthly instead of once,
+// per request, to keep payouts smaller and more regular rather than one
+// large lump sum. Checking the real AEST/AEDT wall-clock hour via Intl
+// (rather than hand-picking a single UTC cron time) means this stays
+// correct through daylight-saving changes automatically, and running
 // hourly rather than once means a missed/failed run just gets picked up
-// again next hour rather than waiting a full month.
+// again next hour rather than waiting up to two weeks.
 //
 // Deploy alongside your other scheduled functions. Needs the same
 // VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, and VAPID_SUBJECT env vars
@@ -91,14 +93,24 @@ function isDistributionTime(){
   const parts = new Intl.DateTimeFormat('en-AU', { timeZone: TIMEZONE, day: 'numeric', hour: 'numeric', hourCycle: 'h23' }).formatToParts(new Date());
   const day = parts.find(p => p.type === 'day').value;
   const hour = parts.find(p => p.type === 'hour').value;
-  return day === '1' && Number(hour) === DISTRIBUTE_HOUR;
+  return (day === '1' || day === '16') && Number(hour) === DISTRIBUTE_HOUR;
 }
 
-function monthKeyFor(date, timeZone){
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit' }).formatToParts(date);
+// Twice-monthly period key ("YYYY-MM-01" for the 1st-15th, "YYYY-MM-16"
+// for the 16th through the end of the month) — deliberately still stored
+// under the same /casinoPot/months path (its Firebase rule is a $monthKey
+// wildcard, so it accepts any child key shape) rather than migrating to a
+// new path, to avoid touching security rules for a pure bucketing-scheme
+// change. Kept the function name periodKeyFor (was monthKeyFor) but left
+// every call site's local variable names as monthKey/monthKeys/nowKey —
+// purely cosmetic, not worth the risk of a wider rename.
+function periodKeyFor(date, timeZone){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
   const y = parts.find(p => p.type === 'year').value;
   const m = parts.find(p => p.type === 'month').value;
-  return `${y}-${m}`;
+  const day = Number(parts.find(p => p.type === 'day').value);
+  const periodStartDay = day <= 15 ? '01' : '16';
+  return `${y}-${m}-${periodStartDay}`;
 }
 
 async function dbGet(path, secret){
@@ -177,29 +189,37 @@ async function isEligibleForProportional(uid, monthKey, playCount, secret){
     return Object.values(log).some(entry => {
       if(!entry || !(entry.amount > 0)) return false;
       if(CASINO_POT_REASON_PATTERN.test(entry.reason || '')) return false;
-      return monthKeyFor(new Date(entry.ts), TIMEZONE) === monthKey;
+      return periodKeyFor(new Date(entry.ts), TIMEZONE) === monthKey;
     });
   }catch(e){
     return false;
   }
 }
 
+// Deliberately does NOT bump lifetimeEarned — per request, Casino Pot
+// even-split and jackpot payouts should NOT count toward Player Tier.
+// Tier (computePrestigeScore in the Dashboard) is lifetimeEarned + Board
+// Season Score + Tipping points, so leaving lifetimeEarned untouched here
+// is the whole fix: the money is still real and spendable (balance is
+// credited, and it's logged for a full audit trail), it just doesn't
+// move the tier needle. Ordinary casino GAME wins (winning a hand of
+// Blackjack etc.) are credited elsewhere, not through this function, and
+// are unaffected — only the periodic pot distribution and jackpot draw
+// are excluded from tier.
 async function creditPotXP(uid, amount, reason, secret){
   if(!(amount > 0)) return;
   const bal = (await dbGet(`/xp/${uid}/balance`, secret)) || 0;
   const next = bal + amount;
   await dbPut(`/xp/${uid}/balance`, secret, next);
   await dbPost(`/xp/${uid}/log`, secret, { amount, reason, balanceAfter: next, ts: Date.now() });
-  const lt = (await dbGet(`/xp/${uid}/lifetimeEarned`, secret)) || 0;
-  await dbPut(`/xp/${uid}/lifetimeEarned`, secret, lt + amount);
 }
 
 async function distributePot(secret){
-  const nowKey = monthKeyFor(new Date(), TIMEZONE);
+  const nowKey = periodKeyFor(new Date(), TIMEZONE);
   const allMonths = (await dbGet('/casinoPot/months', secret)) || {};
   // Everything under /casinoPot/months is by definition from before now —
-  // this function only ever runs on the 1st, so any bucket present here
-  // (including one matching a stale nowKey from a prior run this same
+  // this function only ever runs on the 1st or 16th, so any bucket present
+  // here (including one matching a stale nowKey from a prior run this same
   // hour) is fair game to close out. Excluding an exact nowKey match just
   // guards against a same-day double-run within the hour this fires.
   const monthKeys = Object.keys(allMonths).filter(k => k !== nowKey).sort();
@@ -239,7 +259,7 @@ async function distributePot(secret){
     return { skipped: true, reason: 'no eligible / empty pot', totalPot };
   }
 
-  const proportionalPool = Math.floor(totalPot * 0.7);
+  const proportionalPool = Math.floor(totalPot * 0.75);
   const jackpotPool = totalPot - proportionalPool;
 
   // Split evenly across everyone eligible — NOT weighted by how much each
@@ -260,9 +280,9 @@ async function distributePot(secret){
   const jackpotWinner = jackpotPoolCandidates[Math.floor(Math.random() * jackpotPoolCandidates.length)];
 
   for(const uid of Object.keys(proportional)){
-    await creditPotXP(uid, proportional[uid], `Monthly Casino Pot – Even Split (${label})`, secret);
+    await creditPotXP(uid, proportional[uid], `Casino Pot – Even Split (${label})`, secret);
   }
-  await creditPotXP(jackpotWinner, jackpotPool, `Monthly Casino Pot – Jackpot (${label})`, secret);
+  await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`, secret);
 
   const historyEntry = {
     month: label, totalPot, proportional, jackpotWinner, jackpotAmount: jackpotPool,
@@ -326,7 +346,7 @@ async function sendPotPushNotifications(secret, result){
 
 export default async () => {
   if(!isDistributionTime()){
-    return new Response(`Not ${DISTRIBUTE_HOUR}am on the 1st in ${TIMEZONE} — skipping.`, { status: 200 });
+    return new Response(`Not ${DISTRIBUTE_HOUR}am on the 1st or 16th in ${TIMEZONE} — skipping.`, { status: 200 });
   }
   let secret;
   try{
