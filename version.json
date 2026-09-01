@@ -1,7 +1,8 @@
 {
-  "version": "2026-09-01.4",
+  "version": "2026-09-01.5",
   "date": "2026-09-01",
   "changes": [
+    "Fixed a real UI bug on the Casino Pot panel: the \"redistributed 8am AEST on the 1st\" text under the countdown was leftover from before the twice-monthly change \u2014 hardcoded, and wrong for any period that actually pays out on the 16th. Now derived from the period key itself each time the countdown re-renders (ends \"-01\" \u2192 pays the 16th, ends \"-16\" \u2192 pays the 1st), so it's always correct and updates automatically as the date rolls forward \u2014 nothing hardcoded.",
     "Casino Pot even-split and jackpot payouts no longer count toward Player Tier, per request. Tier is Player-level lifetime XP + Board Season Score + Tipping points, and the pot payout function now credits balance and logs the payout as always, but deliberately stops adding to lifetime XP \u2014 the money's still real and spendable, it just doesn't move tier status. Only genuine game wins, tipping results, and board results affect tier now. Triple-checked the full distribution path end to end while making this change: the shared lock and history idempotency check both still correctly gate every write, the 1st/16th 8am timing is intact, the 75/25 split is intact, and the transition-window guard from the previous update is intact.",
     "Changed the Casino Pot from one monthly distribution to two per month, per request \u2014 smaller, more regular payouts instead of one lump sum. Each calendar month is now two periods (1st\u201315th, 16th\u2013end of month), each paid out 8am AEST/AEDT the day after it closes. Split changed to 75% even-share / 25% jackpot (was 70/30). The switch happened mid-period, so today's partial 1st\u201315th window was deliberately left untracked and unpaid as a one-off \u2014 the first period under the new system is the 16th\u201330th, paid out 8am October 1st.",
     "Fixed a real bug found while making that change: the eligibility check's \"how far back to search this period's play history\" window still assumed a full ~32-day month and would have searched into the previous period now that periods are only ~15 days \u2014 narrowed to match, so eligibility checks near a period boundary stay accurate.",
@@ -14,5 +15,4 @@
     "Also fixed a real bug caught by an actual render before shipping, not assumed away: four action buttons at equal width didn't fit the row \u2014 Split was genuinely getting clipped at the edge. Switched to a percentage-based width so it wraps into a clean 2x2 grid instead."
   ]
 }
-
 

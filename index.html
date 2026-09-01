@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-01.4"; // Casino Pot even-split and jackpot payouts no longer count toward Player Tier, per request — creditPotXP (both this copy and the scheduled function's) now credits balance and logs the payout as before, but deliberately stops bumping lifetimeEarned, which is the only one of Tier's three inputs (lifetimeEarned + Board Season Score + Tipping points) this touches. The money is still real and spendable, it just doesn't move tier status — only genuine game wins, tipping, and board results do that now. Triple-checked the whole distribution path end to end while making this change: lock + idempotency check both still correctly gate every write, 1st/16th 8am timing intact, 75/25 split intact, transition-window guard intact — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-01.5"; // Fixed a real UI bug: the Casino Pot panel's "redistributed 8am AEST on the 1st" text was leftover from before the twice-monthly change — hardcoded, and wrong for any period that actually pays out on the 16th. Now derived from the period key itself (ends "-01" -> pays the 16th, ends "-16" -> pays the 1st) each time the countdown re-renders, so it's always correct and updates automatically as the date rolls forward, no hardcoding — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7381,7 +7381,19 @@ function renderCasinoPotCountdown(){
   const el = document.getElementById('casinoPotCountdown');
   if(!el) return;
   const diff = casinoPotCutoffDate().getTime() - Date.now();
-  el.innerHTML = `⏳ Locks in <b>${formatPotCountdown(diff)}</b> · redistributed 8am AEST on the 1st`;
+  // Which payout date applies is derived from the period key itself
+  // (ends "-01" = the 1st-15th period, pays on the 16th; ends "-16" =
+  // the 16th-end period, pays on the 1st of next month) rather than
+  // ever being hardcoded — so this stays correct automatically as the
+  // date rolls forward, including across the pre-launch transition
+  // window (Math.max below treats "before launch" as "the first tracked
+  // period", i.e. the 16th-end one, so it correctly shows "1st" during
+  // that window rather than needing a special case).
+  const relevantMs = Math.max(Date.now(), CASINO_POT_START_MS);
+  const periodKey = casinoPotPeriodKey(new Date(relevantMs));
+  const payoutDay = periodKey.endsWith('-01') ? '16th' : '1st';
+  const verb = Date.now() < CASINO_POT_START_MS ? 'Tracking starts' : 'Locks';
+  el.innerHTML = `⏳ ${verb} in <b>${formatPotCountdown(diff)}</b> · redistributed 8am AEST on the ${payoutDay}`;
 }
 setInterval(renderCasinoPotCountdown, 30000);
 
