@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-01.5"; // Fixed a real UI bug: the Casino Pot panel's "redistributed 8am AEST on the 1st" text was leftover from before the twice-monthly change — hardcoded, and wrong for any period that actually pays out on the 16th. Now derived from the period key itself (ends "-01" -> pays the 16th, ends "-16" -> pays the 1st) each time the countdown re-renders, so it's always correct and updates automatically as the date rolls forward, no hardcoding — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-01.7"; // Reversed the pre-launch transition per request: tracking now starts immediately (today, Sept 1) instead of waiting until Sept 16, so the first payment lands 8am AEST Sept 16 rather than Oct 1. Safe to do since balance/lifetimeEarned/the pot were already fully reset earlier — there was no bad data left to protect against, so the wait was no longer needed. Removed CASINO_POT_START_MS and every branch that referenced it entirely, rather than just moving the date, since today's partial 1st-15th window is now just an ordinary (if slightly short) tracked period like any other going forward — no special-casing required — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7201,33 +7201,25 @@ function casinoPotPeriodKey(d){
   return `${y}-${m}-${periodStartDay}`;
 }
 
-// One-off transition per request: the switch to twice-monthly happened
-// mid-period (Sept 1, 2026), and today's partial 1st-15th period was
-// deliberately NOT carried into the new twice-monthly cadence — the first
-// period actually tracked and paid out under the new system is the 16th
-// through the 30th, distributed 8am Oct 1. trackCasinoPotContribution
-// below simply doesn't record anything before this instant, so nothing
-// needs to exist or be cleaned up for the skipped 1st-15th window — it's
-// just silently not tracked, once, and this guard is inert forever after.
-const CASINO_POT_START_MS = 1789480800000; // 2026-09-16T00:00:00 Australia/Melbourne (AEST)
-
-// Midnight AEST/AEDT at the start of the next period is the real cutoff
-// (equivalent to 23:59:59 at the end of the current one) — computed by
-// asking what period AEST/AEDT is currently in, then finding the first
-// moment that no longer reports that same period key, via a coarse-to-
-// fine search. Avoids hand-rolling AEST/AEDT day-count and daylight-
-// saving edge cases. Before CASINO_POT_START_MS, there's no "current
-// period" to count down to yet, so this instead counts down to launch.
-function casinoPotCutoffDate(){
-  if(Date.now() < CASINO_POT_START_MS) return new Date(CASINO_POT_START_MS);
-  const nowKey = casinoPotPeriodKey();
-  let lo = Date.now();
-  let hi = lo + 17 * 24 * 60 * 60 * 1000; // definitely into the next period (longest possible period is ~16 days)
-  for(let i = 0; i < 40; i++){ // binary search to the minute is plenty precise for a countdown
+// Given any instant, finds the first later moment that reports a
+// different period key than that instant's own period — i.e. when that
+// instant's period actually closes (and, same moment, pays out). Reusable
+// building block: casinoPotCutoffDate uses it for "now"'s own period.
+function casinoPotPeriodEndDate(probeMs){
+  const probeKey = casinoPotPeriodKey(new Date(probeMs));
+  let lo = probeMs;
+  let hi = probeMs + 17 * 24 * 60 * 60 * 1000; // definitely past the end of any period (longest is ~16 days)
+  for(let i = 0; i < 40; i++){ // binary search to the minute is plenty precise
     const mid = Math.floor((lo + hi) / 2);
-    if(casinoPotPeriodKey(new Date(mid)) === nowKey) lo = mid; else hi = mid;
+    if(casinoPotPeriodKey(new Date(mid)) === probeKey) lo = mid; else hi = mid;
   }
   return new Date(hi);
+}
+
+// Midnight AEST/AEDT at the start of the next period is the real cutoff
+// (equivalent to 23:59:59 at the end of the current one).
+function casinoPotCutoffDate(){
+  return casinoPotPeriodEndDate(Date.now());
 }
 
 // Deliberately NOT a single shared object that every player reads-then-
@@ -7240,7 +7232,6 @@ function casinoPotCutoffDate(){
 // as its own counter — so there's nothing shared to race on.
 async function trackCasinoPotContribution(uid, amount, reason){
   if(!CASINO_POT_REASON_PATTERN.test(reason || '')) return;
-  if(Date.now() < CASINO_POT_START_MS) return; // one-off transition window, see CASINO_POT_START_MS above
   const monthKey = casinoPotPeriodKey();
   try{
     const pcRes = await authedFetch(`/casinoPot/months/${monthKey}/playCounts/${uid}.json`);
@@ -7381,19 +7372,14 @@ function renderCasinoPotCountdown(){
   const el = document.getElementById('casinoPotCountdown');
   if(!el) return;
   const diff = casinoPotCutoffDate().getTime() - Date.now();
-  // Which payout date applies is derived from the period key itself
-  // (ends "-01" = the 1st-15th period, pays on the 16th; ends "-16" =
-  // the 16th-end period, pays on the 1st of next month) rather than
-  // ever being hardcoded — so this stays correct automatically as the
-  // date rolls forward, including across the pre-launch transition
-  // window (Math.max below treats "before launch" as "the first tracked
-  // period", i.e. the 16th-end one, so it correctly shows "1st" during
-  // that window rather than needing a special case).
-  const relevantMs = Math.max(Date.now(), CASINO_POT_START_MS);
-  const periodKey = casinoPotPeriodKey(new Date(relevantMs));
+  // The payout is always within the current period (at most ~15 days
+  // away) so a bare ordinal is unambiguous — derived from the period key
+  // itself (ends "-01" -> pays the 16th, ends "-16" -> pays the 1st)
+  // rather than ever being hardcoded, so this stays correct automatically
+  // as the date rolls forward.
+  const periodKey = casinoPotPeriodKey();
   const payoutDay = periodKey.endsWith('-01') ? '16th' : '1st';
-  const verb = Date.now() < CASINO_POT_START_MS ? 'Tracking starts' : 'Locks';
-  el.innerHTML = `⏳ ${verb} in <b>${formatPotCountdown(diff)}</b> · redistributed 8am AEST on the ${payoutDay}`;
+  el.innerHTML = `⏳ Locks in <b>${formatPotCountdown(diff)}</b> · redistributed 8am AEST on the ${payoutDay}`;
 }
 setInterval(renderCasinoPotCountdown, 30000);
 
