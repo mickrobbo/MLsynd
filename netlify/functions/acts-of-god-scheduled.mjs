@@ -60,7 +60,14 @@ const TRIGGER_CHANCE = 0.10;
 const EVENT_DURATION_MS = 60 * 60 * 1000; // 1 hour
 
 const EVENT_TYPES = [
-  { type: "doubleXp", label: "⚡ Double XP Hour", desc: "Every Casino win pays double for the next hour.", weight: 3 },
+  // Double XP's weight was 3 (out of a 3+2+2=7 pool), giving it roughly
+  // 43% of triggered events — about 2 Double XP Hours/day on average
+  // (0.10 trigger chance x 48 runs/day x 3/7 share). Dropped to 1 per
+  // request, cutting its share of the pool to 1/5 = 20%, which works out
+  // to roughly 1/day instead — made rarer specifically, without touching
+  // how often Golden Hour or House Bounty fire (their weights, and the
+  // overall 10% TRIGGER_CHANCE for any Act of God at all, are unchanged).
+  { type: "doubleXp", label: "⚡ Double XP Hour", desc: "Every Casino win pays double for the next hour.", weight: 1 },
   { type: "goldenHour", label: "✨ Golden Hour", desc: "The whole casino floor is glowing for the next hour.", weight: 2 },
   { type: "houseBounty", label: "🎁 A Bounty From The House", desc: "The house just posted a bounty of its own — first to claim it keeps it.", weight: 2 },
 ];
