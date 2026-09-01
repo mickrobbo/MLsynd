@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-01.8"; // Added Casino Pot diagnostics to the Diag tab's Full System Check, per request, so faults surface proactively instead of needing another 3am incident to notice: (1) distribution lock health — flags a lock older than its 10-min self-heal window, real evidence a run crashed before cleaning up; (2) overdue distribution — the most actionable one, flags any closed period bucket that should've been paid out and deleted but wasn't, meaning real XP is stuck; (3) legacy period-key format — flags any leftover old-style "YYYY-MM" bucket that the new twice-monthly logic can't see at all; (4) weeklyTopupLastRun shape — regression guard for the exact object-instead-of-timestamp mistake the Sept 1 full-reset script made. Also noted plainly in a comment why the scheduled function itself can't be pinged like the other Netlify functions on this list (no public URL) and that the duplicate .mjs/.js situation found this week wouldn't be caught by any live check — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-01.9"; // Fixed the real cause of the chat scroll bug reported live. The previous attempt (overscroll-behavior/touch-action in dashboard.css, shipped last turn but never version-bumped — corrected here) was addressing the wrong layer, and per the follow-up report actually made it worse: "keyboard opens fine, scrolling is dead after it closes" is the signature of vh-based height not recomputing after the on-screen keyboard closes on mobile, which is what .syndy-chat-sheet's height:min(88vh,720px) was vulnerable to — contain then blocked the accidental page-scroll fallback that had been partially masking the real bug. Real fix: dashboard.css layers in a min(88dvh,720px) variant (dvh tracks the actual visible viewport including keyboard state, unlike vh), and this file adds a visualViewport.resize listener (applyChatViewportHeight) that explicitly re-asserts the sheet's pixel height on every real viewport change while the modal's open — the standard robust fix for this bug class, not dependent on any one browser's vh/dvh behavior — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -11362,10 +11362,34 @@ function syndyAppendMessage(role, text){
   return el;
 }
 
+// Explicit fallback for the on-screen-keyboard height bug reported live —
+// vh-based CSS sizing (even min(88vh,720px), even the dvh variant on some
+// browsers/WebViews) doesn't always recompute reliably once the keyboard
+// closes again, leaving the chat sheet's rendered height stuck at
+// whatever it was while the keyboard was open, and the message list
+// scroll-broken as a result. visualViewport.height tracks the actual
+// currently-visible viewport directly, keyboard included, and is the
+// standard robust fix for this specific class of bug — this doesn't
+// replace the CSS (that still covers the very first paint, and any
+// browser without visualViewport support), it just re-asserts the
+// correct pixel height every time the real viewport genuinely changes.
+function applyChatViewportHeight(){
+  if(!window.visualViewport) return;
+  const sheet = document.querySelector('#syndyChatModal .syndy-chat-sheet');
+  if(!sheet) return;
+  sheet.style.height = Math.min(window.visualViewport.height * 0.88, 720) + 'px';
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', () => {
+    if(document.getElementById('syndyChatModal').classList.contains('open')) applyChatViewportHeight();
+  });
+}
+
 document.getElementById('syndyFabBtn').addEventListener('click', () => {
   document.getElementById('syndyChatModal').classList.add('open');
   switchChatMode('syndy'); // FAB always opens straight to Syndy — Group Chat is one tap away via the toggle, not something to land on unexpectedly
   document.getElementById('syndyChatInput').focus();
+  applyChatViewportHeight();
 });
 document.getElementById('syndyChatCloseBtn').addEventListener('click', () => {
   document.getElementById('syndyChatModal').classList.remove('open');

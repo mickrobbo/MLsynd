@@ -3407,8 +3407,26 @@
 /* ---- Syndy chat panel ---- */
 .syndy-chat-sheet{
   padding:0; display:flex; flex-direction:column; overflow:hidden; position:relative;
-  height:88vh; /* fallback for any browser that doesn't understand min() below — if it did understand min(), this line is simply overwritten by the next one, so it costs nothing either way */
+  /* Layered height fallbacks, weakest to strongest — later declarations
+     win in any browser that understands them, so this costs nothing in
+     browsers that only support the earlier ones.
+     1) Plain vh: works everywhere, but many mobile browsers compute vh
+        against the viewport as it was BEFORE the on-screen keyboard
+        opened and don't reliably recompute it after the keyboard closes
+        again — this is the actual cause of the "keyboard opens fine,
+        but scrolling is dead after it closes" bug reported live. The
+        JS visualViewport listener below is the real fix for that; this
+        line is just the safety net for a browser with neither dvh nor
+        that JS API.
+     2) min(88vh, 720px): caps the sheet on very tall screens/tablets.
+     3) 100dvh-based: dvh ("dynamic viewport height") is specifically
+        defined to track the ACTUAL currently-visible viewport, keyboard
+        included — this alone fixes the bug in any browser that supports
+        it (all current mobile browsers), no JS needed. JS below exists
+        for anything older or any edge case dvh doesn't catch. */
+  height:88vh;
   height:min(88vh, 720px);
+  height:min(88dvh, 720px);
 }
 .syndy-chat-header{
   display:flex; align-items:center; gap:10px; padding:14px; border-bottom:1px solid var(--line);
