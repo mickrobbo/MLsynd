@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-01.9"; // Fixed the real cause of the chat scroll bug reported live. The previous attempt (overscroll-behavior/touch-action in dashboard.css, shipped last turn but never version-bumped — corrected here) was addressing the wrong layer, and per the follow-up report actually made it worse: "keyboard opens fine, scrolling is dead after it closes" is the signature of vh-based height not recomputing after the on-screen keyboard closes on mobile, which is what .syndy-chat-sheet's height:min(88vh,720px) was vulnerable to — contain then blocked the accidental page-scroll fallback that had been partially masking the real bug. Real fix: dashboard.css layers in a min(88dvh,720px) variant (dvh tracks the actual visible viewport including keyboard state, unlike vh), and this file adds a visualViewport.resize listener (applyChatViewportHeight) that explicitly re-asserts the sheet's pixel height on every real viewport change while the modal's open — the standard robust fix for this bug class, not dependent on any one browser's vh/dvh behavior — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-01.11"; // Filtered legacy-format Casino Pot payouts (label like "(2026-09)" with no day suffix, from before the twice-monthly migration) out of the Floor feed. This was genuinely NOT a repeat of the duplicate-payout bug — the countdown card and pot total were both behaving normally, and these entries used the old label format the current system never writes — but stale positive-amount "Casino Pot – Jackpot/Even Split" entries kept surfacing in the "recent activity" feed during quiet periods and getting mistaken for a live repeat, twice now. Reused the existing FLOOR_FEED_EXCLUDE_PATTERN mechanism rather than inventing a new one — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7981,7 +7981,16 @@ function advanceCasinoTicker(){
 // eligibility. Renamed those three reason strings to start with "Live
 // Blackjack" instead, which fixes that misclassification at the source
 // rather than papering over it here.
+// Excludes both admin/housekeeping noise AND legacy-format Casino Pot
+// payouts (label like "(2026-09)" with no day suffix — the old monthly
+// system, before the twice-monthly migration). Those are genuine past
+// payouts, not fake, but they're stale data still sitting in members'
+// logs and kept surfacing confusingly in this "recent activity" feed
+// during quiet real-activity periods, twice, getting mistaken for a
+// live repeat of the original duplicate-payout bug. Current-format
+// payouts ("(2026-09-01)"/"(2026-09-16)") still show normally.
 const FLOOR_FEED_EXCLUDE_PATTERN = /\b(buy-in|buy in|cash out|cashed out|refund|force-closed|admin adjust|admin grant|manual (grant|adjust))\b/i;
+const FLOOR_FEED_LEGACY_CASINO_POT_PATTERN = /^Casino Pot – (Even Split|Jackpot|Proportional) \(\d{4}-\d{2}\)$/;
 async function renderCasinoFloorFeed(){
   const area = document.getElementById('casinoFloorArea');
   const spotlightEl = document.getElementById('casinoFloorSpotlight');
@@ -8018,6 +8027,7 @@ async function renderCasinoFloorFeed(){
         return (data && typeof data === 'object' ? Object.values(data) : [])
           .filter(e => e && typeof e === 'object')
           .filter(e => !FLOOR_FEED_EXCLUDE_PATTERN.test(e.reason || ''))
+          .filter(e => !FLOOR_FEED_LEGACY_CASINO_POT_PATTERN.test(e.reason || ''))
           .map(e => ({ ...e, name: m.name }));
       }catch(e){ return []; }
     }));
@@ -11362,34 +11372,10 @@ function syndyAppendMessage(role, text){
   return el;
 }
 
-// Explicit fallback for the on-screen-keyboard height bug reported live —
-// vh-based CSS sizing (even min(88vh,720px), even the dvh variant on some
-// browsers/WebViews) doesn't always recompute reliably once the keyboard
-// closes again, leaving the chat sheet's rendered height stuck at
-// whatever it was while the keyboard was open, and the message list
-// scroll-broken as a result. visualViewport.height tracks the actual
-// currently-visible viewport directly, keyboard included, and is the
-// standard robust fix for this specific class of bug — this doesn't
-// replace the CSS (that still covers the very first paint, and any
-// browser without visualViewport support), it just re-asserts the
-// correct pixel height every time the real viewport genuinely changes.
-function applyChatViewportHeight(){
-  if(!window.visualViewport) return;
-  const sheet = document.querySelector('#syndyChatModal .syndy-chat-sheet');
-  if(!sheet) return;
-  sheet.style.height = Math.min(window.visualViewport.height * 0.88, 720) + 'px';
-}
-if(window.visualViewport){
-  window.visualViewport.addEventListener('resize', () => {
-    if(document.getElementById('syndyChatModal').classList.contains('open')) applyChatViewportHeight();
-  });
-}
-
 document.getElementById('syndyFabBtn').addEventListener('click', () => {
   document.getElementById('syndyChatModal').classList.add('open');
   switchChatMode('syndy'); // FAB always opens straight to Syndy — Group Chat is one tap away via the toggle, not something to land on unexpectedly
   document.getElementById('syndyChatInput').focus();
-  applyChatViewportHeight();
 });
 document.getElementById('syndyChatCloseBtn').addEventListener('click', () => {
   document.getElementById('syndyChatModal').classList.remove('open');
