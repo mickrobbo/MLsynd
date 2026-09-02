@@ -2468,6 +2468,14 @@ const TIPPING_ONLY_VISIBLE_TABS = ['afl', 'tipping', 'casino'];
 // profile resolution and the Casino leaderboard so neither has to
 // duplicate that same scan.
 let tippingParticipantNames = {};
+// uid -> { correct, total } raw tip record (NOT points — points include
+// the Perfect Round bonus and Joker doubling, which would make "wins and
+// losses" read wrong on a profile). Populated by renderTippingLadder's
+// own scoring pass, same lazy-cache convention as tippingParticipantNames
+// above — empty until the Tipping tab has actually rendered once this
+// session, same limitation, same reason (recomputing it independently
+// would mean re-fetching every finished game's picks a second time).
+let tippingRecordCache = {};
 
 function applyRoleTabRestrictions(){
   if(currentUserRole !== 'tipping') return;
@@ -3041,7 +3049,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.7"; // Added a Casino Pot fine system per request, on top of the 15% burn: a losing Group Multi leg fines the pot 250,000 XP (built into the Ledger's saveWeekBtn handler, symmetric with Undo Week — the fine amount and exact period it applied to are both stored on the history record so undoing a week reverses it correctly even after the calendar's moved into a new period), and every individual wrong AFL tip fines the pot 150,000 XP. The tipping fine needed a genuinely new scheduled function (casino-pot-tipping-fines-scheduled.js) rather than a quick hook — found that tipping correctness is a live recalculation on every render, not a discrete event, so hooking a fine directly into it would have refired for the same wrong tip every time anything re-rendered. The new function uses the same ETag lock pattern as the pot distributor and marks each (game,uid) pair checked so it can never double-fine. Deliberately scoped to real submitted picks only, not auto-tips from missed rounds. Both fines subtract from totalPot before the split/burn math runs (in both this file and the scheduled function), and are logged in distribution history (rawPot, finesApplied) for a full audit trail. Info-modal updated to disclose both fines — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.8"; // Profile card overhaul per request. (1) Fixed Nudge — the client-side handler was always correct, most likely cause was send-nudge.mjs never actually being deployed (matching a pattern this project has hit before); wrote it from scratch on the same proven webpush pattern casino-pot-distribute-scheduled.js already uses, matching the exact response contract the client already handles (200/429/404). (2) Added three new stat sections without removing anything already there: Casino overall win/loss record (reuses data already being fetched, no new network calls), Tipping season points + a real correct/total record (new session-level cache — tippingRecordCache — added to the ladder's own scoring pass rather than an expensive per-profile recompute; only populates once the Tipping tab has been visited this session, same lazy-cache convention as tippingParticipantNames), and Fines (this person's own estimated contribution to the pot fines — losing legs x 250K, wrong tips x 150K — clearly labeled as coming out of the shared pot, not their balance). Applied to both full Board profiles and Tipping-only accounts. (3) Premium visual pass on the whole profile sheet: gold hairline top edge, gradient-text name heading, richer stat-cell cards, gold-dot section markers, upgraded action buttons, richer prestige bar — purely visual (dashboard.css only), no structural/layout changes — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7176,6 +7184,15 @@ const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Crap
 // a share once was silently auto-qualified for the next period too, even
 // with zero plays. Flagged as a known loophole, now closed.
 const CASINO_POT_PAYOUT_REASON_PATTERN = /^Casino Pot – (Even Split|Jackpot|Proportional)/;
+// Display-only copies of the actual fine amounts — the real fines are
+// applied in LEDGER-index.html (CASINO_POT_LEG_LOSS_FINE, group multi leg
+// losses) and casino-pot-tipping-fines-scheduled.js (TIPPING_LOSS_FINE,
+// wrong AFL tips). This file never applies either fine itself, only shows
+// a member's own estimated contribution on their profile — if either
+// amount is ever retuned, update it here too or the profile will show a
+// stale figure.
+const CASINO_POT_LEG_LOSS_FINE_DISPLAY = 250000;
+const CASINO_POT_TIPPING_FINE_DISPLAY = 150000;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
@@ -9754,15 +9771,19 @@ function openBoardProfile(m, name){
   badgesArea.querySelectorAll('.profile-badge').forEach(wireProfileBadgeFlip);
 
   const lifetime = getLifetimeStats(name, currentState);
+  const groupLegLosses = m.losses || 0;
+  const multiFineContribution = groupLegLosses * CASINO_POT_LEG_LOSS_FINE_DISPLAY;
+  const tipRecForFines = m.linkedUid ? tippingRecordCache[m.linkedUid] : null;
+  const tippingFineContribution = tipRecForFines ? (tipRecForFines.total - tipRecForFines.correct) * CASINO_POT_TIPPING_FINE_DISPLAY : null;
   document.getElementById('profileStats').innerHTML = `
-    <div class="profile-stat-group-label">Multis</div>
+    <div class="profile-stat-group-label">Betting — Multis</div>
     <div class="profile-stat-cell" data-compare-key="pl"><span class="lbl">Lifetime P/L</span><span class="val ${lifetime.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(lifetime.pl)}</span></div>
     <div class="profile-stat-cell" data-compare-key="record"><span class="lbl">Record</span><span class="val">${lifetime.wins}-${lifetime.losses}-${lifetime.voids}</span></div>
     <div class="profile-stat-cell" data-compare-key="winPct"><span class="lbl">Win%</span><span class="val">${(lifetime.winPct*100).toFixed(0)}%</span></div>
     <div class="profile-stat-cell" data-compare-key="avgLeg"><span class="lbl">Avg Leg Price</span><span class="val">${lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—'}</span></div>
     <div class="profile-stat-cell wide" data-compare-key="seasonScore"><span class="profile-stat-sub"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></span></div>
 
-    <div class="profile-stat-group-label">Individual Bets</div>
+    <div class="profile-stat-group-label">Betting — Individual</div>
     <div class="profile-stat-cell" data-compare-key="indRecord"><span class="lbl">Record</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div>
     <div class="profile-stat-cell" data-compare-key="indWinPct"><span class="lbl">Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
     <div class="profile-stat-cell wide" data-compare-key="legs"><span class="profile-stat-sub"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></span></div>
@@ -9776,6 +9797,9 @@ function openBoardProfile(m, name){
       <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
       <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
     </div>
+    <div class="profile-stat-cell wide" id="profileCasinoRecordCell" style="${m.linkedUid ? '' : 'display:none;'}">
+      <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
+    </div>
     <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
       <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
       <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
@@ -9783,6 +9807,17 @@ function openBoardProfile(m, name){
     <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
       <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
     </div>
+
+    <div class="profile-stat-group-label">Tipping</div>
+    <div class="profile-stat-cell wide" id="profileTippingCell" style="${m.linkedUid ? '' : 'display:none;'}">
+      <span class="profile-stat-sub"><span class="lbl">🏉 Season Points</span><span class="val" id="profileTippingPointsVal" style="color:var(--brass);">…</span></span>
+      <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileTippingRecordVal" style="color:var(--brass); font-size:11px;">…</span></span>
+    </div>
+
+    <div class="profile-stat-group-label">Fines <span class="profile-fines-note">(comes out of the shared Casino Pot, not this balance)</span></div>
+    <div class="profile-stat-cell" data-compare-key="multiFines"><span class="lbl">Losing Legs</span><span class="val neg">${groupLegLosses > 0 ? `${groupLegLosses} · ${fmtMoney(multiFineContribution).replace('$','')} XP` : '—'}</span></div>
+    <div class="profile-stat-cell" data-compare-key="tipFines"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileTippingFinesVal">${tippingFineContribution != null ? `${tipRecForFines.total - tipRecForFines.correct} · ${tippingFineContribution.toLocaleString()} XP` : 'Visit Tipping tab'}</span></div>
+    <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg">${tippingFineContribution != null ? (multiFineContribution + tippingFineContribution).toLocaleString() + ' XP' : `${multiFineContribution.toLocaleString()}+ XP`}</span></span></div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
 
@@ -10080,6 +10115,9 @@ function openTippingOnlyProfile(uid, name){
       <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">…</span></span>
       <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">…</span></span>
     </div>
+    <div class="profile-stat-cell wide" id="profileCasinoRecordCell">
+      <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
+    </div>
     <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
       <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
       <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
@@ -10087,6 +10125,13 @@ function openTippingOnlyProfile(uid, name){
     <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
       <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
     </div>
+    <div class="profile-stat-cell wide" id="profileTippingCell">
+      <span class="profile-stat-sub"><span class="lbl">🏉 Season Points</span><span class="val" id="profileTippingPointsVal" style="color:var(--brass);">…</span></span>
+      <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileTippingRecordVal" style="color:var(--brass); font-size:11px;">…</span></span>
+    </div>
+
+    <div class="profile-stat-group-label">Fines <span class="profile-fines-note">(comes out of the shared Casino Pot, not this balance)</span></div>
+    <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileTippingFinesVal">${(() => { const r = tippingRecordCache[uid]; return r && r.total > 0 ? `${r.total - r.correct} · ${((r.total - r.correct) * CASINO_POT_TIPPING_FINE_DISPLAY).toLocaleString()} XP` : 'Visit Tipping tab'; })()}</span></span></div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
 
@@ -10203,6 +10248,18 @@ async function loadProfileGameStats(linkedUid, forName){
       else if(amt < 0) perGame[game].losses++;
     });
     const topGame = Object.entries(perGame).sort((a, b) => b[1].count - a[1].count)[0];
+
+    // Overall Casino record — every game combined, not just the most-
+    // played one. Same perGame data already computed above, just summed
+    // across every game instead of picking the single biggest.
+    const overallWins = Object.values(perGame).reduce((s, g) => s + g.wins, 0);
+    const overallLosses = Object.values(perGame).reduce((s, g) => s + g.losses, 0);
+    const recordEl = document.getElementById('profileCasinoRecordVal');
+    if(recordEl){
+      const decided = overallWins + overallLosses;
+      const winPct = decided > 0 ? Math.round((overallWins / decided) * 100) : null;
+      recordEl.textContent = decided > 0 ? `${overallWins}-${overallLosses}${winPct != null ? ` (${winPct}%)` : ''}` : '—';
+    }
 
     if(biggest || topGame){
       cellEl.style.display = 'flex';
@@ -10408,6 +10465,18 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     const lifetimeEl = document.getElementById('profileLifetimeXPVal');
     if(lifetimeEl) lifetimeEl.textContent = lifetime.toLocaleString();
     const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
+    const tpEl = document.getElementById('profileTippingPointsVal');
+    if(tpEl) tpEl.textContent = tippingPoints.toLocaleString();
+    const trEl = document.getElementById('profileTippingRecordVal');
+    const tipRec = tippingRecordCache[linkedUid];
+    if(trEl){
+      if(tipRec && tipRec.total > 0){
+        const winPct = Math.round((tipRec.correct / tipRec.total) * 100);
+        trEl.textContent = `${tipRec.correct}-${tipRec.total - tipRec.correct} (${winPct}%)`;
+      } else {
+        trEl.textContent = 'Visit Tipping tab to load';
+      }
+    }
     const founding = await foundingRes.json(); // read once here, reused below for both badges and the flair line — a Response body can only be read once
     const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(linkedUid), tippingPoints);
     // Same tier badge shown on the leaderboard/Hold'em seats/chat — this is
@@ -16405,6 +16474,9 @@ async function renderTippingLadder(games){
           : normTeamName(pick === 'home' ? g.hteam : (pick === 'away' ? g.ateam : '')) === normTeamName(g.winner);
         if(isCorrect) correct++;
       });
+      tippingRecordCache[uid] = tippingRecordCache[uid] || { correct: 0, total: 0 };
+      tippingRecordCache[uid].correct += correct;
+      tippingRecordCache[uid].total += roundGames.length;
 
       let roundPoints = correct;
       // Perfect Round bonus: every game correct, round big enough to

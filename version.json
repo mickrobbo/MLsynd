@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-02.7",
+  "version": "2026-09-02.8",
   "date": "2026-09-02",
   "changes": [
-    "Added a Casino Pot fine system, on top of the existing 15% burn: a losing Group Multi leg fines the pot 250,000 XP (symmetric with Undo Week), and every individual wrong AFL tip fines the pot 150,000 XP via a new scheduled check. Both come straight out of the shared pot, never a personal balance.",
-    "Added a Casino Pot burn: 15% of every pot is now permanently removed rather than paid out, so the numbers stop only ever growing.",
-    "The stale legacy Casino Pot entry kept resurfacing in a couple more places: \"Your Recent Activity\" and the Home tab's \"big wins this week\" feed. Both now filter it out the same way the Floor feed already did.",
-    "Closed a real eligibility loophole: winning a Casino Pot share was itself counting as \"real XP\" toward qualifying for the NEXT period too, even with zero plays."
+    "Fixed the Nudge button \u2014 most likely cause was its server function never actually being deployed, not a client-side bug. Rewritten from scratch on the same proven pattern the Casino Pot notifications already use.",
+    "Profile cards now show Casino win/loss record, Tipping season points + record, and a Fines section (this person's own estimated contribution to the pot fines) \u2014 nothing removed, everything from before is still there.",
+    "Gave the whole profile card a premium visual pass: richer stat cards, a gold accent on the name and section markers, upgraded Challenge/Nudge buttons, a richer prestige bar.",
+    "Added a Casino Pot fine system, on top of the existing 15% burn: a losing Group Multi leg fines the pot 250,000 XP, and every individual wrong AFL tip fines the pot 150,000 XP."
   ]
 }

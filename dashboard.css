@@ -2836,7 +2836,15 @@
     width:100%; max-width:720px; max-height:88vh; overflow-y:auto; overflow-x:hidden; position:relative;
     background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--line);
     border-radius:18px 18px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom, 0));
-    box-shadow:0 -10px 40px rgba(0,0,0,.5);
+    box-shadow:0 -10px 40px rgba(0,0,0,.5), 0 -1px 0 rgba(255,224,150,.08) inset;
+  }
+  /* A hairline gold top edge — the kind of detail a real paid product's
+     "premium card" surface tends to have and a default one doesn't.
+     Sits above the tier-tint ::before layer (z-index:1, same as the rest
+     of a sheet's real content) so it's never washed out by a tier glow. */
+  .profile-sheet::after{
+    content:''; position:absolute; top:0; left:8%; right:8%; height:1px; z-index:1;
+    background:linear-gradient(90deg, transparent, rgba(255,224,150,.5), transparent);
   }
   .profile-close{
     display:block; margin:0 0 12px auto; background:none; border:none; color:var(--muted);
@@ -2844,8 +2852,10 @@
   }
   .profile-header{ text-align:center; margin-bottom:18px; }
   .profile-header h2{
-    font-family:'Barlow Condensed', sans-serif; font-size:26px; font-weight:700; letter-spacing:1px;
-    color:var(--brass-light); margin:0; text-shadow:0 0 18px rgba(199,162,72,.3);
+    font-family:'Barlow Condensed', sans-serif; font-size:27px; font-weight:700; letter-spacing:1.5px;
+    margin:0; background:linear-gradient(180deg, #fff3d6, var(--brass-light) 65%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow:0 0 22px rgba(199,162,72,.35); filter:drop-shadow(0 1px 0 rgba(0,0,0,.4));
   }
   .profile-badges{ display:flex; justify-content:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
   /* Tap-to-flip badge — replaces the old shared info-bubble popup with an
@@ -2946,12 +2956,14 @@
   /* ---- Prestige progress bar — how far toward the next tier up. ---- */
   .profile-prestige-bar-wrap{ margin:14px 0 4px; cursor:pointer; }
   .profile-prestige-bar-track{
-    width:100%; height:10px; border-radius:6px; background:rgba(0,0,0,.35);
+    width:100%; height:11px; border-radius:6px; background:rgba(0,0,0,.35);
     overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,.5); position:relative;
+    border:1px solid rgba(203,177,102,.15);
   }
   .profile-prestige-bar-fill{
-    height:100%; border-radius:6px; background:linear-gradient(90deg, var(--brass-dim), var(--brass-light));
+    height:100%; border-radius:6px; background:linear-gradient(90deg, var(--brass-dim), var(--brass), var(--brass-light));
     transition:width 1s cubic-bezier(.16,.9,.2,1); position:relative; overflow:hidden;
+    box-shadow:0 0 10px rgba(255,224,150,.35);
   }
   /* A light sweep animates across the filled portion once, right after it
      grows in — same idle-shine language the nav coin/premium coin use,
@@ -2977,8 +2989,9 @@
   /* ---- Head-to-head vs you — only shown on someone ELSE'S profile. ---- */
   .profile-headtohead{
     display:flex; align-items:center; justify-content:center; gap:14px;
-    margin:14px 0 4px; padding:10px 8px; border-radius:12px;
-    background:rgba(0,0,0,.18); border:1px solid var(--line);
+    margin:14px 0 4px; padding:12px 8px; border-radius:12px;
+    background:linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.24));
+    border:1px solid rgba(203,177,102,.16); box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 2px 6px rgba(0,0,0,.18);
   }
   .profile-h2h-side{ flex:1; text-align:center; }
   .profile-h2h-side .val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:16px; display:block; }
@@ -2988,7 +3001,13 @@
   .profile-h2h-vs{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:11px; color:var(--muted); flex-shrink:0; }
 
   .profile-action-row{ display:flex; gap:8px; margin:14px 0 4px; }
-  .profile-action-row .pill-btn{ flex:1; font-size:12.5px; }
+  .profile-action-row .pill-btn{
+    flex:1; font-size:12.5px;
+    background:linear-gradient(165deg, rgba(255,224,150,.14), rgba(0,0,0,.2));
+    border-color:rgba(203,177,102,.35); box-shadow:0 2px 8px rgba(0,0,0,.25);
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  .profile-action-row .pill-btn:active{ transform:scale(.96); box-shadow:0 1px 3px rgba(0,0,0,.3); }
 
   /* ---- Small icon-affordance treatment — replaces what used to be
      three stacked labelled pill buttons (Add photo / Edit name / Re-sync
@@ -3106,7 +3125,12 @@
   .rules-body h3{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); margin:18px 0 6px; }
   .rules-body h3:first-child{ margin-top:0; }
   .rules-body p{ margin:0 0 8px; color:var(--chalk); opacity:.92; }
-  .profile-stat-cell{ background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:12px; text-align:center; transition: transform .12s ease, background .12s ease; }
+  .profile-stat-cell{
+    background:linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.28));
+    border:1px solid rgba(203,177,102,.16); border-radius:10px; padding:12px; text-align:center;
+    transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 2px 6px rgba(0,0,0,.18);
+  }
   .profile-stat-cell:active{ transform:scale(.96); background:rgba(0,0,0,.32); }
   .profile-stat-cell.comparing{ background:rgba(203,177,102,.14); border-color:var(--brass-dim); animation:profileCompareIn .2s ease both; }
   @keyframes profileCompareIn{ 0%{ transform:scale(.95); opacity:.6; } 100%{ transform:scale(1); opacity:1; } }
@@ -3121,12 +3145,21 @@
   /* Section labels — same small-caps, muted, letter-spaced treatment
      Recent Form/Where the XP Goes already use, so the whole profile
      reads as one consistent visual language rather than each addition
-     inventing its own header style. Spans both grid columns. */
+     inventing its own header style. Spans both grid columns. A short
+     gold tick before the text (::before) replaces a plain top border —
+     reads as a deliberate section marker rather than just a divider
+     line, the kind of small typographic detail a premium product has. */
   .profile-stat-group-label{
-    grid-column:1 / -1; font-size:10.5px; color:var(--muted); text-transform:uppercase;
-    letter-spacing:1.5px; margin:8px 0 -2px; padding-top:6px; border-top:1px solid var(--line);
+    grid-column:1 / -1; font-size:10.5px; color:var(--brass-dim); text-transform:uppercase;
+    letter-spacing:1.8px; margin:10px 0 -2px; padding:8px 0 0 10px; border-top:1px solid var(--line);
+    position:relative; font-weight:600;
   }
-  .profile-stat-group-label:first-child{ border-top:none; padding-top:0; margin-top:0; }
+  .profile-stat-group-label::before{
+    content:''; position:absolute; left:0; top:11px; width:5px; height:5px; border-radius:50%;
+    background:var(--brass-light); box-shadow:0 0 6px rgba(255,224,150,.6);
+  }
+  .profile-stat-group-label:first-child{ border-top:none; padding-top:2px; margin-top:0; }
+  .profile-fines-note{ text-transform:none; letter-spacing:normal; color:var(--muted); font-weight:400; font-size:9px; opacity:.8; }
   .profile-stat-cell .val.pos{ color:var(--win); }
   .profile-stat-cell .val.neg{ color:var(--loss); }
   .prize-split-row{ display:flex; gap:8px; margin-top:12px; }
