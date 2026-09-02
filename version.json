@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-02.3",
+  "version": "2026-09-02.4",
   "date": "2026-09-02",
   "changes": [
-    "Fixed the actual root cause of the chat scroll bug, found via live DevTools inspection rather than another theory. The message list was a flex container with justify-content:flex-end while ALSO being the scrollable element \u2014 a real, documented browser quirk that can make overflow at the top of a flex-end-aligned scroll container genuinely unreachable by scrolling.",
-    "Casino Pot now pays out twice a month (1st & 16th, 8am AEST) instead of once \u2014 smaller, more regular payouts, split 75% evenly among everyone eligible / 25% single jackpot.",
-    "Casino Pot payouts no longer count toward Player Tier \u2014 only genuine game wins, tipping results, and board results move your tier now.",
-    "Fixed Slots' gamble feature (Red/Black, suit picks, Collect) getting stuck unresponsive after a win."
+    "Closed a real eligibility loophole: winning a Casino Pot share was itself counting as \"real XP\" toward qualifying for the NEXT period too, even with zero plays. Fixed both client and server, and found/fixed a related gap where the server was missing several games from its own exclusion list.",
+    "Video Poker's bet chip is now clickable for a custom amount, same as Mines already allows.",
+    "Floor activity feed extended from the last 50 entries to the last 100.",
+    "Fixed the actual root cause of the chat scroll bug (found via live DevTools) \u2014 the message list was a flex container with justify-content:flex-end while also being the scroll container, a real browser quirk that can make overflow at the top genuinely unreachable by scrolling."
   ]
 }
