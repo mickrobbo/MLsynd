@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-02.4",
+  "version": "2026-09-02.7",
   "date": "2026-09-02",
   "changes": [
-    "Closed a real eligibility loophole: winning a Casino Pot share was itself counting as \"real XP\" toward qualifying for the NEXT period too, even with zero plays. Fixed both client and server, and found/fixed a related gap where the server was missing several games from its own exclusion list.",
-    "Video Poker's bet chip is now clickable for a custom amount, same as Mines already allows.",
-    "Floor activity feed extended from the last 50 entries to the last 100.",
-    "Fixed the actual root cause of the chat scroll bug (found via live DevTools) \u2014 the message list was a flex container with justify-content:flex-end while also being the scroll container, a real browser quirk that can make overflow at the top genuinely unreachable by scrolling."
+    "Added a Casino Pot fine system, on top of the existing 15% burn: a losing Group Multi leg fines the pot 250,000 XP (symmetric with Undo Week), and every individual wrong AFL tip fines the pot 150,000 XP via a new scheduled check. Both come straight out of the shared pot, never a personal balance.",
+    "Added a Casino Pot burn: 15% of every pot is now permanently removed rather than paid out, so the numbers stop only ever growing.",
+    "The stale legacy Casino Pot entry kept resurfacing in a couple more places: \"Your Recent Activity\" and the Home tab's \"big wins this week\" feed. Both now filter it out the same way the Floor feed already did.",
+    "Closed a real eligibility loophole: winning a Casino Pot share was itself counting as \"real XP\" toward qualifying for the NEXT period too, even with zero plays."
   ]
 }

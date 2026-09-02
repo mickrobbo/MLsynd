@@ -754,7 +754,7 @@
       <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
       <button type="button" class="casino-pot-details-toggle" id="potDetailsToggleBtn">▾ Details</button>
       <div class="casino-pot-details" id="casinoPotDetailsWrap">
-        <div class="casino-pot-split-legend"><span>75% SHARED</span><span>25% JACKPOT</span></div>
+        <div class="casino-pot-split-legend"><span>63.75% SHARED</span><span>21.25% JACKPOT</span><span>15% BURNED</span></div>
         <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
         <div id="casinoPotMeWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);"></div>
         <div style="text-align:center; margin-top:10px;">
@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.4"; // Four changes per request: (1) closed the pot-eligibility loophole — receiving a Casino Pot payout was itself counting as "real (non-casino) XP" for the NEXT period's eligibility check, silently auto-qualifying a winner again even with zero plays, since a payout obviously never matched the game-name exclusion pattern; added a second pattern (CASINO_POT_PAYOUT_REASON_PATTERN) to exclude the pot's own payout reasons too, client and server both. (2) Found and fixed a real discrepancy while doing that: the server's copy of the game-name pattern was missing Craps/Plinko/Big Wheel/Mines/Crash/Double or Nothing compared to the client's — synced to match. (3) Video Poker's bet chip is now clickable for a custom amount via prompt(), same pattern Mines already used (casino-videopoker.js) — no lock needed since this bet was never disabled mid-hand to begin with. (4) Floor feed extended from 50 to 100 entries (per-member fetch cap raised 60->120 to keep the global top-100 accurate). The "SPIN THE WHEEL" title bug reported earlier was investigated properly this time (checked the Slots panel HTML, the session-recap modal, the game-switch handler) but not conclusively found — needs a fresh look, possibly live DevTools, rather than another guess — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.7"; // Added a Casino Pot fine system per request, on top of the 15% burn: a losing Group Multi leg fines the pot 250,000 XP (built into the Ledger's saveWeekBtn handler, symmetric with Undo Week — the fine amount and exact period it applied to are both stored on the history record so undoing a week reverses it correctly even after the calendar's moved into a new period), and every individual wrong AFL tip fines the pot 150,000 XP. The tipping fine needed a genuinely new scheduled function (casino-pot-tipping-fines-scheduled.js) rather than a quick hook — found that tipping correctness is a live recalculation on every render, not a discrete event, so hooking a fine directly into it would have refired for the same wrong tip every time anything re-rendered. The new function uses the same ETag lock pattern as the pot distributor and marks each (game,uid) pair checked so it can never double-fine. Deliberately scoped to real submitted picks only, not auto-tips from missed rounds. Both fines subtract from totalPot before the split/burn math runs (in both this file and the scheduled function), and are logged in distribution history (rawPot, finesApplied) for a full audit trail. Info-modal updated to disclose both fines — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7348,13 +7348,13 @@ async function fetchCasinoPotMonth(monthKey){
     const res = await authedFetch(`/casinoPot/months/${monthKey}.json`);
     if(!res.ok){
       console.warn('Casino Pot: month read denied — HTTP', res.status, '(check /casinoPot Firebase rules are deployed)');
-      return { losses: {}, playCounts: {}, readFailed: true };
+      return { losses: {}, playCounts: {}, fines: 0, readFailed: true };
     }
     const data = await res.json();
-    return { losses: (data && data.losses) || {}, playCounts: (data && data.playCounts) || {} };
+    return { losses: (data && data.losses) || {}, playCounts: (data && data.playCounts) || {}, fines: Number(data && data.fines) || 0 };
   }catch(e){
     console.warn('Casino Pot: month read failed —', e.message);
-    return { losses: {}, playCounts: {}, readFailed: true };
+    return { losses: {}, playCounts: {}, fines: 0, readFailed: true };
   }
 }
 
@@ -7570,12 +7570,19 @@ async function distributeCasinoPot(monthKeys){
 async function distributeCasinoPotLocked(monthKeys){
   const combinedLosses = {};
   const combinedPlayCounts = {};
+  let combinedFines = 0;
   for(const monthKey of monthKeys){
-    const { losses, playCounts } = await fetchCasinoPotMonth(monthKey);
+    const { losses, playCounts, fines } = await fetchCasinoPotMonth(monthKey);
     Object.entries(losses).forEach(([uid, v]) => { combinedLosses[uid] = (combinedLosses[uid] || 0) + (Number(v) || 0); });
     Object.entries(playCounts).forEach(([uid, v]) => { combinedPlayCounts[uid] = (combinedPlayCounts[uid] || 0) + (Number(v) || 0); });
+    combinedFines += Number(fines) || 0;
   }
-  const totalPot = sumLosses(combinedLosses);
+  // Fines (Group Multi leg losses from the Ledger, AFL Tipping misses from
+  // the scheduled function) reduce the pot directly — the actual "burn"
+  // mechanism those two features rely on. Floored at 0 so fines can never
+  // push the pot negative even in an edge case.
+  const rawPot = sumLosses(combinedLosses);
+  const totalPot = Math.max(0, rawPot - combinedFines);
   const label = monthKeys.length === 1 ? monthKeys[0] : `${monthKeys[0]}..${monthKeys[monthKeys.length - 1]}`;
 
   // Belt-and-braces idempotency check, same as the scheduled function: if
@@ -7602,8 +7609,19 @@ async function distributeCasinoPotLocked(monthKeys){
     return { skipped: true, rolled: true, totalPot };
   }
 
-  const proportionalPool = Math.floor(totalPot * 0.75);
-  const jackpotPool = totalPot - proportionalPool; // remainder, not a second floor() — avoids losing a few XP to rounding
+  // 15% burned outright per request — otherwise the pot is a pure wash:
+  // 100% of what's collected gets redistributed straight back to players,
+  // so nothing ever actually leaves the XP economy through it, and the
+  // numbers involved only ever grow. The remaining 85% still splits at
+  // the existing 75/25 ratio, unchanged — burnedAmount is logged in the
+  // distribution history for a real audit trail rather than just quietly
+  // vanishing with no record. Single named constant, easy to retune —
+  // kept identical to the scheduled function's own copy of this constant.
+  const CASINO_POT_BURN_RATE = 0.15;
+  const burnedAmount = Math.floor(totalPot * CASINO_POT_BURN_RATE);
+  const distributable = totalPot - burnedAmount;
+  const proportionalPool = Math.floor(distributable * 0.75);
+  const jackpotPool = distributable - proportionalPool; // remainder, not a second floor() — avoids losing a few XP to rounding
 
   // Split evenly across everyone eligible — NOT weighted by how much each
   // person lost. Changed per request.
@@ -7625,7 +7643,7 @@ async function distributeCasinoPotLocked(monthKeys){
   }
   await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`);
 
-  const historyEntry = { month: label, totalPot, proportional, jackpotWinner, jackpotAmount: jackpotPool, participants: jackpotPoolCandidates, distributedAt: Date.now() };
+  const historyEntry = { month: label, totalPot, rawPot, finesApplied: combinedFines, proportional, jackpotWinner, jackpotAmount: jackpotPool, burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now() };
   try{
     await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(historyEntry)
@@ -7880,6 +7898,7 @@ async function renderXPLog(){
     // being filtered out or given a safe fallback.
     const entries = (data && typeof data === 'object' ? Object.values(data) : [])
       .filter(e => e && typeof e === 'object')
+      .filter(e => !FLOOR_FEED_LEGACY_CASINO_POT_PATTERN.test(e.reason || '')) // same stale-entry filter as the Floor feed — this personal log never had it, so old "(2026-09)" no-day-suffix payouts kept resurfacing here and getting mistaken for a live repeat
       .sort((a, b) => (b.ts || 0) - (a.ts || 0))
       .slice(0, 15);
     if(entries.length === 0){
@@ -9134,7 +9153,9 @@ const CASINO_RULES = {
     <h3>Where it comes from</h3>
     <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the period, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
     <h3>How it's split</h3>
-    <p><b>75%</b> is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <p><b>15%</b> of every pot is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (63.75% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (21.25% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <h3>Fines</h3>
+    <p>The pot also takes real fines off the top before it's ever distributed — a losing leg in the Group Multi costs the pot <b>250,000 XP</b>, and every individual wrong AFL tip costs it <b>150,000 XP</b>. These come straight out of the shared pot, not your personal balance.</p>
     <h3>Eligibility</h3>
     <p>You qualify for the 75% share if you played the tables <b>20 times or more</b> this period, <b>or</b> earned any real (non-casino) XP this period — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
     <h3>Timing</h3>
@@ -16748,6 +16769,7 @@ async function renderActivityFeed(){
       const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
       perMember.flat()
         .filter(e => e && typeof e.amount === 'number' && e.amount >= CASINO_TICKER_THRESHOLD_XP && e.ts >= weekAgo)
+        .filter(e => !FLOOR_FEED_LEGACY_CASINO_POT_PATTERN.test(e.reason || '')) // same stale-entry filter as the Floor feed and personal log — this Home feed never had it either
         .forEach(e => {
           items.push({
             icon: '🎰', ts: e.ts,
