@@ -1737,10 +1737,6 @@
 
     </div><!-- /#casinoGamesView -->
 
-    <div class="panel" id="casinoXpLogPanel">
-      <h2 class="casino-panel-h2" style="font-size:14px;">👤 Your Recent Activity</h2>
-      <div id="xpLogArea"><div class="empty">Loading…</div></div>
-    </div>
   </div>
 
   <div class="status-bar" id="statusBar">Loading…</div>
@@ -3052,7 +3048,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.15"; // Fine scale retuned per request: Losing Group Multi leg stays 250K, MIA leg 50K->200K, Group Multi leg under $1.22 10K->150K, Wrong AFL tip 150K->100K, Missed AFL tip stays 50K — now genuinely descending in that exact order everywhere it's listed (info-modal, profile Fines tab), not just coincidentally so. Burn rate 15%->20%, which also changes the split legend to clean round numbers: 60% even-share / 20% jackpot / 20% burned (was 63.75/21.25/15). Updated in every file that duplicates these values (LEDGER-index.html, casino-pot-tipping-fines-scheduled.js, casino-pot-distribute-scheduled.js, this file's display copies) plus every code comment and player-facing explainer text that stated the old figures — verified with a final grep pass that zero stale references to any old number remain anywhere — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.17"; // Profile Activity tab extended from last 15 to last 100 entries per request — same unfiltered /xp/{uid}/log fetch as before, just a bigger slice() and an updated comment noting this fetches the whole log client-side rather than using a server-side limitToLast (would need a real Firebase .indexOn rule to do that safely, same reasoning as before, just now flagged as something to revisit if any single account's log ever grows large enough to matter) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3187,7 +3183,6 @@ document.getElementById('weeklyBonusBtn').addEventListener('click', async () => 
   if(result.ok){
     const bal = await getXPBalance();
     updateXPBalanceDisplay(bal);
-    renderXPLog();
   } else if(statusEl){
     statusEl.textContent = result.reason;
   }
@@ -3413,7 +3408,6 @@ async function dailySpinSpin(){
     await awardXP(seg.value, isJackpot ? 'Spin the Wheel JACKPOT' : 'Spin the Wheel prize', { silent: true });
     const bal = await getXPBalance();
     updateXPBalanceDisplay(bal);
-    renderXPLog();
   }
 
   dailySpinSpinning = false;
@@ -7908,20 +7902,32 @@ document.getElementById('closeMonthPotBtn').addEventListener('click', async () =
 });
 // ================= /Monthly Casino XP Pot =================
 
-async function renderXPLog(){
-  const area = document.getElementById('xpLogArea');
-  if(!area || !currentUserUid) return;
+// Moved here from the Casino tab per request — this was always a full,
+// unfiltered read of /xp/{uid}/log, so it already covered every source
+// (tipping points, group multi results, dues, casino games, pot
+// distribution/jackpot, everything) — nothing about the data changed,
+// only where it's shown and whose uid it's scoped to. Generalized from
+// "always currentUserUid" to accept whichever profile is open, matching
+// every other loadProfileXXX function's own signature — works the same
+// whether you're looking at your own profile or someone else's, exactly
+// like the Casino/Tipping/Fines tabs already do.
+async function loadProfileActivity(uid, forName){
+  const area = document.getElementById('profileActivityArea');
+  if(!area || !uid) return;
   try{
-    // Deliberately NOT using ?orderBy="ts"&limitToLast=15 here anymore —
-    // that requires a matching .indexOn rule on the LIVE Firebase rules,
-    // and this project has already been caught once by code quietly
-    // depending on rules that hadn't actually been redeployed yet. A plain
+    // Deliberately NOT using ?orderBy="ts"&limitToLast=100 here — that
+    // requires a matching .indexOn rule on the LIVE Firebase rules, and
+    // this project has already been caught once by code quietly depending
+    // on rules that hadn't actually been redeployed yet. A plain
     // unfiltered fetch works under any rules that grant read at all, so
-    // sorting/limiting happens client-side instead — a personal XP log is
-    // small enough that this costs nothing in practice.
-    const res = await authedFetch(`/xp/${currentUserUid}/log.json`);
+    // sorting/limiting happens client-side instead — fetches the WHOLE
+    // log every time, which is fine for a personal log at this scale but
+    // would need revisiting (a real limitToLast + matching index) if any
+    // single account's log ever grows large enough for that to matter.
+    const res = await authedFetch(`/xp/${uid}/log.json`);
+    if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     if(!res.ok){
-      area.innerHTML = `<div class="empty">Couldn't load XP activity (server said ${res.status}).</div>`;
+      area.innerHTML = `<div class="empty">Couldn't load activity (server said ${res.status}).</div>`;
       return;
     }
     const data = await res.json();
@@ -7932,9 +7938,9 @@ async function renderXPLog(){
       .filter(e => e && typeof e === 'object')
       .filter(e => !FLOOR_FEED_LEGACY_CASINO_POT_PATTERN.test(e.reason || '')) // same stale-entry filter as the Floor feed — this personal log never had it, so old "(2026-09)" no-day-suffix payouts kept resurfacing here and getting mistaken for a live repeat
       .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-      .slice(0, 15);
+      .slice(0, 100);
     if(entries.length === 0){
-      area.innerHTML = '<div class="empty">No XP activity yet.</div>';
+      area.innerHTML = '<div class="empty">No activity yet.</div>';
       return;
     }
     area.innerHTML = entries.map(e => {
@@ -7947,7 +7953,7 @@ async function renderXPLog(){
       </div>`;
     }).join('');
   }catch(e){
-    area.innerHTML = '<div class="empty">Couldn\'t load XP activity.</div>';
+    area.innerHTML = '<div class="empty">Couldn\'t load activity.</div>';
   }
 }
 
@@ -8264,18 +8270,14 @@ async function showCasinoView(viewId){
   // table"), and neither shows on the Rules/XP-info/Badges sub-views since
   // those aren't activity contexts.
   const isHub = !viewId;
-  const isGamesTable = viewId === 'casinoGamesView';
   const membersPanel = document.getElementById('casinoMembersPanel');
   const potPanel = document.getElementById('casinoPotPanel');
-  const personalPanel = document.getElementById('casinoXpLogPanel');
   if(membersPanel) membersPanel.style.display = isHub ? 'block' : 'none';
   if(potPanel) potPanel.style.display = isHub ? 'block' : 'none';
-  if(personalPanel) personalPanel.style.display = isGamesTable ? 'block' : 'none';
   if(isHub){
     await renderXPLeaderboard();
     renderCasinoFloorFeed();
   }
-  if(isGamesTable) renderXPLog();
   reconcileCasinoAmbience();
 }
 document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
@@ -9805,6 +9807,7 @@ function openBoardProfile(m, name){
       <button type="button" class="profile-cat-tab" data-cat="casino">🃏 Casino</button>
       <button type="button" class="profile-cat-tab" data-cat="tipping">🏉 Tipping</button>
       <button type="button" class="profile-cat-tab" data-cat="fines">⚠️ Fines</button>
+      <button type="button" class="profile-cat-tab" data-cat="activity">📋 Activity</button>
     </div>
 
     <div class="profile-stat-category" data-cat="betting">
@@ -9867,6 +9870,11 @@ function openBoardProfile(m, name){
       <div class="profile-stat-cell"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">${m.linkedUid ? '…' : '—'}</span></div>
       <div class="profile-stat-cell"><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">${m.linkedUid ? '…' : '—'}</span></div>
       <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">${m.linkedUid ? '…' : '—'}</span></span></div>
+    </div>
+
+    <div class="profile-stat-category" data-cat="activity" style="display:none;">
+      <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Every XP change, from every source — tipping, betting, dues, casino games, pot distributions and jackpots — most recent first.</div>
+      <div style="grid-column:1/-1;" id="profileActivityArea">${m.linkedUid ? '<div class="empty">Loading…</div>' : '<div class="empty">No linked account.</div>'}</div>
     </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
@@ -9989,6 +9997,7 @@ function openBoardProfile(m, name){
   loadProfileCasinoBadges(m.linkedUid, name);
   loadProfileGameStats(m.linkedUid, name);
   loadProfileFines(m.linkedUid, name);
+  loadProfileActivity(m.linkedUid, name);
   loadProfileTippingDues(m.linkedUid, name);
   loadProfileLiveStatus(m.linkedUid, name);
   renderProfileAvatarSection(m);
@@ -10162,6 +10171,7 @@ function openTippingOnlyProfile(uid, name){
       <button type="button" class="profile-cat-tab active" data-cat="casino">🃏 Casino</button>
       <button type="button" class="profile-cat-tab" data-cat="tipping">🏉 Tipping</button>
       <button type="button" class="profile-cat-tab" data-cat="fines">⚠️ Fines</button>
+      <button type="button" class="profile-cat-tab" data-cat="activity">📋 Activity</button>
     </div>
 
     <div class="profile-stat-category" data-cat="casino">
@@ -10202,6 +10212,11 @@ function openTippingOnlyProfile(uid, name){
       <div class="profile-stat-cell"><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">…</span></div>
       <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">…</span></span></div>
     </div>
+
+    <div class="profile-stat-category" data-cat="activity" style="display:none;">
+      <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Every XP change, from every source — tipping, dues, casino games, pot distributions and jackpots — most recent first.</div>
+      <div style="grid-column:1/-1;" id="profileActivityArea"><div class="empty">Loading…</div></div>
+    </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
 
@@ -10233,6 +10248,7 @@ function openTippingOnlyProfile(uid, name){
   loadProfileCasinoBadges(uid, name);
   loadProfileGameStats(uid, name);
   loadProfileFines(uid, name);
+  loadProfileActivity(uid, name);
   loadProfileTippingDues(uid, name);
   loadProfileLiveStatus(uid, name);
   renderProfileAvatarSection(virtualMember);
@@ -10263,7 +10279,7 @@ async function loadProfileTippingDues(uid, forName){
   }catch(e){}
 }
 // Biggest single win + most-played game, both derived from one fetch of
-// the linked account's own XP log — same endpoint/shape renderXPLog
+// the linked account's own XP log — same endpoint/shape loadProfileActivity
 // already uses. "Most played" matches a reason string's leading game
 // name against the same list CASINO_POT_REASON_PATTERN recognises.
 const PROFILE_GAME_NAMES = ['Blackjack', 'Baccarat', 'Roulette', 'Casino War', 'Craps', 'Plinko', 'Big Wheel', 'Mines', 'Slots', 'Video Poker', 'Spin the Wheel', 'Crash', 'Double or Nothing'];

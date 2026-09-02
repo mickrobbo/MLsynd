@@ -1,9 +1,7 @@
 {
-  "version": "2026-09-02.15",
+  "version": "2026-09-02.17",
   "date": "2026-09-02",
   "changes": [
-    "Fine scale retuned: Losing leg stays 250K, MIA leg 50K -> 200K, leg under $1.22 10K -> 150K, wrong AFL tip 150K -> 100K, missed AFL tip stays 50K \u2014 now genuinely in descending order everywhere it's shown.",
-    "Casino Pot burn rate 15% -> 20%, which also lands on clean round numbers for the split: 60% even-share / 20% jackpot / 20% burned.",
-    "Every file and every player-facing explainer that stated the old figures has been updated and verified \u2014 no stale numbers left anywhere."
+    "Profile Activity tab now shows the last 100 entries instead of 15."
   ]
 }
