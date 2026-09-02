@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.17",
+  "version": "2026-09-02.18",
   "date": "2026-09-02",
   "changes": [
-    "Profile Activity tab now shows the last 100 entries instead of 15."
+    "Fixed the profile tabs blending into the background \u2014 inactive pills had a near-invisible border and fill. Given real definition: visible border, warm-tinted fill, raised card shadow, brighter text, while the active gold pill stays clearly the dominant selected state."
   ]
 }

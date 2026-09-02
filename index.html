@@ -3048,7 +3048,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.17"; // Profile Activity tab extended from last 15 to last 100 entries per request — same unfiltered /xp/{uid}/log fetch as before, just a bigger slice() and an updated comment noting this fetches the whole log client-side rather than using a server-side limitToLast (would need a real Firebase .indexOn rule to do that safely, same reasoning as before, just now flagged as something to revisit if any single account's log ever grows large enough to matter) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.18"; // Inactive profile category pills were genuinely near-invisible against the felt background per report — border was only 22% opacity, fill was a near-transparent 2-22% gradient, text was full --muted grey. Gave them real definition: border bumped to 1.5px at 50% opacity, a visible warm-tinted fill instead of near-transparent, an inset highlight + outer shadow for a raised/premium card feel, and text brightened from --muted to --chalk. Active state's gold-fill glow strengthened slightly to keep it clearly the dominant "selected" signal against the now-more-visible inactive pills — dashboard.css only, no HTML/JS changes — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
