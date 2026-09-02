@@ -3041,7 +3041,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-01.11"; // Filtered legacy-format Casino Pot payouts (label like "(2026-09)" with no day suffix, from before the twice-monthly migration) out of the Floor feed. This was genuinely NOT a repeat of the duplicate-payout bug — the countdown card and pot total were both behaving normally, and these entries used the old label format the current system never writes — but stale positive-amount "Casino Pot – Jackpot/Even Split" entries kept surfacing in the "recent activity" feed during quiet periods and getting mistaken for a live repeat, twice now. Reused the existing FLOOR_FEED_EXCLUDE_PATTERN mechanism rather than inventing a new one — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.1"; // Actual fix for the chat scroll bug, based on real video evidence this time rather than a fourth blind CSS theory. The recording showed the PAGE BEHIND the chat modal scrolling (Home -> Board -> back) while the chat's own message list stayed frozen at the same position throughout — textbook scroll-chaining, and evidently strong enough that overscroll-behavior:contain alone (already present, added a few versions back) wasn't stopping it in the browser it was tested on. Added a touchmove listener on the modal that explicitly intercepts any drag NOT targeting .syndy-chat-body and prevents it outright, so a gesture anywhere else in the modal (header, tabs, input row, backdrop) can never be handed off to the page underneath — only .syndy-chat-body itself is ever allowed to actually scroll. This is the standard, forceful, JS-level fix for this exact bug class, used because two rounds of CSS-only attempts already failed or had uncertain effect — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -11377,6 +11377,24 @@ document.getElementById('syndyFabBtn').addEventListener('click', () => {
   switchChatMode('syndy'); // FAB always opens straight to Syndy — Group Chat is one tap away via the toggle, not something to land on unexpectedly
   document.getElementById('syndyChatInput').focus();
 });
+
+// Real bug, confirmed on video: dragging inside the chat window scrolled
+// the PAGE BEHIND the modal, while the chat's own message list stayed
+// completely frozen — classic scroll-chaining, and evidently strong
+// enough that overscroll-behavior:contain alone (already present on both
+// .profile-modal and .syndy-chat-body) wasn't stopping it in the browser
+// this was tested on. This is the more forceful, standard fix for the
+// same problem: intercept the touch gesture directly and only ever let
+// it move .syndy-chat-body — everywhere else within the modal (header,
+// tabs, input row, the backdrop itself), a drag is simply swallowed
+// instead of being handed off to the page underneath. { passive: false }
+// is required for preventDefault() to actually take effect on a
+// touchmove listener; taps (button/tab clicks) are untouched since a tap
+// doesn't fire meaningful touchmove events, only drags do.
+document.getElementById('syndyChatModal').addEventListener('touchmove', (e) => {
+  if(!e.target.closest('.syndy-chat-body')) e.preventDefault();
+}, { passive: false });
+
 document.getElementById('syndyChatCloseBtn').addEventListener('click', () => {
   document.getElementById('syndyChatModal').classList.remove('open');
   if(groupChatPollHandle){ clearInterval(groupChatPollHandle); groupChatPollHandle = null; } // stop polling the moment nobody's looking at it
