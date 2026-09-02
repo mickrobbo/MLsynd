@@ -27,7 +27,19 @@ import webpush from 'web-push';
 import crypto from 'crypto';
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
-const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Slots|Video Poker|Spin the Wheel)/i;
+// Was missing Craps, Plinko, Big Wheel, Mines, Crash, and Double or Nothing
+// compared to the client's copy of this same pattern — found by direct
+// comparison while fixing the eligibility loophole below. Meant those six
+// games' wins were NOT being excluded from "earned real (non-casino) XP"
+// server-side, incorrectly making a win at any of them count toward pot
+// eligibility on its own. Synced to match the client exactly.
+const CASINO_POT_REASON_PATTERN = /^(Blackjack|Baccarat|Roulette|Casino War|Craps|Plinko|Big Wheel|Mines|Slots|Video Poker|Spin the Wheel|Crash|Double or Nothing)/i;
+// Matches the pot's OWN payout reasons (current and legacy label formats).
+// Without this, receiving a pot payout counted as "real XP" for the VERY
+// NEXT period's eligibility check, since a payout obviously never matched
+// the game-name pattern above — silently auto-qualifying a winner for the
+// next period too, even with zero plays. Known loophole, now closed.
+const CASINO_POT_PAYOUT_REASON_PATTERN = /^Casino Pot – (Even Split|Jackpot|Proportional)/;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const TIMEZONE = 'Australia/Melbourne'; // change if the syndicate isn't Melbourne-based
 const DISTRIBUTE_HOUR = 8; // 8am AEST/AEDT on the 1st
@@ -189,6 +201,7 @@ async function isEligibleForProportional(uid, monthKey, playCount, secret){
     return Object.values(log).some(entry => {
       if(!entry || !(entry.amount > 0)) return false;
       if(CASINO_POT_REASON_PATTERN.test(entry.reason || '')) return false;
+      if(CASINO_POT_PAYOUT_REASON_PATTERN.test(entry.reason || '')) return false;
       return periodKeyFor(new Date(entry.ts), TIMEZONE) === monthKey;
     });
   }catch(e){
