@@ -1905,7 +1905,7 @@
     <div style="text-align:center; margin:6px 0 2px; display:none;" id="profileShareRow">
       <button type="button" class="pill-btn" id="profileShareSeasonBtn">📸 Share My Season</button>
     </div>
-    <div class="profile-stat-grid" id="profileStats"></div>
+    <div class="profile-stat-wrap" id="profileStats"></div>
     <div class="ghost-record-close" id="profileGhostChase" style="display:none;"></div>
     <div class="profile-game-breakdown-section" id="profileGameBreakdownSection" style="display:none;">
       <div class="profile-form-label">Where the XP Goes</div>
@@ -3049,7 +3049,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.8"; // Profile card overhaul per request. (1) Fixed Nudge — the client-side handler was always correct, most likely cause was send-nudge.mjs never actually being deployed (matching a pattern this project has hit before); wrote it from scratch on the same proven webpush pattern casino-pot-distribute-scheduled.js already uses, matching the exact response contract the client already handles (200/429/404). (2) Added three new stat sections without removing anything already there: Casino overall win/loss record (reuses data already being fetched, no new network calls), Tipping season points + a real correct/total record (new session-level cache — tippingRecordCache — added to the ladder's own scoring pass rather than an expensive per-profile recompute; only populates once the Tipping tab has been visited this session, same lazy-cache convention as tippingParticipantNames), and Fines (this person's own estimated contribution to the pot fines — losing legs x 250K, wrong tips x 150K — clearly labeled as coming out of the shared pot, not their balance). Applied to both full Board profiles and Tipping-only accounts. (3) Premium visual pass on the whole profile sheet: gold hairline top edge, gradient-text name heading, richer stat-cell cards, gold-dot section markers, upgraded action buttons, richer prestige bar — purely visual (dashboard.css only), no structural/layout changes — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.9"; // Two fixes to yesterday's profile work, per request. (1) Fines now genuinely start from "now": added /casinoPot/fineHistory/{uid} (groupMultiLegs, wrongTips), a brand new path that starts empty for everyone — populated by the Ledger's saveWeekBtn/undoWeekBtn (per-person, symmetric with undo, using each losing person's linkedUid captured in the same loop that already had it) and casino-pot-tipping-fines-scheduled.js's applyFine. The profile's Fines tab now reads THIS instead of deriving from m.losses/tippingRecordCache, which were whole-season totals that predated the fine system and would have overstated the real figure. (2) Restructured the whole stat grid from one long scroll into category tabs (Betting/Casino/Tipping/Fines, or Casino/Tipping/Fines for a Tipping-only profile) — same visual pattern the chat's Syndy/Group Chat toggle already uses, delegated click handler on the stable #profileStats container since its content gets fully rebuilt via innerHTML on every open. #profileStats itself is no longer the grid (renamed profile-stat-grid -> profile-stat-wrap); each .profile-stat-category div is its own grid now, shown one at a time — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9771,53 +9771,62 @@ function openBoardProfile(m, name){
   badgesArea.querySelectorAll('.profile-badge').forEach(wireProfileBadgeFlip);
 
   const lifetime = getLifetimeStats(name, currentState);
-  const groupLegLosses = m.losses || 0;
-  const multiFineContribution = groupLegLosses * CASINO_POT_LEG_LOSS_FINE_DISPLAY;
-  const tipRecForFines = m.linkedUid ? tippingRecordCache[m.linkedUid] : null;
-  const tippingFineContribution = tipRecForFines ? (tipRecForFines.total - tipRecForFines.correct) * CASINO_POT_TIPPING_FINE_DISPLAY : null;
   document.getElementById('profileStats').innerHTML = `
-    <div class="profile-stat-group-label">Betting — Multis</div>
-    <div class="profile-stat-cell" data-compare-key="pl"><span class="lbl">Lifetime P/L</span><span class="val ${lifetime.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(lifetime.pl)}</span></div>
-    <div class="profile-stat-cell" data-compare-key="record"><span class="lbl">Record</span><span class="val">${lifetime.wins}-${lifetime.losses}-${lifetime.voids}</span></div>
-    <div class="profile-stat-cell" data-compare-key="winPct"><span class="lbl">Win%</span><span class="val">${(lifetime.winPct*100).toFixed(0)}%</span></div>
-    <div class="profile-stat-cell" data-compare-key="avgLeg"><span class="lbl">Avg Leg Price</span><span class="val">${lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—'}</span></div>
-    <div class="profile-stat-cell wide" data-compare-key="seasonScore"><span class="profile-stat-sub"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></span></div>
-
-    <div class="profile-stat-group-label">Betting — Individual</div>
-    <div class="profile-stat-cell" data-compare-key="indRecord"><span class="lbl">Record</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div>
-    <div class="profile-stat-cell" data-compare-key="indWinPct"><span class="lbl">Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
-    <div class="profile-stat-cell wide" data-compare-key="legs"><span class="profile-stat-sub"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></span></div>
-
-    <div class="profile-stat-group-label">Casino</div>
-    <div class="profile-stat-cell wide">
-      <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
-      <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
-    </div>
-    <div class="profile-stat-cell wide">
-      <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
-      <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
-    </div>
-    <div class="profile-stat-cell wide" id="profileCasinoRecordCell" style="${m.linkedUid ? '' : 'display:none;'}">
-      <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
-    </div>
-    <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
-      <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
-      <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
-    </div>
-    <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
-      <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
+    <div class="profile-cat-tabs">
+      <button type="button" class="profile-cat-tab active" data-cat="betting">💰 Betting</button>
+      <button type="button" class="profile-cat-tab" data-cat="casino">🃏 Casino</button>
+      <button type="button" class="profile-cat-tab" data-cat="tipping">🏉 Tipping</button>
+      <button type="button" class="profile-cat-tab" data-cat="fines">⚠️ Fines</button>
     </div>
 
-    <div class="profile-stat-group-label">Tipping</div>
-    <div class="profile-stat-cell wide" id="profileTippingCell" style="${m.linkedUid ? '' : 'display:none;'}">
-      <span class="profile-stat-sub"><span class="lbl">🏉 Season Points</span><span class="val" id="profileTippingPointsVal" style="color:var(--brass);">…</span></span>
-      <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileTippingRecordVal" style="color:var(--brass); font-size:11px;">…</span></span>
+    <div class="profile-stat-category" data-cat="betting">
+      <div class="profile-stat-group-label">Multis</div>
+      <div class="profile-stat-cell" data-compare-key="pl"><span class="lbl">Lifetime P/L</span><span class="val ${lifetime.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(lifetime.pl)}</span></div>
+      <div class="profile-stat-cell" data-compare-key="record"><span class="lbl">Record</span><span class="val">${lifetime.wins}-${lifetime.losses}-${lifetime.voids}</span></div>
+      <div class="profile-stat-cell" data-compare-key="winPct"><span class="lbl">Win%</span><span class="val">${(lifetime.winPct*100).toFixed(0)}%</span></div>
+      <div class="profile-stat-cell" data-compare-key="avgLeg"><span class="lbl">Avg Leg Price</span><span class="val">${lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—'}</span></div>
+      <div class="profile-stat-cell wide" data-compare-key="seasonScore"><span class="profile-stat-sub"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></span></div>
+
+      <div class="profile-stat-group-label">Individual</div>
+      <div class="profile-stat-cell" data-compare-key="indRecord"><span class="lbl">Record</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div>
+      <div class="profile-stat-cell" data-compare-key="indWinPct"><span class="lbl">Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
+      <div class="profile-stat-cell wide" data-compare-key="legs"><span class="profile-stat-sub"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></span></div>
     </div>
 
-    <div class="profile-stat-group-label">Fines <span class="profile-fines-note">(comes out of the shared Casino Pot, not this balance)</span></div>
-    <div class="profile-stat-cell" data-compare-key="multiFines"><span class="lbl">Losing Legs</span><span class="val neg">${groupLegLosses > 0 ? `${groupLegLosses} · ${fmtMoney(multiFineContribution).replace('$','')} XP` : '—'}</span></div>
-    <div class="profile-stat-cell" data-compare-key="tipFines"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileTippingFinesVal">${tippingFineContribution != null ? `${tipRecForFines.total - tipRecForFines.correct} · ${tippingFineContribution.toLocaleString()} XP` : 'Visit Tipping tab'}</span></div>
-    <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg">${tippingFineContribution != null ? (multiFineContribution + tippingFineContribution).toLocaleString() + ' XP' : `${multiFineContribution.toLocaleString()}+ XP`}</span></span></div>
+    <div class="profile-stat-category" data-cat="casino" style="display:none;">
+      <div class="profile-stat-cell wide">
+        <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
+        <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
+      </div>
+      <div class="profile-stat-cell wide">
+        <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
+        <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
+      </div>
+      <div class="profile-stat-cell wide" id="profileCasinoRecordCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
+      </div>
+      <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
+        <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
+        <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      </div>
+      <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
+        <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      </div>
+    </div>
+
+    <div class="profile-stat-category" data-cat="tipping" style="display:none;">
+      <div class="profile-stat-cell wide" id="profileTippingCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="profile-stat-sub"><span class="lbl">🏉 Season Points</span><span class="val" id="profileTippingPointsVal" style="color:var(--brass);">…</span></span>
+        <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileTippingRecordVal" style="color:var(--brass); font-size:11px;">…</span></span>
+      </div>
+    </div>
+
+    <div class="profile-stat-category" data-cat="fines" style="display:none;">
+      <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Comes out of the shared Casino Pot, not this balance — only counts fines since this feature launched, not past-season totals.</div>
+      <div class="profile-stat-cell"><span class="lbl">Losing Legs</span><span class="val neg" id="profileFinesLegsVal">${m.linkedUid ? '…' : '—'}</span></div>
+      <div class="profile-stat-cell"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">${m.linkedUid ? '…' : '—'}</span></div>
+      <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">${m.linkedUid ? '…' : '—'}</span></span></div>
+    </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
 
@@ -9938,6 +9947,7 @@ function openBoardProfile(m, name){
   loadProfileXP(m.linkedUid, name);
   loadProfileCasinoBadges(m.linkedUid, name);
   loadProfileGameStats(m.linkedUid, name);
+  loadProfileFines(m.linkedUid, name);
   loadProfileTippingDues(m.linkedUid, name);
   loadProfileLiveStatus(m.linkedUid, name);
   renderProfileAvatarSection(m);
@@ -10106,32 +10116,44 @@ function openTippingOnlyProfile(uid, name){
   document.getElementById('profileBadges').innerHTML = '<div style="font-size:11px; color:var(--muted);">No badges yet</div>';
 
   document.getElementById('profileStats').innerHTML = `
-    <div class="profile-stat-group-label">Casino &amp; Tipping</div>
-    <div class="profile-stat-cell wide">
-      <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">…</span></span>
-      <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">…</span></span>
-    </div>
-    <div class="profile-stat-cell wide">
-      <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">…</span></span>
-      <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">…</span></span>
-    </div>
-    <div class="profile-stat-cell wide" id="profileCasinoRecordCell">
-      <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
-    </div>
-    <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
-      <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
-      <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
-    </div>
-    <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
-      <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
-    </div>
-    <div class="profile-stat-cell wide" id="profileTippingCell">
-      <span class="profile-stat-sub"><span class="lbl">🏉 Season Points</span><span class="val" id="profileTippingPointsVal" style="color:var(--brass);">…</span></span>
-      <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileTippingRecordVal" style="color:var(--brass); font-size:11px;">…</span></span>
+    <div class="profile-cat-tabs">
+      <button type="button" class="profile-cat-tab active" data-cat="casino">🃏 Casino</button>
+      <button type="button" class="profile-cat-tab" data-cat="tipping">🏉 Tipping</button>
+      <button type="button" class="profile-cat-tab" data-cat="fines">⚠️ Fines</button>
     </div>
 
-    <div class="profile-stat-group-label">Fines <span class="profile-fines-note">(comes out of the shared Casino Pot, not this balance)</span></div>
-    <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileTippingFinesVal">${(() => { const r = tippingRecordCache[uid]; return r && r.total > 0 ? `${r.total - r.correct} · ${((r.total - r.correct) * CASINO_POT_TIPPING_FINE_DISPLAY).toLocaleString()} XP` : 'Visit Tipping tab'; })()}</span></span></div>
+    <div class="profile-stat-category" data-cat="casino">
+      <div class="profile-stat-cell wide">
+        <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">…</span></span>
+        <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">…</span></span>
+      </div>
+      <div class="profile-stat-cell wide">
+        <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">…</span></span>
+        <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">…</span></span>
+      </div>
+      <div class="profile-stat-cell wide" id="profileCasinoRecordCell">
+        <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
+      </div>
+      <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
+        <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
+        <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      </div>
+      <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
+        <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      </div>
+    </div>
+
+    <div class="profile-stat-category" data-cat="tipping" style="display:none;">
+      <div class="profile-stat-cell wide" id="profileTippingCell">
+        <span class="profile-stat-sub"><span class="lbl">🏉 Season Points</span><span class="val" id="profileTippingPointsVal" style="color:var(--brass);">…</span></span>
+        <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileTippingRecordVal" style="color:var(--brass); font-size:11px;">…</span></span>
+      </div>
+    </div>
+
+    <div class="profile-stat-category" data-cat="fines" style="display:none;">
+      <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Comes out of the shared Casino Pot, not this balance — only counts fines since this feature launched, not past-season totals.</div>
+      <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">…</span></span></div>
+    </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
 
@@ -10162,6 +10184,7 @@ function openTippingOnlyProfile(uid, name){
   loadProfileXP(uid, name);
   loadProfileCasinoBadges(uid, name);
   loadProfileGameStats(uid, name);
+  loadProfileFines(uid, name);
   loadProfileTippingDues(uid, name);
   loadProfileLiveStatus(uid, name);
   renderProfileAvatarSection(virtualMember);
@@ -10196,6 +10219,42 @@ async function loadProfileTippingDues(uid, forName){
 // already uses. "Most played" matches a reason string's leading game
 // name against the same list CASINO_POT_REASON_PATTERN recognises.
 const PROFILE_GAME_NAMES = ['Blackjack', 'Baccarat', 'Roulette', 'Casino War', 'Craps', 'Plinko', 'Big Wheel', 'Mines', 'Slots', 'Video Poker', 'Spin the Wheel', 'Crash', 'Double or Nothing'];
+// Fines — reads /casinoPot/fineHistory/{uid}, a brand new path that has
+// never existed before this feature shipped, so this genuinely only ever
+// shows fines caused SINCE launch — never derived from a whole season's
+// worth of leg losses or wrong tips that predate the fine system, which
+// would have overstated the real figure. Handles both profile templates:
+// the Tipping-only one only has profileFinesTipsVal, no legs/total cells,
+// each lookup is null-guarded so this works unmodified either way.
+async function loadProfileFines(uid, forName){
+  const legsEl = document.getElementById('profileFinesLegsVal');
+  const tipsEl = document.getElementById('profileFinesTipsVal');
+  const totalEl = document.getElementById('profileFinesTotalVal');
+  if(!uid){
+    if(legsEl) legsEl.textContent = '—';
+    if(tipsEl) tipsEl.textContent = '—';
+    if(totalEl) totalEl.textContent = '—';
+    return;
+  }
+  try{
+    const [legsRes, tipsRes] = await Promise.all([
+      authedFetch(`/casinoPot/fineHistory/${uid}/groupMultiLegs.json`),
+      authedFetch(`/casinoPot/fineHistory/${uid}/wrongTips.json`)
+    ]);
+    if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
+    const legs = legsRes.ok ? ((await legsRes.json()) || 0) : 0;
+    const tips = tipsRes.ok ? ((await tipsRes.json()) || 0) : 0;
+    const legsXP = legs * CASINO_POT_LEG_LOSS_FINE_DISPLAY;
+    const tipsXP = tips * CASINO_POT_TIPPING_FINE_DISPLAY;
+    if(legsEl) legsEl.textContent = legs > 0 ? `${legs} · ${legsXP.toLocaleString()} XP` : '0';
+    if(tipsEl) tipsEl.textContent = tips > 0 ? `${tips} · ${tipsXP.toLocaleString()} XP` : '0';
+    if(totalEl) totalEl.textContent = `${(legsXP + tipsXP).toLocaleString()} XP`;
+  }catch(e){
+    if(legsEl) legsEl.textContent = '—';
+    if(tipsEl) tipsEl.textContent = '—';
+    if(totalEl) totalEl.textContent = '—';
+  }
+}
 async function loadProfileGameStats(linkedUid, forName){
   const cellEl = document.getElementById('profileBiggestWinCell');
   if(!linkedUid || !cellEl) return;
@@ -10337,6 +10396,21 @@ async function loadProfileLiveStatus(linkedUid, forName){
 }
 
 // ---- Challenge / Nudge quick-actions, launched straight from a profile ----
+// Category tabs — delegated on the stable #profileStats container rather
+// than the tab buttons themselves, since the whole thing gets rebuilt via
+// innerHTML on every profile open (a listener bound directly to a button
+// would be gone the instant the next profile's HTML replaces it). Each
+// profile's fresh template always marks "betting" (or "casino" for a
+// Tipping-only profile) active by default, so this doesn't need to
+// remember or restore state between opens — every open starts clean.
+document.getElementById('profileStats').addEventListener('click', (e) => {
+  const tab = e.target.closest('.profile-cat-tab');
+  if(!tab) return;
+  const cat = tab.dataset.cat;
+  const statsArea = document.getElementById('profileStats');
+  statsArea.querySelectorAll('.profile-cat-tab').forEach(b => b.classList.toggle('active', b === tab));
+  statsArea.querySelectorAll('.profile-stat-category').forEach(c => c.style.display = (c.dataset.cat === cat) ? 'grid' : 'none');
+});
 document.getElementById('profileChallengeBtn').addEventListener('click', () => {
   const actionRow = document.getElementById('profileActionRow');
   const toUid = actionRow.dataset.targetUid;

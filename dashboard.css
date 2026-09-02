@@ -2803,14 +2803,14 @@
   .profile-modal.open .profile-header,
   .profile-modal.open .profile-headtohead,
   .profile-modal.open .profile-action-row,
-  .profile-modal.open .profile-stat-grid,
+  .profile-modal.open .profile-stat-wrap,
   .profile-modal.open .profile-form-section{
     animation: profileSectionIn .4s ease both;
   }
   .profile-modal.open .profile-header{ animation-delay:.04s; }
   .profile-modal.open .profile-headtohead{ animation-delay:.13s; }
   .profile-modal.open .profile-action-row{ animation-delay:.16s; }
-  .profile-modal.open .profile-stat-grid{ animation-delay:.19s; }
+  .profile-modal.open .profile-stat-wrap{ animation-delay:.19s; }
   @keyframes profileSectionIn{
     0%{ opacity:0; transform:translateY(6px); }
     100%{ opacity:1; transform:translateY(0); }
@@ -2820,7 +2820,7 @@
     .profile-modal.open .profile-header,
     .profile-modal.open .profile-headtohead,
     .profile-modal.open .profile-action-row,
-    .profile-modal.open .profile-stat-grid,
+    .profile-modal.open .profile-stat-wrap,
     .profile-modal.open .profile-form-section{ animation:none; }
   }
   /* The two genuinely-async sections (prestige bar, game breakdown) —
@@ -3121,6 +3121,21 @@
   .avatar-crop-zoom-icon{ font-size:16px; color:var(--muted); flex-shrink:0; width:16px; text-align:center; }
   .avatar-crop-zoom-row input[type="range"]{ flex:1; accent-color:var(--brass); }
   .profile-badge-label{ font-size:9px; color:var(--muted); text-align:center; line-height:1.3; }
+  .profile-stat-wrap{ margin-bottom:14px; }
+  /* Category tabs — same visual language as the existing chat-mode-toggle
+     (Syndy/Group Chat), so this reads as an established pattern in the
+     app rather than a one-off invention. Real buttons, not styled links —
+     matters for tap targets on mobile. */
+  .profile-cat-tabs{ display:flex; border-bottom:1px solid var(--line); margin-bottom:12px; }
+  .profile-cat-tab{
+    flex:1; padding:9px 4px; text-align:center; background:none; border:none; cursor:pointer;
+    font-size:11.5px; font-weight:700; color:var(--muted); font-family:'Barlow Condensed', sans-serif;
+    letter-spacing:.4px; border-bottom:2px solid transparent; transition:color .15s ease, border-color .15s ease;
+  }
+  .profile-cat-tab.active{ color:var(--brass-light); border-bottom-color:var(--brass-light); text-shadow:0 0 10px rgba(255,224,150,.3); }
+  .profile-cat-tab:active{ opacity:.75; }
+  .profile-stat-category{ display:grid; grid-template-columns:1fr 1fr; gap:10px; animation:profileCatIn .2s ease both; }
+  @keyframes profileCatIn{ 0%{ opacity:0; } 100%{ opacity:1; } }
   .profile-stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }  .rules-body{ font-size:13px; line-height:1.55; color:var(--chalk); }
   .rules-body h3{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); margin:18px 0 6px; }
   .rules-body h3:first-child{ margin-top:0; }
