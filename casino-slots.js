@@ -225,6 +225,14 @@ async function slotsSpin(){
   resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
   document.getElementById('slotsLinesOverlay').innerHTML = '';
   document.querySelectorAll('.slots-symbol.slots-win-cell').forEach(el => el.classList.remove('slots-win-cell'));
+
+  // Everything from here on is wrapped so spinBtn/sameBtn ALWAYS get
+  // re-enabled even if something throws mid-spin (a sound call, a DOM
+  // lookup, anything) — same reasoning and same bug class as the gamble
+  // functions above: without this, an exception here would leave the
+  // Spin button permanently disabled, indistinguishable from the reels
+  // just being stuck forever.
+  try{
   bjPlayChipSound();
 
   // grid[reel][row] — full 5×3 board, independent of which lines are
@@ -354,6 +362,18 @@ async function slotsSpin(){
   renderXPLog();
   slotsUpdateTotalBetHint();
   if(goesToGamble) slotsOfferGamble(totalDelta);
+  }catch(e){
+    console.error('Slots spin failed partway through:', e);
+    const errEl2 = document.getElementById('slotsBetError');
+    if(errEl2) errEl2.textContent = 'Something went wrong mid-spin — your bet was not lost twice; refresh if the reels look stuck.';
+  }finally{
+    // Guaranteed regardless of where in the try block anything failed —
+    // the early re-enable a few lines up (right after the reels finish
+    // spinning) already covers the normal path; this is the safety net
+    // for the reel-spinning phase itself, before that point.
+    spinBtn.disabled = false;
+    if(sameBtn) sameBtn.disabled = !slotsLastBet;
+  }
 }
 document.getElementById('slotsSpinBtn').addEventListener('click', slotsSpin);
 document.getElementById('slotsSameBetBtn').addEventListener('click', () => {
@@ -409,56 +429,90 @@ function slotsGambleSetButtonsDisabled(disabled){
   document.querySelectorAll('#slotsGambleArea [data-suit]').forEach(b => { b.disabled = disabled; });
   document.getElementById('slotsGambleCollectBtn').disabled = disabled;
 }
+// Both functions below are wrapped in try/catch/finally so the busy flag
+// and button-disabled state ALWAYS get reset no matter what happens
+// inside — a sound call throwing, a network hiccup on awardXP, anything.
+// Before this fix, neither had any error handling at all: an exception
+// partway through left slotsGambleBusy stuck true forever, and since both
+// functions start with "if(slotsGambleBusy) return", every future click
+// — including Collect — silently did nothing from then on. Real bug,
+// reported live, matching exactly this symptom ("won't let me click
+// anything including collect"). Same bug CLASS already documented and
+// fixed once in this file already (see slotsPlayCoinCascade's comment,
+// further down) — an uncaught exception skipping past reset code that
+// sits after it.
 async function slotsGambleGuess(type, value){
   if(slotsGambleBusy) return;
   slotsGambleBusy = true;
   slotsGambleSetButtonsDisabled(true);
+  const statusEl = document.getElementById('slotsGambleStatus');
+  if(statusEl) statusEl.textContent = '';
 
-  const suit = SLOTS_SUITS[Math.floor(Math.random() * SLOTS_SUITS.length)];
-  const isRed = suit === '♥' || suit === '♦';
-  const actualColor = isRed ? 'red' : 'black';
-  const won = type === 'color' ? value === actualColor : value === suit;
-  const mult = type === 'color' ? 2 : 4;
+  try{
+    const suit = SLOTS_SUITS[Math.floor(Math.random() * SLOTS_SUITS.length)];
+    const isRed = suit === '♥' || suit === '♦';
+    const actualColor = isRed ? 'red' : 'black';
+    const won = type === 'color' ? value === actualColor : value === suit;
+    const mult = type === 'color' ? 2 : 4;
 
-  const cardEl = document.getElementById('slotsGambleCard');
-  const faceEl = document.getElementById('slotsGambleCardFace');
-  cardEl.classList.remove('slots-gamble-flip'); void cardEl.offsetWidth; cardEl.classList.add('slots-gamble-flip');
-  bjPlayChipSound();
-  await bjWait(600);
-  faceEl.textContent = suit;
-  faceEl.style.color = isRed ? '#e05a4e' : 'var(--chalk)';
+    const cardEl = document.getElementById('slotsGambleCard');
+    const faceEl = document.getElementById('slotsGambleCardFace');
+    cardEl.classList.remove('slots-gamble-flip'); void cardEl.offsetWidth; cardEl.classList.add('slots-gamble-flip');
+    bjPlayChipSound();
+    await bjWait(600);
+    faceEl.textContent = suit;
+    faceEl.style.color = isRed ? '#e05a4e' : 'var(--chalk)';
 
-  if(won){
-    slotsGamblePot *= mult;
-    slotsGambleRound++;
-    slotsGambleUpdateDisplay();
-    slotsGambleSetSuitButtonsVisible(true);
-    slotsGambleSetButtonsDisabled(false);
+    if(won){
+      slotsGamblePot *= mult;
+      slotsGambleRound++;
+      slotsGambleUpdateDisplay();
+      slotsGambleSetSuitButtonsVisible(true);
+      bjPlayChime(true);
+      const panelEl = document.getElementById('casinoGameSlots');
+      panelEl.classList.remove('pc-flash-gold'); void panelEl.offsetWidth; panelEl.classList.add('pc-flash-gold');
+      setTimeout(() => panelEl.classList.remove('pc-flash-gold'), 700);
+    } else {
+      bjPlayChime(false);
+      const panelEl = document.getElementById('casinoGameSlots');
+      panelEl.classList.add('pc-shake');
+      setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
+      // Busted — the gambled winnings are gone, but this never reaches
+      // below zero: the worst case is exactly "as if this spin had been a
+      // push", never touching XP the spin itself didn't win.
+      slotsGamblePot = 0;
+      await slotsGambleClose(); // this also clears slotsGambleBusy and re-shows the bet panel
+      return;
+    }
+  }catch(e){
+    console.error('Slots gamble guess failed:', e);
+    if(statusEl) statusEl.textContent = 'Something went wrong — try again.';
+  }finally{
+    // Runs even after the early return above (that's how finally works) —
+    // harmless there since the gamble area's already hidden by that point.
+    // On the win path or on a genuine failure, this is what actually
+    // un-sticks the buttons.
     slotsGambleBusy = false;
-    bjPlayChime(true);
-    const panelEl = document.getElementById('casinoGameSlots');
-    panelEl.classList.remove('pc-flash-gold'); void panelEl.offsetWidth; panelEl.classList.add('pc-flash-gold');
-    setTimeout(() => panelEl.classList.remove('pc-flash-gold'), 700);
-  } else {
-    bjPlayChime(false);
-    const panelEl = document.getElementById('casinoGameSlots');
-    panelEl.classList.add('pc-shake');
-    setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
-    // Busted — the gambled winnings are gone, but this never reaches
-    // below zero: the worst case is exactly "as if this spin had been a
-    // push", never touching XP the spin itself didn't win.
-    slotsGamblePot = 0;
-    await slotsGambleClose();
+    slotsGambleSetButtonsDisabled(false);
   }
 }
 async function slotsGambleCollect(){
   if(slotsGambleBusy) return;
   slotsGambleBusy = true;
   slotsGambleSetButtonsDisabled(true);
-  if(slotsGamblePot > 0){
-    await awardXP(slotsGamblePot, 'Slots gamble collect', { silent: true });
+  const statusEl = document.getElementById('slotsGambleStatus');
+  if(statusEl) statusEl.textContent = '';
+  try{
+    if(slotsGamblePot > 0){
+      await awardXP(slotsGamblePot, 'Slots gamble collect', { silent: true });
+    }
+    await slotsGambleClose(); // clears slotsGambleBusy on success
+  }catch(e){
+    console.error('Slots gamble collect failed:', e);
+    if(statusEl) statusEl.textContent = 'Could not collect — check your connection and try again.';
+    slotsGambleBusy = false;
+    slotsGambleSetButtonsDisabled(false);
   }
-  await slotsGambleClose();
 }
 async function slotsGambleClose(){
   const gambleArea = document.getElementById('slotsGambleArea');
