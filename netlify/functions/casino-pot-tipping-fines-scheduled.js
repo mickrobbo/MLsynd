@@ -152,25 +152,30 @@ async function runFines(secret){
     g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)) && g.round >= seasonStartRound
   );
 
+  // Fetched once, not once per game/pick — was previously a separate GET
+  // for every single item checked, which is fine in steady state (most
+  // games already fully marked "checked" and skipped in one read each)
+  // but genuinely wasteful on a first run or after any real backlog,
+  // where it'd be one round trip per pick instead of one for the whole
+  // season so far. The crash-safety this was providing (catching a game
+  // that was only partially processed before a previous run died) is
+  // fully preserved — it's the SAME lookup, just done once in memory
+  // instead of on every iteration.
+  const alreadyChecked = (await dbGet('/casinoPot/tippingFinesChecked', secret).catch(() => ({}))) || {};
+
   let checkedCount = 0;
   let finedCount = 0;
   let totalFined = 0;
 
   for(const g of finishedGames){
-    const alreadyChecked = await dbGet(`/casinoPot/tippingFinesChecked/${g.id}`, secret).catch(() => null);
-    // Per-game short-circuit: once every real pick on a finished game has
-    // been checked, that game's result and picks can never change again —
-    // marking the whole game "checked": true once done means future runs
-    // skip it in one read instead of re-reading every pick every time.
-    if(alreadyChecked === true) continue;
+    if(alreadyChecked[g.id] === true) continue;
 
     const picks = await dbGet(`/tipping/picks/${g.id}`, secret).catch(() => ({})) || {};
     const isDrawResult = g.hscore != null && g.ascore != null && Number(g.hscore) === Number(g.ascore);
 
     for(const [uid, p] of Object.entries(picks)){
       if(!p || !p.pick) continue; // no real pick — auto-tips are deliberately not fined, see file header
-      const alreadyDone = await dbGet(`/casinoPot/tippingFinesChecked/${g.id}_${uid}`, secret).catch(() => null);
-      if(alreadyDone === true) continue;
+      if(alreadyChecked[`${g.id}_${uid}`] === true) continue;
 
       const isCorrect = isDrawResult
         ? p.pick === 'draw'
