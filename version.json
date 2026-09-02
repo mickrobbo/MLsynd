@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-02.10",
+  "version": "2026-09-02.11",
   "date": "2026-09-02",
   "changes": [
-    "Fixed a real data bug in \"Where the XP Goes\": it was ranking and sizing bars by how many times a game was played, never actual XP amounts, despite the section's own title. Now genuinely shows XP volume per game.",
-    "Moved \"Where the XP Goes\" and \"Recent Form\" out of a separate block below the tabs and into their correct tabs (Casino and Betting).",
-    "Category tabs are now real premium pill buttons \u2014 filled gold when active, not just an underline.",
-    "Fines on the profile only count from the day this feature launched onward, not a whole season's worth of history from before it existed."
+    "Profile was genuinely too congested \u2014 widened spacing throughout: sheet padding, badges, head-to-head, Challenge/Nudge buttons, the tab bar, and every stat card now has real breathing room instead of 4-14px gaps.",
+    "Confirmed Slots' \"can't collect\" report is NOT a stale deploy \u2014 casino-slots.js on GitHub is byte-identical to the fixed version, so this is a genuinely different bug still being tracked down.",
+    "Fixed a real data bug in \"Where the XP Goes\": it was ranking and sizing bars by how many times a game was played, never actual XP amounts, despite the section's own title.",
+    "Moved \"Where the XP Goes\" and \"Recent Form\" out of a separate block below the tabs and into their correct tabs (Casino and Betting), and made the category tabs real premium pill buttons."
   ]
 }

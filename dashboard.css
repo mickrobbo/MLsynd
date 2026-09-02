@@ -2835,7 +2835,7 @@
   .profile-sheet{
     width:100%; max-width:720px; max-height:88vh; overflow-y:auto; overflow-x:hidden; position:relative;
     background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--line);
-    border-radius:18px 18px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom, 0));
+    border-radius:18px 18px 0 0; padding:22px 20px calc(22px + env(safe-area-inset-bottom, 0));
     box-shadow:0 -10px 40px rgba(0,0,0,.5), 0 -1px 0 rgba(255,224,150,.08) inset;
   }
   /* A hairline gold top edge — the kind of detail a real paid product's
@@ -2850,14 +2850,14 @@
     display:block; margin:0 0 12px auto; background:none; border:none; color:var(--muted);
     font-size:22px; line-height:1; cursor:pointer; padding:4px 8px;
   }
-  .profile-header{ text-align:center; margin-bottom:18px; }
+  .profile-header{ text-align:center; margin-bottom:22px; }
   .profile-header h2{
     font-family:'Barlow Condensed', sans-serif; font-size:27px; font-weight:700; letter-spacing:1.5px;
     margin:0; background:linear-gradient(180deg, #fff3d6, var(--brass-light) 65%);
     -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
     text-shadow:0 0 22px rgba(199,162,72,.35); filter:drop-shadow(0 1px 0 rgba(0,0,0,.4));
   }
-  .profile-badges{ display:flex; justify-content:center; gap:14px; margin-top:14px; flex-wrap:wrap; }
+  .profile-badges{ display:flex; justify-content:center; gap:16px; margin-top:18px; flex-wrap:wrap; }
   /* Tap-to-flip badge — replaces the old shared info-bubble popup with an
      actual per-badge flip (matching how a real trading card reveals its
      back), each one flipping independently rather than one popup jumping
@@ -2988,8 +2988,8 @@
 
   /* ---- Head-to-head vs you — only shown on someone ELSE'S profile. ---- */
   .profile-headtohead{
-    display:flex; align-items:center; justify-content:center; gap:14px;
-    margin:14px 0 4px; padding:12px 8px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center; gap:16px;
+    margin:22px 0 8px; padding:15px 10px; border-radius:12px;
     background:linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.24));
     border:1px solid rgba(203,177,102,.16); box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 2px 6px rgba(0,0,0,.18);
   }
@@ -3000,9 +3000,9 @@
   .profile-h2h-side.ahead .lbl::before{ content:'👑 '; }
   .profile-h2h-vs{ font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:11px; color:var(--muted); flex-shrink:0; }
 
-  .profile-action-row{ display:flex; gap:8px; margin:14px 0 4px; }
+  .profile-action-row{ display:flex; gap:10px; margin:18px 0 8px; }
   .profile-action-row .pill-btn{
-    flex:1; font-size:12.5px;
+    flex:1; font-size:12.5px; padding-top:11px; padding-bottom:11px;
     background:linear-gradient(165deg, rgba(255,224,150,.14), rgba(0,0,0,.2));
     border-color:rgba(203,177,102,.35); box-shadow:0 2px 8px rgba(0,0,0,.25);
     transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
@@ -3121,15 +3121,15 @@
   .avatar-crop-zoom-icon{ font-size:16px; color:var(--muted); flex-shrink:0; width:16px; text-align:center; }
   .avatar-crop-zoom-row input[type="range"]{ flex:1; accent-color:var(--brass); }
   .profile-badge-label{ font-size:9px; color:var(--muted); text-align:center; line-height:1.3; }
-  .profile-stat-wrap{ margin-bottom:14px; }
+  .profile-stat-wrap{ margin:20px 0 14px; }
   /* Category tabs — real pill buttons, per request (an earlier version
      matched the chat's underline-tab style; this replaces that entirely
      rather than layering on top of it). Same active-pill treatment
      .pp-toggle-pill already uses elsewhere in the casino for consistency:
      a filled gold gradient with a real glow, not just a colour change. */
-  .profile-cat-tabs{ display:flex; gap:6px; margin-bottom:14px; }
+  .profile-cat-tabs{ display:flex; gap:8px; margin-bottom:18px; }
   .profile-cat-tab{
-    flex:1; padding:8px 6px; text-align:center; cursor:pointer;
+    flex:1; padding:10px 6px; text-align:center; cursor:pointer;
     font-size:11px; font-weight:700; color:var(--muted); font-family:'Barlow Condensed', sans-serif;
     letter-spacing:.4px; border-radius:20px; border:1px solid rgba(203,177,102,.22);
     background:linear-gradient(165deg, rgba(255,255,255,.02), rgba(0,0,0,.22));
@@ -3141,7 +3141,7 @@
     box-shadow:0 0 14px rgba(255,214,120,.4), 0 2px 6px rgba(0,0,0,.25);
   }
   .profile-cat-tab:active{ transform:scale(.95); }
-  .profile-stat-category{ display:grid; grid-template-columns:1fr 1fr; gap:10px; animation:profileCatIn .2s ease both; }
+  .profile-stat-category{ display:grid; grid-template-columns:1fr 1fr; gap:12px; animation:profileCatIn .2s ease both; }
   @keyframes profileCatIn{ 0%{ opacity:0; } 100%{ opacity:1; } }
   .profile-stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }  .rules-body{ font-size:13px; line-height:1.55; color:var(--chalk); }
   .rules-body h3{ font-family:'Barlow Condensed', sans-serif; font-size:14px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass-light); margin:18px 0 6px; }
@@ -3149,7 +3149,7 @@
   .rules-body p{ margin:0 0 8px; color:var(--chalk); opacity:.92; }
   .profile-stat-cell{
     background:linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.28));
-    border:1px solid rgba(203,177,102,.16); border-radius:10px; padding:12px; text-align:center;
+    border:1px solid rgba(203,177,102,.16); border-radius:12px; padding:16px 12px; text-align:center;
     transition: transform .12s ease, background .12s ease, border-color .12s ease;
     box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 2px 6px rgba(0,0,0,.18);
   }
@@ -3160,9 +3160,9 @@
   .profile-stat-compare-side{ display:flex; flex-direction:column; align-items:center; }
   .profile-stat-compare-val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; color:var(--brass-light); }
   .profile-stat-compare-lbl{ font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
-  .profile-stat-cell .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
+  .profile-stat-cell .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px; }
   .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:700; color:var(--chalk); }
-  .profile-stat-cell.wide{ grid-column:1 / -1; display:flex; align-items:center; justify-content:space-around; text-align:center; padding:12px 8px; }
+  .profile-stat-cell.wide{ grid-column:1 / -1; display:flex; align-items:center; justify-content:space-around; text-align:center; padding:16px 10px; }
   .profile-stat-cell.wide .profile-stat-sub{ display:flex; flex-direction:column; align-items:center; }
   /* Section labels — same small-caps, muted, letter-spaced treatment
      Recent Form/Where the XP Goes already use, so the whole profile
@@ -3173,11 +3173,11 @@
      line, the kind of small typographic detail a premium product has. */
   .profile-stat-group-label{
     grid-column:1 / -1; font-size:10.5px; color:var(--brass-dim); text-transform:uppercase;
-    letter-spacing:1.8px; margin:10px 0 -2px; padding:8px 0 0 10px; border-top:1px solid var(--line);
+    letter-spacing:1.8px; margin:16px 0 2px; padding:12px 0 0 10px; border-top:1px solid var(--line);
     position:relative; font-weight:600;
   }
   .profile-stat-group-label::before{
-    content:''; position:absolute; left:0; top:11px; width:5px; height:5px; border-radius:50%;
+    content:''; position:absolute; left:0; top:15px; width:5px; height:5px; border-radius:50%;
     background:var(--brass-light); box-shadow:0 0 6px rgba(255,224,150,.6);
   }
   .profile-stat-group-label:first-child{ border-top:none; padding-top:2px; margin-top:0; }
