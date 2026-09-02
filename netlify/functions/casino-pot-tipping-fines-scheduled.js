@@ -128,6 +128,15 @@ async function applyFine(uid, amount, secret){
   const path = `/casinoPot/months/${nowKey}/fines`;
   const current = (await dbGet(path, secret).catch(() => 0)) || 0;
   await dbPut(path, secret, current + amount);
+  // Per-person breakdown for profile display — separate write from the
+  // pot-level total above, same reasoning as the Ledger's own copy of
+  // this pattern: a brand new path that starts empty for everyone, so a
+  // profile only ever shows fines caused since this feature launched,
+  // never anything from before it existed (there's nothing to derive
+  // "before" from — this counter simply didn't exist yet).
+  const historyPath = `/casinoPot/fineHistory/${uid}/wrongTips`;
+  const currentHistory = (await dbGet(historyPath, secret).catch(() => 0)) || 0;
+  await dbPut(historyPath, secret, currentHistory + 1);
 }
 
 async function runFines(secret){
