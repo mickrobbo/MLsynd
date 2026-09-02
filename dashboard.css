@@ -3455,18 +3455,17 @@
 .syndy-chat-body{
   flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; justify-content:flex-end; gap:10px; -webkit-overflow-scrolling:touch;
   position:relative;
-  /* Fix for a real reported bug: on some mobile browsers, touching inside
-     this list scrolled the page behind the modal instead of the list
-     itself. Classic scroll-chaining — without overscroll-behavior, once
-     the browser's touch-scroll-owner detection is ambiguous (common in
-     nested flex layouts like this one), it can hand the gesture to the
-     next scrollable ancestor up the tree instead of this element. contain
-     stops that chaining explicitly; touch-action:pan-y tells the browser
-     up front that THIS element owns vertical panning, removing the
-     ambiguity that caused the wrong element to be picked in the first
-     place, rather than only reacting once scroll has already started. */
+  /* overscroll-behavior:contain was added for a real reported bug (touching
+     inside this list scrolled the page behind the modal instead) and is
+     kept — it's benign, only affects what happens at a scroll BOUNDARY,
+     not whether scrolling works at all. touch-action:pan-y was ALSO added
+     alongside it but has since been rolled back: unlike overscroll-behavior,
+     touch-action can override the browser's default scroll-gesture
+     handling outright, and is a known cause of scrolling breaking
+     completely on some Android WebViews/Samsung Internet specifically —
+     removed while diagnosing a second, still-unresolved report of
+     scrolling being fully dead, to isolate whether this was the cause. */
   overscroll-behavior:contain;
-  touch-action:pan-y;
   background-image:url('syndy-chat-bg.png');
   background-repeat:no-repeat; background-position:center 58%; background-size:300px auto;
 }
