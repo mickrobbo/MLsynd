@@ -280,14 +280,14 @@ async function distributePot(secret){
     return { skipped: true, reason: 'no eligible / empty pot', totalPot };
   }
 
-  // 15% burned outright per request — otherwise the pot is a pure wash:
+  // 20% burned outright per request — otherwise the pot is a pure wash:
   // 100% of what's collected gets redistributed straight back to players,
   // so nothing ever actually leaves the XP economy through it, and the
   // numbers involved only ever grow. The remaining 85% still splits at
   // the existing 75/25 ratio, unchanged — burnedAmount is logged in the
   // distribution history for a real audit trail rather than just quietly
   // vanishing with no record. Single named constant, easy to retune.
-  const CASINO_POT_BURN_RATE = 0.15;
+  const CASINO_POT_BURN_RATE = 0.20;
   const burnedAmount = Math.floor(totalPot * CASINO_POT_BURN_RATE);
   const distributable = totalPot - burnedAmount;
   const proportionalPool = Math.floor(distributable * 0.75);

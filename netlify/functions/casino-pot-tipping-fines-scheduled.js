@@ -1,4 +1,4 @@
-// Fines the Casino Pot two ways, per request: 150,000 XP for every wrong
+// Fines the Casino Pot two ways, per request: 100,000 XP for every wrong
 // AFL tip a person actually submitted, and 50,000 XP for every game a
 // known tipper had NO pick at all (a genuine miss, not the Dashboard's
 // own "auto-defaults to Away" ladder-scoring convenience — that's a
@@ -25,7 +25,7 @@
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 const SITE_URL = 'https://mlsynddash.netlify.app';
-const TIPPING_LOSS_FINE = 150000;
+const TIPPING_LOSS_FINE = 100000;
 const MISSED_TIP_FINE = 50000;
 const TIMEZONE = 'Australia/Melbourne';
 const LOCK_PATH = '/casinoPot/tippingFineLock';
