@@ -1,9 +1,10 @@
-// Fines the Casino Pot 150,000 XP for every INDIVIDUAL wrong AFL tip, per
-// person, per request. Deliberately scoped to real, actively-submitted
-// picks only — a missed tip (auto-defaults to Away, same rule the
-// Dashboard's own tipping ladder uses) is NOT fined here, since forgetting
-// to tip feels like a different thing than actively guessing wrong. Easy
-// to widen later if that's not what was actually wanted.
+// Fines the Casino Pot two ways, per request: 150,000 XP for every wrong
+// AFL tip a person actually submitted, and 50,000 XP for every game a
+// known tipper had NO pick at all (a genuine miss, not the Dashboard's
+// own "auto-defaults to Away" ladder-scoring convenience — that's a
+// display fallback for the ladder, not something this treats as a real
+// pick). "Known tipper" = anyone with an entry in /tippingStats, i.e.
+// has had at least one tip scored this season.
 //
 // Runs every 30 minutes, self-gates on nothing time-of-day-specific (AFL
 // games finish at all sorts of hours) — instead gates on genuinely new
@@ -25,6 +26,7 @@
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 const SITE_URL = 'https://mlsynddash.netlify.app';
 const TIPPING_LOSS_FINE = 150000;
+const MISSED_TIP_FINE = 50000;
 const TIMEZONE = 'Australia/Melbourne';
 const LOCK_PATH = '/casinoPot/tippingFineLock';
 const LOCK_STALE_MS = 10 * 60 * 1000;
@@ -123,7 +125,7 @@ function periodKeyFor(date, timeZone){
 }
 function normTeamName(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
-async function applyFine(uid, amount, secret){
+async function applyFine(uid, amount, historyField, secret){
   const nowKey = periodKeyFor(new Date(), TIMEZONE);
   const path = `/casinoPot/months/${nowKey}/fines`;
   const current = (await dbGet(path, secret).catch(() => 0)) || 0;
@@ -133,8 +135,10 @@ async function applyFine(uid, amount, secret){
   // this pattern: a brand new path that starts empty for everyone, so a
   // profile only ever shows fines caused since this feature launched,
   // never anything from before it existed (there's nothing to derive
-  // "before" from — this counter simply didn't exist yet).
-  const historyPath = `/casinoPot/fineHistory/${uid}/wrongTips`;
+  // "before" from — this counter simply didn't exist yet). historyField
+  // is 'wrongTips' or 'missedTips' depending on which fine this is —
+  // same pot-level effect, different per-person breakdown.
+  const historyPath = `/casinoPot/fineHistory/${uid}/${historyField}`;
   const currentHistory = (await dbGet(historyPath, secret).catch(() => 0)) || 0;
   await dbPut(historyPath, secret, currentHistory + 1);
 }
@@ -163,8 +167,20 @@ async function runFines(secret){
   // instead of on every iteration.
   const alreadyChecked = (await dbGet('/casinoPot/tippingFinesChecked', secret).catch(() => ({}))) || {};
 
+  // Known tippers — needed to detect a MISSING pick, not just a wrong
+  // one (nobody's "missing" from the picks object itself; you can only
+  // know someone was supposed to be in it by checking against a roster
+  // of who actually tips). /tippingStats holds one entry per person
+  // who's ever had a tip scored, so its key set is used as that roster —
+  // a single fetch here rather than reconstructing "who tips" from every
+  // game's picks all season, which would be a much bigger read for the
+  // same answer.
+  const tippingStats = (await dbGet('/tippingStats', secret).catch(() => ({}))) || {};
+  const knownTipperUids = Object.keys(tippingStats);
+
   let checkedCount = 0;
   let finedCount = 0;
+  let missedCount = 0;
   let totalFined = 0;
 
   for(const g of finishedGames){
@@ -174,7 +190,7 @@ async function runFines(secret){
     const isDrawResult = g.hscore != null && g.ascore != null && Number(g.hscore) === Number(g.ascore);
 
     for(const [uid, p] of Object.entries(picks)){
-      if(!p || !p.pick) continue; // no real pick — auto-tips are deliberately not fined, see file header
+      if(!p || !p.pick) continue; // no real pick — handled in the missed-tip pass below, not here
       if(alreadyChecked[`${g.id}_${uid}`] === true) continue;
 
       const isCorrect = isDrawResult
@@ -182,17 +198,34 @@ async function runFines(secret){
         : normTeamName(p.pick === 'home' ? g.hteam : (p.pick === 'away' ? g.ateam : '')) === normTeamName(g.winner);
 
       if(!isCorrect){
-        await applyFine(uid, TIPPING_LOSS_FINE, secret);
+        await applyFine(uid, TIPPING_LOSS_FINE, 'wrongTips', secret);
         finedCount++;
         totalFined += TIPPING_LOSS_FINE;
       }
       await dbPut(`/casinoPot/tippingFinesChecked/${g.id}_${uid}`, secret, true);
       checkedCount++;
     }
+
+    // Missed tips — a known tipper with no real pick at all for this
+    // game, per request. Same idempotency key (${g.id}_${uid}) as the
+    // pass above is safe to reuse here: for any given (game, uid) pair
+    // exactly one of "they picked" or "they didn't" is ever true, so a
+    // uid is only ever processed by ONE of the two passes, never both,
+    // and marking it checked either way correctly stops a future run
+    // from re-processing it regardless of which branch handled it.
+    for(const uid of knownTipperUids){
+      if(picks[uid] && picks[uid].pick) continue; // they did pick — already handled above
+      if(alreadyChecked[`${g.id}_${uid}`] === true) continue;
+      await applyFine(uid, MISSED_TIP_FINE, 'missedTips', secret);
+      missedCount++;
+      totalFined += MISSED_TIP_FINE;
+      await dbPut(`/casinoPot/tippingFinesChecked/${g.id}_${uid}`, secret, true);
+    }
+
     await dbPut(`/casinoPot/tippingFinesChecked/${g.id}`, secret, true);
   }
 
-  return { finishedGamesSeen: finishedGames.length, picksChecked: checkedCount, tipsFined: finedCount, totalFined };
+  return { finishedGamesSeen: finishedGames.length, picksChecked: checkedCount, tipsFined: finedCount, tipsMissed: missedCount, totalFined };
 }
 
 export default async (req) => {
