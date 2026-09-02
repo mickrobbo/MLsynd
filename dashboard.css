@@ -3453,7 +3453,23 @@
 .chat-mode-btn.active{ color:var(--brass-light); border-bottom-color:var(--brass); }
 .chat-mode-btn:active{ opacity:.7; }
 .syndy-chat-body{
-  flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; justify-content:flex-end; gap:10px; -webkit-overflow-scrolling:touch;
+  flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch;
+  /* justify-content:flex-end REMOVED — this was the actual root cause,
+     confirmed live via DevTools, not a guess. A flex container that is
+     ALSO the scrollable element, with justify-content:flex-end, has a
+     real documented browser quirk: overflow on the flex-START side (the
+     top, in a column) can become genuinely unreachable by scroll — not
+     just visually cut off, the scrollable range itself doesn't include
+     it. Matches every symptom exactly: overflow-y:auto computing
+     correctly, real non-zero height, and still nothing scrolls, on both
+     touch and mouse wheel. The "anchor to bottom when there's only a
+     few messages" look this was providing is gone (a short conversation
+     now stacks from the top instead), a real but minor cosmetic trade
+     for a chat window that actually scrolls. Explicit scrollTop =
+     scrollHeight calls elsewhere (auto-scroll to newest message on
+     open/send) are untouched by this and still work exactly the same,
+     since they set scroll position directly and were never relying on
+     this flex alignment at all. */
   position:relative;
   /* overscroll-behavior:contain was added for a real reported bug (touching
      inside this list scrolled the page behind the modal instead) and is

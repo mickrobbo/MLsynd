@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-02.2",
+  "version": "2026-09-02.3",
   "date": "2026-09-02",
   "changes": [
-    "Casino Pot now pays out twice a month (1st & 16th, 8am AEST) instead of once — smaller, more regular payouts, split 75% evenly among everyone eligible / 25% single jackpot.",
-    "Casino Pot payouts no longer count toward Player Tier — only genuine game wins, tipping results, and board results move your tier now.",
-    "Fixed Slots' gamble feature (Red/Black, suit picks, Collect) getting stuck unresponsive after a win.",
-    "Fixed Group Chat and Syndy chat not scrolling properly."
+    "Fixed the actual root cause of the chat scroll bug, found via live DevTools inspection rather than another theory. The message list was a flex container with justify-content:flex-end while ALSO being the scrollable element \u2014 a real, documented browser quirk that can make overflow at the top of a flex-end-aligned scroll container genuinely unreachable by scrolling.",
+    "Casino Pot now pays out twice a month (1st & 16th, 8am AEST) instead of once \u2014 smaller, more regular payouts, split 75% evenly among everyone eligible / 25% single jackpot.",
+    "Casino Pot payouts no longer count toward Player Tier \u2014 only genuine game wins, tipping results, and board results move your tier now.",
+    "Fixed Slots' gamble feature (Red/Black, suit picks, Collect) getting stuck unresponsive after a win."
   ]
 }
