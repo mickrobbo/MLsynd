@@ -240,12 +240,20 @@ async function distributePot(secret){
 
   const combinedLosses = {};
   const combinedPlayCounts = {};
+  let combinedFines = 0;
   for(const mk of monthKeys){
     const data = allMonths[mk] || {};
     Object.entries(data.losses || {}).forEach(([uid, v]) => { combinedLosses[uid] = (combinedLosses[uid] || 0) + (Number(v) || 0); });
     Object.entries(data.playCounts || {}).forEach(([uid, v]) => { combinedPlayCounts[uid] = (combinedPlayCounts[uid] || 0) + (Number(v) || 0); });
+    combinedFines += Number(data.fines) || 0;
   }
-  const totalPot = Object.values(combinedLosses).reduce((s, v) => s + v, 0);
+  // Fines (Group Multi leg losses from the Ledger, AFL Tipping misses from
+  // casino-pot-tipping-fines-scheduled.js) reduce the pot directly — this
+  // is the actual "burn" mechanism those two features rely on. Floored at
+  // 0 so fines can never make the pot go negative even in an edge case
+  // where fines somehow exceeded the losses collected this period.
+  const rawPot = Object.values(combinedLosses).reduce((s, v) => s + v, 0);
+  const totalPot = Math.max(0, rawPot - combinedFines);
   const label = monthKeys.length === 1 ? monthKeys[0] : `${monthKeys[0]}..${monthKeys[monthKeys.length - 1]}`;
 
   // Belt-and-braces idempotency check: if this exact month label was
@@ -272,8 +280,18 @@ async function distributePot(secret){
     return { skipped: true, reason: 'no eligible / empty pot', totalPot };
   }
 
-  const proportionalPool = Math.floor(totalPot * 0.75);
-  const jackpotPool = totalPot - proportionalPool;
+  // 15% burned outright per request — otherwise the pot is a pure wash:
+  // 100% of what's collected gets redistributed straight back to players,
+  // so nothing ever actually leaves the XP economy through it, and the
+  // numbers involved only ever grow. The remaining 85% still splits at
+  // the existing 75/25 ratio, unchanged — burnedAmount is logged in the
+  // distribution history for a real audit trail rather than just quietly
+  // vanishing with no record. Single named constant, easy to retune.
+  const CASINO_POT_BURN_RATE = 0.15;
+  const burnedAmount = Math.floor(totalPot * CASINO_POT_BURN_RATE);
+  const distributable = totalPot - burnedAmount;
+  const proportionalPool = Math.floor(distributable * 0.75);
+  const jackpotPool = distributable - proportionalPool;
 
   // Split evenly across everyone eligible — NOT weighted by how much each
   // person lost. Changed per request (previous behaviour rewarded the
@@ -298,8 +316,8 @@ async function distributePot(secret){
   await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`, secret);
 
   const historyEntry = {
-    month: label, totalPot, proportional, jackpotWinner, jackpotAmount: jackpotPool,
-    participants: jackpotPoolCandidates, distributedAt: Date.now()
+    month: label, totalPot, rawPot, finesApplied: combinedFines, proportional, jackpotWinner, jackpotAmount: jackpotPool,
+    burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now()
   };
   await dbPut(`/casinoPot/history/${label.replace(/\./g, '_')}`, secret, historyEntry);
   for(const mk of monthKeys){
@@ -330,9 +348,10 @@ async function sendPotPushNotifications(secret, result){
       winnerName = (userRec && userRec.name) || winnerName;
     }catch(e){}
 
+    const sharedOut = result.totalPot - (result.burnedAmount || 0);
     const payload = JSON.stringify({
       title: `🎰 ${result.month} Casino Pot distributed`,
-      body: `${result.totalPot.toLocaleString()} XP shared out — ${winnerName} won the ${result.jackpotAmount.toLocaleString()} XP jackpot!`,
+      body: `${sharedOut.toLocaleString()} XP shared out (${(result.burnedAmount || 0).toLocaleString()} burned) — ${winnerName} won the ${result.jackpotAmount.toLocaleString()} XP jackpot!`,
       url: '/'
     });
 
