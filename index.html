@@ -3052,7 +3052,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.13"; // Full pre-deploy sweep across everything built today, per request. Found one genuinely serious issue: neither /casinoPot/months/$monthKey/fines nor /casinoPot/fineHistory had ANY Firebase security rule — the tipping-fines scheduled function bypasses rules (server admin token) so it was fine, but the Ledger writes as the admin's own logged-in session, which IS subject to rules, and both writes would have been silently rejected (bumpFineHistory/applyCasinoPotFine both swallow errors in an empty catch). The entire "Group Multi leg loss fines the pot" feature would have done nothing once deployed, with no visible error anywhere. Fixed in firebase-rules.json — added admin-only write rules for both paths. Also checked and confirmed clean: every constant duplicated across files (split ratio, burn rate, both fine amounts, period-key logic, eligible-plays threshold) still matches exactly everywhere; zero within-template duplicate IDs in the profile system (the cross-template "duplicates" found are the established safe pattern — only one template's HTML is ever actually in the DOM at once); zero orphaned references to pre-refactor Fines variable/ID names; both tier-cosmetics add-sites are fully generic (driven by tier.key, not a hardcoded list) so they already worked correctly for Sovereign/Immortal with no changes needed. Performance: optimized casino-pot-tipping-fines-scheduled.js's idempotency check from one Firebase GET per pick to one GET for the whole checked-tree per run, fetched once and checked in memory — same crash-safety guarantee, far fewer round trips on any real backlog. Widened the profile category tabs' touch target (10px vertical padding -> 13px) for better mobile tap accuracy. Slots' "can't collect" bug remains open — did another pass (confirmed the Collect button's DOM node is never destroyed/recreated, ruling out a lost-listener theory) but found nothing further via code reading; still needs live diagnostic data to actually resolve — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.14"; // Three new Casino Pot fines per request, on top of the existing losing-leg (250K) and wrong-tip (150K) fines: MIA Group Multi leg (50K, no-show penalty, applies regardless of what the outcome would have been), Group Multi leg placed under $1.22 (10K, fines the choice to tip too safe, independent of Win/Loss/Void), and missed AFL tip (50K, a known tipper — anyone with a /tippingStats entry — who has zero pick at all for a finished game). All three tracked per-person via new fineHistory fields (groupMultiMIA, groupMultiLowOdds, missedTips) alongside the existing two, fully symmetric with Ledger's Undo Week for the two group-multi ones. Profile Fines tab now shows all five categories plus a combined total; info-modal lists all five amounts. Missed-tip detection required a genuinely new mechanism (tippingFinesChecked idempotency key is safely reused across both the wrong-tip and missed-tip passes, since a given game+uid pair can only ever be one or the other, never both) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7203,6 +7203,10 @@ const CASINO_POT_PAYOUT_REASON_PATTERN = /^Casino Pot – (Even Split|Jackpot|Pr
 // amount is ever retuned, update it here too or the profile will show a
 // stale figure.
 const CASINO_POT_LEG_LOSS_FINE_DISPLAY = 250000;
+const CASINO_POT_MIA_LEG_FINE_DISPLAY = 50000;
+const CASINO_POT_LOW_ODDS_FINE_DISPLAY = 10000;
+const CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY = 1.22;
+const CASINO_POT_MISSED_TIP_FINE_DISPLAY = 50000;
 const CASINO_POT_TIPPING_FINE_DISPLAY = 150000;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
@@ -9183,7 +9187,14 @@ const CASINO_RULES = {
     <h3>How it's split</h3>
     <p><b>15%</b> of every pot is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (63.75% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (21.25% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Fines</h3>
-    <p>The pot also takes real fines off the top before it's ever distributed — a losing leg in the Group Multi costs the pot <b>250,000 XP</b>, and every individual wrong AFL tip costs it <b>150,000 XP</b>. These come straight out of the shared pot, not your personal balance.</p>
+    <p>The pot also takes real fines off the top before it's ever distributed, all coming straight out of the shared pot, never your personal balance:</p>
+    <ul style="margin:4px 0 0; padding-left:20px; line-height:1.6;">
+      <li>Losing Group Multi leg — <b>250,000 XP</b></li>
+      <li>MIA (no-show) Group Multi leg — <b>50,000 XP</b></li>
+      <li>Group Multi leg placed under $1.22 — <b>10,000 XP</b></li>
+      <li>Wrong AFL tip — <b>150,000 XP</b></li>
+      <li>Missed AFL tip — <b>50,000 XP</b></li>
+    </ul>
     <h3>Eligibility</h3>
     <p>You qualify for the 75% share if you played the tables <b>20 times or more</b> this period, <b>or</b> earned any real (non-casino) XP this period — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
     <h3>Timing</h3>
@@ -9851,7 +9862,10 @@ function openBoardProfile(m, name){
     <div class="profile-stat-category" data-cat="fines" style="display:none;">
       <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Comes out of the shared Casino Pot, not this balance — only counts fines since this feature launched, not past-season totals.</div>
       <div class="profile-stat-cell"><span class="lbl">Losing Legs</span><span class="val neg" id="profileFinesLegsVal">${m.linkedUid ? '…' : '—'}</span></div>
+      <div class="profile-stat-cell"><span class="lbl">MIA Legs</span><span class="val neg" id="profileFinesMIAVal">${m.linkedUid ? '…' : '—'}</span></div>
+      <div class="profile-stat-cell"><span class="lbl">Under $1.22 Legs</span><span class="val neg" id="profileFinesLowOddsVal">${m.linkedUid ? '…' : '—'}</span></div>
       <div class="profile-stat-cell"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">${m.linkedUid ? '…' : '—'}</span></div>
+      <div class="profile-stat-cell"><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">${m.linkedUid ? '…' : '—'}</span></div>
       <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">${m.linkedUid ? '…' : '—'}</span></span></div>
     </div>
   `;
@@ -10184,7 +10198,9 @@ function openTippingOnlyProfile(uid, name){
 
     <div class="profile-stat-category" data-cat="fines" style="display:none;">
       <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Comes out of the shared Casino Pot, not this balance — only counts fines since this feature launched, not past-season totals.</div>
-      <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">…</span></span></div>
+      <div class="profile-stat-cell"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">…</span></div>
+      <div class="profile-stat-cell"><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">…</span></div>
+      <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">…</span></span></div>
     </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
@@ -10261,30 +10277,42 @@ const PROFILE_GAME_NAMES = ['Blackjack', 'Baccarat', 'Roulette', 'Casino War', '
 async function loadProfileFines(uid, forName){
   const legsEl = document.getElementById('profileFinesLegsVal');
   const tipsEl = document.getElementById('profileFinesTipsVal');
+  const miaEl = document.getElementById('profileFinesMIAVal');
+  const lowOddsEl = document.getElementById('profileFinesLowOddsVal');
+  const missedEl = document.getElementById('profileFinesMissedVal');
   const totalEl = document.getElementById('profileFinesTotalVal');
+  const allEls = [legsEl, tipsEl, miaEl, lowOddsEl, missedEl, totalEl];
   if(!uid){
-    if(legsEl) legsEl.textContent = '—';
-    if(tipsEl) tipsEl.textContent = '—';
-    if(totalEl) totalEl.textContent = '—';
+    allEls.forEach(el => { if(el) el.textContent = '—'; });
     return;
   }
   try{
-    const [legsRes, tipsRes] = await Promise.all([
+    const [legsRes, tipsRes, miaRes, lowOddsRes, missedRes] = await Promise.all([
       authedFetch(`/casinoPot/fineHistory/${uid}/groupMultiLegs.json`),
-      authedFetch(`/casinoPot/fineHistory/${uid}/wrongTips.json`)
+      authedFetch(`/casinoPot/fineHistory/${uid}/wrongTips.json`),
+      authedFetch(`/casinoPot/fineHistory/${uid}/groupMultiMIA.json`),
+      authedFetch(`/casinoPot/fineHistory/${uid}/groupMultiLowOdds.json`),
+      authedFetch(`/casinoPot/fineHistory/${uid}/missedTips.json`)
     ]);
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     const legs = legsRes.ok ? ((await legsRes.json()) || 0) : 0;
     const tips = tipsRes.ok ? ((await tipsRes.json()) || 0) : 0;
+    const mia = miaRes.ok ? ((await miaRes.json()) || 0) : 0;
+    const lowOdds = lowOddsRes.ok ? ((await lowOddsRes.json()) || 0) : 0;
+    const missed = missedRes.ok ? ((await missedRes.json()) || 0) : 0;
     const legsXP = legs * CASINO_POT_LEG_LOSS_FINE_DISPLAY;
     const tipsXP = tips * CASINO_POT_TIPPING_FINE_DISPLAY;
+    const miaXP = mia * CASINO_POT_MIA_LEG_FINE_DISPLAY;
+    const lowOddsXP = lowOdds * CASINO_POT_LOW_ODDS_FINE_DISPLAY;
+    const missedXP = missed * CASINO_POT_MISSED_TIP_FINE_DISPLAY;
     if(legsEl) legsEl.textContent = legs > 0 ? `${legs} · ${legsXP.toLocaleString()} XP` : '0';
     if(tipsEl) tipsEl.textContent = tips > 0 ? `${tips} · ${tipsXP.toLocaleString()} XP` : '0';
-    if(totalEl) totalEl.textContent = `${(legsXP + tipsXP).toLocaleString()} XP`;
+    if(miaEl) miaEl.textContent = mia > 0 ? `${mia} · ${miaXP.toLocaleString()} XP` : '0';
+    if(lowOddsEl) lowOddsEl.textContent = lowOdds > 0 ? `${lowOdds} · ${lowOddsXP.toLocaleString()} XP` : '0';
+    if(missedEl) missedEl.textContent = missed > 0 ? `${missed} · ${missedXP.toLocaleString()} XP` : '0';
+    if(totalEl) totalEl.textContent = `${(legsXP + tipsXP + miaXP + lowOddsXP + missedXP).toLocaleString()} XP`;
   }catch(e){
-    if(legsEl) legsEl.textContent = '—';
-    if(tipsEl) tipsEl.textContent = '—';
-    if(totalEl) totalEl.textContent = '—';
+    allEls.forEach(el => { if(el) el.textContent = '—'; });
   }
 }
 async function loadProfileGameStats(linkedUid, forName){

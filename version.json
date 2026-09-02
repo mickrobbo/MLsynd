@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-02.13",
+  "version": "2026-09-02.14",
   "date": "2026-09-02",
   "changes": [
-    "Full pre-deploy sweep found one genuinely serious issue: the new Casino Pot fine paths had no Firebase security rule at all, meaning the Ledger's Group Multi fine writes would have been silently rejected \u2014 the whole feature would have done nothing once deployed, with no visible error. Fixed.",
-    "Checked and confirmed clean across every file: all shared constants (split ratio, burn rate, both fine amounts, period-key logic) still match exactly everywhere, no duplicate IDs, no orphaned references from the Fines refactor.",
-    "Optimized the tipping-fines function's idempotency check from one Firebase read per pick to one read for the whole run \u2014 same safety guarantee, far fewer round trips on any backlog.",
-    "Widened the profile tabs' touch target for better mobile tap accuracy. Slots' \"can't collect\" bug remains open \u2014 ruled out one more theory, still needs live diagnostic data to actually resolve."
+    "Three new Casino Pot fines, on top of the existing losing-leg (250K) and wrong-tip (150K) fines: MIA Group Multi leg (50K), a Group Multi leg placed under $1.22 (10K), and a missed AFL tip (50K) \u2014 a known tipper with zero pick at all for a finished game.",
+    "All three tracked per-person, fully symmetric with the Ledger's Undo Week for the two group-multi ones.",
+    "Profile Fines tab now shows all five categories plus a combined total; the info panel lists all five amounts clearly.",
+    "Missed-tip detection needed a genuinely new mechanism to tell \"never tipped\" apart from \"tipped correctly\" \u2014 built on a roster of known tippers rather than guessing."
   ]
 }
