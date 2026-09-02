@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-02.9",
+  "version": "2026-09-02.10",
   "date": "2026-09-02",
   "changes": [
-    "Fines on the profile now genuinely only count from today onward, not a whole season's worth of leg losses/wrong tips from before the fine system existed \u2014 tracked via a brand new per-person record that starts empty for everyone.",
-    "Restructured the profile's stat section from one long scroll into tabs \u2014 Betting, Casino, Tipping, Fines each get their own button instead of stacking on top of each other.",
-    "Fixed the Nudge button \u2014 most likely cause was its server function never actually being deployed, not a client-side bug.",
-    "Gave the whole profile card a premium visual pass: richer stat cards, a gold accent on the name and section markers, upgraded Challenge/Nudge buttons, a richer prestige bar."
+    "Fixed a real data bug in \"Where the XP Goes\": it was ranking and sizing bars by how many times a game was played, never actual XP amounts, despite the section's own title. Now genuinely shows XP volume per game.",
+    "Moved \"Where the XP Goes\" and \"Recent Form\" out of a separate block below the tabs and into their correct tabs (Casino and Betting).",
+    "Category tabs are now real premium pill buttons \u2014 filled gold when active, not just an underline.",
+    "Fines on the profile only count from the day this feature launched onward, not a whole season's worth of history from before it existed."
   ]
 }

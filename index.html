@@ -1907,17 +1907,20 @@
     </div>
     <div class="profile-stat-wrap" id="profileStats"></div>
     <div class="ghost-record-close" id="profileGhostChase" style="display:none;"></div>
-    <div class="profile-game-breakdown-section" id="profileGameBreakdownSection" style="display:none;">
-      <div class="profile-form-label">Where the XP Goes</div>
-      <div id="profileGameBreakdownBars"></div>
-    </div>
-    <div class="profile-form-section" id="profileFormSection" style="display:none;">
-      <div class="profile-form-label">Recent Form</div>
-      <div class="profile-form-strip" id="profileFormStrip"></div>
-      <div class="profile-form-detail" id="profileFormDetail" style="display:none;"></div>
-    </div>
   </div>
 </div>
+
+<!-- profileGameBreakdownSection and profileFormSection used to live here
+     as always-visible static blocks below the (formerly single-scroll)
+     stat grid. Per request they now live INSIDE the tab system — the
+     breakdown inside the Casino category, Recent Form inside Betting —
+     built directly into openBoardProfile/openTippingOnlyProfile's own
+     innerHTML templates instead of being separate static elements. Their
+     inner IDs (profileGameBreakdownBars, profileFormStrip, etc.) are
+     unchanged, so every existing populate/reset call site below still
+     finds them by getElementById exactly as before — only WHERE they
+     physically sit in the DOM changed, not how anything targets them. -->
+
 
 <!-- Photo crop/position tool — opens after choosing a file, before it's
      saved. Drag to pan, slider to zoom; the frame always shows exactly
@@ -3049,7 +3052,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.9"; // Two fixes to yesterday's profile work, per request. (1) Fines now genuinely start from "now": added /casinoPot/fineHistory/{uid} (groupMultiLegs, wrongTips), a brand new path that starts empty for everyone — populated by the Ledger's saveWeekBtn/undoWeekBtn (per-person, symmetric with undo, using each losing person's linkedUid captured in the same loop that already had it) and casino-pot-tipping-fines-scheduled.js's applyFine. The profile's Fines tab now reads THIS instead of deriving from m.losses/tippingRecordCache, which were whole-season totals that predated the fine system and would have overstated the real figure. (2) Restructured the whole stat grid from one long scroll into category tabs (Betting/Casino/Tipping/Fines, or Casino/Tipping/Fines for a Tipping-only profile) — same visual pattern the chat's Syndy/Group Chat toggle already uses, delegated click handler on the stable #profileStats container since its content gets fully rebuilt via innerHTML on every open. #profileStats itself is no longer the grid (renamed profile-stat-grid -> profile-stat-wrap); each .profile-stat-category div is its own grid now, shown one at a time — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.10"; // Three fixes to the profile per request. (1) Moved "Where the XP Goes" and "Recent Form" from always-visible static blocks below the tabs INTO their correct tabs (breakdown -> Casino, form -> Betting) — built directly into openBoardProfile/openTippingOnlyProfile's own templates now, same inner IDs so every existing populate call site still works unmodified. Removed the now-dangerous early .style.display reset on profileGameBreakdownSection in both functions — it ran before the template existed on the very first profile ever opened, which would have thrown on a null element once this was no longer static HTML. (2) Fixed a real data bug in "Where the XP Goes": it was ranking and sizing bars by PLAY COUNT (how many times a game was opened), never actual XP — added a real xp accumulator (wins+losses combined) to perGame and switched the sort/bar-width/displayed-number to that, which is what the section's own title always claimed to show. Widened the count column in dashboard.css since XP totals run much larger than play counts did. (3) Replaced the underline-tab style from last version with real premium pill buttons — filled gold gradient + glow when active, same treatment .pp-toggle-pill already uses elsewhere in the casino — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9750,8 +9753,14 @@ function openBoardProfile(m, name){
   document.getElementById('profileFlair').style.display = 'none'; // these two are static HTML (exist since page load) so a synchronous reset here is safe — clears the previous profile's value before the new async fetch lands
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
   document.getElementById('profileLiveStatus').style.display = 'none'; // also static HTML — same reasoning
-  document.getElementById('profileGameBreakdownSection').style.display = 'none';
   document.getElementById('profileFlexBanner').style.display = 'none';
+  // profileGameBreakdownSection is NOT reset here anymore — now that it
+  // lives inside #profileStats' own rebuilt template (moved into the
+  // Casino tab per request) rather than being separate static HTML, it
+  // doesn't exist yet the very first time a profile is ever opened this
+  // session, and calling .style on a null element would throw. Every
+  // fresh template already starts it at display:none by default, so
+  // there's nothing left for this line to usefully do anyway.
   // profileBiggestWinCell is NOT reset here — unlike the two above, it's
   // only created later in this same function (inside profileStats'
   // innerHTML) and doesn't exist in the DOM yet at this point on a fresh
@@ -9791,6 +9800,12 @@ function openBoardProfile(m, name){
       <div class="profile-stat-cell" data-compare-key="indRecord"><span class="lbl">Record</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div>
       <div class="profile-stat-cell" data-compare-key="indWinPct"><span class="lbl">Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
       <div class="profile-stat-cell wide" data-compare-key="legs"><span class="profile-stat-sub"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></span></div>
+
+      <div class="profile-form-section" id="profileFormSection" style="grid-column:1/-1; display:none;">
+        <div class="profile-form-label">Recent Form</div>
+        <div class="profile-form-strip" id="profileFormStrip"></div>
+        <div class="profile-form-detail" id="profileFormDetail" style="display:none;"></div>
+      </div>
     </div>
 
     <div class="profile-stat-category" data-cat="casino" style="display:none;">
@@ -9811,6 +9826,10 @@ function openBoardProfile(m, name){
       </div>
       <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
         <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      </div>
+      <div class="profile-game-breakdown-section" id="profileGameBreakdownSection" style="grid-column:1/-1; display:none;">
+        <div class="profile-form-label">Where the XP Goes</div>
+        <div id="profileGameBreakdownBars"></div>
       </div>
     </div>
 
@@ -10106,7 +10125,8 @@ function openTippingOnlyProfile(uid, name){
   document.getElementById('profileFlair').style.display = 'none';
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
   document.getElementById('profileLiveStatus').style.display = 'none';
-  document.getElementById('profileGameBreakdownSection').style.display = 'none';
+  // profileGameBreakdownSection reset removed here too — same reasoning
+  // as openBoardProfile above, now that it's part of the rebuilt template.
   document.getElementById('profileFlexBanner').style.display = 'none';
   document.getElementById('profileGhostChase').style.display = 'none'; // no Board P/L for a Tipping-only account, so this never applies here — but openBoardProfile leaves it visible when relevant, so it needs an explicit hide when swiping from a Board profile to this one
 
@@ -10140,6 +10160,10 @@ function openTippingOnlyProfile(uid, name){
       </div>
       <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
         <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      </div>
+      <div class="profile-game-breakdown-section" id="profileGameBreakdownSection" style="grid-column:1/-1; display:none;">
+        <div class="profile-form-label">Where the XP Goes</div>
+        <div id="profileGameBreakdownBars"></div>
       </div>
     </div>
 
@@ -10300,11 +10324,12 @@ async function loadProfileGameStats(linkedUid, forName){
       const reason = e.reason || '';
       const game = PROFILE_GAME_NAMES.find(g => reason.toLowerCase().startsWith(g.toLowerCase()));
       if(!game) return;
-      if(!perGame[game]) perGame[game] = { count: 0, wins: 0, losses: 0 };
+      if(!perGame[game]) perGame[game] = { count: 0, wins: 0, losses: 0, xp: 0 };
       perGame[game].count++;
       const amt = typeof e.amount === 'number' ? e.amount : 0;
       if(amt > 0) perGame[game].wins++;
       else if(amt < 0) perGame[game].losses++;
+      perGame[game].xp += Math.abs(amt); // total XP volume (wins + losses combined) — the actual figure the "Where the XP Goes" section is meant to show, not how many times it was played
     });
     const topGame = Object.entries(perGame).sort((a, b) => b[1].count - a[1].count)[0];
 
@@ -10338,21 +10363,26 @@ async function loadProfileGameStats(linkedUid, forName){
     }
 
     // Full per-game breakdown — Most Played above only ever shows the #1
-    // game; this is the fuller picture, reusing the exact same perGame
-    // data already computed above rather than a second pass over the log.
+    // game by play count; this shows every game ranked by actual XP
+    // volume instead (wins + losses combined), which is what "Where the
+    // XP Goes" is actually meant to answer — a real bug fixed here: this
+    // used to rank and size bars by PLAY COUNT (how many times a game
+    // was opened), not XP at all, so a game played often for small stakes
+    // could out-rank one played rarely for huge amounts, and the bars
+    // never reflected the number shown next to them.
     const breakdownSection = document.getElementById('profileGameBreakdownSection');
     const breakdownBars = document.getElementById('profileGameBreakdownBars');
     if(breakdownSection && breakdownBars){
-      const allGames = Object.entries(perGame).sort((a, b) => b[1].count - a[1].count);
+      const allGames = Object.entries(perGame).filter(([, s]) => s.xp > 0).sort((a, b) => b[1].xp - a[1].xp);
       if(allGames.length > 0){
-        const maxCount = allGames[0][1].count;
+        const maxXP = allGames[0][1].xp;
         breakdownSection.style.display = 'block';
         breakdownBars.innerHTML = allGames.map(([gname, stats]) => {
-          const pct = maxCount > 0 ? Math.max(6, (stats.count / maxCount) * 100) : 6; // 6% floor so even a single-play game shows a visible sliver, not nothing
+          const pct = maxXP > 0 ? Math.max(6, (stats.xp / maxXP) * 100) : 6; // 6% floor so even a small-XP game shows a visible sliver, not nothing
           return `<div class="profile-game-bar-row">
             <span class="profile-game-bar-name">${escapeHtml(gname)}</span>
             <span class="profile-game-bar-track"><span class="profile-game-bar-fill" style="width:${pct.toFixed(0)}%;"></span></span>
-            <span class="profile-game-bar-count">${stats.count}</span>
+            <span class="profile-game-bar-count">${stats.xp.toLocaleString()}</span>
           </div>`;
         }).join('');
       } else {
