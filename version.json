@@ -1,10 +1,9 @@
 {
-  "version": "2026-09-02.14",
+  "version": "2026-09-02.15",
   "date": "2026-09-02",
   "changes": [
-    "Three new Casino Pot fines, on top of the existing losing-leg (250K) and wrong-tip (150K) fines: MIA Group Multi leg (50K), a Group Multi leg placed under $1.22 (10K), and a missed AFL tip (50K) \u2014 a known tipper with zero pick at all for a finished game.",
-    "All three tracked per-person, fully symmetric with the Ledger's Undo Week for the two group-multi ones.",
-    "Profile Fines tab now shows all five categories plus a combined total; the info panel lists all five amounts clearly.",
-    "Missed-tip detection needed a genuinely new mechanism to tell \"never tipped\" apart from \"tipped correctly\" \u2014 built on a roster of known tippers rather than guessing."
+    "Fine scale retuned: Losing leg stays 250K, MIA leg 50K -> 200K, leg under $1.22 10K -> 150K, wrong AFL tip 150K -> 100K, missed AFL tip stays 50K \u2014 now genuinely in descending order everywhere it's shown.",
+    "Casino Pot burn rate 15% -> 20%, which also lands on clean round numbers for the split: 60% even-share / 20% jackpot / 20% burned.",
+    "Every file and every player-facing explainer that stated the old figures has been updated and verified \u2014 no stale numbers left anywhere."
   ]
 }

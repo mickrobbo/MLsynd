@@ -754,7 +754,7 @@
       <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
       <button type="button" class="casino-pot-details-toggle" id="potDetailsToggleBtn">▾ Details</button>
       <div class="casino-pot-details" id="casinoPotDetailsWrap">
-        <div class="casino-pot-split-legend"><span>63.75% SHARED</span><span>21.25% JACKPOT</span><span>15% BURNED</span></div>
+        <div class="casino-pot-split-legend"><span>60% SHARED</span><span>20% JACKPOT</span><span>20% BURNED</span></div>
         <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
         <div id="casinoPotMeWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);"></div>
         <div style="text-align:center; margin-top:10px;">
@@ -3052,7 +3052,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.14"; // Three new Casino Pot fines per request, on top of the existing losing-leg (250K) and wrong-tip (150K) fines: MIA Group Multi leg (50K, no-show penalty, applies regardless of what the outcome would have been), Group Multi leg placed under $1.22 (10K, fines the choice to tip too safe, independent of Win/Loss/Void), and missed AFL tip (50K, a known tipper — anyone with a /tippingStats entry — who has zero pick at all for a finished game). All three tracked per-person via new fineHistory fields (groupMultiMIA, groupMultiLowOdds, missedTips) alongside the existing two, fully symmetric with Ledger's Undo Week for the two group-multi ones. Profile Fines tab now shows all five categories plus a combined total; info-modal lists all five amounts. Missed-tip detection required a genuinely new mechanism (tippingFinesChecked idempotency key is safely reused across both the wrong-tip and missed-tip passes, since a given game+uid pair can only ever be one or the other, never both) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.15"; // Fine scale retuned per request: Losing Group Multi leg stays 250K, MIA leg 50K->200K, Group Multi leg under $1.22 10K->150K, Wrong AFL tip 150K->100K, Missed AFL tip stays 50K — now genuinely descending in that exact order everywhere it's listed (info-modal, profile Fines tab), not just coincidentally so. Burn rate 15%->20%, which also changes the split legend to clean round numbers: 60% even-share / 20% jackpot / 20% burned (was 63.75/21.25/15). Updated in every file that duplicates these values (LEDGER-index.html, casino-pot-tipping-fines-scheduled.js, casino-pot-distribute-scheduled.js, this file's display copies) plus every code comment and player-facing explainer text that stated the old figures — verified with a final grep pass that zero stale references to any old number remain anywhere — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7203,11 +7203,11 @@ const CASINO_POT_PAYOUT_REASON_PATTERN = /^Casino Pot – (Even Split|Jackpot|Pr
 // amount is ever retuned, update it here too or the profile will show a
 // stale figure.
 const CASINO_POT_LEG_LOSS_FINE_DISPLAY = 250000;
-const CASINO_POT_MIA_LEG_FINE_DISPLAY = 50000;
-const CASINO_POT_LOW_ODDS_FINE_DISPLAY = 10000;
+const CASINO_POT_MIA_LEG_FINE_DISPLAY = 200000;
+const CASINO_POT_LOW_ODDS_FINE_DISPLAY = 150000;
 const CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY = 1.22;
 const CASINO_POT_MISSED_TIP_FINE_DISPLAY = 50000;
-const CASINO_POT_TIPPING_FINE_DISPLAY = 150000;
+const CASINO_POT_TIPPING_FINE_DISPLAY = 100000;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
@@ -7641,7 +7641,7 @@ async function distributeCasinoPotLocked(monthKeys){
     return { skipped: true, rolled: true, totalPot };
   }
 
-  // 15% burned outright per request — otherwise the pot is a pure wash:
+  // 20% burned outright per request — otherwise the pot is a pure wash:
   // 100% of what's collected gets redistributed straight back to players,
   // so nothing ever actually leaves the XP economy through it, and the
   // numbers involved only ever grow. The remaining 85% still splits at
@@ -7649,7 +7649,7 @@ async function distributeCasinoPotLocked(monthKeys){
   // distribution history for a real audit trail rather than just quietly
   // vanishing with no record. Single named constant, easy to retune —
   // kept identical to the scheduled function's own copy of this constant.
-  const CASINO_POT_BURN_RATE = 0.15;
+  const CASINO_POT_BURN_RATE = 0.20;
   const burnedAmount = Math.floor(totalPot * CASINO_POT_BURN_RATE);
   const distributable = totalPot - burnedAmount;
   const proportionalPool = Math.floor(distributable * 0.75);
@@ -9185,14 +9185,14 @@ const CASINO_RULES = {
     <h3>Where it comes from</h3>
     <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the period, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
     <h3>How it's split</h3>
-    <p><b>15%</b> of every pot is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (63.75% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (21.25% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <p><b>20%</b> of every pot is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (60% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (20% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Fines</h3>
     <p>The pot also takes real fines off the top before it's ever distributed, all coming straight out of the shared pot, never your personal balance:</p>
     <ul style="margin:4px 0 0; padding-left:20px; line-height:1.6;">
       <li>Losing Group Multi leg — <b>250,000 XP</b></li>
-      <li>MIA (no-show) Group Multi leg — <b>50,000 XP</b></li>
-      <li>Group Multi leg placed under $1.22 — <b>10,000 XP</b></li>
-      <li>Wrong AFL tip — <b>150,000 XP</b></li>
+      <li>MIA (no-show) Group Multi leg — <b>200,000 XP</b></li>
+      <li>Group Multi leg placed under $1.22 — <b>150,000 XP</b></li>
+      <li>Wrong AFL tip — <b>100,000 XP</b></li>
       <li>Missed AFL tip — <b>50,000 XP</b></li>
     </ul>
     <h3>Eligibility</h3>
