@@ -2171,8 +2171,35 @@
     0%,100%{ box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.7), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 5px rgba(127,216,255,.7); }
     50%{ box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.7), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 11px 2px rgba(127,216,255,1); }
   }
+  /* ---- Two secret tiers above Diamond — deliberately never listed in the
+     Tier badges info modal, so they stay a genuine surprise rather than a
+     known target. 100M: Sovereign, royal violet+gold. 1B: Immortal, the
+     absolute pinnacle — an actual colour-cycling prismatic animation on
+     the badge itself (cheap and striking on a 10px gem; genuinely
+     different from every metal/gem tier below it rather than just a
+     bigger glow), on top of the same pulse treatment Diamond already
+     uses so it reads as "everything Diamond has, and then more." */
+  .tier-badge.tier-sovereign{
+    background: linear-gradient(155deg, #f3e5ff, #a855f7 55%, #5b2a8c);
+    box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.75), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 6px rgba(168,85,247,.75), 0 0 3px rgba(255,214,120,.5);
+    animation: sovereignBadgePulse 2.2s ease-in-out infinite;
+  }
+  @keyframes sovereignBadgePulse{
+    0%,100%{ box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.75), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 6px rgba(168,85,247,.75), 0 0 3px rgba(255,214,120,.5); }
+    50%{ box-shadow:0 1px 3px rgba(0,0,0,.5), inset 0 1px 1px rgba(255,255,255,.75), inset 0 -1px 1px rgba(0,0,0,.3), 0 0 13px 3px rgba(168,85,247,1), 0 0 7px rgba(255,214,120,.8); }
+  }
+  .tier-badge.tier-immortal{
+    background: linear-gradient(155deg, #fff6d8, #f5c518 45%, #b8860b 75%, #3a2a00);
+    box-shadow:0 1px 3px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(0,0,0,.4), 0 0 8px rgba(245,197,24,.8);
+    animation: immortalBadgePulse 2s ease-in-out infinite, immortalBadgeShift 4s linear infinite;
+  }
+  @keyframes immortalBadgePulse{
+    0%,100%{ box-shadow:0 1px 3px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(0,0,0,.4), 0 0 8px rgba(245,197,24,.8); }
+    50%{ box-shadow:0 1px 3px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(0,0,0,.4), 0 0 16px 4px rgba(245,197,24,1); }
+  }
+  @keyframes immortalBadgeShift{ 0%{ filter:hue-rotate(0deg); } 100%{ filter:hue-rotate(360deg); } }
   @media (prefers-reduced-motion: reduce){
-    .tier-badge.tier-diamond{ animation:none; }
+    .tier-badge.tier-diamond, .tier-badge.tier-sovereign, .tier-badge.tier-immortal{ animation:none; }
   }
 
   /* ---- Avatar Rank Card — the ladder-row avatar treatment (Board
@@ -2219,6 +2246,8 @@
   .avatar-rankcard-emblem.tier-gold{ background:linear-gradient(155deg, #fff0b8, #d4af37 55%, #8a6620); }
   .avatar-rankcard-emblem.tier-platinum{ background:linear-gradient(155deg, #eef8ff, #a9cbe0 55%, #6f93a8); }
   .avatar-rankcard-emblem.tier-diamond{ background:linear-gradient(155deg, #eafdff, #7fd8ff 55%, #2a9dc9); }
+  .avatar-rankcard-emblem.tier-sovereign{ background:linear-gradient(155deg, #f3e5ff, #a855f7 55%, #5b2a8c); }
+  .avatar-rankcard-emblem.tier-immortal{ background:linear-gradient(155deg, #fff6d8, #f5c518 45%, #b8860b 75%, #3a2a00); }
   .avatar-rankcard-emblem-gem{
     width:7px; height:7px; border-radius:2px; transform:rotate(45deg);
     background:rgba(0,0,0,.28); box-shadow:inset 0 1px 1px rgba(255,255,255,.55);
@@ -2266,6 +2295,16 @@
       radial-gradient(ellipse at 32% 20%, rgba(255,255,255,.09) 0%, rgba(255,255,255,0) 38%),
       radial-gradient(ellipse at 50% 32%, #0e2a33 0%, #071a20 60%, #030d10 100%);
   }
+  body.tier-sovereign .bj-table, body.tier-sovereign .craps-table-felt{
+    background:
+      radial-gradient(ellipse at 32% 20%, rgba(255,255,255,.1) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 50% 32%, #2a1638 0%, #190d21 60%, #0a0611 100%);
+  }
+  body.tier-immortal .bj-table, body.tier-immortal .craps-table-felt{
+    background:
+      radial-gradient(ellipse at 32% 20%, rgba(255,224,150,.12) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 50% 32%, #302408 0%, #1c1505 60%, #0d0a02 100%);
+  }
 
   /* Card back — one shared class (.pc-back, used by Blackjack's hole card
      and Video Poker's held-card backs), so a single override per tier
@@ -2283,6 +2322,16 @@
     border-color:#7fd8ff; box-shadow:0 4px 10px rgba(0,0,0,.5), 0 0 10px rgba(127,216,255,.5);
   }
   body.tier-diamond .playing-card.pc-back::after{ border-color:#eafdff; }
+  body.tier-sovereign .playing-card.pc-back{
+    background: repeating-linear-gradient(45deg, #a855f7, #a855f7 4px, #2a1638 4px, #2a1638 8px);
+    border-color:#d9b3ff; box-shadow:0 4px 10px rgba(0,0,0,.5), 0 0 10px rgba(168,85,247,.5);
+  }
+  body.tier-sovereign .playing-card.pc-back::after{ border-color:#f3e5ff; }
+  body.tier-immortal .playing-card.pc-back{
+    background: repeating-linear-gradient(45deg, #f5c518, #f5c518 4px, #302408 4px, #302408 8px);
+    border-color:#fff6d8; box-shadow:0 4px 10px rgba(0,0,0,.5), 0 0 12px rgba(245,197,24,.6);
+  }
+  body.tier-immortal .playing-card.pc-back::after{ border-color:#fff6d8; }
 
   /* Chip rim — an outer accent ring layered on top of each chip's
      existing denomination colour (5/10/25/50/100/250 already each have
@@ -2293,6 +2342,8 @@
   body.tier-gold .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #d4af37; }
   body.tier-platinum .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #6f93a8; }
   body.tier-diamond .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #2a9dc9, 0 0 8px rgba(127,216,255,.6); }
+  body.tier-sovereign .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #a855f7, 0 0 8px rgba(168,85,247,.6); }
+  body.tier-immortal .table-chip{ box-shadow:0 3px 6px rgba(0,0,0,.5), 0 0 0 2px #f5c518, 0 0 10px rgba(245,197,24,.7); }
   /* Roulette, Slots, and Hold'em were deliberately left out of the tier
      treatment above — each has its own already-elaborate bespoke design
      (gold bezel, gold cabinet, embossed velvet felt), and a blanket
@@ -2307,12 +2358,16 @@
   body.tier-gold .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 9px 2px rgba(212,175,55,.7); }
   body.tier-platinum .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 9px 2px rgba(111,147,168,.7); }
   body.tier-diamond .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 11px 3px rgba(42,157,201,.8); }
+  body.tier-sovereign .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 12px 3px rgba(168,85,247,.85); }
+  body.tier-immortal .roulette-ball{ box-shadow:0 2px 5px rgba(0,0,0,.75), 0 0 3px rgba(255,255,255,.6), 0 1px 1px rgba(255,255,255,.5) inset, 0 0 14px 4px rgba(245,197,24,.9); }
 
   body.tier-bronze .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(169,103,47,.55); }
   body.tier-silver .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(184,184,184,.55); }
   body.tier-gold .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(212,175,55,.6); }
   body.tier-platinum .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(111,147,168,.6); }
   body.tier-diamond .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(42,157,201,.7), 0 0 10px rgba(127,216,255,.4); }
+  body.tier-sovereign .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(168,85,247,.75), 0 0 10px rgba(216,153,255,.4); }
+  body.tier-immortal .slots-reel-window{ box-shadow: inset 0 0 20px rgba(0,0,0,.8), inset 0 3px 6px rgba(0,0,0,.6), 0 0 0 2px rgba(245,197,24,.8), 0 0 12px rgba(255,224,150,.5); }
 
   /* Hold'em's "me" seat currently always glows brass regardless of
      tier — now reflects the real one, same as everywhere else. */
@@ -2327,6 +2382,22 @@
   @keyframes holdemSeatDiamondPulse{
     0%,100%{ filter:drop-shadow(0 0 2px rgba(42,157,201,.5)); }
     50%{ filter:drop-shadow(0 0 6px rgba(42,157,201,.9)); }
+  }
+  body.tier-sovereign .holdem-seat.me{
+    border-color:#a855f7; box-shadow:0 0 0 1px rgba(168,85,247,.55), 0 0 15px rgba(216,153,255,.55);
+    animation: holdemSeatSovereignPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes holdemSeatSovereignPulse{
+    0%,100%{ filter:drop-shadow(0 0 2px rgba(168,85,247,.55)); }
+    50%{ filter:drop-shadow(0 0 7px rgba(168,85,247,.95)); }
+  }
+  body.tier-immortal .holdem-seat.me{
+    border-color:#f5c518; box-shadow:0 0 0 1px rgba(245,197,24,.6), 0 0 17px rgba(255,224,150,.6);
+    animation: holdemSeatImmortalPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes holdemSeatImmortalPulse{
+    0%,100%{ filter:drop-shadow(0 0 2px rgba(245,197,24,.6)); }
+    50%{ filter:drop-shadow(0 0 8px rgba(245,197,24,1)); }
   }
   @media (prefers-reduced-motion: reduce){
     .holdem-seat.me{ animation:none; }
@@ -2903,6 +2974,8 @@
   .profile-sheet.tier-platinum{ background:linear-gradient(180deg, #17323a 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(111,147,168,.6); }
   .profile-sheet.tier-platinum::before{ opacity:1; --tier-glow: rgba(160,200,220,.3); }
   .profile-sheet.tier-diamond{ background:linear-gradient(180deg, #0e3644 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(42,157,201,.65); box-shadow:0 -10px 40px rgba(0,0,0,.5), 0 0 40px -8px rgba(42,157,201,.4); }
+  .profile-sheet.tier-sovereign{ background:linear-gradient(180deg, #2d1a3d 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(168,85,247,.6); box-shadow:0 -10px 40px rgba(0,0,0,.5), 0 0 44px -6px rgba(168,85,247,.45); }
+  .profile-sheet.tier-immortal{ background:linear-gradient(180deg, #33260a 0%, var(--felt-3) 240px, var(--felt) 100%); border-top:2px solid rgba(245,197,24,.7); box-shadow:0 -10px 40px rgba(0,0,0,.5), 0 0 48px -6px rgba(245,197,24,.5); }
   .profile-sheet.tier-diamond::before{ opacity:1; --tier-glow: rgba(127,216,255,.4); animation: profileDiamondGlowPulse 3s ease-in-out infinite; }
   @keyframes profileDiamondGlowPulse{
     0%,100%{ opacity:.85; transform:translateX(-50%) scale(1); }
@@ -3129,7 +3202,7 @@
      a filled gold gradient with a real glow, not just a colour change. */
   .profile-cat-tabs{ display:flex; gap:8px; margin-bottom:18px; }
   .profile-cat-tab{
-    flex:1; padding:10px 6px; text-align:center; cursor:pointer;
+    flex:1; padding:13px 6px; text-align:center; cursor:pointer;
     font-size:11px; font-weight:700; color:var(--muted); font-family:'Barlow Condensed', sans-serif;
     letter-spacing:.4px; border-radius:20px; border:1px solid rgba(203,177,102,.22);
     background:linear-gradient(165deg, rgba(255,255,255,.02), rgba(0,0,0,.22));

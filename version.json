@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-02.11",
+  "version": "2026-09-02.13",
   "date": "2026-09-02",
   "changes": [
-    "Profile was genuinely too congested \u2014 widened spacing throughout: sheet padding, badges, head-to-head, Challenge/Nudge buttons, the tab bar, and every stat card now has real breathing room instead of 4-14px gaps.",
-    "Confirmed Slots' \"can't collect\" report is NOT a stale deploy \u2014 casino-slots.js on GitHub is byte-identical to the fixed version, so this is a genuinely different bug still being tracked down.",
-    "Fixed a real data bug in \"Where the XP Goes\": it was ranking and sizing bars by how many times a game was played, never actual XP amounts, despite the section's own title.",
-    "Moved \"Where the XP Goes\" and \"Recent Form\" out of a separate block below the tabs and into their correct tabs (Casino and Betting), and made the category tabs real premium pill buttons."
+    "Full pre-deploy sweep found one genuinely serious issue: the new Casino Pot fine paths had no Firebase security rule at all, meaning the Ledger's Group Multi fine writes would have been silently rejected \u2014 the whole feature would have done nothing once deployed, with no visible error. Fixed.",
+    "Checked and confirmed clean across every file: all shared constants (split ratio, burn rate, both fine amounts, period-key logic) still match exactly everywhere, no duplicate IDs, no orphaned references from the Fines refactor.",
+    "Optimized the tipping-fines function's idempotency check from one Firebase read per pick to one read for the whole run \u2014 same safety guarantee, far fewer round trips on any backlog.",
+    "Widened the profile tabs' touch target for better mobile tap accuracy. Slots' \"can't collect\" bug remains open \u2014 ruled out one more theory, still needs live diagnostic data to actually resolve."
   ]
 }

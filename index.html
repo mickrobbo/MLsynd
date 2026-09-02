@@ -3052,7 +3052,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.11"; // Profile spacing pass per request — was genuinely too congested (badges/head-to-head/action buttons/tabs/cells all packed at 4-14px gaps). Widened the vertical rhythm throughout: sheet padding, header/badges margins, head-to-head and action-row margins+padding, tab bar margin+pill size, stat-category grid gap, individual cell padding, and group-label spacing all increased — dashboard.css only, no HTML/JS/layout structure changed. Also confirmed via direct diff that casino-slots.js on GitHub is byte-identical to the already-fixed version, so the "still can't collect" report is a genuinely different, not-yet-found bug, not a stale deploy — still needs live diagnostic info (same DevTools approach that found the chat scroll root cause) to actually pin down, rather than another blind guess — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.13"; // Full pre-deploy sweep across everything built today, per request. Found one genuinely serious issue: neither /casinoPot/months/$monthKey/fines nor /casinoPot/fineHistory had ANY Firebase security rule — the tipping-fines scheduled function bypasses rules (server admin token) so it was fine, but the Ledger writes as the admin's own logged-in session, which IS subject to rules, and both writes would have been silently rejected (bumpFineHistory/applyCasinoPotFine both swallow errors in an empty catch). The entire "Group Multi leg loss fines the pot" feature would have done nothing once deployed, with no visible error anywhere. Fixed in firebase-rules.json — added admin-only write rules for both paths. Also checked and confirmed clean: every constant duplicated across files (split ratio, burn rate, both fine amounts, period-key logic, eligible-plays threshold) still matches exactly everywhere; zero within-template duplicate IDs in the profile system (the cross-template "duplicates" found are the established safe pattern — only one template's HTML is ever actually in the DOM at once); zero orphaned references to pre-refactor Fines variable/ID names; both tier-cosmetics add-sites are fully generic (driven by tier.key, not a hardcoded list) so they already worked correctly for Sovereign/Immortal with no changes needed. Performance: optimized casino-pot-tipping-fines-scheduled.js's idempotency check from one Firebase GET per pick to one GET for the whole checked-tree per run, fetched once and checked in memory — same crash-safety guarantee, far fewer round trips on any real backlog. Widened the profile category tabs' touch target (10px vertical padding -> 13px) for better mobile tap accuracy. Slots' "can't collect" bug remains open — did another pass (confirmed the Collect button's DOM node is never destroyed/recreated, ruling out a lost-listener theory) but found nothing further via code reading; still needs live diagnostic data to actually resolve — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3510,6 +3510,14 @@ function renderXpInfoView(){
 const PRESTIGE_WEIGHT_DATASCORE = 200; // per Season Score point (betting board)
 const PRESTIGE_WEIGHT_TIPPING = 150;   // per cumulative Tipping season point
 const CASINO_TIERS = [
+  // Sovereign and Immortal are deliberately NOT listed in the "Tier
+  // badges" info modal (search for that text if you ever need to find
+  // it) — kept secret on purpose, per request. Everything else about
+  // them (casinoTierFor, the tier-up celebration, cosmetics, the
+  // prestige progress bar) is fully generic and needed no special-casing
+  // beyond adding these two entries in the right spot in this array.
+  { name: 'Immortal', threshold: 1000000000, key: 'immortal' },
+  { name: 'Sovereign', threshold: 100000000, key: 'sovereign' },
   { name: 'Diamond', threshold: 1000000, key: 'diamond' },
   { name: 'Platinum', threshold: 500000, key: 'platinum' },
   { name: 'Gold', threshold: 250000, key: 'gold' },
@@ -3545,7 +3553,7 @@ function casinoTierFor(prestigeScore){
 // once at startup) rather than adding a separate fetch of its own.
 function applyCasinoTierCosmetics(prestigeScore){
   const tier = casinoTierFor(prestigeScore);
-  document.body.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-platinum', 'tier-diamond');
+  document.body.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-platinum', 'tier-diamond', 'tier-sovereign', 'tier-immortal');
   if(tier) document.body.classList.add(`tier-${tier.key}`);
 }
 function casinoTierBadgeHtml(prestigeScore){
@@ -3586,7 +3594,7 @@ async function getCasinoTierBadgeHtml(uid){
 // so it survives a refresh and doesn't fire again next session, only on
 // a genuine new crossing. Cheap to call from anywhere a score might have
 // just moved — it's a no-op unless the tier actually went up. ----
-const TIER_ORDER = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond'];
+const TIER_ORDER = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Sovereign', 'Immortal'];
 let tierUpCheckInFlight = false;
 async function checkCasinoTierUp(prestigeScore){
   if(!currentUserUid || tierUpCheckInFlight || prestigeScore == null) return;
@@ -10603,7 +10611,7 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     // (felt/card-backs/chip-rims) already use.
     const sheetEl = document.getElementById('profileSheet');
     if(sheetEl){
-      sheetEl.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-platinum', 'tier-diamond');
+      sheetEl.classList.remove('tier-bronze', 'tier-silver', 'tier-gold', 'tier-platinum', 'tier-diamond', 'tier-sovereign', 'tier-immortal');
       if(t) sheetEl.classList.add(`tier-${t.key}`);
       // MUST be checked by uid, not name — same root-cause bug as the
       // ladders (Tipping display names are self-chosen and have no
@@ -10620,7 +10628,19 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     const barLabel = document.getElementById('profilePrestigeBarLabel');
     if(barWrap && barFill && barLabel){
       barWrap.style.display = 'block';
-      if(t && t.key === 'diamond'){
+      if(t && (t.key === 'diamond' || t.key === 'immortal')){
+        // Diamond is hardcoded here deliberately, not just "whatever the
+        // array's last real entry is" — this is the actual mechanism that
+        // keeps Sovereign secret: anyone at or below Diamond sees "top
+        // tier reached" and never learns a tier above it exists. Immortal
+        // is the genuine ceiling now that it exists, so it needs the same
+        // treatment for a different reason — without it, CASINO_TIERS[-1]
+        // is undefined in JS and the old fallback (`|| CASINO_TIERS[len-1]`)
+        // would wrap around to Bronze, showing a nonsense "next: Bronze"
+        // to whoever reaches the actual top. Sovereign itself is NOT
+        // listed here on purpose: reaching it already means you're "in on
+        // the secret," so it's fine for its own progress bar to reveal
+        // Immortal as next — the general population below never sees this.
         barFill.style.width = '100%';
         barLabel.innerHTML = `${Math.round(prestige).toLocaleString()} prestige — top tier reached <span class="tap-hint">(tap for breakdown)</span>`;
         delete barLabel.dataset.gapToNext;
