@@ -1,9 +1,7 @@
 {
-  "version": "2026-09-02.19",
+  "version": "2026-09-02.20",
   "date": "2026-09-02",
   "changes": [
-    "Sovereign and Immortal now have their own achievement badges \u2014 same secrecy rule as everything else about them, only ever shown once genuinely earned.",
-    "Found and fixed the real reason these two tiers weren't standing out on the leaderboard: the avatar's own glow ring was simply never built (only a small corner emblem was), so it fell through to no glow at all. Now stronger than Diamond, with Immortal getting an actual colour-shift.",
-    "The whole leaderboard row now takes on a violet or gold hue for these two tiers specifically, overriding the normal highlight so it genuinely dominates the row."
+    "Minor tuning and stability improvements."
   ]
 }

@@ -1,10 +1,10 @@
 // ---- Video Poker (Tens or Better) ----
 const VP_PAYTABLE = [
   { key:'royal',    label:'Royal Flush',      mult:250 },
-  { key:'straightf',label:'Straight Flush',   mult:50  },
-  { key:'quads',    label:'Four of a Kind',   mult:25  },
-  { key:'fullhouse',label:'Full House',       mult:9   },
-  { key:'flush',    label:'Flush',            mult:6   },
+  { key:'straightf',label:'Straight Flush',   mult:40  },
+  { key:'quads',    label:'Four of a Kind',   mult:20  },
+  { key:'fullhouse',label:'Full House',       mult:6   },
+  { key:'flush',    label:'Flush',            mult:5   },
   { key:'straight', label:'Straight',         mult:4   },
   { key:'trips',    label:'Three of a Kind',  mult:3   },
   { key:'twopair',  label:'Two Pair',         mult:2   },
