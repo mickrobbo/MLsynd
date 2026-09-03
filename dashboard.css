@@ -3428,7 +3428,7 @@
   .profile-stat-cell{
     background:linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.28));
     border:1px solid rgba(203,177,102,.16); border-radius:14px; padding:13px 16px;
-    display:flex; align-items:center; justify-content:space-between; gap:12px; text-align:left;
+    display:flex; align-items:center; gap:10px; text-align:left;
     transition: transform var(--ease-snap), background var(--ease-base), border-color var(--ease-base);
     box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 2px 6px rgba(0,0,0,.18);
   }
@@ -3439,16 +3439,23 @@
   .profile-stat-compare-side{ display:flex; flex-direction:column; align-items:center; }
   .profile-stat-compare-val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; color:var(--brass-light); }
   .profile-stat-compare-lbl{ font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
-  /* Every cell is genuinely full-width now (the parent category is a
-     flex column, not a 2-column grid), so label-left/value-right reads
-     as a clean settings-style row instead of the old centered, cramped
-     half-width cell that's what actually caused the wrapping bugs from
-     earlier — there was never enough room in a 50%-width centered cell
-     for a real value to sit cleanly. */
-  .profile-stat-cell .lbl{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; flex-shrink:0; }
-  .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:16px; font-weight:700; color:var(--chalk); text-align:right; }
-  .profile-stat-cell.wide{ display:flex; align-items:center; justify-content:space-around; text-align:center; padding:16px 10px; }
-  .profile-stat-cell.wide .profile-stat-sub{ display:flex; flex-direction:column; align-items:center; }
+  /* Matches .highlight-chip's exact visual language (icon + glow, label
+     stacked above a gold value) rather than a second, similar-but-not-
+     quite style living alongside it — Betting/Fines used to be a plainer
+     label-left/value-right row with no icon, which is exactly what
+     looked inconsistent next to Casino/Tipping's cards. Kept as its own
+     class (not literally renamed to .highlight-chip) specifically
+     because showProfileStatCompare()'s long-press feature looks up
+     .lbl/.val by exact class name — renaming those would have silently
+     broken that feature the moment this shipped. */
+  .profile-stat-cell .cell-icon{ font-size:20px; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(255,224,150,.4)); }
+  .profile-stat-cell > div{ min-width:0; flex:1; }
+  .profile-stat-cell .lbl{ display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .profile-stat-cell .val{ display:block; font-family:'IBM Plex Mono', monospace; font-size:16px; font-weight:700; color:var(--brass-light); margin-top:2px; white-space:normal; word-break:break-word; }
+  .profile-stat-cell .val.pos{ color:var(--win); }
+  .profile-stat-cell .val.neg{ color:var(--loss); }
+  .profile-stat-cell.wide{ justify-content:flex-start; text-align:left; padding:13px 16px; }
+  .profile-stat-cell.wide .profile-stat-sub{ display:flex; flex-direction:column; align-items:flex-start; flex:1; }
   /* Section labels — same small-caps, muted, letter-spaced treatment
      Recent Form/Where the XP Goes already use, so the whole profile
      reads as one consistent visual language rather than each addition

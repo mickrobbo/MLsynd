@@ -3192,7 +3192,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.34"; // Fully rebuilt the Casino tab per report — found the actual cause of "two different text colours": Tier/Bounties/Casino XP/Lifetime XP/Record all had inline style="color:var(--brass)" while the highlight-chip cells used --brass-light, two genuinely different gold shades sitting side by side. Rather than patch the inline styles individually (same class of bug that's bitten this profile before), merged everything onto one shared highlight-chip card — every Casino tab item is now its own bubble (Casino XP and Lifetime XP were paired in one cell, Tier and Bounties in another; all four split out), same icon+glow treatment uniformly, reordered by relevance (Tier, Record, Casino Win Rate, Biggest Win, Most Played, Casino XP, Lifetime XP, Bounties). Found and fixed the same paired-cell issue in the Tipping tab too (Season Points + Record were sharing one bubble) while in this area of the code, rather than wait for it to get reported separately. Confirmed via an actual render using the real values from the report (Diamond, 678-1059, +456,176, etc.) with the full verified stylesheet — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.35"; // Extended the Casino tab's icon+glow card treatment to Betting and Fines per report — those two were the only tabs still using the older plain label/value row with no icon, which is exactly what looked inconsistent sitting next to Casino and Tipping. Deliberately did NOT rename these to .highlight-chip — showProfileStatCompare()'s long-press-to-compare feature on the Betting tab looks up .lbl/.val by exact class name via querySelector, so renaming would have silently broken that feature the moment this shipped. Instead added a cell-icon span and restyled .profile-stat-cell itself to match highlight-chip's exact visual language (same glow filter, same gold value color, same stacked label-above-value layout) while keeping .lbl/.val intact — genuinely identical appearance, compare feature fully preserved. .val.pos/.val.neg still override to green/red as before, so P/L and fines keep their meaningful colour rather than turning uniformly gold. Confirmed via an actual render using the real values from the report (+$223.66, 12-5-0, 300,000 XP, etc.) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10200,16 +10200,16 @@ function openBoardProfile(m, name){
 
     <div class="profile-stat-category" data-cat="betting">
       <div class="profile-stat-group-label">Multis</div>
-      <div class="profile-stat-cell" data-compare-key="pl"><span class="lbl">Lifetime P/L</span><span class="val ${lifetime.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(lifetime.pl)}</span></div>
-      <div class="profile-stat-cell" data-compare-key="record"><span class="lbl">Record</span><span class="val">${lifetime.wins}-${lifetime.losses}-${lifetime.voids}</span></div>
-      <div class="profile-stat-cell" data-compare-key="winPct"><span class="lbl">Win%</span><span class="val">${(lifetime.winPct*100).toFixed(0)}%</span></div>
-      <div class="profile-stat-cell" data-compare-key="avgLeg"><span class="lbl">Avg Leg Price</span><span class="val">${lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—'}</span></div>
-      <div class="profile-stat-cell wide" data-compare-key="seasonScore"><span class="profile-stat-sub"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></span></div>
+      <div class="profile-stat-cell" data-compare-key="pl"><span class="cell-icon">💵</span><div><span class="lbl">Lifetime P/L</span><span class="val ${lifetime.pl >= 0 ? 'pos' : 'neg'}">${fmtMoney(lifetime.pl)}</span></div></div>
+      <div class="profile-stat-cell" data-compare-key="record"><span class="cell-icon">📊</span><div><span class="lbl">Record</span><span class="val">${lifetime.wins}-${lifetime.losses}-${lifetime.voids}</span></div></div>
+      <div class="profile-stat-cell" data-compare-key="winPct"><span class="cell-icon">📈</span><div><span class="lbl">Win%</span><span class="val">${(lifetime.winPct*100).toFixed(0)}%</span></div></div>
+      <div class="profile-stat-cell" data-compare-key="avgLeg"><span class="cell-icon">🎯</span><div><span class="lbl">Avg Leg Price</span><span class="val">${lifetime.avgLeg > 0 ? '@ ' + lifetime.avgLeg.toFixed(2) : '—'}</span></div></div>
+      <div class="profile-stat-cell wide" data-compare-key="seasonScore"><span class="cell-icon">⭐</span><span class="profile-stat-sub"><span class="lbl">Season Score</span><span class="val">${d.dataScore.toFixed(2)}</span></span></div>
 
       <div class="profile-stat-group-label">Individual</div>
-      <div class="profile-stat-cell" data-compare-key="indRecord"><span class="lbl">Record</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div>
-      <div class="profile-stat-cell" data-compare-key="indWinPct"><span class="lbl">Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div>
-      <div class="profile-stat-cell wide" data-compare-key="legs"><span class="profile-stat-sub"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></span></div>
+      <div class="profile-stat-cell" data-compare-key="indRecord"><span class="cell-icon">📊</span><div><span class="lbl">Record</span><span class="val">${lifetime.indWin}-${lifetime.indLoss}</span></div></div>
+      <div class="profile-stat-cell" data-compare-key="indWinPct"><span class="cell-icon">📈</span><div><span class="lbl">Win%</span><span class="val">${(lifetime.indWinPct*100).toFixed(0)}%</span></div></div>
+      <div class="profile-stat-cell wide" data-compare-key="legs"><span class="cell-icon">🎫</span><span class="profile-stat-sub"><span class="lbl">Legs Placed</span><span class="val">${lifetime.legs}</span></span></div>
 
       <div class="profile-form-section" id="profileFormSection" style="grid-column:1/-1; display:none;">
         <div class="profile-form-label">Recent Form</div>
@@ -10274,12 +10274,12 @@ function openBoardProfile(m, name){
 
     <div class="profile-stat-category" data-cat="fines" style="display:none;">
       <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Comes out of the shared Casino Pot, not this balance — only counts fines since this feature launched, not past-season totals.</div>
-      <div class="profile-stat-cell"><span class="lbl">Losing Legs</span><span class="val neg" id="profileFinesLegsVal">${m.linkedUid ? '…' : '—'}</span></div>
-      <div class="profile-stat-cell"><span class="lbl">MIA Legs</span><span class="val neg" id="profileFinesMIAVal">${m.linkedUid ? '…' : '—'}</span></div>
-      <div class="profile-stat-cell"><span class="lbl">Under $1.22 Legs</span><span class="val neg" id="profileFinesLowOddsVal">${m.linkedUid ? '…' : '—'}</span></div>
-      <div class="profile-stat-cell"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">${m.linkedUid ? '…' : '—'}</span></div>
-      <div class="profile-stat-cell"><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">${m.linkedUid ? '…' : '—'}</span></div>
-      <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">${m.linkedUid ? '…' : '—'}</span></span></div>
+      <div class="profile-stat-cell"><span class="cell-icon">⚠️</span><div><span class="lbl">Losing Legs</span><span class="val neg" id="profileFinesLegsVal">${m.linkedUid ? '…' : '—'}</span></div></div>
+      <div class="profile-stat-cell"><span class="cell-icon">👻</span><div><span class="lbl">MIA Legs</span><span class="val neg" id="profileFinesMIAVal">${m.linkedUid ? '…' : '—'}</span></div></div>
+      <div class="profile-stat-cell"><span class="cell-icon">📉</span><div><span class="lbl">Under $1.22 Legs</span><span class="val neg" id="profileFinesLowOddsVal">${m.linkedUid ? '…' : '—'}</span></div></div>
+      <div class="profile-stat-cell"><span class="cell-icon">❌</span><div><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">${m.linkedUid ? '…' : '—'}</span></div></div>
+      <div class="profile-stat-cell"><span class="cell-icon">🚫</span><div><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">${m.linkedUid ? '…' : '—'}</span></div></div>
+      <div class="profile-stat-cell wide"><span class="cell-icon">💸</span><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">${m.linkedUid ? '…' : '—'}</span></span></div>
     </div>
 
     <div class="profile-stat-category" data-cat="activity" style="display:none;">
@@ -10645,9 +10645,9 @@ function openTippingOnlyProfile(uid, name){
 
     <div class="profile-stat-category" data-cat="fines" style="display:none;">
       <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Comes out of the shared Casino Pot, not this balance — only counts fines since this feature launched, not past-season totals.</div>
-      <div class="profile-stat-cell"><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">…</span></div>
-      <div class="profile-stat-cell"><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">…</span></div>
-      <div class="profile-stat-cell wide"><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">…</span></span></div>
+      <div class="profile-stat-cell"><span class="cell-icon">❌</span><div><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">…</span></div></div>
+      <div class="profile-stat-cell"><span class="cell-icon">🚫</span><div><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">…</span></div></div>
+      <div class="profile-stat-cell wide"><span class="cell-icon">💸</span><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">…</span></span></div>
     </div>
 
     <div class="profile-stat-category" data-cat="activity" style="display:none;">

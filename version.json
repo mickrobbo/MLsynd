@@ -1,8 +1,7 @@
 {
-  "version": "2026-09-02.34",
+  "version": "2026-09-02.35",
   "date": "2026-09-02",
   "changes": [
-    "Fully rebuilt the Casino tab \u2014 found the real cause of the two different text colours (a leftover inline style using a different gold shade than the newer cards), and rather than patch around it, unified every item onto the same card style. Casino XP/Lifetime XP and Tier/Bounties get their own bubbles now instead of sharing one, every icon has the same glow, and everything is reordered by relevance: Tier, Record, Casino Win Rate, Biggest Win, Most Played, Casino XP, Lifetime XP, Bounties.",
-    "Found and fixed the same paired-cell issue in the Tipping tab (Season Points and Record were sharing one bubble) while working in this part of the profile."
+    "Betting and Fines tabs now match Casino and Tipping's polish \u2014 every stat has its own icon and the same glow treatment, no more plain text-only rows. Positive/negative colouring (green P/L, red fines) still works exactly as before."
   ]
 }
