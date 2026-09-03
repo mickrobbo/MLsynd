@@ -3166,9 +3166,10 @@
     background:linear-gradient(165deg, rgba(255,224,150,.05), rgba(0,0,0,.3));
     border:1px solid rgba(203,177,102,.22); box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 4px 14px rgba(0,0,0,.3);
   }
+  .profile-radar-title-row{ display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:6px; }
   .profile-radar-title{
     text-align:center; font-family:'Barlow Condensed', sans-serif; font-size:13px; font-weight:700;
-    letter-spacing:1.5px; text-transform:uppercase; color:var(--brass-dim); margin-bottom:6px;
+    letter-spacing:1.5px; text-transform:uppercase; color:var(--brass-dim);
   }
   /* .radar-plot-wrap is a real square (aspect-ratio locked, not just
      assumed) — the label percentages computed in JS are only correct if
@@ -3208,9 +3209,16 @@
      stat-cell, since these are meant to be the "wow, look at that" facts,
      not routine numbers. Hidden entirely when nothing qualifies (see the
      JS gate) rather than showing hollow zeros. ---- */
-  .profile-highlights{ display:flex; gap:10px; margin:16px 0 4px; flex-wrap:wrap; }
+  /* Stacked full-width, not 3-across — three across on a ~360px phone
+     screen gives each chip roughly 100-110px, nowhere near enough for a
+     value like "+456,176 XP" to sit on one line without either wrapping
+     mid-number ("+456,1" / "76 XP", which is what actually happened and
+     genuinely looks broken) or getting cut off. This is the reliable fix
+     for "no wrapping, no cutting off" — not another wrap/truncate tweak,
+     genuinely giving each card the width it needs. */
+  .profile-highlights{ display:flex; flex-direction:column; gap:8px; margin:16px 0 4px; }
   .highlight-chip{
-    flex:1; min-width:110px; display:flex; align-items:center; gap:10px;
+    width:100%; display:flex; align-items:center; gap:10px;
     background:linear-gradient(165deg, rgba(255,224,150,.1), rgba(0,0,0,.28));
     border:1px solid rgba(203,177,102,.3); border-radius:14px; padding:11px 13px;
     box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 3px 8px rgba(0,0,0,.25);

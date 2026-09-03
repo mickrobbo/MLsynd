@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.30",
+  "version": "2026-09-02.32",
   "date": "2026-09-02",
   "changes": [
-    "Fixed the Casino Pot celebration popup firing a full \"JACKPOT!\" animation for the one-time legacy cleanup, days after it actually happened, looking identical to a real distribution. It no longer treats a one-off admin correction the same as a genuine scheduled draw. The XP credited was always correct \u2014 this only affected the popup."
+    "Added an info button next to the radar chart's \"Snapshot\" title \u2014 tap it for a plain explanation of what Betting, Casino, Tipping, and Clean actually measure, and what the dashed reference line means."
   ]
 }
