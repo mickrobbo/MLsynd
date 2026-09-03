@@ -129,7 +129,6 @@ async function warResolve(delta, label, wasWar){
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Casino War win' : 'Casino War loss', { silent: true, detail: { type: 'cards', playerCards: [warPlayerCard], bankerCards: [warDealerCard] } });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 }
 async function warGoToWar(){
   const balance = await getXPBalance();

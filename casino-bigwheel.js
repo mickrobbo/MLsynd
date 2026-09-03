@@ -234,7 +234,6 @@ async function bigWheelSpinInner(){
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Big Wheel win' : 'Big Wheel loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 }
 document.getElementById('bigWheelSpinBtn').addEventListener('click', bigWheelSpin);
 // ================= /Big Wheel =================

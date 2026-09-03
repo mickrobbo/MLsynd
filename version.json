@@ -1,9 +1,8 @@
 {
-  "version": "2026-09-02.26",
+  "version": "2026-09-02.28",
   "date": "2026-09-02",
   "changes": [
-    "Added Dynamic Social Titles to profiles \u2014 High Roller, The Whale, Fortress, Sharpshooter, Money Machine \u2014 earned automatically from real stats, not assigned.",
-    "Added Rivalry History \u2014 opening someone else's profile now shows your Challenge record against them and the net XP that's changed hands between you, lifetime.",
-    "Added a Comparison Radar chart \u2014 Betting, Casino, Tipping, and a Clean Record score all plotted at once against a 50% reference line."
+    "Fixed profile highlight cards spilling text past their edges (\"Video Poker\", \"+9,000,000 XP\") \u2014 a real flexbox sizing bug, now genuinely fixed, not just tucked out of view.",
+    "Fixed the radar chart's Casino and Clean Record labels getting cut off to just \"CA\" and \"RD\" \u2014 the chart is slightly more compact now so there's real room for the full label on every axis."
   ]
 }

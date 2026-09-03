@@ -360,7 +360,6 @@ async function slotsSpin(){
   if(totalDelta !== 0 && !goesToGamble) await awardXP(totalDelta, totalDelta > 0 ? 'Slots free spin win' : 'Slots loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
   slotsUpdateTotalBetHint();
   if(goesToGamble) slotsOfferGamble(totalDelta);
   }catch(e){
@@ -537,7 +536,6 @@ async function slotsGambleClose(){
   slotsGambleBusy = false;
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 }
 document.getElementById('slotsGambleRedBtn').addEventListener('click', () => slotsGambleGuess('color', 'red'));
 document.getElementById('slotsGambleBlackBtn').addEventListener('click', () => slotsGambleGuess('color', 'black'));

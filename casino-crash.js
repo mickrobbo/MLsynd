@@ -325,7 +325,6 @@ async function crashResolve(payout, atMult, won){
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Crash win' : 'Crash loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 
   // Reset the rocket/graph to a fresh idle state a moment after the
   // explosion/settle has actually had time to play, rather than snapping

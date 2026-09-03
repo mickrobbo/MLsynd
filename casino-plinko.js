@@ -248,7 +248,6 @@ async function plinkoDropInner(){
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Plinko win' : 'Plinko loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 }
 document.getElementById('plinkoDropBtn').addEventListener('click', plinkoDrop);
 document.getElementById('plinkoDropTopBtn').addEventListener('click', plinkoDrop);

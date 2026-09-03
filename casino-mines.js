@@ -251,7 +251,6 @@ async function minesResolve(payout){
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Mines win' : 'Mines loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 }
 document.getElementById('minesStartBtn').addEventListener('click', minesStart);
 document.getElementById('minesStartTopBtn').addEventListener('click', minesStart);

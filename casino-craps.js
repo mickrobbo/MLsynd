@@ -529,5 +529,4 @@ async function crapsRollInner(){
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Craps win' : 'Craps loss', { silent: true, detail: { type: 'dice', a, b, total } });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 }

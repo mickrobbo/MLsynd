@@ -115,6 +115,11 @@ async function donFlip(choice){
       donFlipping = false; donSetButtonsDisabled(false);
       return;
     }
+    if(bet > CASINO_MAX_BET_PER_HAND){
+      errEl.textContent = `Maximum starting bet is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`;
+      donFlipping = false; donSetButtonsDisabled(false);
+      return;
+    }
     const balance = await getXPBalance();
     if(balance == null){
       errEl.textContent = 'Could not check your XP balance — try again.';
@@ -192,7 +197,6 @@ async function donFlip(choice){
     await awardXP(-donBetAmount, 'Double or Nothing loss', { silent: true });
     const bal = await getXPBalance();
     updateXPBalanceDisplay(bal);
-    renderXPLog();
 
     donResetToIdle();
     // Coin resets to idle (fresh appearance) once the tumble-away has had
@@ -224,7 +228,6 @@ async function donBank(){
   await awardXP(delta, 'Double or Nothing win', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 
   donResetToIdle();
   donSetButtonsDisabled(false);

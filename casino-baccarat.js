@@ -213,7 +213,6 @@ async function bacResolve(){
   if(delta !== 0) await awardXP(delta, delta > 0 ? 'Baccarat win' : 'Baccarat loss', { silent: true, detail: { type: 'cards', playerCards: bacPlayerHand, bankerCards: bacBankerHand, playerTotal, bankerTotal } });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 }
 function bacNewHand(){
   document.getElementById('bacBetPanel').style.display = 'block';

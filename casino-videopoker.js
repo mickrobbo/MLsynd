@@ -166,7 +166,6 @@ async function vpDraw(){
   await awardXP(delta, delta > 0 ? `Video Poker — ${result.label}` : 'Video Poker loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 
   vpStage = 'idle';
   document.getElementById('vpDrawBtn').disabled = false;

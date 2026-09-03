@@ -2523,13 +2523,24 @@ function updateProfileRadar(forName){
     { key: 'betting', label: 'Betting', value: s.bettingWinPct },
     { key: 'casino', label: 'Casino', value: s.casinoWinPct },
     { key: 'tipping', label: 'Tipping', value: s.tippingWinPct },
-    { key: 'clean', label: 'Clean Record', value: cleanRecord }
+    { key: 'clean', label: 'Clean', value: cleanRecord }
   ];
   // Nothing to show at all yet — stay hidden rather than draw an empty
   // diamond with four question marks.
   if(axes.every(a => a.value == null)){ wrap.style.display = 'none'; return; }
 
-  const cx = 100, cy = 100, R = 70;
+  // R and the label offset were originally 70/+18, which left nowhere
+  // near enough room in the 200x200 viewBox for the left/right axis
+  // labels — text-anchor:start/end means that text extends AWAY from its
+  // anchor point by its full width, not split evenly like the top/bottom
+  // labels are (those use text-anchor:middle, which is why "Betting" and
+  // "Tipping" never had this problem). "Casino" and "Clean Record" (now
+  // shortened to "Clean") were both getting clipped by the SVG's own
+  // edge, showing only their tail end ("CA", "RD"). Pulled the plot in
+  // and the label ring closer to it, which leaves a genuine ~30px of
+  // room on each side for real text instead of running the numbers and
+  // hoping.
+  const cx = 100, cy = 100, R = 55;
   const angleFor = i => -Math.PI / 2 + i * (Math.PI / 2);
   const pointFor = (i, pct) => {
     const a = angleFor(i);
@@ -2538,7 +2549,7 @@ function updateProfileRadar(forName){
   };
   const labelPointFor = i => {
     const a = angleFor(i);
-    const d = R + 18;
+    const d = R + 12;
     return [cx + d * Math.cos(a), cy + d * Math.sin(a)];
   };
 
@@ -3171,7 +3182,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.26"; // Three new profile features per request. (1) Dynamic Social Titles — 5 rules (High Roller/The Whale/Fortress/Sharpshooter/Money Machine), computed from data the Casino/Tipping/Fines loaders already fetch, zero new network calls, shows only the single best-qualifying one. (2) Rivalry History — running series score + net XP swing against whoever's profile is open, built from one fetch of the existing /challenges.json (same data the Challenges tab reads), hidden on your own profile and hidden entirely if you've never actually played each other. (3) Comparison Radar — 4-axis SVG chart (Betting/Casino/Tipping win% + a Fines-derived Clean Record score) against a fixed 50% par line rather than a true syndicate average, which would need fetching and scoring every member on every profile open. Caught and fixed two real mistakes mid-build rather than shipping them: an edit that accidentally deleted loadProfileActivity's own function signature line (caught via an immediate syntax check, not assumed fine), and — more importantly — nearly reintroduced an already-documented bug where an entrance animation tied directly to a late async display:none->visible toggle got stuck invisible before (see the long comment above profileSectionIn); removed the wrapper-level entrance animations from all three new elements to match the established safe pattern, keeping only the radar polygon's animation (safe, since it's a fresh SVG element created via innerHTML each draw, not a toggle on something pre-existing) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.28"; // Two real visual bugs fixed from live screenshots, urgent per report. (1) Highlight chip text ("Video Poker", "+9,000,000 XP") was spilling straight out past the card's rounded border — the unnamed wrapping div around hl-label/hl-val had no explicit width constraint, so as a flex child it defaulted to min-width:auto and refused to shrink below its content's natural width, meaning the overflow:hidden/ellipsis already on hl-val never actually got the chance to engage. Added min-width:0 to that div. (2) Radar chart's left/right axis labels ("Casino", "Clean Record") were getting clipped down to just their tail end ("CA", "RD") by the SVG's own edge — text-anchor:start/end extends text AWAY from its anchor by its full width, not split evenly like the top/bottom labels (text-anchor:middle) which is why those never had the problem. Pulled the plot radius in from 70 to 55 and the label offset from +18 to +12, shortened "Clean Record" to "Clean", and trimmed the label font down slightly — leaves a genuine ~33px of room per side now, checked against actual character-width math, not just "probably enough" — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

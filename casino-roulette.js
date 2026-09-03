@@ -546,7 +546,6 @@ async function rouletteSpinInner(){
   if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? 'Roulette win' : 'Roulette loss', { silent: true, detail: { type: 'roulette', number: winningPocket, color } });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 
   // Bets are consumed by the spin, same as chips being swept off a real
   // table — clear everything ready for the next round. Snapshot them first
