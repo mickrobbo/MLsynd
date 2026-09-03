@@ -1,9 +1,9 @@
 {
-  "version": "2026-09-02.24",
+  "version": "2026-09-02.26",
   "date": "2026-09-02",
   "changes": [
-    "Found and fixed the real cause of the Casino Pot distributing three times in one day, well outside its schedule: the admin \"Close period\" button was always force-closing the current, still-open period, not just genuinely overdue ones. That capability is now removed entirely \u2014 the current period can never be closed early by this button again.",
-    "Removed the redundant \"Rules\" hub screen \u2014 it opened the exact same info every individual game's own Rules button already shows.",
-    "Blackjack, Baccarat, War, and Slots can now take a custom bet amount by tapping the chip, matching every other game."
+    "Added Dynamic Social Titles to profiles \u2014 High Roller, The Whale, Fortress, Sharpshooter, Money Machine \u2014 earned automatically from real stats, not assigned.",
+    "Added Rivalry History \u2014 opening someone else's profile now shows your Challenge record against them and the net XP that's changed hands between you, lifetime.",
+    "Added a Comparison Radar chart \u2014 Betting, Casino, Tipping, and a Clean Record score all plotted at once against a 50% reference line."
   ]
 }

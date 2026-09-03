@@ -1870,6 +1870,7 @@
       <div id="profileAvatarArea" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
       <h2 id="profileName">Name</h2>
       <div class="profile-name-edit-slot" id="profileNameEditSlot"></div>
+      <div class="profile-title-flair" id="profileTitleFlair" style="display:none;"></div>
       <div class="profile-flair" id="profileFlair" style="display:none;"></div>
       <div class="profile-live-status" id="profileLiveStatus" style="display:none;"></div>
       <div class="profile-badges" id="profileBadges"></div>
@@ -1879,7 +1880,13 @@
       <div class="profile-prestige-bar-label" id="profilePrestigeBarLabel"></div>
       <div class="profile-prestige-breakdown" id="profilePrestigeBreakdown"></div>
     </div>
+    <div class="profile-highlights" id="profileHighlights" style="display:none;"></div>
+    <div class="profile-radar-wrap" id="profileRadarWrap" style="display:none;">
+      <div class="profile-radar-title">Snapshot</div>
+      <div id="profileRadarChart"></div>
+    </div>
     <div class="profile-headtohead" id="profileHeadToHead" style="display:none;"></div>
+    <div class="profile-rivalry" id="profileRivalry" style="display:none;"></div>
     <div class="profile-action-row" id="profileActionRow" style="display:none;">
       <button type="button" class="pill-btn pill-btn-action" id="profileChallengeBtn">⚔️ Challenge</button>
       <button type="button" class="pill-btn pill-btn-action" id="profileNudgeBtn">👋 Nudge</button>
@@ -2461,6 +2468,136 @@ let tippingParticipantNames = {};
 // session, same limitation, same reason (recomputing it independently
 // would mean re-fetching every finished game's picks a second time).
 let tippingRecordCache = {};
+// Dynamic Social Titles — computed live from data already being fetched
+// for the profile's own tabs (Casino stats, Tipping record, Fines), not
+// a new set of network calls. Each loader (loadProfileGameStats,
+// loadProfileCasinoBadges, loadProfileFines) writes its own piece into
+// profileTitleStats as it lands, then calls updateProfileTitle — since
+// the three loaders run in parallel and finish at different times, this
+// lets the title upgrade incrementally as more data arrives rather than
+// needing to coordinate a "wait for all three" sync point. Reset to {}
+// at the top of both openBoardProfile/openTippingOnlyProfile.
+let profileTitleStats = {};
+const PROFILE_TITLE_RULES = [
+  // Highest priority first — only the single best-qualifying title shows,
+  // to avoid cluttering the header with competing labels.
+  { id: 'highroller', icon: '🃏', label: 'High Roller', check: s => s.biggestWin != null && s.biggestWin >= 1000000 },
+  { id: 'whale', icon: '🐋', label: 'The Whale', check: s => s.avgBet != null && s.avgBet >= 50000 },
+  { id: 'fortress', icon: '🛡️', label: 'Fortress', check: s => s.finesTotal === 0 && s.hasPlayHistory },
+  { id: 'sharpshooter', icon: '🎯', label: 'Sharpshooter', check: s => s.tippingDecided != null && s.tippingDecided >= 20 && s.tippingWinPct >= 70 },
+  { id: 'moneymachine', icon: '🔥', label: 'Money Machine', check: s => s.casinoDecided != null && s.casinoDecided >= 20 && s.casinoWinPct >= 60 }
+];
+function updateProfileTitle(forName){
+  if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
+  const el = document.getElementById('profileTitleFlair');
+  if(!el) return;
+  const match = PROFILE_TITLE_RULES.find(r => r.check(profileTitleStats));
+  if(match){
+    el.innerHTML = `<span class="title-flair-icon">${match.icon}</span> ${escapeHtml(match.label)}`;
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// Comparison Radar — 4 axes (Betting/Casino/Tipping win%, plus a "Clean
+// Record" score derived from fines: 100 minus 10 per fine incident,
+// floored at 0 — a simple, deliberately-round scoring rule, not a
+// precise metric, documented as a design choice rather than presented
+// as more exact than it is). Compared against a fixed 50% "par" line
+// rather than a true syndicate average — a genuine average would need
+// fetching and scoring every member's full history on every profile
+// open, which is real cost for a comparison baseline this app doesn't
+// otherwise need. Redraws every time any one axis's data arrives, so it
+// fills in progressively rather than waiting for all three async loaders
+// to finish before showing anything.
+function updateProfileRadar(forName){
+  if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
+  const wrap = document.getElementById('profileRadarWrap');
+  const host = document.getElementById('profileRadarChart');
+  if(!wrap || !host) return;
+
+  const s = profileTitleStats;
+  const cleanRecord = s.finesTotal != null ? Math.max(0, 100 - s.finesTotal * 10) : null;
+  const axes = [
+    { key: 'betting', label: 'Betting', value: s.bettingWinPct },
+    { key: 'casino', label: 'Casino', value: s.casinoWinPct },
+    { key: 'tipping', label: 'Tipping', value: s.tippingWinPct },
+    { key: 'clean', label: 'Clean Record', value: cleanRecord }
+  ];
+  // Nothing to show at all yet — stay hidden rather than draw an empty
+  // diamond with four question marks.
+  if(axes.every(a => a.value == null)){ wrap.style.display = 'none'; return; }
+
+  const cx = 100, cy = 100, R = 70;
+  const angleFor = i => -Math.PI / 2 + i * (Math.PI / 2);
+  const pointFor = (i, pct) => {
+    const a = angleFor(i);
+    const d = (Math.max(0, Math.min(100, pct)) / 100) * R;
+    return [cx + d * Math.cos(a), cy + d * Math.sin(a)];
+  };
+  const labelPointFor = i => {
+    const a = angleFor(i);
+    const d = R + 18;
+    return [cx + d * Math.cos(a), cy + d * Math.sin(a)];
+  };
+
+  // Grid: three concentric diamonds (33/66/100%) plus the four axis
+  // spokes, all in a flat muted tone so the actual data reads as the
+  // only "loud" thing on the chart.
+  const gridRings = [33, 66, 100].map(pct => {
+    const pts = axes.map((a, i) => pointFor(i, pct).join(',')).join(' ');
+    return `<polygon points="${pts}" fill="none" stroke="rgba(239,234,216,.12)" stroke-width="1"/>`;
+  }).join('');
+  const spokes = axes.map((a, i) => {
+    const [x, y] = pointFor(i, 100);
+    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(239,234,216,.12)" stroke-width="1"/>`;
+  }).join('');
+  // 50% "par" reference — dashed, so it reads as a baseline to compare
+  // against rather than competing visually with the real data polygon.
+  const parPts = axes.map((a, i) => pointFor(i, 50).join(',')).join(' ');
+  const parRing = `<polygon points="${parPts}" fill="none" stroke="rgba(203,177,102,.4)" stroke-width="1" stroke-dasharray="3,3"/>`;
+
+  // Data polygon — axes with no value yet plot at 0 (center), same as a
+  // genuinely low score would, since there's no way to visually distinguish
+  // "unknown" from "zero" on a filled polygon without a second visual
+  // language. The per-axis label row below the chart is what actually
+  // tells the difference (a real "—" instead of "0%").
+  const dataPts = axes.map((a, i) => pointFor(i, a.value || 0).join(',')).join(' ');
+  const dataPolygon = `<polygon points="${dataPts}" fill="rgba(203,177,102,.28)" stroke="var(--brass-light)" stroke-width="2" stroke-linejoin="round" class="profile-radar-data"/>`;
+  const dataDots = axes.map((a, i) => {
+    if(a.value == null) return '';
+    const [x, y] = pointFor(i, a.value);
+    return `<circle cx="${x}" cy="${y}" r="3" fill="var(--brass-light)"/>`;
+  }).join('');
+
+  const labels = axes.map((a, i) => {
+    const [x, y] = labelPointFor(i);
+    const anchor = Math.abs(Math.cos(angleFor(i))) < .3 ? 'middle' : (Math.cos(angleFor(i)) > 0 ? 'start' : 'end');
+    return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" class="profile-radar-label">${escapeHtml(a.label)}</text>`;
+  }).join('');
+
+  host.innerHTML = `<svg viewBox="0 0 200 200" class="profile-radar-svg">${gridRings}${spokes}${parRing}${dataPolygon}${dataDots}${labels}</svg>`;
+
+  // Value row underneath — the actual numbers, since a shape alone can be
+  // read at a glance but not precisely. "—" for anything not loaded yet,
+  // not a guessed 0%.
+  const valueRow = axes.map(a =>
+    `<div class="radar-val-item"><span class="rv-lbl">${escapeHtml(a.label)}</span><span class="rv-num">${a.value != null ? Math.round(a.value) + '%' : '—'}</span></div>`
+  ).join('');
+  const existingRow = host.nextElementSibling;
+  if(existingRow && existingRow.classList && existingRow.classList.contains('profile-radar-values')){
+    existingRow.innerHTML = valueRow;
+  } else {
+    const row = document.createElement('div');
+    row.className = 'profile-radar-values';
+    row.innerHTML = valueRow;
+    host.insertAdjacentElement('afterend', row);
+  }
+
+  wrap.style.display = 'block';
+}
+
 
 function applyRoleTabRestrictions(){
   if(currentUserRole !== 'tipping') return;
@@ -3034,7 +3171,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.24"; // Three fixes per live member report. (1) The real cause of the Casino Pot firing three times in one day, well outside its schedule: "Close period & distribute pot" always included the current, still-open period in what it distributed ([...stale, casinoPotPeriodKey()]), not just genuinely overdue ones — every click force-closed the live period early regardless of the confirm() dialog. Removed that entirely; the button (renamed "Close any overdue periods") now only ever touches genuinely stale periods and refuses to run at all if none exist — the current period can no longer be force-closed by this button, full stop. (2) Removed the hub-level "Rules" screen — confirmed via its own code comment that it opened "the exact same modal used by each table's own Rules button," genuine double-handling. openCasinoRules()/CASINO_RULES themselves untouched, every individual game's own Rules button still works exactly as before. (3) Blackjack, Baccarat, War, and Slots were missing the "click the chip for a custom bet" feature every other game already had (Mines, Video Poker, Roulette, Craps, Plinko, Big Wheel, Crash, Double or Nothing) — added to all four, each respecting that game's own can't-change-bet-mid-hand state — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.26"; // Three new profile features per request. (1) Dynamic Social Titles — 5 rules (High Roller/The Whale/Fortress/Sharpshooter/Money Machine), computed from data the Casino/Tipping/Fines loaders already fetch, zero new network calls, shows only the single best-qualifying one. (2) Rivalry History — running series score + net XP swing against whoever's profile is open, built from one fetch of the existing /challenges.json (same data the Challenges tab reads), hidden on your own profile and hidden entirely if you've never actually played each other. (3) Comparison Radar — 4-axis SVG chart (Betting/Casino/Tipping win% + a Fines-derived Clean Record score) against a fixed 50% par line rather than a true syndicate average, which would need fetching and scoring every member on every profile open. Caught and fixed two real mistakes mid-build rather than shipping them: an edit that accidentally deleted loadProfileActivity's own function signature line (caught via an immediate syntax check, not assumed fine), and — more importantly — nearly reintroduced an already-documented bug where an entrance animation tied directly to a late async display:none->visible toggle got stuck invisible before (see the long comment above profileSectionIn); removed the wrapper-level entrance animations from all three new elements to match the established safe pattern, keeping only the radar polygon's animation (safe, since it's a fresh SVG element created via innerHTML each draw, not a toggle on something pre-existing) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8021,6 +8158,52 @@ document.getElementById('closeMonthPotBtn').addEventListener('click', async () =
 // every other loadProfileXXX function's own signature — works the same
 // whether you're looking at your own profile or someone else's, exactly
 // like the Casino/Tipping/Fines tabs already do.
+// Rivalry History — the running series score between the viewer and
+// whoever's profile is open, built entirely from /challenges.json (one
+// fetch, same data the Challenges tab already reads). Only meaningful on
+// someone ELSE's profile — hidden on your own, and hidden entirely if
+// the two of you have never actually resolved a challenge, rather than
+// show a hollow "0-0" record. winnerUid null on a resolved challenge
+// means a push (see compareChallengeResults) — doesn't count as a win
+// for either side, but the stake was refunded so it doesn't move the
+// XP swing either.
+async function loadProfileRivalry(viewedUid, forName){
+  const wrap = document.getElementById('profileRivalry');
+  if(!wrap) return;
+  if(!viewedUid || !currentUserUid || viewedUid === currentUserUid){ wrap.style.display = 'none'; return; }
+  try{
+    const all = await fetchAllChallenges();
+    if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
+    const between = Object.values(all).filter(c => c && c.status === 'resolved' &&
+      ((c.fromUid === currentUserUid && c.toUid === viewedUid) || (c.fromUid === viewedUid && c.toUid === currentUserUid)));
+    if(between.length === 0){ wrap.style.display = 'none'; return; }
+
+    let myWins = 0, theirWins = 0, pushes = 0, netSwing = 0;
+    between.forEach(c => {
+      if(c.winnerUid === currentUserUid){ myWins++; netSwing += (c.stakeXp || 0); }
+      else if(c.winnerUid === viewedUid){ theirWins++; netSwing -= (c.stakeXp || 0); }
+      else pushes++;
+    });
+
+    const leadText = myWins > theirWins ? `You lead ${myWins}-${theirWins}${pushes ? `-${pushes}` : ''}`
+      : theirWins > myWins ? `They lead ${theirWins}-${myWins}${pushes ? `-${pushes}` : ''}`
+      : `Tied ${myWins}-${theirWins}${pushes ? `-${pushes}` : ''}`;
+    const swingText = netSwing > 0 ? `+${netSwing.toLocaleString()} XP in your favor`
+      : netSwing < 0 ? `${Math.abs(netSwing).toLocaleString()} XP in their favor`
+      : 'Dead even on XP';
+
+    wrap.innerHTML = `
+      <div class="rivalry-icon">⚔️</div>
+      <div class="rivalry-text">
+        <span class="rivalry-lead">${escapeHtml(leadText)}</span>
+        <span class="rivalry-swing">${escapeHtml(swingText)} · ${between.length} Challenge${between.length === 1 ? '' : 's'} played</span>
+      </div>`;
+    wrap.style.display = 'flex';
+  }catch(e){
+    wrap.style.display = 'none';
+  }
+}
+
 async function loadProfileActivity(uid, forName){
   const area = document.getElementById('profileActivityArea');
   if(!area || !uid) return;
@@ -9922,6 +10105,11 @@ function openBoardProfile(m, name){
   document.getElementById('profileFlair').style.display = 'none'; // these two are static HTML (exist since page load) so a synchronous reset here is safe — clears the previous profile's value before the new async fetch lands
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
   document.getElementById('profileLiveStatus').style.display = 'none'; // also static HTML — same reasoning
+  document.getElementById('profileHighlights').style.display = 'none'; // same reasoning — static HTML, avoids the previous profile's chips flashing before loadProfileGameStats resolves for the new one
+  profileTitleStats = {};
+  document.getElementById('profileTitleFlair').style.display = 'none';
+  document.getElementById('profileRivalry').style.display = 'none';
+  document.getElementById('profileRadarWrap').style.display = 'none';
   document.getElementById('profileFlexBanner').style.display = 'none';
   // profileGameBreakdownSection is NOT reset here anymore — now that it
   // lives inside #profileStats' own rebuilt template (moved into the
@@ -9949,6 +10137,11 @@ function openBoardProfile(m, name){
   badgesArea.querySelectorAll('.profile-badge').forEach(wireProfileBadgeFlip);
 
   const lifetime = getLifetimeStats(name, currentState);
+  // Radar chart's Betting axis — available synchronously already (no
+  // fetch needed), unlike Casino/Tipping/Fines which arrive later via
+  // their own async loaders. Written here immediately so the chart can
+  // draw its Betting axis on the very first render rather than waiting.
+  profileTitleStats.bettingWinPct = (lifetime.wins + lifetime.losses) > 0 ? lifetime.winPct * 100 : null;
   document.getElementById('profileStats').innerHTML = `
     <div class="profile-cat-tabs">
       <button type="button" class="profile-cat-tab active" data-cat="betting">💰 Betting</button>
@@ -10146,6 +10339,7 @@ function openBoardProfile(m, name){
   loadProfileGameStats(m.linkedUid, name);
   loadProfileFines(m.linkedUid, name);
   loadProfileActivity(m.linkedUid, name);
+  loadProfileRivalry(m.linkedUid, name);
   loadProfileTippingDues(m.linkedUid, name);
   loadProfileLiveStatus(m.linkedUid, name);
   renderProfileAvatarSection(m);
@@ -10304,6 +10498,11 @@ function openTippingOnlyProfile(uid, name){
   document.getElementById('profileFlair').style.display = 'none';
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
   document.getElementById('profileLiveStatus').style.display = 'none';
+  document.getElementById('profileHighlights').style.display = 'none';
+  profileTitleStats = {};
+  document.getElementById('profileTitleFlair').style.display = 'none';
+  document.getElementById('profileRivalry').style.display = 'none';
+  document.getElementById('profileRadarWrap').style.display = 'none';
   // profileGameBreakdownSection reset removed here too — same reasoning
   // as openBoardProfile above, now that it's part of the rebuilt template.
   document.getElementById('profileFlexBanner').style.display = 'none';
@@ -10397,6 +10596,7 @@ function openTippingOnlyProfile(uid, name){
   loadProfileGameStats(uid, name);
   loadProfileFines(uid, name);
   loadProfileActivity(uid, name);
+  loadProfileRivalry(uid, name);
   loadProfileTippingDues(uid, name);
   loadProfileLiveStatus(uid, name);
   renderProfileAvatarSection(virtualMember);
@@ -10475,6 +10675,13 @@ async function loadProfileFines(uid, forName){
     if(lowOddsEl) lowOddsEl.textContent = lowOdds > 0 ? `${lowOdds} · ${lowOddsXP.toLocaleString()} XP` : '0';
     if(missedEl) missedEl.textContent = missed > 0 ? `${missed} · ${missedXP.toLocaleString()} XP` : '0';
     if(totalEl) totalEl.textContent = `${(legsXP + tipsXP + miaXP + lowOddsXP + missedXP).toLocaleString()} XP`;
+    // Dynamic Social Titles — Fortress checks this is exactly 0, not just
+    // "low", so a single old fine (however long ago) rules it out. That's
+    // deliberate: the title means a genuinely spotless record, not "pretty
+    // good lately."
+    profileTitleStats.finesTotal = legs + tips + mia + lowOdds + missed;
+    updateProfileTitle(forName);
+    updateProfileRadar(forName);
   }catch(e){
     allEls.forEach(el => { if(el) el.textContent = '—'; });
   }
@@ -10545,6 +10752,23 @@ async function loadProfileGameStats(linkedUid, forName){
       recordEl.textContent = decided > 0 ? `${overallWins}-${overallLosses}${winPct != null ? ` (${winPct}%)` : ''}` : '—';
     }
 
+    // Dynamic Social Titles — same perGame/biggest data as everything
+    // above, just also handed to the title system. avgBet approximates
+    // "how big does this person typically stake" from total XP volume
+    // divided by total plays — a rough measure, not exact (a few huge
+    // bets and many tiny ones average out the same as consistently
+    // medium ones), but good enough to distinguish an actual high-stakes
+    // player from someone who plays a lot for small amounts.
+    const totalGameXP = Object.values(perGame).reduce((s, g) => s + g.xp, 0);
+    const totalGameCount = Object.values(perGame).reduce((s, g) => s + g.count, 0);
+    profileTitleStats.biggestWin = biggest ? biggest.amount : null;
+    profileTitleStats.avgBet = totalGameCount > 0 ? totalGameXP / totalGameCount : null;
+    profileTitleStats.hasPlayHistory = totalGameCount > 0;
+    profileTitleStats.casinoDecided = overallWins + overallLosses;
+    profileTitleStats.casinoWinPct = (overallWins + overallLosses) > 0 ? (overallWins / (overallWins + overallLosses)) * 100 : null;
+    updateProfileTitle(forName);
+    updateProfileRadar(forName);
+
     if(biggest || topGame){
       cellEl.style.display = 'flex';
       const winEl = document.getElementById('profileBiggestWinVal');
@@ -10559,6 +10783,37 @@ async function loadProfileGameStats(linkedUid, forName){
         } else {
           playedEl.textContent = '—';
         }
+      }
+    }
+
+    // Highlights strip — a quick "here's what's notable" read before
+    // digging into the detailed tabs. Deliberately reuses biggest/
+    // overallWins/overallLosses/topGame computed just above rather than
+    // fetching anything fresh — same log, same pass, just also surfaced
+    // in a punchier, higher-visibility spot. Only shows a chip when
+    // there's something genuinely worth showing (a real win, a real
+    // decided record) — an empty or all-zero strip would read as
+    // broken, not impressive, so the whole thing stays hidden rather
+    // than show hollow placeholders.
+    const hlWrap = document.getElementById('profileHighlights');
+    if(hlWrap){
+      const chips = [];
+      if(biggest && biggest.amount > 0){
+        chips.push(`<div class="highlight-chip"><span class="hl-icon">🎰</span><div><span class="hl-label">Biggest Win</span><span class="hl-val">+${biggest.amount.toLocaleString()} XP</span></div></div>`);
+      }
+      const decidedTotal = overallWins + overallLosses;
+      if(decidedTotal >= 5){ // a handful of decided hands minimum — a 1-0 "100%" record isn't a highlight, it's noise
+        const winPctHl = Math.round((overallWins / decidedTotal) * 100);
+        chips.push(`<div class="highlight-chip"><span class="hl-icon">📊</span><div><span class="hl-label">Casino Win Rate</span><span class="hl-val">${winPctHl}%</span></div></div>`);
+      }
+      if(topGame && topGame[1].count >= 5){
+        chips.push(`<div class="highlight-chip"><span class="hl-icon">🎲</span><div><span class="hl-label">Most Played</span><span class="hl-val">${escapeHtml(topGame[0])}</span></div></div>`);
+      }
+      if(chips.length > 0){
+        hlWrap.innerHTML = chips.join('');
+        hlWrap.style.display = 'flex';
+      } else {
+        hlWrap.style.display = 'none';
       }
     }
 
@@ -10780,6 +11035,15 @@ async function loadProfileCasinoBadges(linkedUid, forName){
       } else {
         trEl.textContent = 'Visit Tipping tab to load';
       }
+    }
+    // Dynamic Social Titles — only meaningful once tippingRecordCache is
+    // actually populated (see the Tipping tab comment on why this is a
+    // lazy, session-scoped cache rather than a fresh fetch here).
+    if(tipRec && tipRec.total > 0){
+      profileTitleStats.tippingDecided = tipRec.total;
+      profileTitleStats.tippingWinPct = (tipRec.correct / tipRec.total) * 100;
+      updateProfileTitle(forName);
+      updateProfileRadar(forName);
     }
     const founding = await foundingRes.json(); // read once here, reused below for both badges and the flair line — a Response body can only be read once
     const prestige = computePrestigeScore(lifetime, bettingBoardScoreFor(linkedUid), tippingPoints);
