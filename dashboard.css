@@ -2233,8 +2233,35 @@
     0%,100%{ filter:drop-shadow(0 0 2px rgba(42,157,201,.55)); }
     50%{ filter:drop-shadow(0 0 7px rgba(42,157,201,.95)); }
   }
+  /* Sovereign and Immortal — deliberately stronger than every tier below
+     them, Diamond included: wider glow radius, higher peak opacity, and
+     (Immortal only) an actual colour-shift through the pulse, not just a
+     brighter version of the same static glow. This is the ring around
+     the avatar itself, not the small corner emblem — the emblem alone
+     was already built when these tiers shipped, but the ring is what
+     actually reads as "this person is different" at a glance on a
+     leaderboard, and it was missing entirely until now. */
+  .avatar-rankcard.tier-sovereign img, .avatar-rankcard.tier-sovereign .avatar-rankcard-fallback{
+    box-shadow:0 0 0 2px #a855f7, 0 0 16px -1px rgba(168,85,247,1), 0 3px 10px rgba(0,0,0,.45);
+    animation: rankCardSovereignPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes rankCardSovereignPulse{
+    0%,100%{ filter:drop-shadow(0 0 3px rgba(168,85,247,.7)); }
+    50%{ filter:drop-shadow(0 0 11px rgba(168,85,247,1)); }
+  }
+  .avatar-rankcard.tier-immortal img, .avatar-rankcard.tier-immortal .avatar-rankcard-fallback{
+    box-shadow:0 0 0 2px #f5c518, 0 0 18px -1px rgba(245,197,24,1), 0 3px 10px rgba(0,0,0,.5);
+    animation: rankCardImmortalPulse 3s ease-in-out infinite;
+  }
+  @keyframes rankCardImmortalPulse{
+    0%{ filter:drop-shadow(0 0 3px rgba(245,197,24,.7)) hue-rotate(0deg); }
+    50%{ filter:drop-shadow(0 0 13px rgba(245,197,24,1)) hue-rotate(180deg); }
+    100%{ filter:drop-shadow(0 0 3px rgba(245,197,24,.7)) hue-rotate(360deg); }
+  }
   @media (prefers-reduced-motion: reduce){
-    .avatar-rankcard.tier-diamond img, .avatar-rankcard.tier-diamond .avatar-rankcard-fallback{ animation:none; }
+    .avatar-rankcard.tier-diamond img, .avatar-rankcard.tier-diamond .avatar-rankcard-fallback,
+    .avatar-rankcard.tier-sovereign img, .avatar-rankcard.tier-sovereign .avatar-rankcard-fallback,
+    .avatar-rankcard.tier-immortal img, .avatar-rankcard.tier-immortal .avatar-rankcard-fallback{ animation:none; }
   }
   .avatar-rankcard-emblem{
     position:absolute; bottom:-4px; right:-4px; width:16px; height:16px; border-radius:50%;

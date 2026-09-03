@@ -3048,7 +3048,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.18"; // Inactive profile category pills were genuinely near-invisible against the felt background per report — border was only 22% opacity, fill was a near-transparent 2-22% gradient, text was full --muted grey. Gave them real definition: border bumped to 1.5px at 50% opacity, a visible warm-tinted fill instead of near-transparent, an inset highlight + outer shadow for a raised/premium card feel, and text brightened from --muted to --chalk. Active state's gold-fill glow strengthened slightly to keep it clearly the dominant "selected" signal against the now-more-visible inactive pills — dashboard.css only, no HTML/JS changes — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.19"; // Two real gaps closed per request, prompted by Josh actually being past 100M lifetime XP already (live case, not hypothetical). (1) Sovereign/Immortal never had achievement badges — added xp100m/xp1b to XP_MILESTONE_BADGES, same secrecy mechanism as everything else here (a badge only ever renders once the threshold's genuinely met, nothing "locked" is ever shown for a threshold not yet reached, so this reveals nothing to anyone who hasn't earned it). Parameterized badgeSvg with optional ringFill/innerFill so these two get a violet and a black-and-gold ring respectively instead of the standard gold every other badge uses — fully backward compatible, every existing badge is unaffected. (2) Found the actual reason Sovereign/Immortal weren't standing out on the leaderboard: the small corner emblem was built when these tiers shipped, but the avatar's own ring glow — the dominant visual signal — was never added. Built it stronger than Diamond (wider radius, higher peak opacity, Immortal gets an actual hue-shift through its pulse, not just a brighter static glow), plus a whole-row background hue for these two tiers specifically that overrides the plainer isMe/top3 tinting outright, per request. Deduplicated a tierKey declaration that ended up computed twice in the process — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3654,7 +3654,14 @@ const XP_MILESTONE_BADGES = [
   { key: 'xp100k', threshold: 100000, icon: '🥈', name: '100K Club' },
   { key: 'xp250k', threshold: 250000, icon: '🥇', name: '250K Club' },
   { key: 'xp500k', threshold: 500000, icon: '💎', name: '500K Club' },
-  { key: 'xp1m', threshold: 1000000, icon: '👑', name: 'Millionaire' }
+  { key: 'xp1m', threshold: 1000000, icon: '👑', name: 'Millionaire' },
+  // Same secrecy mechanism as the tiers themselves: these only ever
+  // appear on a profile once actually earned (see the ids.push(b.key)
+  // loop below — nothing "locked" is ever pre-rendered for a threshold
+  // not yet met), so adding them here doesn't reveal anything to anyone
+  // who hasn't already reached Sovereign or Immortal.
+  { key: 'xp100m', threshold: 100000000, icon: '🟣', name: 'Sovereign' },
+  { key: 'xp1b', threshold: 1000000000, icon: '⚡', name: 'Immortal' }
 ];
 function casinoBadgeRowHtml(icon, name, desc, unlocked){
   return `<div class="casino-badge-row ${unlocked ? 'unlocked' : 'locked'}">
@@ -8951,11 +8958,22 @@ async function renderXPLeaderboard(){
     area.innerHTML = rows.map((r, i) => {
       const isMe = r.uid === currentUserUid || r.name === currentUserName;
       const isTop3 = i < 3;
-      const bg = isMe ? 'background:rgba(203,177,102,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : '');
+      const tierKey = casinoTierFor(r.prestige)?.key || null; // needed here now too, for the row-hue below — same lookup the rank card already used further down
+      // Sovereign/Immortal get their own row treatment, deliberately
+      // overriding the plainer isMe/top3 tinting rather than blending
+      // with it — per request, these two tiers need to visibly dominate
+      // the row regardless of rank position or whether it's your own row.
+      // The "You" label is a separate element and still shows either way,
+      // so identity doesn't get lost even when the tier hue takes over.
+      const tierRowBg = tierKey === 'sovereign'
+        ? 'background:linear-gradient(90deg, rgba(168,85,247,.24), rgba(168,85,247,.05)); border-radius:10px; box-shadow:inset 0 0 22px rgba(168,85,247,.18);'
+        : tierKey === 'immortal'
+        ? 'background:linear-gradient(90deg, rgba(245,197,24,.26), rgba(245,197,24,.05)); border-radius:10px; box-shadow:inset 0 0 22px rgba(245,197,24,.2);'
+        : null;
+      const bg = tierRowBg || (isMe ? 'background:rgba(203,177,102,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : ''));
       // A streak of 1 or 2 is just a normal win — only 3+ in a row reads
       // as an actual "heater" worth calling out on the board.
       const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
-      const tierKey = casinoTierFor(r.prestige)?.key || null; // already have the prestige score for this row — no extra fetch needed for the rank card's tier
       // Board roster absence is the established proxy for "tipping-only"
       // — but it MUST be checked by uid (r.uid === some member's
       // linkedUid), never by name. Tipping display names are self-chosen
@@ -9655,17 +9673,38 @@ const BADGE_DEFS = {
     label: 'Millionaire',
     desc: 'Earned 1,000,000 lifetime Casino XP',
     icon: `<path d="M45,88 L50,55 L64,71 L70,48 L76,71 L90,55 L95,88 Z" fill="#3a2e0f"/>`
+  },
+  'xp100m': {
+    label: 'Sovereign',
+    desc: 'Earned 100,000,000 lifetime Casino XP',
+    ringFill: '#a855f7', innerFill: '#5b2a8c',
+    icon: `<text x="70" y="80" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="24" font-weight="700" fill="__ICONFILL__">100M</text>`
+  },
+  'xp1b': {
+    label: 'Immortal',
+    desc: 'Earned 1,000,000,000 lifetime Casino XP',
+    ringFill: '#f5c518', innerFill: '#3a2a00',
+    icon: `<text x="70" y="80" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="30" font-weight="700" fill="__ICONFILL__">1B</text>`
   }
 };
 function badgeSvg(badgeId, size){
   const def = BADGE_DEFS[badgeId];
   if(!def) return '';
   const s = size || 60;
+  // ringFill/innerFill let a specific badge override the standard gold
+  // ring — every existing badge omits these and gets the same gold
+  // treatment as always (fill defaults kick in below), so this is purely
+  // additive. Used for Sovereign/Immortal so even the small badge icon
+  // reads as visibly different from the standard achievement gold, not
+  // just a bigger number in the same circle.
+  const ring = def.ringFill || '#7d6a34';
+  const inner = def.innerFill || '#CBB166';
+  const iconFillDefault = def.innerFill ? '#fff6d8' : '#3a2e0f'; // dark icon on gold, light icon on a dark/rich inner fill
   return `<svg width="${s}" height="${s}" viewBox="0 0 140 140">
-    <circle cx="70" cy="70" r="66" fill="#0B2B22" stroke="#7d6a34" stroke-width="1.5"/>
-    <circle cx="70" cy="70" r="58" fill="#CBB166" stroke="#3a2e0f" stroke-width="1.5"/>
+    <circle cx="70" cy="70" r="66" fill="#0B2B22" stroke="${ring}" stroke-width="1.5"/>
+    <circle cx="70" cy="70" r="58" fill="${inner}" stroke="#3a2e0f" stroke-width="1.5"/>
     <ellipse cx="52" cy="48" rx="30" ry="20" fill="#F5E8A8" opacity="0.35"/>
-    ${def.icon}
+    ${(def.icon || '').replace('__ICONFILL__', iconFillDefault)}
   </svg>`;
 }
 

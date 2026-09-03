@@ -1,7 +1,9 @@
 {
-  "version": "2026-09-02.18",
+  "version": "2026-09-02.19",
   "date": "2026-09-02",
   "changes": [
-    "Fixed the profile tabs blending into the background \u2014 inactive pills had a near-invisible border and fill. Given real definition: visible border, warm-tinted fill, raised card shadow, brighter text, while the active gold pill stays clearly the dominant selected state."
+    "Sovereign and Immortal now have their own achievement badges \u2014 same secrecy rule as everything else about them, only ever shown once genuinely earned.",
+    "Found and fixed the real reason these two tiers weren't standing out on the leaderboard: the avatar's own glow ring was simply never built (only a small corner emblem was), so it fell through to no glow at all. Now stronger than Diamond, with Immortal getting an actual colour-shift.",
+    "The whole leaderboard row now takes on a violet or gold hue for these two tiers specifically, overriding the normal highlight so it genuinely dominates the row."
   ]
 }
