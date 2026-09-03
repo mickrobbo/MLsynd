@@ -113,6 +113,7 @@ async function vpDeal(){
   errEl.textContent = '';
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
   if(amount <= 0){ errEl.textContent = 'Add some chips first.'; dealBtn.disabled = false; return; }
+  if(amount > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`; dealBtn.disabled = false; return; }
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; dealBtn.disabled = false; return; }
   if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; dealBtn.disabled = false; return; }

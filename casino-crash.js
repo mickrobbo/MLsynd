@@ -192,6 +192,11 @@ async function crashStart(){
     crashRunning = false; crashSetStartVisible(true);
     return;
   }
+  if(bet > CASINO_MAX_BET_PER_HAND){
+    errEl.textContent = `Maximum bet per round is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`;
+    crashRunning = false; crashSetStartVisible(true);
+    return;
+  }
   const balance = await getXPBalance();
   if(balance == null){
     errEl.textContent = 'Could not check your XP balance — try again.';

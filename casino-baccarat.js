@@ -74,6 +74,7 @@ async function bacDealInner(){
   const bet = parseInt(betInput.value, 10);
   const balance = await getXPBalance();
   if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
+  if(bet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 

@@ -39,6 +39,7 @@ async function warDealInner(){
   const totalStake = bet + (ppOn ? ppBet : 0);
   if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
   if(ppOn && ppBet < 5){ errEl.textContent = 'Minimum Pairs side bet is 5 XP.'; return; }
+  if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
@@ -140,6 +141,11 @@ async function warGoToWar(){
   if(balance == null || balance < warOriginalBet * 2){
     const errEl = document.getElementById('warOutcomeMsg');
     if(errEl){ errEl.textContent = 'Not enough XP to go to war — try Surrender instead.'; errEl.style.color = 'var(--loss)'; }
+    return;
+  }
+  if(warOriginalBet * 2 > CASINO_MAX_BET_PER_HAND){
+    const errEl = document.getElementById('warOutcomeMsg');
+    if(errEl){ errEl.textContent = `Going to war would put ${(warOriginalBet * 2).toLocaleString()} XP at risk — max per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()}. Try Surrender instead.`; errEl.style.color = 'var(--loss)'; }
     return;
   }
   document.getElementById('warGoBtn').style.display = 'none';

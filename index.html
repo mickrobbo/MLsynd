@@ -498,9 +498,9 @@
           <span class="casino-hub-sub">How each game plays</span>
         </div>
         <div class="casino-hub-bubble" id="hubXpBtn">
-          <span class="casino-hub-icon">✨</span>
-          <span class="casino-hub-label">Earning XP</span>
-          <span class="casino-hub-sub">Where it comes from</span>
+          <span class="casino-hub-icon">♻️</span>
+          <span class="casino-hub-label">XP Ecosystem</span>
+          <span class="casino-hub-sub">Earning to burning</span>
         </div>
         <div class="casino-hub-bubble" id="hubBadgesBtn">
           <span class="casino-hub-icon">🏅</span>
@@ -977,7 +977,7 @@
     <!-- Earning XP view -->
     <div class="panel casino-view" id="casinoXpInfoView">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-        <h2 style="font-size:14px; margin:0;">✨ How to earn XP</h2>
+        <h2 style="font-size:14px; margin:0;">♻️ XP Ecosystem</h2>
         <button type="button" class="pill-btn" id="xpInfoBackBtn">← Back</button>
       </div>
       <div id="xpInfoModalBody"></div>
@@ -3048,7 +3048,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.20"; // Minor tuning pass
+const APP_VERSION = "2026-09-02.23"; // Two things per request. (1) A max bet of 250,000 XP per hand, across every game — CASINO_MAX_BET_PER_HAND defined once here and referenced as a shared global by all twelve casino-*.js files (they load as plain scripts sharing this window scope, not modules, so this avoids duplicating the same number twelve times). Applied to the TOTAL at risk in one hand, not each individual bet in isolation — Blackjack/War's side bets, Double Down, and Split; Roulette's every placed chip; Craps' every live bet type (using its own existing crapsTotalAtRisk(), which also means every subsequent roll gets re-checked, not just the first, catching bets that build up gradually too); Plinko's bet-per-ball x ball count; Slots' bet-per-line x active lines. Double or Nothing and Slots' gamble ladder are correctly untouched past the opening stake, since later rounds grow winnings already at risk, not a new bet. Hold'em's raise sizing is server-authoritative in a separate holdem-dealer.mjs function not available this session — genuinely not capped yet, flagged rather than guessed at. (2) Renamed "Earning XP" -> "XP Ecosystem" and extended its content from earning-only to the full earn/play/burn picture (the new bet cap, the pot's 20% burn and 250M cap, all five fines) — reads entirely from constants already defined elsewhere, so it can't drift out of sync with the actual mechanics — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3429,10 +3429,33 @@ function renderXpInfoView(){
     rows.push(['🤝 Group multi leg wins', `+${XP_RATES.perGroupLegWin} XP per winning leg`]);
     rows.push(['🤝 Group multi leg losses', `-${XP_RATES.perGroupLegLoss} XP per losing leg — a Void or no bet that week costs nothing`]);
   }
-  body.innerHTML = rows.map(([label, desc]) =>
+  let html = `<div class="xp-eco-section-label">💰 Earning</div>` + rows.map(([label, desc]) =>
     `<div class="xp-source-row"><span>${escapeHtml(label)}</span></div><div class="hint" style="padding:0 4px 10px;">${escapeHtml(desc)}</div>`).join('')
-    + (isTipping ? `<div class="hint" style="margin-top:6px;">Your account earns XP from the weekly bonus and Tipping points only — the individual bet and group multi sources apply to full-access accounts.</div>` : '')
-    + `<div class="hint" style="margin-top:6px;">Once you've got XP, spend it in any Casino game — wins and losses adjust your balance from there, same as a real table.</div>`;
+    + (isTipping ? `<div class="hint" style="margin-top:6px;">Your account earns XP from the weekly bonus and Tipping points only — the individual bet and group multi sources apply to full-access accounts.</div>` : '');
+
+  if(!isTipping){
+    html += `<div class="xp-eco-section-label">🎰 Playing</div>
+      <div class="xp-source-row"><span>Once you've got XP, spend it in any Casino game</span></div>
+      <div class="hint" style="padding:0 4px 10px;">Wins and losses adjust your balance from there, same as a real table — everyone's losses feed the shared Casino Pot.</div>
+      <div class="xp-source-row"><span>Max bet</span></div>
+      <div class="hint" style="padding:0 4px 10px;">${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP per hand, across every game — the total at risk in one hand, not just a single chip, so side bets and multiple simultaneous bets all count toward it together.</div>`;
+
+    html += `<div class="xp-eco-section-label">🔥 Burning — where XP actually leaves for good</div>
+      <div class="xp-source-row"><span>Casino Pot burn</span></div>
+      <div class="hint" style="padding:0 4px 10px;">20% of every pot is permanently removed at each twice-monthly distribution — otherwise the pot would just pay back out exactly what it took in, and never shrink.</div>
+      <div class="xp-source-row"><span>Casino Pot cap</span></div>
+      <div class="hint" style="padding:0 4px 10px;">The pot is also hard-capped at ${CASINO_POT_CAP_DISPLAY.toLocaleString()} XP per period — anything collected above that is burned outright too, on top of the 20%.</div>
+      <div class="xp-source-row"><span>Fines</span></div>
+      <div class="hint" style="padding:0 4px 10px;">
+        Losing Group Multi leg — ${CASINO_POT_LEG_LOSS_FINE_DISPLAY.toLocaleString()} XP<br>
+        MIA Group Multi leg — ${CASINO_POT_MIA_LEG_FINE_DISPLAY.toLocaleString()} XP<br>
+        Group Multi leg under $${CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY} — ${CASINO_POT_LOW_ODDS_FINE_DISPLAY.toLocaleString()} XP<br>
+        Wrong AFL tip — ${CASINO_POT_TIPPING_FINE_DISPLAY.toLocaleString()} XP<br>
+        Missed AFL tip — ${CASINO_POT_MISSED_TIP_FINE_DISPLAY.toLocaleString()} XP<br>
+        All fines come straight out of the shared pot, never your personal balance.
+      </div>`;
+  }
+  body.innerHTML = html;
 }
 
 // =====================================================================
@@ -3720,7 +3743,21 @@ async function renderCasinoBadgesView(){
       ids.includes('jackpot-winner')
     ));
     XP_MILESTONE_BADGES.forEach(b => {
-      rows.push(casinoBadgeRowHtml(b.icon, b.name, `Earn ${b.threshold.toLocaleString()} lifetime XP.`, ids.includes(b.key)));
+      // Sovereign/Immortal (xp100m/xp1b) get suppressed entirely here
+      // when NOT yet unlocked — this was a real, more serious leak than
+      // the Casino hub's preview bar: this Badges list was showing every
+      // player "Sovereign — Earn 100,000,000 lifetime XP" with a lock
+      // icon, regardless of their own progress, spelling out the exact
+      // name and threshold to literally anyone who opened it. Once a
+      // secret badge IS actually earned it still renders normally below
+      // (ids.includes(b.key) is true, so it reaches casinoBadgeRowHtml
+      // same as any other unlocked badge) — this only ever hides the
+      // LOCKED placeholder, matching the same secrecy rule already used
+      // everywhere else these two tiers show up.
+      const isSecretMilestone = b.key === 'xp100m' || b.key === 'xp1b';
+      const unlocked = ids.includes(b.key);
+      if(isSecretMilestone && !unlocked) return;
+      rows.push(casinoBadgeRowHtml(b.icon, b.name, `Earn ${b.threshold.toLocaleString()} lifetime XP.`, unlocked));
     });
 
     const tippingRes = await authedFetch(`/tippingStats/${currentUserUid}/seasonPoints.json`);
@@ -6652,6 +6689,7 @@ async function renderHoldemHand(){
 // in between for real fine control.
 function renderHoldemRaiseBuilder(hand, betLabel){
   const range = hand.raiseRange;
+  const sliderMax = Math.min(range.max, CASINO_MAX_BET_PER_HAND); // UI-level clamp so the slider never visually offers more than the cap — sendHoldemAction is still the actual enforcement point, this just avoids the confusing "drag to X, get rejected" round trip
   return `
     <div id="holdemRaiseBuilder" style="display:none; margin-top:10px; padding:12px; background:rgba(0,0,0,.2); border-radius:14px; border:1px solid var(--brass-dim);">
       <div class="hint" style="margin-bottom:8px; text-align:center;">${betLabel} to <b id="holdemRaiseAmountDisplay" style="color:var(--brass-light); font-family:'IBM Plex Mono', monospace;">${range.min.toLocaleString()}</b> XP</div>
@@ -6663,7 +6701,7 @@ function renderHoldemRaiseBuilder(hand, betLabel){
       </div>
       <div style="display:flex; align-items:center; gap:10px; margin:14px 0 12px;">
         <button type="button" class="pill-btn" id="holdemRaiseMinusBtn">−</button>
-        <input type="range" id="holdemRaiseSlider" min="${range.min}" max="${range.max}" value="${range.min}" step="1" style="flex:1; accent-color:var(--brass);">
+        <input type="range" id="holdemRaiseSlider" min="${range.min}" max="${sliderMax}" value="${range.min}" step="1" style="flex:1; accent-color:var(--brass);">
         <button type="button" class="pill-btn" id="holdemRaisePlusBtn">+</button>
       </div>
       <div style="display:flex; gap:8px;">
@@ -6681,6 +6719,7 @@ function updateHoldemRaiseDisplay(amount){
 }
 function wireHoldemRaiseBuilder(hand, betLabel){
   const range = hand.raiseRange;
+  const sliderMax = Math.min(range.max, CASINO_MAX_BET_PER_HAND); // matches the clamp applied when the slider itself was rendered
   const step = Math.max(1, Math.round((hand.lastRaiseIncrement || hand.bigBlind || 10)));
   const maxCommitted = Math.max(0, ...Object.values(hand.players).filter(p => !p.folded).map(p => p.committed));
 
@@ -6692,7 +6731,7 @@ function wireHoldemRaiseBuilder(hand, betLabel){
   });
   document.getElementById('holdemRaisePlusBtn').addEventListener('click', () => {
     const slider = document.getElementById('holdemRaiseSlider');
-    const next = Math.min(range.max, Number(slider.value) + step);
+    const next = Math.min(sliderMax, Number(slider.value) + step);
     updateHoldemRaiseDisplay(next);
   });
   document.querySelectorAll('#holdemRaiseChipRail .table-chip').forEach(chip => {
@@ -6703,7 +6742,7 @@ function wireHoldemRaiseBuilder(hand, betLabel){
       else if(preset === 'max') amount = range.max;
       else if(preset === 'half') amount = Math.round(maxCommitted + hand.pot / 2);
       else if(preset === 'pot') amount = maxCommitted + hand.pot;
-      amount = Math.max(range.min, Math.min(range.max, amount)); // pot-based presets can land outside range on a short stack — clamp to what's actually legal
+      amount = Math.max(range.min, Math.min(sliderMax, amount)); // pot-based presets can land outside range on a short stack, or above the cap — clamp to whichever's lower
       updateHoldemRaiseDisplay(amount);
       bjPlayChipSound();
       chip.classList.remove('pc-chip-tap'); void chip.offsetWidth; chip.classList.add('pc-chip-tap');
@@ -6722,6 +6761,21 @@ function wireHoldemRaiseBuilder(hand, betLabel){
 async function sendHoldemAction(playerAction, raiseAmount){
   const statusEl = document.getElementById('holdemHandActionStatus');
   statusEl.textContent = '';
+  // Every bet/raise funnels through here regardless of which UI control
+  // triggered it (slider, chip preset, All-in), so this is the one place
+  // that needs the cap check rather than duplicating it at each call site.
+  // This can only bound a SINGLE action, not total commitment across an
+  // entire multi-street hand — hand.players[uid].committed semantics
+  // across streets aren't something this client can safely re-derive
+  // (see the comment above renderHoldemActionsForHand on why a client-
+  // side mirror of the engine's own raise-tracking isn't attempted here).
+  // Still a real, meaningful limit: no single bet or raise can ever clear
+  // the cap, even if a determined player could theoretically still stack
+  // multiple capped raises across several streets in the same hand.
+  if(raiseAmount != null && raiseAmount > CASINO_MAX_BET_PER_HAND){
+    statusEl.textContent = `Maximum bet or raise is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`;
+    return;
+  }
   try{
     await holdemDealerCall(holdemCurrentTableId, 'act', { handId: holdemCurrentHandId, playerAction, raiseAmount });
     renderHoldemHand();
@@ -7209,6 +7263,20 @@ const CASINO_POT_LOW_ODDS_FINE_DISPLAY = 150000;
 const CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY = 1.22;
 const CASINO_POT_MISSED_TIP_FINE_DISPLAY = 50000;
 const CASINO_POT_TIPPING_FINE_DISPLAY = 100000;
+// Display-only copy of the hard cap applied at distribution time — same
+// reasoning as every other _DISPLAY constant here, kept in sync manually.
+const CASINO_POT_CAP_DISPLAY = 250000000;
+// Global on purpose — every casino-*.js game file is loaded as a plain
+// <script> after this one, sharing this same window scope (not a module),
+// so each game's own bet-validation code references this directly rather
+// than each file duplicating its own copy of the same number. Per request:
+// applies to the TOTAL amount at risk in one hand — for games with more
+// than one simultaneous bet (Blackjack's side bet, Roulette's multiple
+// placed chips, Craps' several active bet types), that means everything
+// combined, not each individual bet checked separately — five separate
+// 100K bets placed at once should still be blocked, not waved through
+// because no single one of them exceeds the cap on its own.
+const CASINO_MAX_BET_PER_HAND = 250000;
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
@@ -7432,7 +7500,29 @@ async function renderCasinoPotPanel(){
   const monthKey = casinoPotPeriodKey();
   const { losses, playCounts, readFailed } = await fetchCasinoPotMonth(monthKey);
   const total = sumLosses(losses);
-  totalEl.textContent = readFailed ? '— XP' : `${total.toLocaleString()} XP`;
+  // Once raw losses this period pass the cap, the number that actually
+  // matters for distribution stops moving — showing only the still-
+  // climbing raw figure here would look like the pot keeps growing when
+  // the DISTRIBUTABLE amount genuinely doesn't anymore. Two lines instead
+  // of one once that happens, rather than silently switching which
+  // number this displays.
+  if(!readFailed && total > CASINO_POT_CAP_DISPLAY){
+    totalEl.innerHTML = `${CASINO_POT_CAP_DISPLAY.toLocaleString()} XP <span style="font-size:.5em; color:var(--muted); font-weight:400;">(capped)</span>`;
+    let rawLine = document.getElementById('casinoPotRawLine');
+    if(!rawLine){
+      rawLine = document.createElement('div');
+      rawLine.id = 'casinoPotRawLine';
+      rawLine.className = 'casino-pot-sub';
+      rawLine.style.marginTop = '2px';
+      totalEl.insertAdjacentElement('afterend', rawLine);
+    }
+    rawLine.textContent = `${total.toLocaleString()} XP actually lost this period — everything past the cap is burned`;
+    rawLine.style.display = 'block';
+  } else {
+    totalEl.textContent = readFailed ? '— XP' : `${total.toLocaleString()} XP`;
+    const rawLine = document.getElementById('casinoPotRawLine');
+    if(rawLine) rawLine.style.display = 'none';
+  }
 
   const meWrap = document.getElementById('casinoPotMeWrap');
   if(meWrap){
@@ -7642,6 +7732,15 @@ async function distributeCasinoPotLocked(monthKeys){
     return { skipped: true, rolled: true, totalPot };
   }
 
+  // Hard cap per request — same reasoning and identical constant to the
+  // scheduled function's own copy: a percentage burn alone can't bound
+  // the absolute number once a few people are staking amounts that dwarf
+  // everyone else's. Applied before the existing 20% burn, so it caps
+  // what enters that pipeline rather than being a second burn concept.
+  const CASINO_POT_CAP = 250000000;
+  const cappedPot = Math.min(totalPot, CASINO_POT_CAP);
+  const capBurnedAmount = totalPot - cappedPot;
+
   // 20% burned outright per request — otherwise the pot is a pure wash:
   // 100% of what's collected gets redistributed straight back to players,
   // so nothing ever actually leaves the XP economy through it, and the
@@ -7651,8 +7750,9 @@ async function distributeCasinoPotLocked(monthKeys){
   // vanishing with no record. Single named constant, easy to retune —
   // kept identical to the scheduled function's own copy of this constant.
   const CASINO_POT_BURN_RATE = 0.20;
-  const burnedAmount = Math.floor(totalPot * CASINO_POT_BURN_RATE);
-  const distributable = totalPot - burnedAmount;
+  const regularBurnedAmount = Math.floor(cappedPot * CASINO_POT_BURN_RATE);
+  const burnedAmount = capBurnedAmount + regularBurnedAmount;
+  const distributable = cappedPot - regularBurnedAmount;
   const proportionalPool = Math.floor(distributable * 0.75);
   const jackpotPool = distributable - proportionalPool; // remainder, not a second floor() — avoids losing a few XP to rounding
 
@@ -7676,7 +7776,7 @@ async function distributeCasinoPotLocked(monthKeys){
   }
   await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`);
 
-  const historyEntry = { month: label, totalPot, rawPot, finesApplied: combinedFines, proportional, jackpotWinner, jackpotAmount: jackpotPool, burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now() };
+  const historyEntry = { month: label, totalPot, rawPot, finesApplied: combinedFines, cappedPot, capBurnedAmount, proportional, jackpotWinner, jackpotAmount: jackpotPool, burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now() };
   try{
     await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(historyEntry)
@@ -8834,12 +8934,25 @@ async function refreshCasinoHeroExtras(){
   try{
     const res = await authedFetch(`/xp/${currentUserUid}/lifetimeEarned.json`);
     const lifetime = (await res.json()) || 0;
-    const next = XP_MILESTONE_BADGES.find(b => lifetime < b.threshold);
+    // Excludes the secret milestones (xp100m/xp1b, added when Sovereign/
+    // Immortal shipped) from ever being previewed as "next" here — this
+    // was a real leak: anyone with lifetime XP between 1M and 100M was
+    // seeing "XP to Sovereign" spelled out on the main Casino page, well
+    // before they'd earned it, since nothing else existed between those
+    // two thresholds in the full array. The tier info modal and the
+    // profile prestige bar's "top tier reached" case were both checked
+    // for this when the tiers shipped — this separate hero-panel preview
+    // was missed. The badges themselves still unlock and display exactly
+    // as normal once genuinely earned (that logic reads the full
+    // XP_MILESTONE_BADGES array elsewhere, unaffected by this) — only
+    // this "here's what's coming next" preview stops short of them.
+    const publicMilestones = XP_MILESTONE_BADGES.filter(b => b.key !== 'xp100m' && b.key !== 'xp1b');
+    const next = publicMilestones.find(b => lifetime < b.threshold);
     const track = document.getElementById('casinoMilestoneTrack');
     const fill = document.getElementById('casinoMilestoneFill');
     const label = document.getElementById('casinoMilestoneLabel');
     if(next){
-      const prevThreshold = [...XP_MILESTONE_BADGES].reverse().find(b => lifetime >= b.threshold);
+      const prevThreshold = [...publicMilestones].reverse().find(b => lifetime >= b.threshold);
       const floor = prevThreshold ? prevThreshold.threshold : 0;
       const pct = Math.min(100, Math.max(0, ((lifetime - floor) / (next.threshold - floor)) * 100));
       track.style.display = 'block';
@@ -9205,7 +9318,8 @@ const CASINO_RULES = {
     <h3>Where it comes from</h3>
     <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the period, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
     <h3>How it's split</h3>
-    <p><b>20%</b> of every pot is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (60% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (20% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <p>The pot is also capped at <b>250,000,000 XP</b> per period. Everything collected above that is burned outright, on top of the 20% below — a percentage alone can't stop the number spiraling once a few people are staking huge amounts, only a hard ceiling can. Your own losses always count toward your personal tally either way, whether or not the shared pot is capped.</p>
+    <p><b>20%</b> of every pot (after the cap) is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (60% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (20% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Fines</h3>
     <p>The pot also takes real fines off the top before it's ever distributed, all coming straight out of the shared pot, never your personal balance:</p>
     <ul style="margin:4px 0 0; padding-left:20px; line-height:1.6;">

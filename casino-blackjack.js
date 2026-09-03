@@ -312,6 +312,7 @@ async function bjStartHandInner(){
   const totalStake = bet + (ppOn ? ppBet : 0);
   if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
   if(ppOn && ppBet < 5){ errEl.textContent = 'Minimum Perfect Pairs side bet is 5 XP.'; return; }
+  if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
@@ -544,6 +545,12 @@ async function bjDoubleDown(){
       errEl.style.color = 'var(--loss)';
       return;
     }
+    if(bjCurrentBet * 2 > CASINO_MAX_BET_PER_HAND){
+      const errEl = document.getElementById('bjOutcomeMsg');
+      errEl.textContent = `Doubling would put ${(bjCurrentBet * 2).toLocaleString()} XP at risk — max per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()}.`;
+      errEl.style.color = 'var(--loss)';
+      return;
+    }
     document.getElementById('bjDoubleBtn').style.display = 'none';
     document.getElementById('bjHitBtn').style.display = 'none';
     document.getElementById('bjSplitBtn').style.display = 'none';
@@ -573,6 +580,12 @@ async function bjSplit(){
     if(balance == null || balance < bjCurrentBet * 2){
       const errEl = document.getElementById('bjOutcomeMsg');
       errEl.textContent = 'Not enough XP to split.';
+      errEl.style.color = 'var(--loss)';
+      return;
+    }
+    if(bjCurrentBet * 2 > CASINO_MAX_BET_PER_HAND){
+      const errEl = document.getElementById('bjOutcomeMsg');
+      errEl.textContent = `Splitting would put ${(bjCurrentBet * 2).toLocaleString()} XP at risk — max per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()}.`;
       errEl.style.color = 'var(--loss)';
       return;
     }

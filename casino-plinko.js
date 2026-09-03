@@ -167,6 +167,7 @@ async function plinkoDropInner(){
   const betPerBall = parseInt(document.getElementById('plinkoBetInput').value, 10) || 0;
   if(!betPerBall || betPerBall < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
   const totalStake = betPerBall * plinkoBallCount;
+  if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total stake per drop is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (${betPerBall.toLocaleString()} × ${plinkoBallCount} balls = ${totalStake.toLocaleString()}).`; return; }
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP (stake: ${totalStake}).`; return; }

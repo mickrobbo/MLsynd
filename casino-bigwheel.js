@@ -157,6 +157,7 @@ async function bigWheelSpinInner(){
   errEl.textContent = '';
   const totalStaked = Object.values(bigWheelStaged).reduce((a, b) => a + b, 0);
   if(totalStaked === 0){ errEl.textContent = 'Place at least one bet first.'; return; }
+  if(totalStaked > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per spin is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total across all placed bets (staked: ${totalStaked.toLocaleString()}).`; return; }
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(totalStaked > balance){ errEl.textContent = `You only have ${balance} XP (staked: ${totalStaked}).`; return; }

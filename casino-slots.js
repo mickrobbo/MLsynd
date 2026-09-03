@@ -214,6 +214,7 @@ async function slotsSpin(){
     lineCount = slotsActiveLineCount;
     if(perLine <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
     const totalBet = perLine * lineCount;
+    if(totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per spin is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total across all lines (${perLine.toLocaleString()} × ${lineCount} lines = ${totalBet.toLocaleString()}).`; spinBtn.disabled = false; return; }
     const balance = await getXPBalance();
     if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
     if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; spinBtn.disabled = false; return; }

@@ -340,6 +340,7 @@ async function crapsRollInner(){
   if(stagedTotal === 0 && alreadyLive === 0){ errEl.textContent = 'Place at least one bet first.'; return; }
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
+  if(crapsTotalAtRisk() > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total at risk is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP across every live bet (currently: ${crapsTotalAtRisk().toLocaleString()}).`; return; }
   if(crapsTotalAtRisk() > balance){ errEl.textContent = `You only have ${balance} XP (at risk: ${crapsTotalAtRisk()}).`; return; }
 
   scrollIntoViewSmooth('crapsTableRail');
