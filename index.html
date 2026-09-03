@@ -3192,7 +3192,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.33"; // Two things per request. (1) Removed the top-of-profile Highlights strip entirely — Biggest Win, Casino Win Rate, and Most Played now live directly in the Casino tab instead (Casino Win Rate is a genuinely new cell there; Biggest Win and Most Played already existed but in the old cramped grid style, now restyled as sleek highlight-chip cards with icons, matching what used to be at the top). Population logic reworked to toggle three separate cells' visibility instead of one shared wrapper, since they used to share a single wide cell when Biggest Win and Most Played sat side by side. (2) The actual root cause of "looks unprofessional" across every tab: profile-stat-category was a 2-column CSS grid, meaning every single stat cell only ever had half the screen width — that's what caused the wrapping/cut-off bugs from the last several rounds in the first place, not just the specific cells that got reported. Switched the whole category to a full-width stacked flex column and restyled profile-stat-cell as a clean label-left/value-right row instead of cramped centered text, so every tab (Betting/Casino/Tipping/Fines/Activity) now shares the same sleek card language uniformly, not just the three cells that got fixed individually before. Confirmed by actually rendering the Casino and Fines tabs with the exact real values from the reports (+646,400 XP, 534-1166, etc.) using the full verified stylesheet rather than reasoning about it — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.34"; // Fully rebuilt the Casino tab per report — found the actual cause of "two different text colours": Tier/Bounties/Casino XP/Lifetime XP/Record all had inline style="color:var(--brass)" while the highlight-chip cells used --brass-light, two genuinely different gold shades sitting side by side. Rather than patch the inline styles individually (same class of bug that's bitten this profile before), merged everything onto one shared highlight-chip card — every Casino tab item is now its own bubble (Casino XP and Lifetime XP were paired in one cell, Tier and Bounties in another; all four split out), same icon+glow treatment uniformly, reordered by relevance (Tier, Record, Casino Win Rate, Biggest Win, Most Played, Casino XP, Lifetime XP, Bounties). Found and fixed the same paired-cell issue in the Tipping tab too (Season Points + Record were sharing one bubble) while in this area of the code, rather than wait for it to get reported separately. Confirmed via an actual render using the real values from the report (Diamond, 678-1059, +456,176, etc.) with the full verified stylesheet — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10219,31 +10219,41 @@ function openBoardProfile(m, name){
     </div>
 
     <div class="profile-stat-category" data-cat="casino" style="display:none;">
-      <div class="profile-stat-cell wide">
-        <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
-        <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
+      <div class="highlight-chip" id="profileTierCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">🏅</span>
+        <div><span class="hl-label">Tier</span><span class="hl-val" id="profileTierVal">…</span></div>
       </div>
-      <div class="profile-stat-cell wide">
-        <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
-        <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">${m.linkedUid ? '…' : '—'}</span></span>
+      <div class="highlight-chip" id="profileCasinoRecordCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">📊</span>
+        <div><span class="hl-label">Record</span><span class="hl-val" id="profileCasinoRecordVal">…</span></div>
       </div>
-      <div class="profile-stat-cell wide" id="profileCasinoRecordCell" style="${m.linkedUid ? '' : 'display:none;'}">
-        <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
+      <div class="highlight-chip" id="profileCasinoWinRateCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">📈</span>
+        <div><span class="hl-label">Casino Win Rate</span><span class="hl-val" id="profileCasinoWinRateVal">—</span></div>
       </div>
       <div class="highlight-chip" id="profileBiggestWinCell" style="display:none;">
         <span class="hl-icon">🎰</span>
         <div><span class="hl-label">Biggest Win</span><span class="hl-val" id="profileBiggestWinVal">—</span></div>
       </div>
-      <div class="highlight-chip" id="profileCasinoWinRateCell" style="${m.linkedUid ? '' : 'display:none;'}">
-        <span class="hl-icon">📊</span>
-        <div><span class="hl-label">Casino Win Rate</span><span class="hl-val" id="profileCasinoWinRateVal">—</span></div>
-      </div>
       <div class="highlight-chip" id="profileMostPlayedCell" style="display:none;">
         <span class="hl-icon">🎲</span>
         <div><span class="hl-label">Most Played</span><span class="hl-val" id="profileMostPlayedVal">—</span></div>
       </div>
-      <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
-        <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      <div class="highlight-chip" id="profileXPCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">🃏</span>
+        <div><span class="hl-label">Casino XP</span><span class="hl-val" id="profileXPVal">…</span></div>
+      </div>
+      <div class="highlight-chip" id="profileLifetimeXPCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">🏆</span>
+        <div><span class="hl-label">Lifetime XP</span><span class="hl-val" id="profileLifetimeXPVal">…</span></div>
+      </div>
+      <div class="highlight-chip" id="profileBountiesCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">🎯</span>
+        <div><span class="hl-label">Bounties</span><span class="hl-val" id="profileBountiesVal">…</span></div>
+      </div>
+      <div class="highlight-chip" id="profileTippingDuesCell" style="display:none;">
+        <span class="hl-icon">🏉</span>
+        <div><span class="hl-label">Tipping Dues</span><span class="hl-val" id="profileTippingDuesVal">—</span></div>
       </div>
       <div class="profile-game-breakdown-section" id="profileGameBreakdownSection" style="grid-column:1/-1; display:none;">
         <div class="profile-form-label">Where the XP Goes</div>
@@ -10252,9 +10262,13 @@ function openBoardProfile(m, name){
     </div>
 
     <div class="profile-stat-category" data-cat="tipping" style="display:none;">
-      <div class="profile-stat-cell wide" id="profileTippingCell" style="${m.linkedUid ? '' : 'display:none;'}">
-        <span class="profile-stat-sub"><span class="lbl">🏉 Season Points</span><span class="val" id="profileTippingPointsVal" style="color:var(--brass);">…</span></span>
-        <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileTippingRecordVal" style="color:var(--brass); font-size:11px;">…</span></span>
+      <div class="highlight-chip" id="profileTippingCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">🏉</span>
+        <div><span class="hl-label">Season Points</span><span class="hl-val" id="profileTippingPointsVal">…</span></div>
+      </div>
+      <div class="highlight-chip" id="profileTippingRecordCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">📊</span>
+        <div><span class="hl-label">Record</span><span class="hl-val" id="profileTippingRecordVal">…</span></div>
       </div>
     </div>
 
@@ -10576,31 +10590,41 @@ function openTippingOnlyProfile(uid, name){
     </div>
 
     <div class="profile-stat-category" data-cat="casino">
-      <div class="profile-stat-cell wide">
-        <span class="profile-stat-sub"><span class="lbl">🃏 Casino XP</span><span class="val" id="profileXPVal" style="color:var(--brass);">…</span></span>
-        <span class="profile-stat-sub"><span class="lbl">🏆 Lifetime XP</span><span class="val" id="profileLifetimeXPVal" style="color:var(--brass);">…</span></span>
+      <div class="highlight-chip" id="profileTierCell">
+        <span class="hl-icon">🏅</span>
+        <div><span class="hl-label">Tier</span><span class="hl-val" id="profileTierVal">…</span></div>
       </div>
-      <div class="profile-stat-cell wide">
-        <span class="profile-stat-sub"><span class="lbl">🏅 Tier</span><span class="val" id="profileTierVal" style="color:var(--brass);">…</span></span>
-        <span class="profile-stat-sub"><span class="lbl">🎯 Bounties</span><span class="val" id="profileBountiesVal" style="color:var(--brass);">…</span></span>
+      <div class="highlight-chip" id="profileCasinoRecordCell">
+        <span class="hl-icon">📊</span>
+        <div><span class="hl-label">Record</span><span class="hl-val" id="profileCasinoRecordVal">…</span></div>
       </div>
-      <div class="profile-stat-cell wide" id="profileCasinoRecordCell">
-        <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
+      <div class="highlight-chip" id="profileCasinoWinRateCell">
+        <span class="hl-icon">📈</span>
+        <div><span class="hl-label">Casino Win Rate</span><span class="hl-val" id="profileCasinoWinRateVal">—</span></div>
       </div>
       <div class="highlight-chip" id="profileBiggestWinCell" style="display:none;">
         <span class="hl-icon">🎰</span>
         <div><span class="hl-label">Biggest Win</span><span class="hl-val" id="profileBiggestWinVal">—</span></div>
       </div>
-      <div class="highlight-chip" id="profileCasinoWinRateCell">
-        <span class="hl-icon">📊</span>
-        <div><span class="hl-label">Casino Win Rate</span><span class="hl-val" id="profileCasinoWinRateVal">—</span></div>
-      </div>
       <div class="highlight-chip" id="profileMostPlayedCell" style="display:none;">
         <span class="hl-icon">🎲</span>
         <div><span class="hl-label">Most Played</span><span class="hl-val" id="profileMostPlayedVal">—</span></div>
       </div>
-      <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
-        <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      <div class="highlight-chip" id="profileXPCell">
+        <span class="hl-icon">🃏</span>
+        <div><span class="hl-label">Casino XP</span><span class="hl-val" id="profileXPVal">…</span></div>
+      </div>
+      <div class="highlight-chip" id="profileLifetimeXPCell">
+        <span class="hl-icon">🏆</span>
+        <div><span class="hl-label">Lifetime XP</span><span class="hl-val" id="profileLifetimeXPVal">…</span></div>
+      </div>
+      <div class="highlight-chip" id="profileBountiesCell">
+        <span class="hl-icon">🎯</span>
+        <div><span class="hl-label">Bounties</span><span class="hl-val" id="profileBountiesVal">…</span></div>
+      </div>
+      <div class="highlight-chip" id="profileTippingDuesCell" style="display:none;">
+        <span class="hl-icon">🏉</span>
+        <div><span class="hl-label">Tipping Dues</span><span class="hl-val" id="profileTippingDuesVal">—</span></div>
       </div>
       <div class="profile-game-breakdown-section" id="profileGameBreakdownSection" style="grid-column:1/-1; display:none;">
         <div class="profile-form-label">Where the XP Goes</div>
@@ -10609,9 +10633,13 @@ function openTippingOnlyProfile(uid, name){
     </div>
 
     <div class="profile-stat-category" data-cat="tipping" style="display:none;">
-      <div class="profile-stat-cell wide" id="profileTippingCell">
-        <span class="profile-stat-sub"><span class="lbl">🏉 Season Points</span><span class="val" id="profileTippingPointsVal" style="color:var(--brass);">…</span></span>
-        <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileTippingRecordVal" style="color:var(--brass); font-size:11px;">…</span></span>
+      <div class="highlight-chip" id="profileTippingCell">
+        <span class="hl-icon">🏉</span>
+        <div><span class="hl-label">Season Points</span><span class="hl-val" id="profileTippingPointsVal">…</span></div>
+      </div>
+      <div class="highlight-chip" id="profileTippingRecordCell">
+        <span class="hl-icon">📊</span>
+        <div><span class="hl-label">Record</span><span class="hl-val" id="profileTippingRecordVal">…</span></div>
       </div>
     </div>
 

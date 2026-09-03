@@ -1,8 +1,8 @@
 {
-  "version": "2026-09-02.33",
+  "version": "2026-09-02.34",
   "date": "2026-09-02",
   "changes": [
-    "Removed the top-of-profile Highlights strip \u2014 Biggest Win, Casino Win Rate, and Most Played now live directly in the Casino tab as proper sleek cards with icons.",
-    "Found and fixed the real root cause behind the last few rounds of layout complaints: every profile tab was a 2-column grid, giving each stat only half the screen width. Every tab (Betting, Casino, Tipping, Fines, Activity) is a clean full-width stacked layout now, uniformly \u2014 not just the specific cells that were reported broken."
+    "Fully rebuilt the Casino tab \u2014 found the real cause of the two different text colours (a leftover inline style using a different gold shade than the newer cards), and rather than patch around it, unified every item onto the same card style. Casino XP/Lifetime XP and Tier/Bounties get their own bubbles now instead of sharing one, every icon has the same glow, and everything is reordered by relevance: Tier, Record, Casino Win Rate, Biggest Win, Most Played, Casino XP, Lifetime XP, Bounties.",
+    "Found and fixed the same paired-cell issue in the Tipping tab (Season Points and Record were sharing one bubble) while working in this part of the profile."
   ]
 }
