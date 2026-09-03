@@ -1,8 +1,7 @@
 {
-  "version": "2026-09-02.29",
+  "version": "2026-09-02.30",
   "date": "2026-09-02",
   "changes": [
-    "Profile highlight cards no longer truncate text at all \u2014 a long value now wraps and the card grows taller to fit it, exactly as requested.",
-    "Rebuilt the radar chart's labels from scratch using real HTML text instead of SVG, so \"Casino\" and \"Clean\" can never be clipped by a positioning miscalculation again \u2014 verified this time by actually rendering it and looking, not just recalculating the numbers a third time."
+    "Fixed the Casino Pot celebration popup firing a full \"JACKPOT!\" animation for the one-time legacy cleanup, days after it actually happened, looking identical to a real distribution. It no longer treats a one-off admin correction the same as a genuine scheduled draw. The XP credited was always correct \u2014 this only affected the popup."
   ]
 }

@@ -3190,7 +3190,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.29"; // Third attempt at fully fixing the profile overflow issues, and this time actually rendered both fixes to real images before shipping rather than trusting the math again — two prior rounds of hand-tuned SVG pixel math both still clipped "Casino"/"Clean Record" down to "CA"/"RD". Highlight chips: per explicit request, no longer truncate with ellipsis at all — hl-val wraps onto a second line and the card genuinely grows taller instead, confirmed by rendering the exact overflowing values from the report ("+9,000,000 XP", "Video Poker") and looking at the actual pixels. Radar chart: axis labels moved entirely out of the SVG and onto real HTML divs with genuine CSS text-wrapping instead of guessed anchor-point math, positioned via percentages computed from the same angle geometry. Also swapped the CSS aspect-ratio property for the classic padding-top:100% square trick, since aspect-ratio is a newer property that can't be assumed universally supported. Confirmed via an actual render using the exact extracted CSS/JS from this file (caught and fixed a genuine extraction bug of my own along the way — an incomplete line-range grab that silently broke the whole test's script tag) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.30"; // Fixed a real, reported point of confusion: maybeShowCasinoPotCelebration was fully generic — it just fired a full "JACKPOT!" celebration modal for whatever was newest in /casinoPot/history, with zero concept of "this wasn't a real scheduled distribution." That meant the one-time legacy cleanup (2026-09-LEGACY) triggered the exact same celebratory fanfare as a genuine on-schedule draw, days after it actually ran, the first time each member's own device happened to check — looking indistinguishable from a real distribution firing 12 days early. The XP itself was always correctly credited either way; this only ever affected whether the popup fired. Now excludes any history entry matching the established "-LEGACY" one-off naming convention from ever triggering the celebration, while leaving it fully visible in the actual history log for transparency — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8100,7 +8100,19 @@ async function maybeShowCasinoPotCelebration(){
   try{
     const res = await authedFetch('/casinoPot/history.json');
     const all = (await res.json()) || {};
-    const entries = Object.values(all).sort((a, b) => (b.distributedAt || 0) - (a.distributedAt || 0));
+    // One-off admin cleanups (labeled e.g. "2026-09-LEGACY", matching the
+    // convention every such script uses specifically so it's never
+    // confused with a normal cycle) never trigger this. This function
+    // used to be fully generic — "whatever's newest in history" — with
+    // no concept of "this wasn't a real distribution." A member reported
+    // real confusion after seeing a full jackpot celebration for a
+    // one-time legacy cleanup days after it actually ran, looking
+    // identical to a genuine on-schedule draw. The XP itself is still
+    // correctly credited either way — this only ever changes whether the
+    // celebratory popup fires for it.
+    const entries = Object.values(all)
+      .filter(e => e && !/-LEGACY$/.test(e.month || ''))
+      .sort((a, b) => (b.distributedAt || 0) - (a.distributedAt || 0));
     if(entries.length === 0) return;
     const latest = entries[0];
     let lastSeen = null;
