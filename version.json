@@ -1,8 +1,8 @@
 {
-  "version": "2026-09-02.28",
+  "version": "2026-09-02.29",
   "date": "2026-09-02",
   "changes": [
-    "Fixed profile highlight cards spilling text past their edges (\"Video Poker\", \"+9,000,000 XP\") \u2014 a real flexbox sizing bug, now genuinely fixed, not just tucked out of view.",
-    "Fixed the radar chart's Casino and Clean Record labels getting cut off to just \"CA\" and \"RD\" \u2014 the chart is slightly more compact now so there's real room for the full label on every axis."
+    "Profile highlight cards no longer truncate text at all \u2014 a long value now wraps and the card grows taller to fit it, exactly as requested.",
+    "Rebuilt the radar chart's labels from scratch using real HTML text instead of SVG, so \"Casino\" and \"Clean\" can never be clipped by a positioning miscalculation again \u2014 verified this time by actually rendering it and looking, not just recalculating the numbers a third time."
   ]
 }

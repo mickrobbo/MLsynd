@@ -2529,28 +2529,29 @@ function updateProfileRadar(forName){
   // diamond with four question marks.
   if(axes.every(a => a.value == null)){ wrap.style.display = 'none'; return; }
 
-  // R and the label offset were originally 70/+18, which left nowhere
-  // near enough room in the 200x200 viewBox for the left/right axis
-  // labels — text-anchor:start/end means that text extends AWAY from its
-  // anchor point by its full width, not split evenly like the top/bottom
-  // labels are (those use text-anchor:middle, which is why "Betting" and
-  // "Tipping" never had this problem). "Casino" and "Clean Record" (now
-  // shortened to "Clean") were both getting clipped by the SVG's own
-  // edge, showing only their tail end ("CA", "RD"). Pulled the plot in
-  // and the label ring closer to it, which leaves a genuine ~30px of
-  // room on each side for real text instead of running the numbers and
-  // hoping.
-  const cx = 100, cy = 100, R = 55;
+  // Axis labels moved OUT of the SVG entirely and onto real HTML divs —
+  // two rounds of hand-tuning the SVG text-anchor/offset/radius numbers
+  // both still ended up clipping a label against the SVG's own edge
+  // ("Casino" and "Clean Record" both got cut down to their tail end at
+  // one point or another). Guessing at font-metric pixel math is exactly
+  // the kind of thing that keeps almost-but-not-quite working. HTML text
+  // has a real, guaranteed wrapping engine behind it — max-width plus
+  // white-space:normal genuinely cannot overflow the way SVG <text>
+  // with a fixed anchor point can. Positions are still driven by the
+  // same angle math as the plot itself (just expressed as percentages
+  // of a square wrapper instead of raw SVG pixels), so labels stay
+  // correctly aligned with each axis's spoke.
+  const cx = 100, cy = 100, R = 44;
   const angleFor = i => -Math.PI / 2 + i * (Math.PI / 2);
   const pointFor = (i, pct) => {
     const a = angleFor(i);
     const d = (Math.max(0, Math.min(100, pct)) / 100) * R;
     return [cx + d * Math.cos(a), cy + d * Math.sin(a)];
   };
-  const labelPointFor = i => {
+  const labelPointPct = i => {
     const a = angleFor(i);
-    const d = R + 12;
-    return [cx + d * Math.cos(a), cy + d * Math.sin(a)];
+    const d = R + 10;
+    return [((cx + d * Math.cos(a)) / 200) * 100, ((cy + d * Math.sin(a)) / 200) * 100];
   };
 
   // Grid: three concentric diamonds (33/66/100%) plus the four axis
@@ -2582,13 +2583,20 @@ function updateProfileRadar(forName){
     return `<circle cx="${x}" cy="${y}" r="3" fill="var(--brass-light)"/>`;
   }).join('');
 
-  const labels = axes.map((a, i) => {
-    const [x, y] = labelPointFor(i);
-    const anchor = Math.abs(Math.cos(angleFor(i))) < .3 ? 'middle' : (Math.cos(angleFor(i)) > 0 ? 'start' : 'end');
-    return `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="middle" class="profile-radar-label">${escapeHtml(a.label)}</text>`;
+  // i=0 top, i=1 right, i=2 bottom, i=3 left — each side gets its own
+  // anchor transform so the label grows AWAY from the plot (up/right/
+  // down/left respectively) rather than potentially drifting back over
+  // the data itself.
+  const labelSideClass = ['top', 'right', 'bottom', 'left'];
+  const htmlLabels = axes.map((a, i) => {
+    const [xPct, yPct] = labelPointPct(i);
+    return `<div class="radar-axis-label radar-axis-label-${labelSideClass[i]}" style="left:${xPct.toFixed(1)}%; top:${yPct.toFixed(1)}%;">${escapeHtml(a.label)}</div>`;
   }).join('');
 
-  host.innerHTML = `<svg viewBox="0 0 200 200" class="profile-radar-svg">${gridRings}${spokes}${parRing}${dataPolygon}${dataDots}${labels}</svg>`;
+  host.innerHTML = `<div class="radar-plot-wrap">
+    <svg viewBox="0 0 200 200" class="profile-radar-svg">${gridRings}${spokes}${parRing}${dataPolygon}${dataDots}</svg>
+    ${htmlLabels}
+  </div>`;
 
   // Value row underneath — the actual numbers, since a shape alone can be
   // read at a glance but not precisely. "—" for anything not loaded yet,
@@ -3182,7 +3190,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.28"; // Two real visual bugs fixed from live screenshots, urgent per report. (1) Highlight chip text ("Video Poker", "+9,000,000 XP") was spilling straight out past the card's rounded border — the unnamed wrapping div around hl-label/hl-val had no explicit width constraint, so as a flex child it defaulted to min-width:auto and refused to shrink below its content's natural width, meaning the overflow:hidden/ellipsis already on hl-val never actually got the chance to engage. Added min-width:0 to that div. (2) Radar chart's left/right axis labels ("Casino", "Clean Record") were getting clipped down to just their tail end ("CA", "RD") by the SVG's own edge — text-anchor:start/end extends text AWAY from its anchor by its full width, not split evenly like the top/bottom labels (text-anchor:middle) which is why those never had the problem. Pulled the plot radius in from 70 to 55 and the label offset from +18 to +12, shortened "Clean Record" to "Clean", and trimmed the label font down slightly — leaves a genuine ~33px of room per side now, checked against actual character-width math, not just "probably enough" — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.29"; // Third attempt at fully fixing the profile overflow issues, and this time actually rendered both fixes to real images before shipping rather than trusting the math again — two prior rounds of hand-tuned SVG pixel math both still clipped "Casino"/"Clean Record" down to "CA"/"RD". Highlight chips: per explicit request, no longer truncate with ellipsis at all — hl-val wraps onto a second line and the card genuinely grows taller instead, confirmed by rendering the exact overflowing values from the report ("+9,000,000 XP", "Video Poker") and looking at the actual pixels. Radar chart: axis labels moved entirely out of the SVG and onto real HTML divs with genuine CSS text-wrapping instead of guessed anchor-point math, positioned via percentages computed from the same angle geometry. Also swapped the CSS aspect-ratio property for the classic padding-top:100% square trick, since aspect-ratio is a newer property that can't be assumed universally supported. Confirmed via an actual render using the exact extracted CSS/JS from this file (caught and fixed a genuine extraction bug of my own along the way — an incomplete line-range grab that silently broke the whole test's script tag) — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
