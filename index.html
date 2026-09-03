@@ -1880,7 +1880,6 @@
       <div class="profile-prestige-bar-label" id="profilePrestigeBarLabel"></div>
       <div class="profile-prestige-breakdown" id="profilePrestigeBreakdown"></div>
     </div>
-    <div class="profile-highlights" id="profileHighlights" style="display:none;"></div>
     <div class="profile-radar-wrap" id="profileRadarWrap" style="display:none;">
       <div class="profile-radar-title-row">
         <span class="profile-radar-title">Snapshot</span>
@@ -3193,7 +3192,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.32"; // Added an info button next to the radar chart's "Snapshot" title, reusing the exact same pattern Player Tiers and Casino Pot already use (the same tier-status-info-btn "ⓘ" button, opening the same shared openCasinoRules modal) rather than inventing a new UI convention for this one spot. New CASINO_RULES.radar entry explains all four axes (Betting/Casino/Tipping/Clean) and the dashed 50% reference line in the same tone as the existing entries — Clean specifically spelled out as 100 minus 10 per fine, floored at 0, so nobody has to guess what it means the way it clearly wasn't obvious before. Static button wired once alongside the other static rules buttons, not re-wired on every profile open — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.33"; // Two things per request. (1) Removed the top-of-profile Highlights strip entirely — Biggest Win, Casino Win Rate, and Most Played now live directly in the Casino tab instead (Casino Win Rate is a genuinely new cell there; Biggest Win and Most Played already existed but in the old cramped grid style, now restyled as sleek highlight-chip cards with icons, matching what used to be at the top). Population logic reworked to toggle three separate cells' visibility instead of one shared wrapper, since they used to share a single wide cell when Biggest Win and Most Played sat side by side. (2) The actual root cause of "looks unprofessional" across every tab: profile-stat-category was a 2-column CSS grid, meaning every single stat cell only ever had half the screen width — that's what caused the wrapping/cut-off bugs from the last several rounds in the first place, not just the specific cells that got reported. Switched the whole category to a full-width stacked flex column and restyled profile-stat-cell as a clean label-left/value-right row instead of cramped centered text, so every tab (Betting/Casino/Tipping/Fines/Activity) now shares the same sleek card language uniformly, not just the three cells that got fixed individually before. Confirmed by actually rendering the Casino and Fines tabs with the exact real values from the reports (+646,400 XP, 534-1166, etc.) using the full verified stylesheet rather than reasoning about it — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10154,7 +10153,6 @@ function openBoardProfile(m, name){
   document.getElementById('profileFlair').style.display = 'none'; // these two are static HTML (exist since page load) so a synchronous reset here is safe — clears the previous profile's value before the new async fetch lands
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
   document.getElementById('profileLiveStatus').style.display = 'none'; // also static HTML — same reasoning
-  document.getElementById('profileHighlights').style.display = 'none'; // same reasoning — static HTML, avoids the previous profile's chips flashing before loadProfileGameStats resolves for the new one
   profileTitleStats = {};
   document.getElementById('profileTitleFlair').style.display = 'none';
   document.getElementById('profileRivalry').style.display = 'none';
@@ -10232,9 +10230,17 @@ function openBoardProfile(m, name){
       <div class="profile-stat-cell wide" id="profileCasinoRecordCell" style="${m.linkedUid ? '' : 'display:none;'}">
         <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
       </div>
-      <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
-        <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
-        <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      <div class="highlight-chip" id="profileBiggestWinCell" style="display:none;">
+        <span class="hl-icon">🎰</span>
+        <div><span class="hl-label">Biggest Win</span><span class="hl-val" id="profileBiggestWinVal">—</span></div>
+      </div>
+      <div class="highlight-chip" id="profileCasinoWinRateCell" style="${m.linkedUid ? '' : 'display:none;'}">
+        <span class="hl-icon">📊</span>
+        <div><span class="hl-label">Casino Win Rate</span><span class="hl-val" id="profileCasinoWinRateVal">—</span></div>
+      </div>
+      <div class="highlight-chip" id="profileMostPlayedCell" style="display:none;">
+        <span class="hl-icon">🎲</span>
+        <div><span class="hl-label">Most Played</span><span class="hl-val" id="profileMostPlayedVal">—</span></div>
       </div>
       <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
         <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
@@ -10547,7 +10553,6 @@ function openTippingOnlyProfile(uid, name){
   document.getElementById('profileFlair').style.display = 'none';
   document.getElementById('profilePrestigeBarWrap').style.display = 'none';
   document.getElementById('profileLiveStatus').style.display = 'none';
-  document.getElementById('profileHighlights').style.display = 'none';
   profileTitleStats = {};
   document.getElementById('profileTitleFlair').style.display = 'none';
   document.getElementById('profileRivalry').style.display = 'none';
@@ -10582,9 +10587,17 @@ function openTippingOnlyProfile(uid, name){
       <div class="profile-stat-cell wide" id="profileCasinoRecordCell">
         <span class="profile-stat-sub"><span class="lbl">📊 Record</span><span class="val" id="profileCasinoRecordVal" style="color:var(--brass);">…</span></span>
       </div>
-      <div class="profile-stat-cell wide" id="profileBiggestWinCell" style="display:none;">
-        <span class="profile-stat-sub" style="flex:1.4;"><span class="lbl">🎰 Biggest Win</span><span class="val" id="profileBiggestWinVal" style="color:var(--win); font-size:12px;">—</span></span>
-        <span class="profile-stat-sub"><span class="lbl">🎲 Most Played</span><span class="val" id="profileMostPlayedVal" style="color:var(--brass); font-size:12px;">—</span></span>
+      <div class="highlight-chip" id="profileBiggestWinCell" style="display:none;">
+        <span class="hl-icon">🎰</span>
+        <div><span class="hl-label">Biggest Win</span><span class="hl-val" id="profileBiggestWinVal">—</span></div>
+      </div>
+      <div class="highlight-chip" id="profileCasinoWinRateCell">
+        <span class="hl-icon">📊</span>
+        <div><span class="hl-label">Casino Win Rate</span><span class="hl-val" id="profileCasinoWinRateVal">—</span></div>
+      </div>
+      <div class="highlight-chip" id="profileMostPlayedCell" style="display:none;">
+        <span class="hl-icon">🎲</span>
+        <div><span class="hl-label">Most Played</span><span class="hl-val" id="profileMostPlayedVal">—</span></div>
       </div>
       <div class="profile-stat-cell wide" id="profileTippingDuesCell" style="display:none;">
         <span class="profile-stat-sub"><span class="lbl">🏉 Tipping Dues</span><span class="val" id="profileTippingDuesVal" style="color:var(--brass); font-size:12px;">—</span></span>
@@ -10818,52 +10831,43 @@ async function loadProfileGameStats(linkedUid, forName){
     updateProfileTitle(forName);
     updateProfileRadar(forName);
 
-    if(biggest || topGame){
+    // Three separate cells now (they used to share one wrapping div when
+    // this content lived in the top-of-profile Highlights strip) — each
+    // needs its own visibility toggle rather than one shared cellEl.
+    const winRateCell = document.getElementById('profileCasinoWinRateCell');
+    const playedCell = document.getElementById('profileMostPlayedCell');
+    if(biggest){
       cellEl.style.display = 'flex';
       const winEl = document.getElementById('profileBiggestWinVal');
-      if(winEl) winEl.textContent = biggest ? `+${biggest.amount.toLocaleString()} — ${biggest.reason || '?'}` : '—';
+      if(winEl) winEl.textContent = `+${biggest.amount.toLocaleString()} — ${biggest.reason || '?'}`;
+    }
+    const decidedForRate = overallWins + overallLosses;
+    if(winRateCell && decidedForRate > 0){
+      winRateCell.style.display = 'flex';
+    }
+    if(topGame){
+      if(playedCell) playedCell.style.display = 'flex';
       const playedEl = document.getElementById('profileMostPlayedVal');
       if(playedEl){
-        if(topGame){
-          const [gname, stats] = topGame;
-          const decided = stats.wins + stats.losses;
-          const winPct = decided > 0 ? Math.round((stats.wins / decided) * 100) : null;
-          playedEl.textContent = `${gname} (${stats.count}${winPct != null ? `, ${winPct}% win` : ''})`;
-        } else {
-          playedEl.textContent = '—';
-        }
+        const [gname, stats] = topGame;
+        const decided = stats.wins + stats.losses;
+        const winPct = decided > 0 ? Math.round((stats.wins / decided) * 100) : null;
+        playedEl.textContent = `${gname} (${stats.count}${winPct != null ? `, ${winPct}% win` : ''})`;
       }
     }
 
-    // Highlights strip — a quick "here's what's notable" read before
-    // digging into the detailed tabs. Deliberately reuses biggest/
-    // overallWins/overallLosses/topGame computed just above rather than
-    // fetching anything fresh — same log, same pass, just also surfaced
-    // in a punchier, higher-visibility spot. Only shows a chip when
-    // there's something genuinely worth showing (a real win, a real
-    // decided record) — an empty or all-zero strip would read as
-    // broken, not impressive, so the whole thing stays hidden rather
-    // than show hollow placeholders.
-    const hlWrap = document.getElementById('profileHighlights');
-    if(hlWrap){
-      const chips = [];
-      if(biggest && biggest.amount > 0){
-        chips.push(`<div class="highlight-chip"><span class="hl-icon">🎰</span><div><span class="hl-label">Biggest Win</span><span class="hl-val">+${biggest.amount.toLocaleString()} XP</span></div></div>`);
-      }
+    // Highlights strip removed from the top of the profile per request —
+    // Biggest Win, Casino Win Rate, and Most Played now live directly in
+    // the Casino tab instead (see the template in openBoardProfile/
+    // openTippingOnlyProfile), so this data no longer needs a second,
+    // separate home. profileBiggestWinVal/profileMostPlayedVal above and
+    // profileCasinoWinRateVal below are populated from the exact same
+    // biggest/overallWins/overallLosses/topGame already computed here —
+    // one pass, three destinations, no duplicate fetch either way.
+    const winRateEl = document.getElementById('profileCasinoWinRateVal');
+    if(winRateEl){
       const decidedTotal = overallWins + overallLosses;
-      if(decidedTotal >= 5){ // a handful of decided hands minimum — a 1-0 "100%" record isn't a highlight, it's noise
-        const winPctHl = Math.round((overallWins / decidedTotal) * 100);
-        chips.push(`<div class="highlight-chip"><span class="hl-icon">📊</span><div><span class="hl-label">Casino Win Rate</span><span class="hl-val">${winPctHl}%</span></div></div>`);
-      }
-      if(topGame && topGame[1].count >= 5){
-        chips.push(`<div class="highlight-chip"><span class="hl-icon">🎲</span><div><span class="hl-label">Most Played</span><span class="hl-val">${escapeHtml(topGame[0])}</span></div></div>`);
-      }
-      if(chips.length > 0){
-        hlWrap.innerHTML = chips.join('');
-        hlWrap.style.display = 'flex';
-      } else {
-        hlWrap.style.display = 'none';
-      }
+      winRateEl.textContent = decidedTotal > 0 ? `${Math.round((overallWins / decidedTotal) * 100)}%` : '—';
     }
 
     // Full per-game breakdown — Most Played above only ever shows the #1

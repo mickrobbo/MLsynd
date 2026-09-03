@@ -3400,7 +3400,7 @@
     background:linear-gradient(165deg, var(--brass-light), var(--brass));
     box-shadow:0 0 16px rgba(255,214,120,.5), 0 3px 8px rgba(0,0,0,.3);
   }
-  .profile-stat-category{ display:grid; grid-template-columns:1fr 1fr; gap:12px; animation:profileCatIn var(--ease-smooth) both; }
+  .profile-stat-category{ display:flex; flex-direction:column; gap:8px; animation:profileCatIn var(--ease-smooth) both; }
   @keyframes profileCatIn{ 0%{ opacity:0; transform:translateY(5px); } 100%{ opacity:1; transform:translateY(0); } }
   /* Staggered cascade for whatever's inside a freshly-shown tab — cells,
      the fines note, the XP breakdown bars, Recent Form — every direct
@@ -3427,20 +3427,27 @@
   .rules-body p{ margin:0 0 8px; color:var(--chalk); opacity:.92; }
   .profile-stat-cell{
     background:linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.28));
-    border:1px solid rgba(203,177,102,.16); border-radius:12px; padding:16px 12px; text-align:center;
+    border:1px solid rgba(203,177,102,.16); border-radius:14px; padding:13px 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px; text-align:left;
     transition: transform var(--ease-snap), background var(--ease-base), border-color var(--ease-base);
     box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 2px 6px rgba(0,0,0,.18);
   }
-  .profile-stat-cell:active{ transform:scale(.96); background:rgba(0,0,0,.32); }
+  .profile-stat-cell:active{ transform:scale(.98); background:rgba(0,0,0,.32); }
   .profile-stat-cell.comparing{ background:rgba(203,177,102,.14); border-color:var(--brass-dim); animation:profileCompareIn .2s ease both; }
   @keyframes profileCompareIn{ 0%{ transform:scale(.95); opacity:.6; } 100%{ transform:scale(1); opacity:1; } }
   .profile-stat-compare-row{ display:flex; justify-content:space-around; margin-top:4px; }
   .profile-stat-compare-side{ display:flex; flex-direction:column; align-items:center; }
   .profile-stat-compare-val{ font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:13px; color:var(--brass-light); }
   .profile-stat-compare-lbl{ font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
-  .profile-stat-cell .lbl{ display:block; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:7px; }
-  .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:18px; font-weight:700; color:var(--chalk); }
-  .profile-stat-cell.wide{ grid-column:1 / -1; display:flex; align-items:center; justify-content:space-around; text-align:center; padding:16px 10px; }
+  /* Every cell is genuinely full-width now (the parent category is a
+     flex column, not a 2-column grid), so label-left/value-right reads
+     as a clean settings-style row instead of the old centered, cramped
+     half-width cell that's what actually caused the wrapping bugs from
+     earlier — there was never enough room in a 50%-width centered cell
+     for a real value to sit cleanly. */
+  .profile-stat-cell .lbl{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; flex-shrink:0; }
+  .profile-stat-cell .val{ font-family:'IBM Plex Mono', monospace; font-size:16px; font-weight:700; color:var(--chalk); text-align:right; }
+  .profile-stat-cell.wide{ display:flex; align-items:center; justify-content:space-around; text-align:center; padding:16px 10px; }
   .profile-stat-cell.wide .profile-stat-sub{ display:flex; flex-direction:column; align-items:center; }
   /* Section labels — same small-caps, muted, letter-spaced treatment
      Recent Form/Where the XP Goes already use, so the whole profile

@@ -1,7 +1,8 @@
 {
-  "version": "2026-09-02.32",
+  "version": "2026-09-02.33",
   "date": "2026-09-02",
   "changes": [
-    "Added an info button next to the radar chart's \"Snapshot\" title \u2014 tap it for a plain explanation of what Betting, Casino, Tipping, and Clean actually measure, and what the dashed reference line means."
+    "Removed the top-of-profile Highlights strip \u2014 Biggest Win, Casino Win Rate, and Most Played now live directly in the Casino tab as proper sleek cards with icons.",
+    "Found and fixed the real root cause behind the last few rounds of layout complaints: every profile tab was a 2-column grid, giving each stat only half the screen width. Every tab (Betting, Casino, Tipping, Fines, Activity) is a clean full-width stacked layout now, uniformly \u2014 not just the specific cells that were reported broken."
   ]
 }
