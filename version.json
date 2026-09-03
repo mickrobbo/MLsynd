@@ -1,8 +1,9 @@
 {
-  "version": "2026-09-02.23",
+  "version": "2026-09-02.24",
   "date": "2026-09-02",
   "changes": [
-    "Added a max bet of 250,000 XP per hand, across every casino game \u2014 the total at risk in one hand, so side bets and multiple simultaneous bets all count together, not just the biggest single chip.",
-    "Renamed \"Earning XP\" to \"XP Ecosystem\" and extended it to show the full picture \u2014 earning, playing, and where XP actually burns \u2014 not just how to earn it."
+    "Found and fixed the real cause of the Casino Pot distributing three times in one day, well outside its schedule: the admin \"Close period\" button was always force-closing the current, still-open period, not just genuinely overdue ones. That capability is now removed entirely \u2014 the current period can never be closed early by this button again.",
+    "Removed the redundant \"Rules\" hub screen \u2014 it opened the exact same info every individual game's own Rules button already shows.",
+    "Blackjack, Baccarat, War, and Slots can now take a custom bet amount by tapping the chip, matching every other game."
   ]
 }

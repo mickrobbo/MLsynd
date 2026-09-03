@@ -492,11 +492,6 @@
           <span class="casino-hub-label">Games</span>
           <span class="casino-hub-sub">Blackjack, Roulette &amp; more</span>
         </div>
-        <div class="casino-hub-bubble" id="hubRulesBtn">
-          <span class="casino-hub-icon">📜</span>
-          <span class="casino-hub-label">Rules</span>
-          <span class="casino-hub-sub">How each game plays</span>
-        </div>
         <div class="casino-hub-bubble" id="hubXpBtn">
           <span class="casino-hub-icon">♻️</span>
           <span class="casino-hub-label">XP Ecosystem</span>
@@ -763,7 +758,7 @@
         </div>
         <div id="casinoPotHistoryArea" style="display:none; margin-top:10px;"><div class="empty">Loading…</div></div>
         <div id="casinoPotAdminWrap" style="display:none; margin-top:12px; text-align:center; border-top:1px solid var(--line); padding-top:12px;">
-          <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close period &amp; distribute pot</button>
+          <button type="button" class="small secondary" id="closeMonthPotBtn">🔒 Close any overdue periods</button>
           <div class="status-msg" id="casinoPotAdminStatus"></div>
         </div>
       </div>
@@ -791,15 +786,6 @@
         <div class="casino-floor-spotlight" id="casinoFloorSpotlight"></div>
         <div id="casinoFloorArea" class="casino-floor-scroll"><div class="empty">Loading…</div></div>
       </div>
-    </div>
-
-    <!-- Rules hub view: list of every game, opens the existing rules modal per-game -->
-    <div class="panel casino-view" id="casinoRulesHubView">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-        <h2 style="font-size:14px; margin:0;">📜 Game Rules</h2>
-        <button type="button" class="pill-btn" id="rulesHubBackBtn">← Back</button>
-      </div>
-      <div id="casinoRulesHubList"></div>
     </div>
 
     <!-- Badges view -->
@@ -3048,7 +3034,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.23"; // Two things per request. (1) A max bet of 250,000 XP per hand, across every game — CASINO_MAX_BET_PER_HAND defined once here and referenced as a shared global by all twelve casino-*.js files (they load as plain scripts sharing this window scope, not modules, so this avoids duplicating the same number twelve times). Applied to the TOTAL at risk in one hand, not each individual bet in isolation — Blackjack/War's side bets, Double Down, and Split; Roulette's every placed chip; Craps' every live bet type (using its own existing crapsTotalAtRisk(), which also means every subsequent roll gets re-checked, not just the first, catching bets that build up gradually too); Plinko's bet-per-ball x ball count; Slots' bet-per-line x active lines. Double or Nothing and Slots' gamble ladder are correctly untouched past the opening stake, since later rounds grow winnings already at risk, not a new bet. Hold'em's raise sizing is server-authoritative in a separate holdem-dealer.mjs function not available this session — genuinely not capped yet, flagged rather than guessed at. (2) Renamed "Earning XP" -> "XP Ecosystem" and extended its content from earning-only to the full earn/play/burn picture (the new bet cap, the pot's 20% burn and 250M cap, all five fines) — reads entirely from constants already defined elsewhere, so it can't drift out of sync with the actual mechanics — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.24"; // Three fixes per live member report. (1) The real cause of the Casino Pot firing three times in one day, well outside its schedule: "Close period & distribute pot" always included the current, still-open period in what it distributed ([...stale, casinoPotPeriodKey()]), not just genuinely overdue ones — every click force-closed the live period early regardless of the confirm() dialog. Removed that entirely; the button (renamed "Close any overdue periods") now only ever touches genuinely stale periods and refuses to run at all if none exist — the current period can no longer be force-closed by this button, full stop. (2) Removed the hub-level "Rules" screen — confirmed via its own code comment that it opened "the exact same modal used by each table's own Rules button," genuine double-handling. openCasinoRules()/CASINO_RULES themselves untouched, every individual game's own Rules button still works exactly as before. (3) Blackjack, Baccarat, War, and Slots were missing the "click the chip for a custom bet" feature every other game already had (Mines, Video Poker, Roulette, Craps, Plinko, Big Wheel, Crash, Double or Nothing) — added to all four, each respecting that game's own can't-change-bet-mid-hand state — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7983,14 +7969,31 @@ document.getElementById('casinoPotRulesBtn').addEventListener('click', () => ope
 document.getElementById('closeMonthPotBtn').addEventListener('click', async () => {
   const btn = document.getElementById('closeMonthPotBtn');
   const status = document.getElementById('casinoPotAdminStatus');
-  if(!confirm('Close out the current period and distribute the pot now? This normally happens automatically 8am on the 1st and 16th — only do this to force it early.')) return;
+  // Real incident, not a hypothetical: this button used to ALWAYS include
+  // the current, still-open period alongside anything genuinely stale
+  // ([...stale, casinoPotPeriodKey()]) — meaning every click force-closed
+  // the live period early, confirm() dialog or not. That fired three
+  // times in one day, each one a genuine unwanted early distribution
+  // (small amounts, but real — Josh and Joffa both actually got paid
+  // days before the 16th). Now scoped to ONLY ever process genuinely
+  // overdue periods (the same stale list findStaleCasinoPotMonths()
+  // already exists to find) — the current period is never touched by
+  // this button anymore, full stop. If a genuine "distribute early on
+  // purpose" need ever comes up, that's worth building deliberately with
+  // its own explicit safeguard, not as a side effect of a button meant
+  // for catching up on a missed automatic run.
+  const stale = await findStaleCasinoPotMonths();
+  if(stale.length === 0){
+    status.className = 'status-msg';
+    status.textContent = 'Nothing overdue — the current period only closes on its own schedule (1st/16th, 8am AEST).';
+    return;
+  }
+  if(!confirm(`Close out ${stale.length} overdue period${stale.length === 1 ? '' : 's'} that never distributed? This does NOT touch the current, still-open period.`)) return;
   btn.disabled = true;
   status.className = 'status-msg';
   status.textContent = 'Distributing…';
   try{
-    const stale = await findStaleCasinoPotMonths();
-    const monthKeys = [...stale, casinoPotPeriodKey()];
-    const result = await distributeCasinoPot(monthKeys);
+    const result = await distributeCasinoPot(stale);
     if(result.skipped){
       status.className = 'status-msg';
       status.textContent = result.rolled ? 'Nobody was eligible yet — pot rolls forward untouched.' : 'Nothing to distribute.';
@@ -8388,12 +8391,10 @@ async function showCasinoView(viewId){
   reconcileCasinoAmbience();
 }
 document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
-document.getElementById('hubRulesBtn').addEventListener('click', () => showCasinoView('casinoRulesHubView'));
 document.getElementById('hubXpBtn').addEventListener('click', () => { renderXpInfoView(); showCasinoView('casinoXpInfoView'); });
 document.getElementById('hubBadgesBtn').addEventListener('click', () => { renderCasinoBadgesView(); showCasinoView('casinoBadgesView'); });
 document.getElementById('hubBookBtn').addEventListener('click', () => { renderSyndyBook(); renderLegBets(); showCasinoView('casinoBookView'); });
 document.getElementById('bookBackBtn').addEventListener('click', () => showCasinoView(null));
-document.getElementById('rulesHubBackBtn').addEventListener('click', () => showCasinoView(null));
 document.getElementById('xpInfoBackBtn').addEventListener('click', () => showCasinoView(null));
 document.getElementById('badgesBackBtn').addEventListener('click', () => showCasinoView(null));
 
@@ -9368,19 +9369,13 @@ document.getElementById('casinoRulesCloseBtn').addEventListener('click', () => {
 document.getElementById('casinoRulesModal').addEventListener('click', (e) => {
   if(e.target.id === 'casinoRulesModal') document.getElementById('casinoRulesModal').classList.remove('open');
 });
-// ---- Rules hub (Casino landing → Rules bubble) — one tile per game, opens
-// the exact same modal used by each table's own "📜 Rules" button. ----
-const CASINO_RULES_HUB_ORDER = [
-  ['blackjack', '🃏 Blackjack'], ['baccarat', '🎴 Baccarat'], ['roulette', '🎡 Roulette'],
-  ['war', '⚔️ Casino War'], ['craps', '🎲 Craps'], ['plinko', '🔴 Plinko'], ['bigwheel', '🛞 Big Wheel'], ['mines', '💣 Mines'], ['slots', '🎰 Slots'], ['videopoker', '🂡 Video Poker'],
-  ['crash', '🚀 Crash'], ['doubleornothing', '🪙 Double or Nothing'],
-  ['holdem', "🎲 Hold'em"], ['casinopot', '🏆 Casino Pot'], ['tiers', '🏅 Player Tiers']
-];
-document.getElementById('casinoRulesHubList').innerHTML = CASINO_RULES_HUB_ORDER.map(([key, label]) =>
-  `<button type="button" data-rules-key="${key}">${label}</button>`).join('');
-document.getElementById('casinoRulesHubList').querySelectorAll('button').forEach(btn => {
-  btn.addEventListener('click', () => openCasinoRules(btn.dataset.rulesKey));
-});
+// The hub-level "Rules" bubble/view (one big list of every game, opening
+// the exact same modal each table's own "📜 Rules" button already opens)
+// was removed per request — genuine double-handling, since every game
+// already has its own Rules button right there on its own table.
+// openCasinoRules()/CASINO_RULES themselves are untouched — every
+// individual game's own button, plus Casino Pot and Player Tiers, still
+// call this directly (see .casino-rules-btn wiring above).
 
 // Every chip rail in the Casino works the same way: tapping a chip ADDS
 // its value to the current stake, so 250 tapped four times reaches 1000

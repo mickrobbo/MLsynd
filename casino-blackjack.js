@@ -753,6 +753,19 @@ document.getElementById('bjBetInput').addEventListener('input', (e) => {
   void chip.offsetWidth;
   chip.classList.add('pc-chip-pulse');
 });
+// Click the chip to type any custom amount — same pattern every other
+// game's main bet chip already uses (Mines, Video Poker, Roulette, etc.),
+// added here per report that it was missing on Blackjack specifically.
+document.getElementById('bjChipDisplay').addEventListener('click', () => {
+  if(bjHandActive) return;
+  const input = document.getElementById('bjBetInput');
+  const entry = prompt('Bet amount (XP):', input.value || '50');
+  if(entry === null) return;
+  const amount = Math.floor(Number(entry));
+  if(!(amount > 0)) return;
+  input.value = amount;
+  input.dispatchEvent(new Event('input'));
+});
 document.getElementById('bjDealBtn').addEventListener('click', bjStartHand);
 // Restores the exact bet + Perfect Pairs combo from the last hand in one
 // tap — sets the input values and simulates the real toggle click rather
