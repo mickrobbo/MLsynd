@@ -280,6 +280,24 @@ async function distributePot(secret){
     return { skipped: true, reason: 'no eligible / empty pot', totalPot };
   }
 
+  // Hard cap per request — the 20% burn alone trims a PERCENTAGE, which
+  // can't actually stop the absolute number spiraling once a few people
+  // are staking amounts that dwarf everyone else's (the custom-bet chip
+  // makes that trivially possible). A percentage burn scales WITH the
+  // problem; a cap is the only thing that actually bounds it. Applied
+  // BEFORE the existing 20% burn — i.e. it caps what enters that
+  // pipeline, rather than being a second, separate burn concept bolted
+  // on top — so everything below this line (the 75/25 split math, the
+  // eligibility logic) is completely unchanged and still just operates
+  // on "the pot," whatever that turned out to be this period.
+  // capBurnedAmount is logged separately from the regular burn in
+  // history, purely for admin visibility into how often/how hard the
+  // cap is actually being hit — worth watching to see if 250M needs
+  // retuning once a few real periods have gone through it.
+  const CASINO_POT_CAP = 250000000;
+  const cappedPot = Math.min(totalPot, CASINO_POT_CAP);
+  const capBurnedAmount = totalPot - cappedPot; // always >= 0; 0 in a normal period that never reaches the cap
+
   // 20% burned outright per request — otherwise the pot is a pure wash:
   // 100% of what's collected gets redistributed straight back to players,
   // so nothing ever actually leaves the XP economy through it, and the
@@ -288,8 +306,9 @@ async function distributePot(secret){
   // distribution history for a real audit trail rather than just quietly
   // vanishing with no record. Single named constant, easy to retune.
   const CASINO_POT_BURN_RATE = 0.20;
-  const burnedAmount = Math.floor(totalPot * CASINO_POT_BURN_RATE);
-  const distributable = totalPot - burnedAmount;
+  const regularBurnedAmount = Math.floor(cappedPot * CASINO_POT_BURN_RATE);
+  const burnedAmount = capBurnedAmount + regularBurnedAmount; // combined figure — what players see as "burned" is one honest number, not two to reconcile
+  const distributable = cappedPot - regularBurnedAmount;
   const proportionalPool = Math.floor(distributable * 0.75);
   const jackpotPool = distributable - proportionalPool;
 
@@ -316,7 +335,7 @@ async function distributePot(secret){
   await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`, secret);
 
   const historyEntry = {
-    month: label, totalPot, rawPot, finesApplied: combinedFines, proportional, jackpotWinner, jackpotAmount: jackpotPool,
+    month: label, totalPot, rawPot, finesApplied: combinedFines, cappedPot, capBurnedAmount, proportional, jackpotWinner, jackpotAmount: jackpotPool,
     burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now()
   };
   await dbPut(`/casinoPot/history/${label.replace(/\./g, '_')}`, secret, historyEntry);
@@ -376,6 +395,98 @@ async function sendPotPushNotifications(secret, result){
   }
 }
 
+// ================= Clean Record Bonus =================
+// A monthly (not twice-monthly, unlike the pot itself) rolling jackpot
+// for genuinely spotless behaviour — zero fines of any kind across the
+// whole calendar month. Per request: if nobody qualifies, the bonus
+// amount rolls over and grows for next month rather than being paid to
+// nobody and vanishing, same spirit as a real lottery rollover.
+//
+// The hard part this needed solving: existing fine history
+// (/casinoPot/fineHistory/{uid}/*) is just a running CUMULATIVE count
+// per category, with no date breakdown at all — there was no way to ask
+// "did this person get fined THIS MONTH specifically" from what already
+// existed, short of touching every single fine-application site across
+// two separate apps to also write date-stamped entries. Instead this
+// takes a much lighter approach: snapshot everyone's total fine count at
+// the start of each month, then at the START OF THE NEXT MONTH compare
+// current-vs-snapshot — unchanged means genuinely zero fines landed in
+// between. No changes needed anywhere fines actually get applied.
+const CLEAN_RECORD_BONUS_BASE = 15000;
+
+async function runCleanRecordBonus(secret){
+  const nowKey = periodKeyFor(new Date(), TIMEZONE);
+  // Monthly, not twice-monthly — only ever evaluated on the month-start
+  // ("-01") run, never on the 16th.
+  if(!nowKey.endsWith('-01')) return { skipped: true, reason: 'not a month-start run' };
+
+  const monthLabel = nowKey.slice(0, 7); // "YYYY-MM"
+  // Idempotency — this whole function already only runs under the same
+  // distribution lock as distributePot, but this is a second, cheap
+  // guard specifically against ever double-evaluating (and so
+  // double-paying, or double-rolling-over) the same calendar month.
+  const lastRun = await dbGet('/casinoPot/cleanRecordBonus/lastRunMonth', secret).catch(() => null);
+  if(lastRun === monthLabel) return { skipped: true, reason: 'already evaluated this month' };
+
+  // Candidate pool is EVERYONE in /users, not just people who show up in
+  // fineHistory or who played casino games — "zero fines" should be
+  // checkable for anyone in the syndicate, including someone who's never
+  // triggered a single fine and so never has a fineHistory entry at all.
+  const users = (await dbGet('/users', secret)) || {};
+  const allUids = Object.keys(users);
+  if(allUids.length === 0) return { skipped: true, reason: 'no users found' };
+
+  const snapshot = (await dbGet('/casinoPot/cleanRecordSnapshot', secret)) || {};
+  const isFirstRunEver = Object.keys(snapshot).length === 0;
+
+  const currentTotals = {};
+  const newSnapshot = {};
+  for(const uid of allUids){
+    const fh = (await dbGet(`/casinoPot/fineHistory/${uid}`, secret).catch(() => null)) || {};
+    const total = (fh.groupMultiLegs || 0) + (fh.groupMultiMIA || 0) + (fh.groupMultiLowOdds || 0) + (fh.wrongTips || 0) + (fh.missedTips || 0);
+    currentTotals[uid] = total;
+    newSnapshot[uid] = total;
+  }
+
+  if(isFirstRunEver){
+    // Nothing to fairly evaluate on the very first run this feature ever
+    // executes — there's no "start of month" baseline to compare against
+    // yet, and everyone's cumulative total obviously includes a whole
+    // season of history that predates this feature existing. This run
+    // only establishes that baseline; the first real evaluation happens
+    // at the NEXT month-start, comparing against what's recorded here.
+    await dbPut('/casinoPot/cleanRecordSnapshot', secret, newSnapshot);
+    await dbPut('/casinoPot/cleanRecordBonus/pool', secret, CLEAN_RECORD_BONUS_BASE);
+    await dbPut('/casinoPot/cleanRecordBonus/lastRunMonth', secret, monthLabel);
+    return { monthLabel, firstRun: true, note: 'baseline established this run, no evaluation until next month-start' };
+  }
+
+  const pool = (await dbGet('/casinoPot/cleanRecordBonus/pool', secret)) || CLEAN_RECORD_BONUS_BASE;
+  // Anyone new to the roster since the last snapshot (no prior entry for
+  // their uid at all) is treated the same as the first-run case above —
+  // no baseline to compare against yet means no penalty, they qualify by
+  // default rather than being unfairly excluded.
+  const qualifying = allUids.filter(uid => currentTotals[uid] === (snapshot[uid] != null ? snapshot[uid] : currentTotals[uid]));
+
+  let winner = null, amountPaid = 0, newPool;
+  if(qualifying.length > 0){
+    winner = qualifying[Math.floor(Math.random() * qualifying.length)];
+    amountPaid = pool;
+    await creditPotXP(winner, amountPaid, `Clean Record Bonus (${monthLabel})`, secret);
+    newPool = CLEAN_RECORD_BONUS_BASE; // resets for the fresh cycle starting now
+  } else {
+    newPool = pool + CLEAN_RECORD_BONUS_BASE; // rolls over and grows — nobody collected it
+  }
+
+  await dbPut('/casinoPot/cleanRecordSnapshot', secret, newSnapshot);
+  await dbPut('/casinoPot/cleanRecordBonus/pool', secret, newPool);
+  await dbPut('/casinoPot/cleanRecordBonus/lastRunMonth', secret, monthLabel);
+
+  const result = { monthLabel, qualifyingCount: qualifying.length, winner, amountPaid, poolBefore: pool, poolAfter: newPool };
+  await dbPut(`/casinoPot/cleanRecordBonus/history/${monthLabel}`, secret, result);
+  return result;
+}
+
 export default async () => {
   if(!isDistributionTime()){
     return new Response(`Not ${DISTRIBUTE_HOUR}am on the 1st or 16th in ${TIMEZONE} — skipping.`, { status: 200 });
@@ -402,7 +513,18 @@ export default async () => {
     const result = await distributePot(secret);
     console.log('Casino pot distribution result:', JSON.stringify(result));
     if(!result.skipped) await sendPotPushNotifications(secret, result);
-    return new Response(JSON.stringify(result), { status: 200 });
+    // Clean Record Bonus — runs under the exact same lock, right after
+    // the regular distribution. It self-gates on being a month-start
+    // ("-01") run, so calling it here every 1st/16th is safe; it's a
+    // genuine no-op on the 16th.
+    let cleanRecordResult = null;
+    try{
+      cleanRecordResult = await runCleanRecordBonus(secret);
+      console.log('Clean Record Bonus result:', JSON.stringify(cleanRecordResult));
+    }catch(e){
+      console.error('Clean Record Bonus failed (regular pot distribution still succeeded):', e);
+    }
+    return new Response(JSON.stringify({ ...result, cleanRecordBonus: cleanRecordResult }), { status: 200 });
   }catch(e){
     console.error('Casino pot distribution failed:', e);
     return new Response('Failed: ' + e.message, { status: 500 });

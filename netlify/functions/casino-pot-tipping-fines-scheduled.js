@@ -25,8 +25,9 @@
 
 const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
 const SITE_URL = 'https://mlsynddash.netlify.app';
-const TIPPING_LOSS_FINE = 100000;
-const MISSED_TIP_FINE = 50000;
+const TIPPING_LOSS_FINE = 30000;
+const MISSED_TIP_FINE = 15000;
+const FINE_PERSONAL_SHARE = 0.10; // 10% comes off the fined person's own balance now, per request — the other 90% still goes to the shared pot exactly as before
 const TIMEZONE = 'Australia/Melbourne';
 const LOCK_PATH = '/casinoPot/tippingFineLock';
 const LOCK_STALE_MS = 10 * 60 * 1000;
@@ -125,11 +126,34 @@ function periodKeyFor(date, timeZone){
 }
 function normTeamName(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 
-async function applyFine(uid, amount, historyField, secret){
-  const nowKey = periodKeyFor(new Date(), TIMEZONE);
-  const path = `/casinoPot/months/${nowKey}/fines`;
+async function applyFine(uid, amount, historyField, reasonLabel, secret){
+  // 90/10 split per request — previously 100% went to the shared pot with
+  // zero personal impact. Restores some real individual stake without
+  // making a bad month feel unrecoverable: the pot still absorbs the
+  // large majority, this just isn't purely a group consequence anymore.
+  const potShare = Math.round(amount * (1 - FINE_PERSONAL_SHARE));
+  const personalShareTarget = amount - potShare;
+  const path = `/casinoPot/months/${periodKeyFor(new Date(), TIMEZONE)}/fines`;
   const current = (await dbGet(path, secret).catch(() => 0)) || 0;
-  await dbPut(path, secret, current + amount);
+  await dbPut(path, secret, current + potShare);
+
+  // Personal deduction floored at zero, never pushed negative — a low
+  // balance just means this specific fine collects less than its full
+  // 10%, not that the account goes into debt. The shortfall (if any)
+  // simply isn't collected anywhere; the pot's own 90% share is
+  // unaffected either way, it was already credited above.
+  const balPath = `/xp/${uid}/balance`;
+  const currentBal = (await dbGet(balPath, secret).catch(() => 0)) || 0;
+  const personalShare = Math.min(personalShareTarget, Math.max(0, currentBal));
+  if(personalShare > 0){
+    const newBal = currentBal - personalShare;
+    await dbPut(balPath, secret, newBal);
+    await fetch(`${FIREBASE_URL}/xp/${uid}/log.json?access_token=${secret}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: -personalShare, reason: `${reasonLabel} (personal share)`, balanceAfter: newBal, ts: Date.now() })
+    });
+  }
+
   // Per-person breakdown for profile display — separate write from the
   // pot-level total above, same reasoning as the Ledger's own copy of
   // this pattern: a brand new path that starts empty for everyone, so a
@@ -198,7 +222,7 @@ async function runFines(secret){
         : normTeamName(p.pick === 'home' ? g.hteam : (p.pick === 'away' ? g.ateam : '')) === normTeamName(g.winner);
 
       if(!isCorrect){
-        await applyFine(uid, TIPPING_LOSS_FINE, 'wrongTips', secret);
+        await applyFine(uid, TIPPING_LOSS_FINE, 'wrongTips', 'Wrong Tip Fine', secret);
         finedCount++;
         totalFined += TIPPING_LOSS_FINE;
       }
@@ -216,7 +240,7 @@ async function runFines(secret){
     for(const uid of knownTipperUids){
       if(picks[uid] && picks[uid].pick) continue; // they did pick — already handled above
       if(alreadyChecked[`${g.id}_${uid}`] === true) continue;
-      await applyFine(uid, MISSED_TIP_FINE, 'missedTips', secret);
+      await applyFine(uid, MISSED_TIP_FINE, 'missedTips', 'Missed Tip Fine', secret);
       missedCount++;
       totalFined += MISSED_TIP_FINE;
       await dbPut(`/casinoPot/tippingFinesChecked/${g.id}_${uid}`, secret, true);
