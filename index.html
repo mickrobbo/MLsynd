@@ -3192,7 +3192,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.35"; // Extended the Casino tab's icon+glow card treatment to Betting and Fines per report — those two were the only tabs still using the older plain label/value row with no icon, which is exactly what looked inconsistent sitting next to Casino and Tipping. Deliberately did NOT rename these to .highlight-chip — showProfileStatCompare()'s long-press-to-compare feature on the Betting tab looks up .lbl/.val by exact class name via querySelector, so renaming would have silently broken that feature the moment this shipped. Instead added a cell-icon span and restyled .profile-stat-cell itself to match highlight-chip's exact visual language (same glow filter, same gold value color, same stacked label-above-value layout) while keeping .lbl/.val intact — genuinely identical appearance, compare feature fully preserved. .val.pos/.val.neg still override to green/red as before, so P/L and fines keep their meaningful colour rather than turning uniformly gold. Confirmed via an actual render using the real values from the report (+$223.66, 12-5-0, 300,000 XP, etc.) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.37"; // Full fine/remuneration restructure per request. (1) All five fines split 90% pot / 10% personal balance, floored at zero so a low balance just collects less rather than going negative — genuinely new, previously 100% went to the pot with zero individual stake. Amounts also reduced: Losing Leg 250k->80k, MIA 200k->60k, Wrong Tip 100k->30k, Missed Tip 50k->15k, Low Odds demoted from the negligence tier entirely (150k->8k, a token amount now — betting safe is a strategic choice, not the same as not showing up). Implemented in both LEDGER-index.html (Losing/MIA/Low Odds, computed per-person now rather than as one bulk pot total, since the personal share has to hit each specific person's own balance) and casino-pot-tipping-fines-scheduled.js (Wrong/Missed Tip). Undo Week refunds the EXACT personal amount taken, stored on the history record, not a recomputed 10% that could drift. Found and corrected two places that still claimed fines "never touch your personal balance," which was now false. (2) New: Clean Record Bonus, a genuinely new rolling monthly jackpot (15,000 XP base) for zero fines of any kind that whole calendar month, going to one random qualifying member — rolls over and grows if nobody qualifies, same spirit as a lottery rollover. Solved the real problem this needed: existing fine history is just a cumulative count with no date breakdown, so instead of touching every fine-application site to add date-stamped entries, this snapshots everyone's total fine count at each month's start and compares current-vs-snapshot at the next — unchanged means genuinely clean. First-ever run only establishes the baseline, doesn't pay out, since there's nothing fair to compare against yet. Runs under the same distribution lock as the regular twice-monthly payout but self-gates to month-start only. Two known gaps flagged rather than silently left: not mirrored into the client-side manual "close overdue periods" button (a rare admin fallback where this would rarely even apply), and no dedicated live UI for the current pool/past winners yet, just a description added to the existing XP Ecosystem panel — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3244,14 +3244,14 @@ function renderChangelogBanner(data){
 // per-user write pattern (each signed-in client only ever writes its own
 // /xp/{uid} path) rather than any new security model — same trust level
 // already accepted elsewhere in this app for a friendly ~11-person group.
-const XP_RATES = { perTippingPoint: 250, perDollarIndividualWin: 150, perGroupLegWin: 350, perGroupLegLoss: 100 };
-const XP_SIGNUP_BONUS = 500;
+const XP_RATES = { perTippingPoint: 2500, perDollarIndividualWin: 1500, perGroupLegWin: 3500, perGroupLegLoss: 1000 };
+const XP_SIGNUP_BONUS = 5000;
 // A tipping-tier account can't see Board/Cash/Slips (no individual bets or
 // group multi legs to earn XP from), so a small recurring bonus plus their
 // Tipping points conversion are deliberately their ONLY XP sources — full
 // and dashboard-tier accounts also see this bonus, it's just not their
 // only source the way it is for tipping-tier.
-const XP_WEEKLY_BONUS = 500;
+const XP_WEEKLY_BONUS = 5000;
 function xpWeekKey(d){
   const now = d || new Date();
   const date = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -3337,29 +3337,29 @@ document.getElementById('weeklyBonusBtn').addEventListener('click', async () => 
 // real game, accessed via its own wide button below the game grid (see
 // the game bubble click handler further below), not a hero quick-action.
 const DAILY_SPIN_SEGMENTS = [
+  { label: '10000', value: 10000 },
   { label: '1000', value: 1000 },
-  { label: '100', value: 100 },
-  { label: '200', value: 200 },
-  { label: '400', value: 400 },
-  { label: '100', value: 100 },
+  { label: '2000', value: 2000 },
+  { label: '4000', value: 4000 },
+  { label: '1000', value: 1000 },
   { label: 'Zero', value: 0 },
-  { label: '800', value: 800 },
-  { label: '100', value: 100 },
-  { label: '200', value: 200 },
-  { label: '400', value: 400 },
-  { label: '100', value: 100 },
+  { label: '8000', value: 8000 },
+  { label: '1000', value: 1000 },
+  { label: '2000', value: 2000 },
+  { label: '4000', value: 4000 },
+  { label: '1000', value: 1000 },
   { label: 'Zero', value: 0 },
-  { label: 'JACKPOT', value: 2500 },
+  { label: 'JACKPOT', value: 25000 },
   { label: 'Zero', value: 0 },
-  { label: '200', value: 200 },
-  { label: '400', value: 400 },
-  { label: '100', value: 100 },
+  { label: '2000', value: 2000 },
+  { label: '4000', value: 4000 },
+  { label: '1000', value: 1000 },
   { label: 'Zero', value: 0 },
-  { label: '600', value: 600 },
-  { label: '100', value: 100 },
-  { label: '200', value: 200 },
-  { label: '200', value: 200 },
-  { label: '600', value: 600 },
+  { label: '6000', value: 6000 },
+  { label: '1000', value: 1000 },
+  { label: '2000', value: 2000 },
+  { label: '2000', value: 2000 },
+  { label: '6000', value: 6000 },
   { label: 'Zero', value: 0 }
 ];
 const DAILY_SPIN_COOLDOWN_MS = 2 * 24 * 60 * 60 * 1000; // once every second day
@@ -3596,8 +3596,10 @@ function renderXpInfoView(){
         Group Multi leg under $${CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY} — ${CASINO_POT_LOW_ODDS_FINE_DISPLAY.toLocaleString()} XP<br>
         Wrong AFL tip — ${CASINO_POT_TIPPING_FINE_DISPLAY.toLocaleString()} XP<br>
         Missed AFL tip — ${CASINO_POT_MISSED_TIP_FINE_DISPLAY.toLocaleString()} XP<br>
-        All fines come straight out of the shared pot, never your personal balance.
-      </div>`;
+        90% of every fine goes to the shared pot — the remaining 10% comes off your own balance directly.
+      </div>
+      <div class="xp-source-row"><span>Clean Record Bonus</span></div>
+      <div class="hint" style="padding:0 4px 10px;">A rolling monthly bonus, starting at ${CLEAN_RECORD_BONUS_BASE_DISPLAY.toLocaleString()} XP — goes to one random member with zero fines of any kind that whole calendar month. Nobody clean? It rolls over and grows for next month rather than going to anyone.</div>`;
   }
   body.innerHTML = html;
 }
@@ -7401,15 +7403,20 @@ const CASINO_POT_PAYOUT_REASON_PATTERN = /^Casino Pot – (Even Split|Jackpot|Pr
 // a member's own estimated contribution on their profile — if either
 // amount is ever retuned, update it here too or the profile will show a
 // stale figure.
-const CASINO_POT_LEG_LOSS_FINE_DISPLAY = 250000;
-const CASINO_POT_MIA_LEG_FINE_DISPLAY = 200000;
-const CASINO_POT_LOW_ODDS_FINE_DISPLAY = 150000;
+const CASINO_POT_LEG_LOSS_FINE_DISPLAY = 80000;
+const CASINO_POT_MIA_LEG_FINE_DISPLAY = 60000;
+const CASINO_POT_LOW_ODDS_FINE_DISPLAY = 8000;
 const CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY = 1.22;
-const CASINO_POT_MISSED_TIP_FINE_DISPLAY = 50000;
-const CASINO_POT_TIPPING_FINE_DISPLAY = 100000;
+const CASINO_POT_MISSED_TIP_FINE_DISPLAY = 15000;
+const CASINO_POT_TIPPING_FINE_DISPLAY = 30000;
 // Display-only copy of the hard cap applied at distribution time — same
 // reasoning as every other _DISPLAY constant here, kept in sync manually.
 const CASINO_POT_CAP_DISPLAY = 250000000;
+// Display-only copy of the Clean Record Bonus base amount — the actual
+// mechanic lives entirely in casino-pot-distribute-scheduled.js (a
+// separate deployed function), same reasoning as every other _DISPLAY
+// constant here.
+const CLEAN_RECORD_BONUS_BASE_DISPLAY = 15000;
 // Global on purpose — every casino-*.js game file is loaded as a plain
 // <script> after this one, sharing this same window scope (not a module),
 // so each game's own bet-validation code references this directly rather
@@ -9520,7 +9527,7 @@ const CASINO_RULES = {
     <h3>Object</h3>
     <p>One free spin every 2 days, no bet required — just tap Spin. Prizes are added straight to your XP balance.</p>
     <h3>The wheel</h3>
-    <p>24 segments: 5&times;Zero, 6&times;100 XP, 5&times;200 XP, 3&times;400 XP, 2&times;600 XP, 1&times;800 XP, 1&times;1000 XP, and 1 JACKPOT worth 2500 XP. The bigger the prize, the fewer segments carry it — the odds you see on the wheel are exactly the odds you get, nothing hidden behind them.</p>
+    <p>24 segments: 5&times;Zero, 6&times;1,000 XP, 5&times;2,000 XP, 3&times;4,000 XP, 2&times;6,000 XP, 1&times;8,000 XP, 1&times;10,000 XP, and 1 JACKPOT worth 25,000 XP. The bigger the prize, the fewer segments carry it — the odds you see on the wheel are exactly the odds you get, nothing hidden behind them.</p>
     <h3>Cooldown</h3>
     <p>After spinning, the next spin unlocks exactly 2 days later. The button shows a countdown until then.</p>
   `},
@@ -9539,13 +9546,13 @@ const CASINO_RULES = {
     <p>The pot is also capped at <b>250,000,000 XP</b> per period. Everything collected above that is burned outright, on top of the 20% below — a percentage alone can't stop the number spiraling once a few people are staking huge amounts, only a hard ceiling can. Your own losses always count toward your personal tally either way, whether or not the shared pot is capped.</p>
     <p><b>20%</b> of every pot (after the cap) is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (60% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (20% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Fines</h3>
-    <p>The pot also takes real fines off the top before it's ever distributed, all coming straight out of the shared pot, never your personal balance:</p>
+    <p>The pot also takes real fines off the top before it's ever distributed. 90% of each comes out of the shared pot — the remaining 10% comes off your own balance directly:</p>
     <ul style="margin:4px 0 0; padding-left:20px; line-height:1.6;">
-      <li>Losing Group Multi leg — <b>250,000 XP</b></li>
-      <li>MIA (no-show) Group Multi leg — <b>200,000 XP</b></li>
-      <li>Group Multi leg placed under $1.22 — <b>150,000 XP</b></li>
-      <li>Wrong AFL tip — <b>100,000 XP</b></li>
-      <li>Missed AFL tip — <b>50,000 XP</b></li>
+      <li>Losing Group Multi leg — <b>80,000 XP</b></li>
+      <li>MIA (no-show) Group Multi leg — <b>60,000 XP</b></li>
+      <li>Group Multi leg placed under $1.22 — <b>8,000 XP</b></li>
+      <li>Wrong AFL tip — <b>30,000 XP</b></li>
+      <li>Missed AFL tip — <b>15,000 XP</b></li>
     </ul>
     <h3>Eligibility</h3>
     <p>You qualify for the 75% share if you played the tables <b>20 times or more</b> this period, <b>or</b> earned any real (non-casino) XP this period — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>

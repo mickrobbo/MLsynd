@@ -1,7 +1,8 @@
 {
-  "version": "2026-09-02.35",
+  "version": "2026-09-02.37",
   "date": "2026-09-02",
   "changes": [
-    "Betting and Fines tabs now match Casino and Tipping's polish \u2014 every stat has its own icon and the same glow treatment, no more plain text-only rows. Positive/negative colouring (green P/L, red fines) still works exactly as before."
+    "All five fines now split 90% to the shared pot / 10% off your own balance directly, floored at zero so a low balance just collects less rather than going into debt. Amounts also reduced across the board, and the 'under .22' fine is now a token amount instead of a full penalty \u2014 playing it safe isn't the same as not showing up.",
+    "New: Clean Record Bonus \u2014 a rolling monthly prize (starting at 15,000 XP) for zero fines of any kind in a full calendar month, paid to one random qualifying member. Nobody clean? It rolls over and grows for next month."
   ]
 }
