@@ -771,6 +771,7 @@
       <div class="casino-social-tabs">
         <div class="casino-social-tab active" id="membersTabLeaderboard">🏆 Leaderboard</div>
         <div class="casino-social-tab" id="membersTabFloor">🃏 Floor</div>
+        <div class="casino-social-tab" id="membersTabFines">⚠️ Fines</div>
       </div>
       <div id="membersLeaderboardView">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
@@ -785,6 +786,10 @@
       <div id="membersFloorView" style="display:none;">
         <div class="casino-floor-spotlight" id="casinoFloorSpotlight"></div>
         <div id="casinoFloorArea" class="casino-floor-scroll"><div class="empty">Loading…</div></div>
+      </div>
+      <div id="membersFinesView" style="display:none;">
+        <div class="hint" style="margin-bottom:8px;">Every fine as it happens, most recent first — tap anyone to see their own profile.</div>
+        <div id="membersFinesArea"><div class="empty">Loading…</div></div>
       </div>
     </div>
 
@@ -3192,7 +3197,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.37"; // Full fine/remuneration restructure per request. (1) All five fines split 90% pot / 10% personal balance, floored at zero so a low balance just collects less rather than going negative — genuinely new, previously 100% went to the pot with zero individual stake. Amounts also reduced: Losing Leg 250k->80k, MIA 200k->60k, Wrong Tip 100k->30k, Missed Tip 50k->15k, Low Odds demoted from the negligence tier entirely (150k->8k, a token amount now — betting safe is a strategic choice, not the same as not showing up). Implemented in both LEDGER-index.html (Losing/MIA/Low Odds, computed per-person now rather than as one bulk pot total, since the personal share has to hit each specific person's own balance) and casino-pot-tipping-fines-scheduled.js (Wrong/Missed Tip). Undo Week refunds the EXACT personal amount taken, stored on the history record, not a recomputed 10% that could drift. Found and corrected two places that still claimed fines "never touch your personal balance," which was now false. (2) New: Clean Record Bonus, a genuinely new rolling monthly jackpot (15,000 XP base) for zero fines of any kind that whole calendar month, going to one random qualifying member — rolls over and grows if nobody qualifies, same spirit as a lottery rollover. Solved the real problem this needed: existing fine history is just a cumulative count with no date breakdown, so instead of touching every fine-application site to add date-stamped entries, this snapshots everyone's total fine count at each month's start and compares current-vs-snapshot at the next — unchanged means genuinely clean. First-ever run only establishes the baseline, doesn't pay out, since there's nothing fair to compare against yet. Runs under the same distribution lock as the regular twice-monthly payout but self-gates to month-start only. Two known gaps flagged rather than silently left: not mirrored into the client-side manual "close overdue periods" button (a rare admin fallback where this would rarely even apply), and no dedicated live UI for the current pool/past winners yet, just a description added to the existing XP Ecosystem panel — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.39"; // Fines is a real event log now, not a summary — per correction, the last round's per-member totals weren't what was wanted. Genuinely new storage was needed: neither fineHistory (a running count, no amounts) nor the pot's own bulk fines total (one combined number for the whole week) could answer "show me each fine as it happened," so added /casinoPot/fineEvents — one complete record per incident (name, category, full amount, timestamp) — written from both LEDGER-index.html (Losing/MIA/Low Odds, one event per category per week rather than per individual leg, since that's the actual granularity the underlying data represents) and casino-pot-tipping-fines-scheduled.js (Wrong/Missed Tip, resolving the person's name fresh via /users since this function never needed a display name before). Added the matching write rule to firebase-rules.json (needs republishing in the Firebase console) — confirmed the existing broad /casinoPot read rule already covers the new path, so no read-rule change needed, but write does since the Ledger writes as a regular logged-in session, unlike the scheduled function's service-account token which bypasses rules entirely. Reads client-side the same way the Activity log does — fetch the whole node, sort/slice to 100 client-side — rather than a server-side orderBy that would need a matching index rule. Caught and fixed two of my own mistakes during this edit via an immediate syntax check rather than assuming a large multi-part replacement landed cleanly: an orphaned duplicate closing block left behind by the boundary of my own edit, and then a duplicate variable declaration introduced while fixing that first mistake — neither shipped. One known limitation, not fixed here: Undo Week doesn't retroactively remove the fine events it undoes, so a reversed week's fines will still show in this log even though their effects are gone — flagging this rather than silently leaving it — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9345,6 +9350,57 @@ async function renderXPLeaderboard(){
     area.innerHTML = '<div class="empty">Couldn\'t load the leaderboard — try again.</div>';
   }
 }
+// Fines leaderboard — every member's total, worst first, so accountability
+// doesn't require opening each profile individually to find out. Reuses
+// the SAME allParticipants gathering as renderXPLeaderboard just above
+// (linked Board members plus anyone tipping-only), and the SAME five
+// _DISPLAY constants the profile's own Fines tab already computes from —
+// this is genuinely the same data and the same math, just aggregated
+// across everyone instead of shown one person at a time. Everyone shows,
+// including a genuine 0 — the point is the full standing, not just a
+// list of offenders, and a real 0 belongs at the bottom of "worst first"
+// same as it would in any other ranking.
+// Real event log — every fine as it actually happened, name/category/
+// amount/when, most recent first, capped to the same 100 as the Floor
+// feed and Activity log. Reads /casinoPot/fineEvents as one flat fetch
+// rather than per-member (unlike the Leaderboard/old Fines summary
+// above) since these are genuinely global events, not something scoped
+// per person — deliberately NOT using orderBy/limitToLast here, same
+// reasoning as the Activity log: that needs a matching Firebase index
+// rule, and sorting/slicing 100-ish small event objects client-side
+// costs nothing in practice.
+async function renderMembersFinesView(){
+  const area = document.getElementById('membersFinesArea');
+  try{
+    const res = await authedFetch('/casinoPot/fineEvents.json');
+    if(!res.ok){
+      area.innerHTML = `<div class="empty">Couldn't load fines (server said ${res.status}).</div>`;
+      return;
+    }
+    const data = await res.json();
+    const entries = (data && typeof data === 'object' ? Object.values(data) : [])
+      .filter(e => e && typeof e === 'object' && e.amount > 0)
+      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      .slice(0, 100);
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">No fines logged yet.</div>';
+      return;
+    }
+    area.innerHTML = entries.map(e => `
+      <div class="xp-lb-row" data-name="${escapeHtml(e.name || '')}" style="display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--line); cursor:pointer;">
+        <span style="flex:1; min-width:0;">
+          <span style="font-size:13px; font-weight:600; color:var(--chalk);">${escapeHtml(e.name || '?')}</span>
+          <span style="display:block; font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(e.category || 'Fine')} · ${timeAgo(e.ts)}</span>
+        </span>
+        <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; color:var(--loss); flex-shrink:0;">-${(e.amount || 0).toLocaleString()}</span>
+      </div>`).join('');
+    area.querySelectorAll('.xp-lb-row[data-name]').forEach(row => {
+      if(row.dataset.name) row.addEventListener('click', () => openProfile(row.dataset.name));
+    });
+  }catch(e){
+    area.innerHTML = '<div class="empty">Couldn\'t load fines — try again.</div>';
+  }
+}
 document.getElementById('xpLbTimeToggle').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-lb-mode]');
   if(!btn || btn.classList.contains('active')) return;
@@ -9362,14 +9418,27 @@ document.getElementById('boardLbTimeToggle').addEventListener('click', (e) => {
 document.getElementById('membersTabLeaderboard').addEventListener('click', () => {
   document.getElementById('membersTabLeaderboard').classList.add('active');
   document.getElementById('membersTabFloor').classList.remove('active');
+  document.getElementById('membersTabFines').classList.remove('active');
   document.getElementById('membersLeaderboardView').style.display = 'block';
   document.getElementById('membersFloorView').style.display = 'none';
+  document.getElementById('membersFinesView').style.display = 'none';
 });
 document.getElementById('membersTabFloor').addEventListener('click', () => {
   document.getElementById('membersTabFloor').classList.add('active');
   document.getElementById('membersTabLeaderboard').classList.remove('active');
+  document.getElementById('membersTabFines').classList.remove('active');
   document.getElementById('membersFloorView').style.display = 'block';
   document.getElementById('membersLeaderboardView').style.display = 'none';
+  document.getElementById('membersFinesView').style.display = 'none';
+});
+document.getElementById('membersTabFines').addEventListener('click', () => {
+  document.getElementById('membersTabFines').classList.add('active');
+  document.getElementById('membersTabLeaderboard').classList.remove('active');
+  document.getElementById('membersTabFloor').classList.remove('active');
+  document.getElementById('membersFinesView').style.display = 'block';
+  document.getElementById('membersLeaderboardView').style.display = 'none';
+  document.getElementById('membersFloorView').style.display = 'none';
+  renderMembersFinesView();
 });
 document.getElementById('potDetailsToggleBtn').addEventListener('click', () => {
   const wrap = document.getElementById('casinoPotDetailsWrap');
