@@ -137,22 +137,20 @@ async function applyFine(uid, amount, historyField, reasonLabel, secret){
   const current = (await dbGet(path, secret).catch(() => 0)) || 0;
   await dbPut(path, secret, current + potShare);
 
-  // Personal deduction floored at zero, never pushed negative — a low
-  // balance just means this specific fine collects less than its full
-  // 10%, not that the account goes into debt. The shortfall (if any)
-  // simply isn't collected anywhere; the pot's own 90% share is
-  // unaffected either way, it was already credited above.
+  // Per a later, explicit follow-up request, this NO LONGER floors at
+  // zero — the full personal share is always deducted, even if it pushes
+  // the balance negative. Accumulated fines with a low balance are meant
+  // to actually show as debt now, not just collect a reduced amount. The
+  // pot's own 90% share is unaffected either way, it was already
+  // credited above regardless of what happens to the personal side.
   const balPath = `/xp/${uid}/balance`;
   const currentBal = (await dbGet(balPath, secret).catch(() => 0)) || 0;
-  const personalShare = Math.min(personalShareTarget, Math.max(0, currentBal));
-  if(personalShare > 0){
-    const newBal = currentBal - personalShare;
-    await dbPut(balPath, secret, newBal);
-    await fetch(`${FIREBASE_URL}/xp/${uid}/log.json?access_token=${secret}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: -personalShare, reason: `${reasonLabel} (personal share)`, balanceAfter: newBal, ts: Date.now() })
-    });
-  }
+  const newBal = currentBal - personalShareTarget;
+  await dbPut(balPath, secret, newBal);
+  await fetch(`${FIREBASE_URL}/xp/${uid}/log.json?access_token=${secret}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount: -personalShareTarget, reason: `${reasonLabel} (personal share)`, balanceAfter: newBal, ts: Date.now() })
+  });
 
   // Per-person breakdown for profile display — separate write from the
   // pot-level total above, same reasoning as the Ledger's own copy of
