@@ -165,6 +165,20 @@ async function applyFine(uid, amount, historyField, reasonLabel, secret){
   const historyPath = `/casinoPot/fineHistory/${uid}/${historyField}`;
   const currentHistory = (await dbGet(historyPath, secret).catch(() => 0)) || 0;
   await dbPut(historyPath, secret, currentHistory + 1);
+
+  // One complete event per fine incident, for the Members > Fines event
+  // log — same reasoning and same new path as the Ledger's own copy of
+  // this pattern, kept in sync manually since they're two separate
+  // deployed apps. Name resolved fresh here rather than assumed cached,
+  // since this function has never needed a person's display name before.
+  try{
+    const userRec = await dbGet(`/users/${uid}`, secret).catch(() => null);
+    const name = (userRec && userRec.name) || uid;
+    await fetch(`${FIREBASE_URL}/casinoPot/fineEvents.json?access_token=${secret}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid, name, category: reasonLabel, amount, ts: Date.now() })
+    });
+  }catch(e){}
 }
 
 async function runFines(secret){
