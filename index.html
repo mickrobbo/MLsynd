@@ -789,6 +789,7 @@
       </div>
       <div id="membersFinesView" style="display:none;">
         <div class="hint" style="margin-bottom:8px;">Every fine as it happens, most recent first — tap anyone to see their own profile.</div>
+        <div class="highlight-chip" id="membersFinesQuarterTotal" style="display:none; margin-bottom:10px;"></div>
         <div id="membersFinesArea"><div class="empty">Loading…</div></div>
       </div>
     </div>
@@ -3197,7 +3198,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.40"; // New fine per explicit clarification: Losing Individual Bet, 100,000 XP, genuinely separate from Group Multi (not merged into it). Excludes the SGM Bonus field entirely — that's already excluded from a person's normal indLoss tally in the Ledger (promotional, not real money staked), so it needed zero special-casing here, just relying on indLoss already being correct. Kept the personal-share log label accurate rather than reuse "Group Multi Fine" for a category that isn't Group Multi at all — the Ledger now computes Group Multi and Individual Bet fines as two genuinely separate per-person totals, each with its own 90/10 split and its own label, both still combining into the same shared pot total. Added to fineHistory (individualBetLosses, no rules change needed — fineHistory's existing $uid-level write rule already covers any new field under it), the new fineEvents log (fully generic, needed zero changes to display this new category), the profile's Fines tab (both the cell and Fortress's zero-fines check), and both fines explainer texts. Deliberately NOT added to the Tipping-only profile template — Individual Bets are Board-only activity, would only ever show a permanent zero there — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.43"; // Follow-up to negative balances now being allowed: per request, a negative Casino XP tile on the profile gets a real red hue across the whole tile, not just the number itself — same "colour the whole card" language already used for Sovereign/Immortal elsewhere, red instead of violet/gold since this is a warning. Confirmed via an actual render comparing a normal tile against a negative one side by side rather than assuming the CSS looked right. The class resets for free every time a profile opens, since profileXPCell is part of the template rebuilt fresh via innerHTML each time — a new profile simply never carries the class over from whoever was viewed before — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7670,11 +7671,17 @@ async function renderCasinoPotPanel(){
     if(!rawLine){
       rawLine = document.createElement('div');
       rawLine.id = 'casinoPotRawLine';
-      rawLine.className = 'casino-pot-sub';
-      rawLine.style.marginTop = '2px';
-      totalEl.insertAdjacentElement('afterend', rawLine);
+      rawLine.className = 'casino-pot-raw-line';
+      // Inserted after the STATIC "this period's pot so far" label
+      // specifically, not after the number — a real ordering bug this
+      // fixes: it used to insert right after totalEl, which pushed the
+      // label to third position and made the reading order Number ->
+      // explanation -> label, backwards from what a label is for.
+      const staticLabel = document.querySelector('.casino-pot-glow .casino-pot-sub');
+      if(staticLabel) staticLabel.insertAdjacentElement('afterend', rawLine);
+      else totalEl.insertAdjacentElement('afterend', rawLine); // fallback if the static label's markup ever changes
     }
-    rawLine.textContent = `${total.toLocaleString()} XP actually lost this period — everything past the cap is burned`;
+    rawLine.textContent = `${total.toLocaleString()} XP actually lost — everything past the cap is burned`;
     rawLine.style.display = 'block';
   } else {
     totalEl.textContent = readFailed ? '— XP' : `${total.toLocaleString()} XP`;
@@ -8397,7 +8404,7 @@ function advanceCasinoTicker(){
 // during quiet real-activity periods, twice, getting mistaken for a
 // live repeat of the original duplicate-payout bug. Current-format
 // payouts ("(2026-09-01)"/"(2026-09-16)") still show normally.
-const FLOOR_FEED_EXCLUDE_PATTERN = /\b(buy-in|buy in|cash out|cashed out|refund|force-closed|admin adjust|admin grant|manual (grant|adjust))\b/i;
+const FLOOR_FEED_EXCLUDE_PATTERN = /\b(buy-in|buy in|cash out|cashed out|refund|force-closed|admin adjust|admin grant|manual (grant|adjust)|fine)\b/i;
 const FLOOR_FEED_LEGACY_CASINO_POT_PATTERN = /^Casino Pot – (Even Split|Jackpot|Proportional) \(\d{4}-\d{2}\)$/;
 async function renderCasinoFloorFeed(){
   const area = document.getElementById('casinoFloorArea');
@@ -8449,8 +8456,9 @@ async function renderCasinoFloorFeed(){
       const monthWins = flat.filter(e => (e.amount > 0) && casinoPotPeriodKey(new Date(e.ts || 0)) === monthKey);
       const biggest = monthWins.reduce((best, e) => (!best || e.amount > best.amount) ? e : best, null);
       spotlightEl.innerHTML = biggest
-        ? `🔥 Biggest win this period: <b>${escapeHtml(biggest.name)}</b> +${biggest.amount.toLocaleString()} (${escapeHtml(biggest.reason || '')})`
+        ? `<span class="fs-icon">🔥</span><div><span class="fs-label">Biggest Win This Period</span><span class="fs-val">${escapeHtml(biggest.name)} +${biggest.amount.toLocaleString()}</span><span class="fs-sub">${escapeHtml(biggest.reason || '')}</span></div>`
         : '';
+      spotlightEl.style.display = biggest ? 'flex' : 'none';
     }
 
     const merged = flat.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 100);
@@ -9371,19 +9379,43 @@ async function renderXPLeaderboard(){
 // reasoning as the Activity log: that needs a matching Firebase index
 // rule, and sorting/slicing 100-ish small event objects client-side
 // costs nothing in practice.
+// "YYYY-Qn" — same AEST-timezone-aware approach as casinoPotPeriodKey,
+// just bucketing by calendar quarter instead of twice-monthly period.
+function quarterKeyFor(d){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CASINO_POT_TIMEZONE, year: 'numeric', month: '2-digit' }).formatToParts(d || new Date());
+  const y = parts.find(p => p.type === 'year').value;
+  const m = Number(parts.find(p => p.type === 'month').value);
+  const q = Math.floor((m - 1) / 3) + 1;
+  return `${y}-Q${q}`;
+}
 async function renderMembersFinesView(){
   const area = document.getElementById('membersFinesArea');
+  const quarterEl = document.getElementById('membersFinesQuarterTotal');
   try{
     const res = await authedFetch('/casinoPot/fineEvents.json');
     if(!res.ok){
       area.innerHTML = `<div class="empty">Couldn't load fines (server said ${res.status}).</div>`;
+      if(quarterEl) quarterEl.style.display = 'none';
       return;
     }
     const data = await res.json();
-    const entries = (data && typeof data === 'object' ? Object.values(data) : [])
-      .filter(e => e && typeof e === 'object' && e.amount > 0)
-      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
-      .slice(0, 100);
+    const allEntries = (data && typeof data === 'object' ? Object.values(data) : [])
+      .filter(e => e && typeof e === 'object' && e.amount > 0);
+
+    // Running total for the current calendar quarter — computed from
+    // the FULL dataset, not the 100-capped list below, so it stays
+    // accurate even once a quarter has racked up more than 100 fines.
+    // Resets naturally every quarter since it's a live filter against
+    // "now", not a stored/accumulated figure — nothing to explicitly
+    // reset, roll over, or archive.
+    if(quarterEl){
+      const nowQ = quarterKeyFor(new Date());
+      const qTotal = allEntries.filter(e => quarterKeyFor(new Date(e.ts || 0)) === nowQ).reduce((s, e) => s + (e.amount || 0), 0);
+      quarterEl.innerHTML = `<span class="hl-icon">📅</span><div><span class="hl-label">Total This Quarter (${nowQ})</span><span class="hl-val">${qTotal.toLocaleString()} XP</span></div>`;
+      quarterEl.style.display = 'flex';
+    }
+
+    const entries = allEntries.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 100);
     if(entries.length === 0){
       area.innerHTML = '<div class="empty">No fines logged yet.</div>';
       return;
@@ -9401,6 +9433,7 @@ async function renderMembersFinesView(){
     });
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load fines — try again.</div>';
+    if(quarterEl) quarterEl.style.display = 'none';
   }
 }
 document.getElementById('xpLbTimeToggle').addEventListener('click', (e) => {
@@ -11380,6 +11413,18 @@ async function loadProfileXP(linkedUid, forName){
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     const freshEl = document.getElementById('profileXPVal');
     if(freshEl) freshEl.textContent = bal != null ? bal.toLocaleString() : '—';
+    // Negative balance (accumulated fines the person couldn't fully
+    // cover) gets a real visual treatment, not just a plain negative
+    // number sitting in the usual gold — same "colour the whole tile,
+    // not just the number" language already used elsewhere (Sovereign/
+    // Immortal's row hue). The cell is part of the profile template
+    // that's rebuilt fresh via innerHTML every time a profile opens, so
+    // this class never needs an explicit reset — a new profile simply
+    // never has it in the first place.
+    const cell = document.getElementById('profileXPCell');
+    const isNegative = bal != null && bal < 0;
+    if(cell) cell.classList.toggle('negative-balance', isNegative);
+    if(freshEl) freshEl.style.color = isNegative ? 'var(--loss)' : '';
   }catch(e){
     if(document.getElementById('profileModal').dataset.openName !== forName) return;
     const freshEl = document.getElementById('profileXPVal');

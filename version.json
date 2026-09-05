@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.40",
+  "version": "2026-09-02.43",
   "date": "2026-09-02",
   "changes": [
-    "Added a new fine \u2014 Losing Individual Bet, 100,000 XP \u2014 genuinely separate from Group Multi fines, not merged into them. Excludes the SGM Bonus field, same as it's already excluded from normal individual bet tracking. Shows on the profile's Fines tab and in the Fines event log alongside everything else."
+    "A negative Casino XP balance on the profile now shows a real red hue across the whole tile, not just the number \u2014 matching how Sovereign/Immortal already colour their whole row."
   ]
 }

@@ -3243,6 +3243,18 @@
   @media (prefers-reduced-motion: reduce){
     .highlight-chip{ animation:none; }
   }
+  /* Negative balance — the whole tile gets a real red hue, not just the
+     number. Same "colour the whole row/card, not just one figure"
+     language already used for Sovereign/Immortal elsewhere, just red
+     instead of violet/gold since this is a warning, not a celebration.
+     The icon keeps its usual gold glow rather than also switching red —
+     this is about the BALANCE being in trouble, not the whole card
+     needing a different identity. */
+  .highlight-chip.negative-balance{
+    background:linear-gradient(165deg, rgba(193,96,74,.16), rgba(0,0,0,.3));
+    border-color:rgba(193,96,74,.45);
+    box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 3px 8px rgba(0,0,0,.25), inset 0 0 16px rgba(193,96,74,.12);
+  }
 
   /* ---- Head-to-head vs you — only shown on someone ELSE'S profile. ---- */
   .profile-headtohead{
@@ -3634,6 +3646,13 @@
   letter-spacing:.5px; line-height:1.1;
 }
 .casino-pot-sub{ font-size:11.5px; color:var(--muted); margin-top:4px; }
+/* Deliberately smaller and dimmer than casino-pot-sub, with a top border
+   for real visual separation — this is a footnote explaining why the
+   headline number stopped moving, not a second competing label. */
+.casino-pot-raw-line{
+  font-size:10px; color:var(--muted); opacity:.75; font-style:italic;
+  margin-top:6px; padding-top:6px; border-top:1px solid var(--line);
+}
 .casino-pot-split-bar{
   display:flex; height:6px; border-radius:4px; overflow:hidden; margin:12px 0 4px;
   background:rgba(0,0,0,.25);
@@ -3652,11 +3671,20 @@
 .casino-pot-me-line{ font-size:11.5px; color:var(--muted); text-align:center; margin-bottom:4px; }
 .casino-pot-me-line b{ color:var(--brass-light); }
 .casino-pot-me-line.eligible{ color:var(--win); }
+/* Redesigned as a real card, matching the same icon+label+value language
+   as the profile's highlight-chip cards — it used to be a bare centered
+   text line crammed with a negative top-margin right against the tabs
+   above it, which is exactly what read as congested. */
 .casino-floor-spotlight{
-  display:flex; align-items:center; gap:6px; justify-content:center;
-  font-size:11.5px; color:var(--muted); margin:-2px 0 10px; text-align:center;
+  display:none; align-items:center; gap:12px; margin:0 0 12px; padding:12px 14px;
+  background:linear-gradient(165deg, rgba(255,224,150,.1), rgba(0,0,0,.28));
+  border:1px solid rgba(203,177,102,.3); border-radius:14px;
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 3px 8px rgba(0,0,0,.25);
 }
-.casino-floor-spotlight b{ color:var(--brass-light); }
+.casino-floor-spotlight .fs-icon{ font-size:22px; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(255,224,150,.4)); }
+.casino-floor-spotlight .fs-label{ display:block; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.casino-floor-spotlight .fs-val{ display:block; font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:14px; color:var(--brass-light); margin-top:2px; }
+.casino-floor-spotlight .fs-sub{ display:block; font-size:10.5px; color:var(--muted); margin-top:2px; }
 .casino-ticker{
   display:flex; align-items:center; gap:8px; padding:9px 14px; margin-bottom:10px;
   background:linear-gradient(90deg, rgba(203,177,102,.10), rgba(203,177,102,.02));
