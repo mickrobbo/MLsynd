@@ -3197,7 +3197,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.39"; // Fines is a real event log now, not a summary — per correction, the last round's per-member totals weren't what was wanted. Genuinely new storage was needed: neither fineHistory (a running count, no amounts) nor the pot's own bulk fines total (one combined number for the whole week) could answer "show me each fine as it happened," so added /casinoPot/fineEvents — one complete record per incident (name, category, full amount, timestamp) — written from both LEDGER-index.html (Losing/MIA/Low Odds, one event per category per week rather than per individual leg, since that's the actual granularity the underlying data represents) and casino-pot-tipping-fines-scheduled.js (Wrong/Missed Tip, resolving the person's name fresh via /users since this function never needed a display name before). Added the matching write rule to firebase-rules.json (needs republishing in the Firebase console) — confirmed the existing broad /casinoPot read rule already covers the new path, so no read-rule change needed, but write does since the Ledger writes as a regular logged-in session, unlike the scheduled function's service-account token which bypasses rules entirely. Reads client-side the same way the Activity log does — fetch the whole node, sort/slice to 100 client-side — rather than a server-side orderBy that would need a matching index rule. Caught and fixed two of my own mistakes during this edit via an immediate syntax check rather than assuming a large multi-part replacement landed cleanly: an orphaned duplicate closing block left behind by the boundary of my own edit, and then a duplicate variable declaration introduced while fixing that first mistake — neither shipped. One known limitation, not fixed here: Undo Week doesn't retroactively remove the fine events it undoes, so a reversed week's fines will still show in this log even though their effects are gone — flagging this rather than silently leaving it — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.40"; // New fine per explicit clarification: Losing Individual Bet, 100,000 XP, genuinely separate from Group Multi (not merged into it). Excludes the SGM Bonus field entirely — that's already excluded from a person's normal indLoss tally in the Ledger (promotional, not real money staked), so it needed zero special-casing here, just relying on indLoss already being correct. Kept the personal-share log label accurate rather than reuse "Group Multi Fine" for a category that isn't Group Multi at all — the Ledger now computes Group Multi and Individual Bet fines as two genuinely separate per-person totals, each with its own 90/10 split and its own label, both still combining into the same shared pot total. Added to fineHistory (individualBetLosses, no rules change needed — fineHistory's existing $uid-level write rule already covers any new field under it), the new fineEvents log (fully generic, needed zero changes to display this new category), the profile's Fines tab (both the cell and Fortress's zero-fines check), and both fines explainer texts. Deliberately NOT added to the Tipping-only profile template — Individual Bets are Board-only activity, would only ever show a permanent zero there — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3599,6 +3599,7 @@ function renderXpInfoView(){
         Losing Group Multi leg — ${CASINO_POT_LEG_LOSS_FINE_DISPLAY.toLocaleString()} XP<br>
         MIA Group Multi leg — ${CASINO_POT_MIA_LEG_FINE_DISPLAY.toLocaleString()} XP<br>
         Group Multi leg under $${CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY} — ${CASINO_POT_LOW_ODDS_FINE_DISPLAY.toLocaleString()} XP<br>
+        Losing Individual bet — ${CASINO_POT_INDIVIDUAL_LOSS_FINE_DISPLAY.toLocaleString()} XP (not the SGM Bonus field — that's already excluded from your normal tally)<br>
         Wrong AFL tip — ${CASINO_POT_TIPPING_FINE_DISPLAY.toLocaleString()} XP<br>
         Missed AFL tip — ${CASINO_POT_MISSED_TIP_FINE_DISPLAY.toLocaleString()} XP<br>
         90% of every fine goes to the shared pot — the remaining 10% comes off your own balance directly.
@@ -7411,6 +7412,7 @@ const CASINO_POT_PAYOUT_REASON_PATTERN = /^Casino Pot – (Even Split|Jackpot|Pr
 const CASINO_POT_LEG_LOSS_FINE_DISPLAY = 80000;
 const CASINO_POT_MIA_LEG_FINE_DISPLAY = 60000;
 const CASINO_POT_LOW_ODDS_FINE_DISPLAY = 8000;
+const CASINO_POT_INDIVIDUAL_LOSS_FINE_DISPLAY = 100000; // genuinely separate category from Group Multi — applied in LEDGER-index.html only, this file never applies it itself, same reasoning as every other _DISPLAY constant here
 const CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY = 1.22;
 const CASINO_POT_MISSED_TIP_FINE_DISPLAY = 15000;
 const CASINO_POT_TIPPING_FINE_DISPLAY = 30000;
@@ -9620,6 +9622,7 @@ const CASINO_RULES = {
       <li>Losing Group Multi leg — <b>80,000 XP</b></li>
       <li>MIA (no-show) Group Multi leg — <b>60,000 XP</b></li>
       <li>Group Multi leg placed under $1.22 — <b>8,000 XP</b></li>
+      <li>Losing Individual bet — <b>100,000 XP</b> (not the SGM Bonus field — that's already excluded from your normal tally)</li>
       <li>Wrong AFL tip — <b>30,000 XP</b></li>
       <li>Missed AFL tip — <b>15,000 XP</b></li>
     </ul>
@@ -10353,6 +10356,7 @@ function openBoardProfile(m, name){
       <div class="profile-stat-cell"><span class="cell-icon">⚠️</span><div><span class="lbl">Losing Legs</span><span class="val neg" id="profileFinesLegsVal">${m.linkedUid ? '…' : '—'}</span></div></div>
       <div class="profile-stat-cell"><span class="cell-icon">👻</span><div><span class="lbl">MIA Legs</span><span class="val neg" id="profileFinesMIAVal">${m.linkedUid ? '…' : '—'}</span></div></div>
       <div class="profile-stat-cell"><span class="cell-icon">📉</span><div><span class="lbl">Under $1.22 Legs</span><span class="val neg" id="profileFinesLowOddsVal">${m.linkedUid ? '…' : '—'}</span></div></div>
+      <div class="profile-stat-cell"><span class="cell-icon">🎲</span><div><span class="lbl">Losing Individual Bets</span><span class="val neg" id="profileFinesIndividualVal">${m.linkedUid ? '…' : '—'}</span></div></div>
       <div class="profile-stat-cell"><span class="cell-icon">❌</span><div><span class="lbl">Wrong Tips</span><span class="val neg" id="profileFinesTipsVal">${m.linkedUid ? '…' : '—'}</span></div></div>
       <div class="profile-stat-cell"><span class="cell-icon">🚫</span><div><span class="lbl">Missed Tips</span><span class="val neg" id="profileFinesMissedVal">${m.linkedUid ? '…' : '—'}</span></div></div>
       <div class="profile-stat-cell wide"><span class="cell-icon">💸</span><span class="profile-stat-sub"><span class="lbl">Total Fined to Pot</span><span class="val neg" id="profileFinesTotalVal">${m.linkedUid ? '…' : '—'}</span></span></div>
@@ -10810,19 +10814,21 @@ async function loadProfileFines(uid, forName){
   const miaEl = document.getElementById('profileFinesMIAVal');
   const lowOddsEl = document.getElementById('profileFinesLowOddsVal');
   const missedEl = document.getElementById('profileFinesMissedVal');
+  const individualEl = document.getElementById('profileFinesIndividualVal');
   const totalEl = document.getElementById('profileFinesTotalVal');
-  const allEls = [legsEl, tipsEl, miaEl, lowOddsEl, missedEl, totalEl];
+  const allEls = [legsEl, tipsEl, miaEl, lowOddsEl, missedEl, individualEl, totalEl];
   if(!uid){
     allEls.forEach(el => { if(el) el.textContent = '—'; });
     return;
   }
   try{
-    const [legsRes, tipsRes, miaRes, lowOddsRes, missedRes] = await Promise.all([
+    const [legsRes, tipsRes, miaRes, lowOddsRes, missedRes, individualRes] = await Promise.all([
       authedFetch(`/casinoPot/fineHistory/${uid}/groupMultiLegs.json`),
       authedFetch(`/casinoPot/fineHistory/${uid}/wrongTips.json`),
       authedFetch(`/casinoPot/fineHistory/${uid}/groupMultiMIA.json`),
       authedFetch(`/casinoPot/fineHistory/${uid}/groupMultiLowOdds.json`),
-      authedFetch(`/casinoPot/fineHistory/${uid}/missedTips.json`)
+      authedFetch(`/casinoPot/fineHistory/${uid}/missedTips.json`),
+      authedFetch(`/casinoPot/fineHistory/${uid}/individualBetLosses.json`)
     ]);
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     const legs = legsRes.ok ? ((await legsRes.json()) || 0) : 0;
@@ -10830,22 +10836,25 @@ async function loadProfileFines(uid, forName){
     const mia = miaRes.ok ? ((await miaRes.json()) || 0) : 0;
     const lowOdds = lowOddsRes.ok ? ((await lowOddsRes.json()) || 0) : 0;
     const missed = missedRes.ok ? ((await missedRes.json()) || 0) : 0;
+    const individual = individualRes.ok ? ((await individualRes.json()) || 0) : 0;
     const legsXP = legs * CASINO_POT_LEG_LOSS_FINE_DISPLAY;
     const tipsXP = tips * CASINO_POT_TIPPING_FINE_DISPLAY;
     const miaXP = mia * CASINO_POT_MIA_LEG_FINE_DISPLAY;
     const lowOddsXP = lowOdds * CASINO_POT_LOW_ODDS_FINE_DISPLAY;
     const missedXP = missed * CASINO_POT_MISSED_TIP_FINE_DISPLAY;
+    const individualXP = individual * CASINO_POT_INDIVIDUAL_LOSS_FINE_DISPLAY;
     if(legsEl) legsEl.textContent = legs > 0 ? `${legs} · ${legsXP.toLocaleString()} XP` : '0';
     if(tipsEl) tipsEl.textContent = tips > 0 ? `${tips} · ${tipsXP.toLocaleString()} XP` : '0';
     if(miaEl) miaEl.textContent = mia > 0 ? `${mia} · ${miaXP.toLocaleString()} XP` : '0';
     if(lowOddsEl) lowOddsEl.textContent = lowOdds > 0 ? `${lowOdds} · ${lowOddsXP.toLocaleString()} XP` : '0';
     if(missedEl) missedEl.textContent = missed > 0 ? `${missed} · ${missedXP.toLocaleString()} XP` : '0';
-    if(totalEl) totalEl.textContent = `${(legsXP + tipsXP + miaXP + lowOddsXP + missedXP).toLocaleString()} XP`;
+    if(individualEl) individualEl.textContent = individual > 0 ? `${individual} · ${individualXP.toLocaleString()} XP` : '0';
+    if(totalEl) totalEl.textContent = `${(legsXP + tipsXP + miaXP + lowOddsXP + missedXP + individualXP).toLocaleString()} XP`;
     // Dynamic Social Titles — Fortress checks this is exactly 0, not just
     // "low", so a single old fine (however long ago) rules it out. That's
     // deliberate: the title means a genuinely spotless record, not "pretty
     // good lately."
-    profileTitleStats.finesTotal = legs + tips + mia + lowOdds + missed;
+    profileTitleStats.finesTotal = legs + tips + mia + lowOdds + missed + individual;
     updateProfileTitle(forName);
     updateProfileRadar(forName);
   }catch(e){

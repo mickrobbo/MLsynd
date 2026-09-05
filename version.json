@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.39",
+  "version": "2026-09-02.40",
   "date": "2026-09-02",
   "changes": [
-    "Fines is a genuine event log now, not a summary \u2014 every fine shows as it actually happens (who, what kind, how much, when), most recent first, capped at 100 same as Floor and Activity."
+    "Added a new fine \u2014 Losing Individual Bet, 100,000 XP \u2014 genuinely separate from Group Multi fines, not merged into them. Excludes the SGM Bonus field, same as it's already excluded from normal individual bet tracking. Shows on the profile's Fines tab and in the Fines event log alongside everything else."
   ]
 }
