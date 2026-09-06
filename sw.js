@@ -1,20 +1,31 @@
 // sw.js
-// Two things were causing "have to clear cache to see updates":
+// Three things were causing "have to clear cache to see updates":
 // 1. A new service worker version installs but sits WAITING until every
 //    open tab of the site is fully closed — on a phone that basically
 //    never happens (people switch apps, they don't close tabs).
 // 2. If the app shell (index.html/JS) was being served cache-first, a new
 //    deploy just wouldn't show up at all until the cache was manually
 //    cleared, deploy or no deploy.
+// 3. Even with "network-first" ordering for the app shell, a plain
+//    fetch(req) with no cache option can still be silently satisfied by
+//    the BROWSER's own underlying HTTP cache before the request ever
+//    reaches the server — meaning this could genuinely say "try the
+//    network first" in a comment while never actually reaching Netlify
+//    for a fresh copy, if Netlify's response headers permitted caching.
+//    A real report of this happening (stale content surviving normal
+//    mode, incognito, and a manual cache clear, while a separately-
+//    fetched version.json correctly showed the new version) is what
+//    surfaced this specific gap.
 //
 // Fixed by: skipWaiting()+clients.claim() so a new version takes over
-// immediately instead of waiting, and network-first for navigation/JS so
-// the browser always tries to get the latest deploy first, only falling
-// back to a cached copy if there's no connection at all. Static assets
+// immediately instead of waiting, network-first for navigation/JS so the
+// browser always tries to get the latest deploy first, AND cache:
+// "no-store" on that fetch specifically so "tries the network first"
+// is actually guaranteed rather than just intended. Static assets
 // (icons, banner, logos) stay cache-first since they rarely change and
 // benefit from being fast/offline-available.
 
-const CACHE_VERSION = "mlsynd-v2";
+const CACHE_VERSION = "mlsynd-v3";
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 const STATIC_ASSET_PATTERN = /\.(png|jpg|jpeg|gif|webp|svg|ico|woff2?)(\?.*)?$/i;
@@ -115,12 +126,18 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Everything else (HTML, JS, CSS, the app shell) — always try the
-  // network first so a new deploy shows up immediately. Only fall back
-  // to whatever's cached if there's genuinely no connection.
+  // network first so a new deploy shows up immediately. cache: 'no-store'
+  // is the actual fix here, not just the network-first ordering below —
+  // without it, a plain fetch() can still be silently satisfied by the
+  // BROWSER's own underlying HTTP cache if Netlify's response headers
+  // permit it, meaning this code could "try the network" and still never
+  // genuinely reach Netlify's servers for a fresh copy. Only falls back
+  // to the service worker's own cached copy if there's truly no
+  // connection at all.
   event.respondWith(
     (async () => {
       try {
-        const res = await fetch(req);
+        const res = await fetch(req, { cache: "no-store" });
         if (res.ok) {
           const cache = await caches.open(STATIC_CACHE);
           cache.put(req, res.clone());
