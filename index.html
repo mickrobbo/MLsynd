@@ -353,8 +353,8 @@
 
     <div class="diag-submode" data-submode-panel="entry">
     <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">🚧 Step 2 of 4 — Under Construction</span>
-      <div class="hint" style="margin-top:4px; margin-bottom:0;">This is the actual weekly entry workflow — the highest-stakes piece in the whole migration. Being built in verified, sequential steps rather than all at once. Group Multi and This Week's Financials are live below; the Weekly Bets preview card, Bettor Rotation, and Save Week itself are not here yet. Keep using the Ledger for Save Week until this note is gone.</div>
+      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">🚧 Step 3 of 4 — Under Construction</span>
+      <div class="hint" style="margin-top:4px; margin-bottom:0;">This is the actual weekly entry workflow — the highest-stakes piece in the whole migration. Being built in verified, sequential steps rather than all at once. Group Multi, This Week's Financials, the Weekly Bets preview card, and Bettor Rotation are all live below; Save Week itself is not here yet. Keep using the Ledger for Save Week until this note is gone.</div>
     </div>
     <div class="panel">
       <h2>📅 Week Label</h2>
@@ -390,6 +390,21 @@
       <h2>🎯 Group Multi Entry</h2>
       <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week in the Ledger.</div>
       <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>🎲 Bettor Rotation</h2>
+      <div class="hint">Win your first bet → you're locked in again next week, plus a genuine second bet this weekend at your own stake — a normal row below, counts toward your P/L tally like any other bet, not the SGM checkbox (that's a separate thing). Lose it → the next person in the order takes over next week. This never touches Save Week or season totals on its own — you press "Set up next week" explicitly when you're ready to roll over.</div>
+      <div id="adminRotationOrderEntry" style="margin-top:10px;"></div>
+      <div id="adminRotationStatusArea"></div>
+      <button type="button" id="adminRotationSetupNextBtn" class="small" style="margin-top:8px;">🔀 Set up next week's bettors →</button>
+      <div class="status-msg" id="adminRotationStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>🎫 This Week's Individual Bets</h2>
+      <div class="hint">Shows on the dashboard, in a box above Highlights, so everyone knows who's up for an individual bet this week. The $ amount here feeds real season totals at Save Week too — but only for anyone left blank in the detailed table above, so you're never entering the same bet twice.</div>
+      <div id="adminWeeklyIndividualBetsEntry" style="margin-top:10px;"></div>
+      <button type="button" id="adminSaveWeeklyBetsBtn" class="small" style="margin-top:8px;">💾 Save</button>
+      <div class="status-msg" id="adminWeeklyBetsStatus"></div>
     </div>
     </div>
 
@@ -3438,7 +3453,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.54"; // Step 2 of 4 in migrating the weekly entry workflow. Added Week Label and This Week's Financials (Group/SGM bonus win/Lotto/Bonus pot outlay-return fields, plus the dynamic Individual Bet rows) — discovered during scoping that these live together as one section in the Ledger, not as a standalone "Individual Bets table" as originally assumed, so built them together rather than split across two separate steps. All four draft paths (weekLabelDraft, groupFinancialsDraft, individualBetDraft, groupEntryDraft) already safely scoped from the Ledger's own design, ported directly. Caught and fixed a real sync bug before it shipped: Group Multi's exclusion list was reading currentState.individualBetDraft, which only updates locally after a full Firebase round-trip — editing the Individual Bets grid wouldn't have been reflected in who's excluded from Group Multi until the next poll. Fixed to read the Individual Bets grid's live DOM values directly instead, matching exactly how the Ledger's own code avoids this same staleness. Still no Save Week logic anywhere in this tab — Individual Bets preview card, Bettor Rotation, and Save Week itself remain the next two steps. Confirmed via an actual render of the full section before calling this step done — remember to match this in version.json on deploy (empty changes array, admin-only, still mid-migration)
+const APP_VERSION = "2026-09-02.55"; // Step 3 of 4 in migrating the weekly entry workflow — the most complex step so far. Added the Weekly Individual Bets preview card (genuinely separate from the detailed table Step 2 built, per the Ledger's own hint text — this is what shows publicly on the Dashboard, its Save button writes ONLY /state/weeklyIndividualBets.json, never season totals) and Bettor Rotation (first-time setup flow + the roll-forward logic that reads Win/Loss results, dedupes by name so a bonus-bet row doesn't get treated as a second rotation slot, and rotates in the next person on a loss). Kept the exact same "this only updates the preview" warning the Ledger shows if the currently-selected week already exists in history — a real trap the Ledger's own comments document, worth carrying over rather than silently dropping. Auto-add-bonus-row-on-Win and the SGM Bonus sub-fields' conditional visibility ported faithfully, including the one-bonus-row-per-win guard. All writes scoped to their specific paths (/state/weeklyIndividualBets.json, /state/bettorRotationOrder.json, /state/bettorRotationNextUpIndex.json) — never a full state overwrite. Verified with a full ID cross-reference, a check for duplicate function definitions (a real risk given the scale of this addition), and an actual render of both panels together before calling this done. Still no Save Week logic anywhere in this tab — that's the last, most critical step remaining — remember to match this in version.json on deploy (empty changes array, admin-only, still mid-migration)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18165,6 +18180,301 @@ function renderAdminFinIndRows(preserve){
   });
 }
 
+// ==== Admin: Entry — Step 3, Weekly Individual Bets preview card +
+// Bettor Rotation ====
+// This card is genuinely separate from the detailed Individual Bets
+// table above (see the Ledger's own hint text, ported verbatim below) —
+// it's what shows on the public Dashboard as "who's up this week," and
+// its own Save button writes ONLY to /state/weeklyIndividualBets.json
+// (scoped, not a full state overwrite), matching the split the Ledger
+// itself deliberately maintains between "update the public preview" and
+// "commit to season totals," which only Save Week does.
+function adminReadWeeklyBetValues(){
+  const wrap = document.getElementById('adminWeeklyIndividualBetsEntry');
+  const rows = [];
+  wrap.querySelectorAll('.adminWibName').forEach(nameEl => {
+    const row = nameEl.dataset.row;
+    const resultEl = wrap.querySelector(`.adminWibResult[data-row="${row}"]`);
+    const amountEl = wrap.querySelector(`.adminWibAmount[data-row="${row}"]`);
+    const sgmEl = wrap.querySelector(`.adminWibSgm[data-row="${row}"]`);
+    const sgmResultEl = wrap.querySelector(`.adminWibSgmResult[data-row="${row}"]`);
+    const sgmAmountEl = wrap.querySelector(`.adminWibSgmAmount[data-row="${row}"]`);
+    const cashOutEl = wrap.querySelector(`.adminWibCashoutPill[data-row="${row}"]`);
+    const placedEl = wrap.querySelector(`.adminWibPlaced[data-row="${row}"]`);
+    rows.push({
+      name: nameEl.value,
+      result: resultEl ? resultEl.value : '',
+      pl: amountEl && amountEl.value !== '' ? amountEl.value : '',
+      sgm: sgmEl ? sgmEl.checked : false,
+      sgmResult: sgmResultEl ? sgmResultEl.value : '',
+      sgmAmount: sgmAmountEl && sgmAmountEl.value !== '' ? sgmAmountEl.value : '',
+      cashedOut: cashOutEl ? cashOutEl.classList.contains('active') : false,
+      placed: placedEl ? placedEl.checked : false
+    });
+  });
+  return rows;
+}
+function adminUpdateSgmAmountVisibility(wrap, row){
+  const sgmEl = wrap.querySelector(`.adminWibSgm[data-row="${row}"]`);
+  const sgmResultEl = wrap.querySelector(`.adminWibSgmResult[data-row="${row}"]`);
+  const amountEl = wrap.querySelector(`.adminWibSgmAmount[data-row="${row}"]`);
+  if(!amountEl) return;
+  const shouldShow = sgmEl && sgmEl.checked && sgmResultEl && sgmResultEl.value === 'Win';
+  amountEl.style.display = shouldShow ? 'inline-block' : 'none';
+  if(!shouldShow) amountEl.value = '';
+}
+function renderAdminWeeklyIndividualBetsEntry(preserve){
+  const wrap = document.getElementById('adminWeeklyIndividualBetsEntry');
+  const members = currentState.members || [];
+  if(members.length === 0){
+    wrap.innerHTML = '<div class="empty">Add people to the roster first.</div>';
+    return;
+  }
+  const existing = preserve || (Array.isArray(currentState.weeklyIndividualBets) && currentState.weeklyIndividualBets.length ? currentState.weeklyIndividualBets : [{}, {}]);
+  const rowsHtml = existing.map((v, row) => {
+    v = v || {};
+    const result = v.result || '';
+    const sgmResult = v.sgmResult || '';
+    return `<div style="display:flex; flex-direction:column; gap:6px; padding:8px 0; border-bottom:1px solid var(--line);">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select class="adminWibName" data-row="${row}" style="flex:1;">${adminNameOptionsHtml(v.name || '')}</select>
+        <select class="adminWibResult" data-row="${row}">
+          <option value=""${result === '' ? ' selected' : ''}>Pending</option>
+          <option value="Win"${result === 'Win' ? ' selected' : ''}>Win</option>
+          <option value="Loss"${result === 'Loss' ? ' selected' : ''}>Loss</option>
+        </select>
+        <input type="number" class="adminWibAmount" data-row="${row}" step="0.01" placeholder="$ won/lost"
+          value="${v.pl != null && v.pl !== '' ? v.pl : ''}"
+          style="display:${result ? 'inline-block' : 'none'}; width:90px; font-size:11px;">
+        <button type="button" class="admin-btn-step small danger adminWibRemove" data-row="${row}" title="Remove this bet">×</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <label style="display:flex; align-items:center; gap:4px; font-size:10px; color:var(--muted); white-space:nowrap;" title="For when this specific bet had a Sportsbet SGM promo attached and it LOST — the free SGM's own win/loss doesn't count toward this person's tally, its proceeds go straight to the bank.">
+          <input type="checkbox" class="adminWibSgm" data-row="${row}" ${v.sgm ? 'checked' : ''}> SGM Bonus
+        </label>
+        <select class="adminWibSgmResult" data-row="${row}" style="display:${v.sgm ? 'inline-block' : 'none'}; font-size:11px;">
+          <option value=""${sgmResult === '' ? ' selected' : ''}>SGM Pending</option>
+          <option value="Win"${sgmResult === 'Win' ? ' selected' : ''}>SGM Win</option>
+          <option value="Loss"${sgmResult === 'Loss' ? ' selected' : ''}>SGM Loss</option>
+        </select>
+        <input type="number" class="adminWibSgmAmount" data-row="${row}" step="0.01" placeholder="Amount"
+          value="${v.sgmAmount != null ? v.sgmAmount : ''}"
+          style="display:${(v.sgm && sgmResult === 'Win') ? 'inline-block' : 'none'}; width:90px; font-size:11px;">
+        <button type="button" class="small adminWibCashoutPill${v.cashedOut ? ' active' : ''}" data-row="${row}">💵 ${v.cashedOut ? 'Cashed Out' : 'Cash Out'}</button>
+      </div>
+      <div style="display:${result ? 'none' : 'flex'}; align-items:center;">
+        <label style="display:flex; align-items:center; gap:5px; font-size:10.5px; color:${v.placed ? 'var(--win)' : 'var(--muted)'}; cursor:pointer;">
+          <input type="checkbox" class="adminWibPlaced" data-row="${row}" ${v.placed ? 'checked' : ''}> Bet's actually been placed (shows on the Dashboard reminder)
+        </label>
+      </div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = rowsHtml + `<button type="button" id="adminAddWeeklyBetBtn" class="small" style="margin-top:4px;">➕ Add another bet</button>`;
+
+  wrap.querySelectorAll('.adminWibResult').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const amountEl = wrap.querySelector(`.adminWibAmount[data-row="${sel.dataset.row}"]`);
+      if(amountEl){
+        amountEl.style.display = sel.value ? 'inline-block' : 'none';
+        if(!sel.value) amountEl.value = '';
+      }
+      // A win grants a genuine second bet this weekend per the rotation
+      // rule — at the person's own stake, counting toward their tally
+      // like any normal bet. That's a real row here, NOT the SGM
+      // checkbox. Auto-adds a blank row for that same person, once per
+      // win rather than stacking a fresh one on every edit.
+      if(sel.value === 'Win'){
+        const current = adminReadWeeklyBetValues();
+        const row = Number(sel.dataset.row);
+        const winnerName = current[row] ? current[row].name : null;
+        const alreadyHasBonusRow = winnerName && current.some((r, i) => i !== row && r.name === winnerName && !r.result);
+        if(winnerName && !alreadyHasBonusRow){
+          current.push({ name: winnerName });
+          renderAdminWeeklyIndividualBetsEntry(current);
+          return;
+        }
+      }
+      renderAdminWeeklyIndividualBetsEntry(adminReadWeeklyBetValues());
+    });
+  });
+  wrap.querySelectorAll('.adminWibSgm').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const sgmResultSel = wrap.querySelector(`.adminWibSgmResult[data-row="${cb.dataset.row}"]`);
+      if(sgmResultSel) sgmResultSel.style.display = cb.checked ? 'inline-block' : 'none';
+      adminUpdateSgmAmountVisibility(wrap, cb.dataset.row);
+    });
+  });
+  wrap.querySelectorAll('.adminWibSgmResult').forEach(sel => {
+    sel.addEventListener('change', () => adminUpdateSgmAmountVisibility(wrap, sel.dataset.row));
+  });
+  wrap.querySelectorAll('.adminWibCashoutPill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nowActive = !btn.classList.contains('active');
+      btn.classList.toggle('active', nowActive);
+      btn.textContent = nowActive ? '💵 Cashed Out' : '💵 Cash Out';
+    });
+  });
+  wrap.querySelectorAll('.adminWibRemove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = parseInt(btn.dataset.row, 10);
+      const current = adminReadWeeklyBetValues();
+      current.splice(row, 1);
+      if(current.length === 0) current.push({}, {});
+      renderAdminWeeklyIndividualBetsEntry(current);
+    });
+  });
+  document.getElementById('adminAddWeeklyBetBtn').addEventListener('click', () => {
+    const current = adminReadWeeklyBetValues();
+    current.push({});
+    renderAdminWeeklyIndividualBetsEntry(current);
+  });
+}
+document.getElementById('adminSaveWeeklyBetsBtn').addEventListener('click', async () => {
+  const status = document.getElementById('adminWeeklyBetsStatus');
+  const rows = adminReadWeeklyBetValues()
+    .filter(v => v.name)
+    .map(v => ({
+      name: v.name,
+      result: v.result || null,
+      pl: (v.result && v.pl !== '') ? parseFloat(v.pl) : null,
+      sgm: v.sgm,
+      sgmResult: v.sgm && v.sgmResult ? v.sgmResult : null,
+      sgmAmount: (v.sgm && v.sgmResult === 'Win' && v.sgmAmount !== '') ? parseFloat(v.sgmAmount) : null,
+      cashedOut: !!v.cashedOut,
+      placed: !!v.placed
+    }));
+  try{
+    await authedFetch('/state/weeklyIndividualBets.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rows)
+    });
+    currentState.weeklyIndividualBets = rows;
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Could not save — try again.';
+    return;
+  }
+  // Same trap warning the Ledger's own version carries — this button
+  // only ever updates the public preview, never season totals. If the
+  // currently-selected week already exists in history, a change here
+  // needs Save Week run again to actually count anywhere.
+  const currentWeekLabel = document.getElementById('adminWeekLabel').value;
+  const alreadySavedWeek = currentWeekLabel && (currentState.history || []).some(h => h.label === currentWeekLabel);
+  if(alreadySavedWeek){
+    status.className = 'status-msg error';
+    status.textContent = `Saved to the dashboard preview — but "${currentWeekLabel}" was already saved to the season totals earlier. This change won't count toward anyone's P/L until Save Week runs again (still in the Ledger for now).`;
+  } else {
+    status.className = 'status-msg ok';
+    status.textContent = 'Saved to the dashboard preview. Remember: this only counts toward season totals once Save Week runs (for anyone left blank in the detailed table above).';
+  }
+});
+
+// ==== Admin: Bettor Rotation ====
+const ADMIN_ROTATION_DEFAULT_ORDER = ['Murph','Mick','Dean','Tim','Trasky','Billy','Josh','Joffa','Brad','Zak','Damon'];
+function renderAdminBettorRotationPanel(){
+  const area = document.getElementById('adminRotationOrderEntry');
+  const statusArea = document.getElementById('adminRotationStatusArea');
+  if(!area || !statusArea) return;
+  if(!Array.isArray(currentState.bettorRotationOrder) || currentState.bettorRotationOrder.length === 0){
+    area.innerHTML = `
+      <div class="hint" style="margin-bottom:8px;">Set up once — order below, and who's next up if someone loses.</div>
+      <input type="text" id="adminRotationOrderInput" value="${ADMIN_ROTATION_DEFAULT_ORDER.join(', ')}" style="width:100%; margin-bottom:8px;">
+      <input type="text" id="adminRotationNextUpInput" placeholder="Next up if someone loses" value="Trasky" style="width:100%;">
+    `;
+    statusArea.innerHTML = `<button type="button" id="adminRotationConfirmSetupBtn" class="small" style="margin-top:8px;">✅ Confirm rotation order</button>`;
+    document.getElementById('adminRotationConfirmSetupBtn').addEventListener('click', async () => {
+      const order = document.getElementById('adminRotationOrderInput').value.split(',').map(s => s.trim()).filter(Boolean);
+      const nextUpName = document.getElementById('adminRotationNextUpInput').value.trim();
+      const idx = order.indexOf(nextUpName);
+      if(order.length === 0 || idx === -1){
+        alert('"Next up" must be a name that appears in the order list.');
+        return;
+      }
+      try{
+        await authedFetch('/state/bettorRotationOrder.json', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(order)
+        });
+        await authedFetch('/state/bettorRotationNextUpIndex.json', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(idx)
+        });
+        currentState.bettorRotationOrder = order;
+        currentState.bettorRotationNextUpIndex = idx;
+        renderAdminBettorRotationPanel();
+      }catch(e){
+        alert('Could not save the rotation order — try again.');
+      }
+    });
+    return;
+  }
+  const order = currentState.bettorRotationOrder;
+  const nextUpIdx = currentState.bettorRotationNextUpIndex || 0;
+  const activeNames = (currentState.weeklyIndividualBets || []).map(b => b && b.name).filter(Boolean);
+  area.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:6px;">${order.map((name, i) => {
+    const isActive = activeNames.includes(name);
+    const isNextUp = i === nextUpIdx;
+    const bg = isActive ? 'rgba(111,169,138,.15)' : isNextUp ? 'rgba(199,162,72,.15)' : 'rgba(0,0,0,.2)';
+    const border = isActive ? 'rgba(111,169,138,.4)' : isNextUp ? 'var(--brass-dim)' : 'var(--line)';
+    const color = isActive ? 'var(--win)' : isNextUp ? 'var(--brass-light)' : 'var(--muted)';
+    return `<span style="padding:5px 10px; border-radius:20px; font-size:11px; font-weight:600; background:${bg}; border:1px solid ${border}; color:${color};">${escapeHtml(name)}${isNextUp ? ' (next up)' : ''}</span>`;
+  }).join('')}</div>`;
+  statusArea.innerHTML = '';
+}
+document.getElementById('adminRotationSetupNextBtn').addEventListener('click', async () => {
+  const status = document.getElementById('adminRotationStatus');
+  if(!Array.isArray(currentState.bettorRotationOrder) || currentState.bettorRotationOrder.length === 0){
+    status.className = 'status-msg error';
+    status.textContent = 'Confirm the rotation order above first.';
+    return;
+  }
+  const rawRows = adminReadWeeklyBetValues().filter(r => r.name);
+  if(rawRows.length === 0){
+    status.className = 'status-msg error';
+    status.textContent = "No names in this week's individual bets to roll forward.";
+    return;
+  }
+  // Dedupe by name — "+ Add another bet" is a real, supported way to
+  // give the SAME person a second row this week (a bonus bet), not a
+  // second independent rotation slot.
+  const currentRows = [];
+  const seenNames = new Set();
+  rawRows.forEach(r => {
+    if(seenNames.has(r.name)) return;
+    seenNames.add(r.name);
+    currentRows.push(r);
+  });
+  const unresolved = currentRows.filter(r => r.result !== 'Win' && r.result !== 'Loss');
+  if(unresolved.length > 0){
+    if(!confirm(`${unresolved.map(r => r.name).join(', ')} still ${unresolved.length === 1 ? "doesn't" : "don't"} have a Win/Loss result set. Set up next week anyway? Anyone unresolved will be treated as staying in their current spot.`)) return;
+  }
+  let nextUpIndex = currentState.bettorRotationNextUpIndex || 0;
+  const rotationOrder = currentState.bettorRotationOrder;
+  const nextNames = currentRows.map(row => {
+    if(row.result === 'Loss'){
+      const name = rotationOrder[nextUpIndex];
+      nextUpIndex = (nextUpIndex + 1) % rotationOrder.length;
+      return name;
+    }
+    return row.name;
+  });
+  const nextWeeklyBets = nextNames.map(name => ({ name, result: '', pl: '', sgm: false, sgmResult: '', sgmAmount: '', cashedOut: false, placed: false }));
+  try{
+    await authedFetch('/state/weeklyIndividualBets.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nextWeeklyBets)
+    });
+    await authedFetch('/state/bettorRotationNextUpIndex.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nextUpIndex)
+    });
+    currentState.weeklyIndividualBets = nextWeeklyBets;
+    currentState.bettorRotationNextUpIndex = nextUpIndex;
+    renderAdminBettorRotationPanel();
+    renderAdminWeeklyIndividualBetsEntry();
+    status.className = 'status-msg ok';
+    status.textContent = `Next week's bettors: ${nextNames.join(', ')}.`;
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Could not save — try again.';
+  }
+});
+
 // ==== Admin: Repair tools — Recalculate / Clear warning / Reset Season ====
 // Real stakes here: Reset Season in particular wipes live shared history
 // beyond what a backup can undo mid-session. Every write below is scoped
@@ -18996,6 +19306,8 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
       }
       renderAdminFinIndRows();
       renderAdminGroupEntry();
+      renderAdminWeeklyIndividualBetsEntry();
+      renderAdminBettorRotationPanel();
     }
     if(target === 'access' && !diagAccessLoaded){
       diagAccessLoaded = true;
