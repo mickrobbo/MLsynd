@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.45",
+  "version": "2026-09-02.47",
   "date": "2026-09-02",
   "changes": [
-    "First step of moving the Ledger into the Dashboard: Bet Slips upload/add/remove now live in the Admin tab (Actions sub-mode) \u2014 upload a screenshot, paste a link, or remove one, all from the Dashboard. Everyone's public Slips tab updates immediately."
+    "Batch 1 of moving the Ledger into the Dashboard: Roster, Badges, Money Owed, Give Bonus XP, Season History, and Backup (download) now all live in the Admin tab \u2014 a new Squad section for members, and Money/Actions extended with the rest. Restore-from-backup and member renaming are deliberately not here yet, both need their own dedicated pass."
   ]
 }

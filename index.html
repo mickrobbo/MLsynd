@@ -209,9 +209,10 @@
       <div class="hint">Admin only. Not shown to anyone else — this pill doesn't even exist for other accounts.</div>
     </div>
 
-    <div class="craps-winmode-row" id="diagSubmodeRow" style="margin: 0 0 14px;">
+    <div class="craps-winmode-row" id="diagSubmodeRow" style="margin: 0 0 14px; flex-wrap: wrap;">
       <button type="button" class="craps-winmode-btn active" data-submode="pulse">🩺 Pulse</button>
       <button type="button" class="craps-winmode-btn" data-submode="money">💰 Money</button>
+      <button type="button" class="craps-winmode-btn" data-submode="squad">👥 Squad</button>
       <button type="button" class="craps-winmode-btn" data-submode="play">🎲 Play</button>
       <button type="button" class="craps-winmode-btn" data-submode="actions">⚙️ Actions</button>
     </div>
@@ -294,6 +295,44 @@
       <button type="button" id="testPushBtn">Send test notification</button>
       <div class="status-msg" id="testPushStatus"></div>
     </div>
+    <div class="panel">
+      <h2>💵 Money Owed</h2>
+      <div class="hint">Membership dues, $840/season each. Tap +/− $70 as people pay you a month — it feeds the bank balance automatically. Every real payment also earns that person 1 Casino XP per $2 paid.</div>
+      <div id="adminDuesArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <button type="button" id="adminDuesXPBackpayBtn" style="margin-top:10px;">🎰 Back-pay Casino XP for dues already paid</button>
+      <div class="hint" style="margin-top:6px;">One-time only — awards 1 XP per $2 of what everyone's ALREADY paid so far this season (based on the numbers above right now), so early payers aren't short-changed versus people who pay later. Disabled automatically after it's been run once.</div>
+      <div id="adminDuesXPBackpayStatus" class="status-msg" style="margin-top:6px;"></div>
+    </div>
+    <div class="panel">
+      <h2>🎁 Give Bonus XP</h2>
+      <div class="hint">Awards Casino XP either to every approved account (Full, Dashboard, and Tipping — everyone, regardless of role) or to one specific person. Reads the live approved-users list each time. Not a one-off — use it whenever you want to hand out a bonus.</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <select id="adminBonusTarget" style="flex:1; min-width:0;"><option value="everyone">🌐 Everyone (all approved accounts)</option></select>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="number" id="adminBonusAmount" value="1000" min="1" step="50" style="max-width:120px;">
+        <button type="button" id="adminBonusBtn">🎁 Give bonus XP</button>
+      </div>
+      <div class="status-msg" id="adminBonusStatus"></div>
+      <div class="hint" id="adminBonusHistory" style="margin-top:6px;"></div>
+    </div>
+    </div>
+
+    <div class="diag-submode" data-submode-panel="squad">
+    <div class="panel">
+      <h2>👥 Roster</h2>
+      <div class="hint">Removing someone here does not delete their season totals — it just hides them from new weekly entries.</div>
+      <div id="adminRosterRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminNewMemberName" placeholder="Add name" style="flex:1;">
+        <button type="button" id="adminAddMemberBtn" class="small">Add</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>🏅 Badges</h2>
+      <div class="hint">Tick a box to award that badge — shows on their profile on the dashboard (tap their name on the Board).</div>
+      <div id="adminBadgeAwardRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
     </div>
 
     <div class="diag-submode" data-submode-panel="play">
@@ -314,13 +353,6 @@
       <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">By casino game</h3>
       <div id="timeSpentGamesArea"><div class="empty">Loading…</div></div>
     </div>
-    <div class="panel">
-      <h2>📋 Weekly Report</h2>
-      <div class="hint">A rundown of the last 7 days — time spent, casino activity, and where to find the rest. Shows a saved snapshot for this week if one exists, otherwise a live compute (clearly labelled either way). No pushed notification — this only runs when you open it or tap the button below.</div>
-      <button type="button" id="snapshotWeekBtn" class="btn-secondary" style="width:100%; margin-top:8px;">📸 Snapshot this week</button>
-      <div class="status-msg" id="snapshotWeekStatus"></div>
-      <div id="weeklyReportArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
     </div>
     <div class="diag-submode" data-submode-panel="actions">
     <div class="panel">
@@ -339,6 +371,19 @@
         <button type="button" id="adminAddSlipBtn" class="small">Add</button>
       </div>
       <div id="adminSlipsArea" style="margin-top:12px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>📜 Season History</h2>
+      <div class="hint">Every week saved so far, most recent first.</div>
+      <div id="adminHistoryArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>💾 Backup</h2>
+      <div class="hint">Downloads everything — members, dues, financials, history, slips, plus Tipping and account data — as a file to your phone/computer. This is a real backup independent of browser storage or the internet. Do this regularly, or at least weekly.</div>
+      <button type="button" id="adminBackupBtn" class="small" style="margin-top:10px;">Download backup</button>
+      <div class="status-msg" id="adminBackupStatus"></div>
+      <div class="hint" id="adminLastBackupHint" style="margin-top:6px;"></div>
+      <div class="hint" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">Restore-from-backup isn't here yet, deliberately — it replaces everything live and shared, which needs more care than a first pass. Still only in the Ledger for now.</div>
     </div>
     </div>
     </div>
@@ -2202,23 +2247,6 @@ function currentAestDateKey(dateObj){
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(dateObj || new Date());
   return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}-${parts.find(p => p.type === 'day').value}`;
 }
-// ISO 8601 week numbering, computed off the AEST calendar date rather than
-// whatever timezone the browser/server happens to be in. Tested against 4
-// device timezones spanning UTC-11 to UTC+14 (including the tricky Dec
-// 28/Jan 3 year-boundary week) — all identical. This works regardless of
-// the viewing device's own timezone because currentAestDateKey() already
-// resolved the correct Melbourne Y/M/D first; everything below operates
-// purely on that fixed calendar date string, never touching the device's
-// actual current moment again — there's no local-vs-AEST mixing left to
-// go wrong.
-function currentAestWeekKey(){
-  const dateStr = currentAestDateKey();
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7)); // move to the Thursday of this ISO week
-  const yearStart = new Date(d.getFullYear(), 0, 1);
-  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-  return `${d.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
 async function renderRunningCosts(){
   const area = document.getElementById('runningCostsArea');
   const adminWrap = document.getElementById('runningCostsAdmin');
@@ -3218,7 +3246,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.45"; // First step of the Ledger-to-Dashboard migration: Bet Slips upload/add/remove, moved into the existing Admin tab's Actions sub-mode (that button already existed and led nowhere — no panel was ever built for it). Critical design decision: writes go ONLY to /state/slips.json, never a full overwrite of /state.json the way the Ledger's own saveState() does — that whole-object approach is fine there since the Ledger is the sole owner of that entire tree, but the Dashboard is primarily a read-only consumer of it, so writing back a full copy of a possibly-stale currentState risked silently clobbering financials/history/members that the Ledger owns. Reused compressImageForChat (already generic, just called with the Ledger's own original slip dimensions/quality — 1000px/0.72 — instead of duplicating a near-identical function) and the existing IMAGE_EXT constant (declared in casino-videopoker.js, shared window scope — same cross-file dependency the existing public Slips tab already relies on, not a new fragility). Confirmed firebase-rules.json needs zero changes — /state already has a broad write rule for any approved non-tipping-tier user, not even admin-gated specifically, and the whole Actions panel sits inside the Admin tab which was already fully gated to the admin email before this. The public Slips tab picks up new uploads immediately since currentState.slips gets updated and re-rendered locally right after each write, not just on the next poll cycle — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.47"; // Batch 1 of the Ledger-to-Dashboard migration: Roster, Badges, Money Owed (+ its one-time XP back-pay), Give Bonus XP, Season History, and Backup (download only) — all moved into the Admin tab. Added a new "Squad" sub-mode for Roster/Badges; extended "Money" with Money Owed and Bonus XP; extended "Actions" with Season History and Backup. Every write scoped to its own sub-path (/state/members.json, /state/rolloutBonusHistory.json, /state/duesXPBackpaidAt.json) — never a full /state.json overwrite, same principle as the earlier Slips migration. Ported bumpLifetimeEarned and awardXPToUidAdmin from the Ledger since the Dashboard's own awardXP() is hardcoded to currentUserUid (self-awarding only, used for game wins) and had no arbitrary-uid path — needed genuinely new, not reused. Two things deliberately pulled OUT of this batch on inspection rather than rushed in: Restore-from-backup (fully replaces live shared state — a Batch 3 risk profile, not Batch 1, regardless of the original "Backup" label covering it) and Rename-a-member-everywhere (touches Board name, Tipping profile, and past picks across multiple systems — needs its own dedicated pass). Caught and fixed a real overflow bug via an actual render, not assumption — the Bonus XP target <select> had no min-width:0, causing a horizontal scrollbar in its flex row — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -13790,23 +13818,6 @@ function setActiveTab(tab){
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
 });
-document.getElementById('snapshotWeekBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('snapshotWeekBtn');
-  const statusEl = document.getElementById('snapshotWeekStatus');
-  btn.disabled = true;
-  statusEl.className = 'status-msg';
-  statusEl.textContent = 'Snapshotting…';
-  try{
-    await snapshotThisWeek();
-    statusEl.className = 'status-msg ok';
-    statusEl.textContent = `Saved for ${currentAestWeekKey()}.`;
-    renderWeeklyReport(); // re-render to show the just-saved snapshot instead of the live view
-  }catch(e){
-    statusEl.className = 'status-msg error';
-    statusEl.textContent = 'Could not save: ' + e.message;
-  }
-  btn.disabled = false;
-});
 document.getElementById('testPushBtn').addEventListener('click', async () => {
   const btn = document.getElementById('testPushBtn');
   const status = document.getElementById('testPushStatus');
@@ -16554,117 +16565,6 @@ function renderTimeSpentBars(container, totals, nameMap){
     </div>
   `).join('');
 }
-// Shared between the live report and the saved snapshot so the two can
-// never drift into different HTML structures — only the data feeding it
-// (and the "is this live or saved" label above it) differs.
-function renderWeeklyReportHtml(data, isLive){
-  let html = isLive
-    ? `<div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Live — covering the last 7 days, generated just now. Not saved; tap "Snapshot this week" below to keep a permanent copy of these numbers.</div>`
-    : `<div style="font-size:11px; color:var(--muted); margin-bottom:10px;">Saved snapshot from ${new Date(data.ts).toLocaleString()} (${timeAgo(data.ts)}) — not necessarily today's live numbers.</div>`;
-
-  html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:10px 0 6px;">⏱ Time Across the Group</h3>`;
-  html += `<div style="font-size:12px; line-height:1.8;">
-    Total tracked time this week: <b>${formatDuration(data.totalTimeSec)}</b><br>
-    Busiest section: <b>${data.topTab ? escapeHtml(TAB_DISPLAY_NAMES[data.topTab] || data.topTab) + (data.topTabSec ? ' — ' + formatDuration(data.topTabSec) : '') : '—'}</b><br>
-    Most-played casino game: <b>${data.topGame ? escapeHtml(CASINO_GAME_LABELS[data.topGame] || data.topGame) + (data.topGameSec ? ' — ' + formatDuration(data.topGameSec) : '') : '—'}</b>
-  </div>`;
-
-  html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🎲 Casino Activity</h3>`;
-  html += `<div style="font-size:12px; line-height:1.8;">
-    Rounds played: <b>${data.rounds}</b><br>
-    Net XP across everyone (wins minus losses): <b style="color:${data.netXp >= 0 ? 'var(--win)' : 'var(--loss)'};">${data.netXp >= 0 ? '+' : ''}${data.netXp.toLocaleString()}</b><br>
-    Most active player: <b>${data.mostActive ? escapeHtml(data.mostActive) + (data.mostActiveCount ? ' (' + data.mostActiveCount + ' rounds)' : '') : '—'}</b><br>
-    Biggest single win: <b>${data.biggestWin ? escapeHtml(data.biggestWin.name) + ' +' + data.biggestWin.amount + ' XP (' + escapeHtml(data.biggestWin.reason) + ')' : '—'}</b>
-  </div>`;
-
-  html += `<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🔮 Syndy, API &amp; Health</h3>`;
-  html += `<div style="font-size:11.5px; color:var(--muted); line-height:1.7;">
-    Syndy this month (not strictly this week — tracked by calendar month only): <b>${data.syndyCalls != null ? data.syndyCalls + ' calls, $' + (data.syndyCost || 0).toFixed(2) : 'see Money tab'}</b><br>
-    Health score at time of report: <b>${data.healthScore != null ? data.healthScore + '/100' : 'no check run yet'}</b><br>
-    API call counts are per-device (this phone/browser only) — see the Money tab for this device's running total.
-  </div>`;
-  return html;
-}
-// Accepts already-fetched data when the caller has it (renderDiagTab
-// shares one set of reads across every panel that needs them — see
-// there), otherwise fetches fresh. Keeps this independently callable
-// (snapshotThisWeek wants a genuinely fresh read, not whatever was
-// loaded when Diag first opened) without forcing every caller to
-// duplicate the same ~20 requests this function used to make on its own.
-async function computeWeeklyReportData(preloaded){
-  const timeData = (preloaded && preloaded.timeData) || await loadTimeSpentData(7);
-  const activityEntries = (preloaded && preloaded.activityEntries) || await loadActivityData();
-  const healthSnap = (preloaded && 'healthSnap' in preloaded) ? preloaded.healthSnap : await loadLatestHealthSnapshot();
-  const weekCutoff = Date.now() - 7 * 86400000;
-  const weekActivity = activityEntries.filter(e => e.ts >= weekCutoff);
-  const totalTimeSec = Object.values(timeData.tabTotals).reduce((a, b) => a + b, 0) + Object.values(timeData.gameTotals).reduce((a, b) => a + b, 0);
-  const topTab = Object.entries(timeData.tabTotals).sort((a, b) => b[1] - a[1])[0];
-  const topGame = Object.entries(timeData.gameTotals).sort((a, b) => b[1] - a[1])[0];
-  const playerCounts = {};
-  weekActivity.forEach(e => { playerCounts[e.name] = (playerCounts[e.name] || 0) + 1; });
-  const mostActive = Object.entries(playerCounts).sort((a, b) => b[1] - a[1])[0];
-  const biggestWinEntry = weekActivity.reduce((best, e) => (e.amount > (best ? best.amount : -Infinity) ? e : best), null);
-
-  let syndyCalls = null, syndyCost = null;
-  try{
-    const monthKey = currentAestMonthKey();
-    const [callsRes, costRes] = await Promise.all([
-      authedFetch(`/apiUsage/perplexity/byMonth/${monthKey}.json`),
-      authedFetch(`/apiUsage/perplexity/byMonthCostUsd/${monthKey}.json`)
-    ]);
-    syndyCalls = (await callsRes.json()) || 0;
-    syndyCost = (await costRes.json()) || 0;
-  }catch(e){}
-
-  return {
-    ts: Date.now(),
-    totalTimeSec,
-    topTab: topTab ? topTab[0] : null, topTabSec: topTab ? topTab[1] : null,
-    topGame: topGame ? topGame[0] : null, topGameSec: topGame ? topGame[1] : null,
-    rounds: weekActivity.length,
-    netXp: weekActivity.reduce((sum, e) => sum + e.amount, 0),
-    mostActive: mostActive ? mostActive[0] : null, mostActiveCount: mostActive ? mostActive[1] : null,
-    biggestWin: (biggestWinEntry && biggestWinEntry.amount > 0) ? { name: biggestWinEntry.name, amount: biggestWinEntry.amount, reason: biggestWinEntry.reason } : null,
-    syndyCalls, syndyCost,
-    healthScore: healthSnap ? healthSnap.score : null
-  };
-}
-// Written under the admin's own uid (see the health/error-ring comments
-// above for why) — /analytics/{adminUid}/opsWeekly/{week}, no rules
-// deploy needed.
-async function snapshotThisWeek(){
-  const data = await computeWeeklyReportData();
-  if(currentUserUid){
-    try{
-      await authedFetch(`/analytics/${currentUserUid}/opsWeekly/${currentAestWeekKey()}.json`, {
-        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data)
-      });
-    }catch(e){}
-  }
-  try{ localStorage.setItem('mlsynd_weekly_latest', JSON.stringify(data)); }catch(e){}
-  return data;
-}
-async function renderWeeklyReport(preloaded){
-  const area = document.getElementById('weeklyReportArea');
-  if(!area) return;
-  area.innerHTML = '<div class="empty">Loading…</div>';
-  // Prefer this week's saved snapshot if one exists — falls back to a
-  // live compute (clearly labelled as such) otherwise.
-  let saved = null;
-  if(currentUserUid){
-    try{
-      const res = await authedFetch(`/analytics/${currentUserUid}/opsWeekly/${currentAestWeekKey()}.json`);
-      saved = await res.json();
-    }catch(e){}
-  }
-  if(saved){
-    area.innerHTML = renderWeeklyReportHtml(saved, false);
-  } else {
-    const live = await computeWeeklyReportData(preloaded);
-    area.innerHTML = renderWeeklyReportHtml(live, true);
-  }
-}
-
 // Presence, and the activity feed/graph below it, are the "who's online,
 // who's playing what" tracker. Presence is a lightweight heartbeat (see
 // sendPresenceHeartbeat) written to /presence/{uid}; the activity feed
@@ -16955,6 +16855,7 @@ document.getElementById('clearMyErrorsBtn').addEventListener('click', async () =
 let diagMoneyLoaded = false;
 let diagPlayLoaded = false;
 let diagActionsLoaded = false;
+let diagSquadLoaded = false;
 
 // ---- Admin: Bet Slips management (migrated from the Ledger app) ----
 // Writes ONLY to /state/slips.json, never the whole /state.json object —
@@ -17078,6 +16979,405 @@ document.getElementById('adminSlipFileInput').addEventListener('change', async (
   }
   renderAdminSlips();
 });
+
+// ==== Admin: Roster / Badges / Money Owed (share the same members array) ====
+// Same scoped-write principle as saveSlipsToFirebase — writes ONLY to
+// /state/members.json, never the whole /state.json object. All three of
+// these features mutate the same members array (just different fields
+// per member), so one shared write helper covers all three rather than
+// three near-identical copies.
+async function saveMembersToFirebase(membersArray){
+  await authedFetch('/state/members.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(membersArray)
+  });
+  currentState.members = membersArray;
+}
+function renderAdminRoster(){
+  const area = document.getElementById('adminRosterRows');
+  const members = currentState.members || [];
+  if(members.length === 0){
+    area.innerHTML = '<div class="empty">No members yet.</div>';
+    return;
+  }
+  area.innerHTML = members.map((m, idx) => `
+    <div class="roster-row" style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
+      <input type="text" value="${escapeHtml(m.name)}" data-idx="${idx}" class="adminRosterNameInput" style="flex:1;">
+      <button type="button" class="small danger adminRemoveRosterBtn" data-idx="${idx}">Remove</button>
+    </div>`).join('');
+  area.querySelectorAll('.adminRosterNameInput').forEach(inp => {
+    inp.addEventListener('change', async (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const next = [...currentState.members];
+      next[idx] = { ...next[idx], name: e.target.value.trim() || next[idx].name };
+      await saveMembersToFirebase(next);
+      renderAdminBadges();
+      renderAdminDues();
+    });
+  });
+  area.querySelectorAll('.adminRemoveRosterBtn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const m = currentState.members[idx];
+      if(!confirm(`Remove ${m.name} from future weekly entries? Their season totals stay saved.`)) return;
+      const next = [...currentState.members];
+      next.splice(idx, 1);
+      await saveMembersToFirebase(next);
+      renderAdminRoster();
+      renderAdminBadges();
+      renderAdminDues();
+    });
+  });
+}
+document.getElementById('adminAddMemberBtn').addEventListener('click', async () => {
+  const input = document.getElementById('adminNewMemberName');
+  const name = input.value.trim();
+  if(!name) return;
+  const next = [...(currentState.members || []), { name, legs:0, wins:0, losses:0, voids:0, indWin:0, indLoss:0, pl:0, oddsSum:0, oddsCount:0, prevRank:null, duesCommitment:840, duesOwed:840, badges:[] }];
+  await saveMembersToFirebase(next);
+  input.value = '';
+  renderAdminRoster();
+  renderAdminBadges();
+  renderAdminDues();
+});
+// Same badge definitions as the Ledger's own — kept identical since a
+// badge id awarded here has to match what the profile's own badge
+// display recognises.
+const ADMIN_BADGE_DEFS = {
+  'first-xi': 'First XI',
+  'go-live': 'Dashboard Go-Live',
+  'tipping-trial': 'Footy Tipping Trial',
+  'cale-hooker': 'Cale Hooker (lowest score ever)',
+  'iykyk': 'IYKYK (last for the year)',
+};
+function renderAdminBadges(){
+  const area = document.getElementById('adminBadgeAwardRows');
+  const members = currentState.members || [];
+  if(members.length === 0){
+    area.innerHTML = '<div class="empty">No members yet.</div>';
+    return;
+  }
+  area.innerHTML = members.map((m, idx) => {
+    const badges = Array.isArray(m.badges) ? m.badges : [];
+    const boxes = Object.entries(ADMIN_BADGE_DEFS).map(([id, label]) => `
+      <label style="display:flex; align-items:center; gap:4px; font-size:10.5px; color:var(--muted); white-space:nowrap;">
+        <input type="checkbox" class="adminBadgeCheck" data-idx="${idx}" data-badge="${id}" ${badges.includes(id) ? 'checked' : ''}> ${escapeHtml(label)}
+      </label>`).join('');
+    return `<div style="display:flex; flex-direction:column; gap:6px; padding:10px 0; border-bottom:1px solid var(--line);">
+      <div style="font-weight:700; color:var(--chalk);">${escapeHtml(m.name)}</div>
+      <div style="display:flex; gap:14px; flex-wrap:wrap;">${boxes}</div>
+    </div>`;
+  }).join('');
+  area.querySelectorAll('.adminBadgeCheck').forEach(cb => {
+    cb.addEventListener('change', async () => {
+      const idx = parseInt(cb.dataset.idx, 10);
+      const badgeId = cb.dataset.badge;
+      const next = [...currentState.members];
+      const m = { ...next[idx] };
+      let badges = Array.isArray(m.badges) ? [...m.badges] : [];
+      if(cb.checked){
+        if(!badges.includes(badgeId)) badges.push(badgeId);
+      } else {
+        badges = badges.filter(b => b !== badgeId);
+      }
+      m.badges = badges;
+      next[idx] = m;
+      await saveMembersToFirebase(next);
+      showToast(`${cb.checked ? 'Awarded' : 'Removed'} ${ADMIN_BADGE_DEFS[badgeId]} — ${m.name}`);
+    });
+  });
+}
+const ADMIN_DUES_STEP = 70;
+function renderAdminDues(){
+  const area = document.getElementById('adminDuesArea');
+  const members = currentState.members || [];
+  if(members.length === 0){
+    area.innerHTML = '<div class="empty">Add people to the roster first.</div>';
+    return;
+  }
+  area.innerHTML = members.map((m, idx) => {
+    const owed = Math.round(m.duesOwed || 0);
+    const commitment = Math.round(m.duesCommitment || 0);
+    return `<div class="dues-row" style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid var(--line);">
+      <span style="color:var(--chalk); font-size:13px;">${escapeHtml(m.name)}</span>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button type="button" class="small adminDuesMinus" data-idx="${idx}" ${owed<=0?'disabled':''}>−</button>
+        <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass-light);">$<input type="number" class="adminDuesOwedInput" data-idx="${idx}" value="${owed}" step="1" style="width:60px; background:none; border:none; color:inherit; font:inherit;"> / $${commitment}</span>
+        <button type="button" class="small adminDuesPlus" data-idx="${idx}" ${owed>=commitment?'disabled':''}>+</button>
+      </div>
+    </div>`;
+  }).join('');
+  const applyDuesChange = async (idx, newOwed) => {
+    const next = [...currentState.members];
+    const m = { ...next[idx] };
+    const before = Math.round(m.duesOwed || 0);
+    const commitment = Math.round(m.duesCommitment || 0);
+    m.duesOwed = Math.max(0, Math.min(commitment, newOwed));
+    const paid = before - m.duesOwed;
+    next[idx] = m;
+    await saveMembersToFirebase(next);
+    renderAdminDues();
+    if(paid > 0 && m.linkedUid){
+      const xp = Math.floor(paid / 2);
+      if(xp > 0) await awardXPToUidAdmin(m.linkedUid, xp, `Dues payment ($${paid})`);
+    }
+  };
+  area.querySelectorAll('.adminDuesOwedInput').forEach(inp => {
+    inp.addEventListener('change', (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const val = parseFloat(e.target.value);
+      applyDuesChange(idx, isNaN(val) ? 0 : val);
+    });
+  });
+  area.querySelectorAll('.adminDuesMinus').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const before = Math.round(currentState.members[idx].duesOwed || 0);
+      applyDuesChange(idx, before - ADMIN_DUES_STEP);
+    });
+  });
+  area.querySelectorAll('.adminDuesPlus').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      // Correcting upward (un-recording a payment) deliberately does NOT
+      // claw back XP already awarded — same reasoning as the Ledger's
+      // own version: this is for fixing entry mistakes, and reversing XP
+      // proportionally for every possible correction adds real
+      // complexity for a rare action.
+      const idx = parseInt(e.target.dataset.idx, 10);
+      const before = Math.round(currentState.members[idx].duesOwed || 0);
+      const commitment = Math.round(currentState.members[idx].duesCommitment || 0);
+      applyDuesChange(idx, Math.min(commitment, before + ADMIN_DUES_STEP));
+    });
+  });
+}
+document.getElementById('adminDuesXPBackpayBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminDuesXPBackpayBtn');
+  const status = document.getElementById('adminDuesXPBackpayStatus');
+  if(currentState.duesXPBackpaidAt){
+    btn.disabled = true;
+    btn.textContent = '✅ Dues XP already back-paid';
+    return;
+  }
+  if(!confirm('Award 1 XP per $2 already paid so far this season, to everyone with a linked account? This only runs once, ever.')) return;
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Awarding…';
+  let count = 0;
+  for(const m of (currentState.members || [])){
+    const paid = Math.round((m.duesCommitment || 0) - (m.duesOwed || 0));
+    if(paid > 0 && m.linkedUid){
+      const xp = Math.floor(paid / 2);
+      if(xp > 0){
+        const ok = await awardXPToUidAdmin(m.linkedUid, xp, `Dues back-pay ($${paid} already paid)`);
+        if(ok) count++;
+      }
+    }
+  }
+  await authedFetch('/state/duesXPBackpaidAt.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
+  });
+  currentState.duesXPBackpaidAt = Date.now();
+  status.className = 'status-msg ok';
+  status.textContent = `Done — back-paid ${count} member(s).`;
+  btn.textContent = '✅ Dues XP already back-paid';
+});
+
+// ==== Admin: Give Bonus XP ====
+// Ported from the Ledger's awardXPToUid — genuinely separate from the
+// Dashboard's own awardXP(), which is hardcoded to currentUserUid (used
+// for self-awarding casino wins/losses) and has no way to target another
+// person. This one takes an explicit uid, since giving bonus XP to
+// someone else is exactly the point of this feature. Named distinctly
+// (the "Admin" suffix) to avoid any confusion with the Ledger's own
+// identically-behaved copy — this is not a shared function across files,
+// just the same logic independently present in both.
+// bumpLifetimeEarned didn't exist in the Dashboard before this — only the
+// Ledger had it. Needed here since awardXPToUidAdmin depends on it,
+// same guard against negative amounts as the Ledger's own copy.
+async function bumpLifetimeEarned(uid, amount){
+  if(!amount || amount <= 0) return;
+  try{
+    const res = await authedFetch(`/xp/${uid}/lifetimeEarned.json`);
+    const current = (await res.json()) || 0;
+    await authedFetch(`/xp/${uid}/lifetimeEarned.json`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(current + amount)
+    });
+  }catch(e){}
+}
+async function awardXPToUidAdmin(uid, amount, reason){
+  try{
+    const res = await authedFetch(`/xp/${uid}/balance.json`);
+    const current = (await res.json()) || 0;
+    const next = current + amount;
+    await authedFetch(`/xp/${uid}/balance.json`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(next)
+    });
+    await authedFetch(`/xp/${uid}/log.json`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
+    });
+    await bumpLifetimeEarned(uid, amount);
+    return true;
+  }catch(e){ return false; }
+}
+async function populateAdminBonusTargetSelect(){
+  const sel = document.getElementById('adminBonusTarget');
+  if(!sel) return;
+  try{
+    const res = await authedFetch('/users.json');
+    const all = (await res.json()) || {};
+    const approved = Object.entries(all).filter(([uid, u]) => u && u.status === 'approved');
+    const current = sel.value;
+    sel.innerHTML = '<option value="everyone">🌐 Everyone (all approved accounts)</option>' +
+      approved.map(([uid, u]) => `<option value="${uid}">${escapeHtml(u.name || u.email || uid)}</option>`).join('');
+    if([...sel.options].some(o => o.value === current)) sel.value = current;
+  }catch(e){}
+}
+function renderAdminBonusHistory(){
+  const el = document.getElementById('adminBonusHistory');
+  if(!el) return;
+  const history = Array.isArray(currentState.rolloutBonusHistory) ? currentState.rolloutBonusHistory : [];
+  if(history.length === 0){ el.textContent = ''; return; }
+  const last = history[history.length - 1];
+  const when = new Date(last.at).toLocaleString();
+  const who = last.targetName ? `to ${last.targetName}` : `to ${last.count} account(s)`;
+  el.textContent = `Last given: +${last.amount} XP ${who}, ${when}.`;
+}
+document.getElementById('adminBonusBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminBonusBtn');
+  const status = document.getElementById('adminBonusStatus');
+  const amountInput = document.getElementById('adminBonusAmount');
+  const targetSel = document.getElementById('adminBonusTarget');
+  const amount = parseInt(amountInput.value, 10);
+  if(!amount || amount <= 0){
+    status.className = 'status-msg error';
+    status.textContent = 'Enter a positive XP amount first.';
+    return;
+  }
+  const targetUid = targetSel.value;
+  const targetName = targetUid === 'everyone' ? null : targetSel.options[targetSel.selectedIndex].textContent;
+  const confirmMsg = targetUid === 'everyone'
+    ? `Award +${amount} XP to every approved account, right now — continue?`
+    : `Award +${amount} XP to ${targetName} only, right now — continue?`;
+  if(!confirm(confirmMsg)) return;
+
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Awarding XP…';
+
+  // rolloutBonusHistory is scoped to its own sub-path, never a full
+  // /state.json overwrite — same principle as saveMembersToFirebase.
+  const pushHistory = async (entry) => {
+    const next = [...(currentState.rolloutBonusHistory || []), entry];
+    await authedFetch('/state/rolloutBonusHistory.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+    });
+    currentState.rolloutBonusHistory = next;
+  };
+
+  if(targetUid !== 'everyone'){
+    const ok = await awardXPToUidAdmin(targetUid, amount, 'Casino bonus');
+    await pushHistory({ amount, count: ok ? 1 : 0, targetName, at: Date.now() });
+    status.className = ok ? 'status-msg ok' : 'status-msg error';
+    status.textContent = ok ? `Done — +${amount} XP awarded to ${targetName}.` : `Could not award XP to ${targetName} — try again.`;
+    if(ok) showToast('Bonus XP sent');
+    btn.disabled = false;
+    renderAdminBonusHistory();
+    return;
+  }
+
+  let approved = [];
+  try{
+    const res = await authedFetch('/users.json');
+    const all = (await res.json()) || {};
+    approved = Object.entries(all).filter(([uid, u]) => u && u.status === 'approved');
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Could not load the approved-users list — try again.';
+    btn.disabled = false;
+    return;
+  }
+  let count = 0;
+  for(const [uid] of approved){
+    const ok = await awardXPToUidAdmin(uid, amount, 'Casino bonus');
+    if(ok) count++;
+  }
+  await pushHistory({ amount, count, targetName: null, at: Date.now() });
+  status.className = 'status-msg ok';
+  status.textContent = `Done — +${amount} XP awarded to ${count} of ${approved.length} approved account(s).`;
+  showToast('Bonus XP sent');
+  btn.disabled = false;
+  renderAdminBonusHistory();
+});
+
+// ==== Admin: Season History (read-only) ====
+function renderAdminHistory(){
+  const area = document.getElementById('adminHistoryArea');
+  const history = currentState.history || [];
+  if(history.length === 0){
+    area.innerHTML = '<div class="empty">No weeks saved yet.</div>';
+    return;
+  }
+  area.innerHTML = [...history].reverse().map(h => `
+    <div style="display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-size:12.5px;">
+      <span style="color:var(--chalk);">${escapeHtml(h.label)}</span>
+      <span style="color:var(--muted);">${new Date(h.savedAt).toLocaleDateString()}</span>
+    </div>`).join('');
+}
+
+// ==== Admin: Backup (download only — restore deliberately stays in the
+// Ledger for now, since it fully replaces live shared state) ====
+const ADMIN_LAST_BACKUP_KEY = 'mlsynd_admin_last_backup';
+function renderAdminLastBackupHint(){
+  const el = document.getElementById('adminLastBackupHint');
+  if(!el) return;
+  let ts = null;
+  try{ ts = localStorage.getItem(ADMIN_LAST_BACKUP_KEY); }catch(e){}
+  if(!ts){ el.textContent = 'No backup downloaded on this device yet.'; return; }
+  const days = (Date.now() - parseInt(ts, 10)) / 86400000;
+  const label = days < 1 ? 'less than a day ago' : `${Math.floor(days)} day${Math.floor(days) === 1 ? '' : 's'} ago`;
+  el.textContent = `Last backup on this device: ${label}.`;
+}
+document.getElementById('adminBackupBtn').addEventListener('click', async () => {
+  const status = document.getElementById('adminBackupStatus');
+  status.className = 'status-msg';
+  status.textContent = 'Preparing backup…';
+  try{
+    let tipping = null, users = null, groupChat = null, predictionMarkets = null, legBets = null, predictionMarketReserve = null, actsOfGodHistory = null;
+    try{
+      const [tippingRes, usersRes, groupChatRes, marketsRes, legBetsRes, reserveRes, aogRes] = await Promise.all([
+        authedFetch('/tipping.json'), authedFetch('/users.json'), authedFetch('/groupChat.json'),
+        authedFetch('/predictionMarkets.json'), authedFetch('/legBets.json'),
+        authedFetch('/predictionMarketReserve.json'), authedFetch('/actsOfGod/history.json'),
+      ]);
+      tipping = await tippingRes.json(); users = await usersRes.json(); groupChat = await groupChatRes.json();
+      predictionMarkets = await marketsRes.json(); legBets = await legBetsRes.json();
+      predictionMarketReserve = await reserveRes.json(); actsOfGodHistory = await aogRes.json();
+    }catch(e){}
+    const backup = {
+      ...currentState, __tipping: tipping, __users: users, __groupChat: groupChat,
+      __predictionMarkets: predictionMarkets, __legBets: legBets,
+      __predictionMarketReserve: predictionMarketReserve, __actsOfGodHistory: actsOfGodHistory,
+      __exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = url; a.download = `mlsynd-backup-${stamp}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    try{ localStorage.setItem(ADMIN_LAST_BACKUP_KEY, Date.now().toString()); }catch(e){}
+    renderAdminLastBackupHint();
+    status.className = 'status-msg ok';
+    status.textContent = 'Backup downloaded — keep it somewhere safe (Files app, email to yourself, etc).';
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Backup failed: ' + e.message;
+  }
+});
+renderAdminLastBackupHint();
+
 function renderDiagTab(retriesLeft){
   // Can fire before currentState is populated — the sessionStorage
   // tab-restore near the bottom of this file calls this unconditionally
@@ -17122,6 +17422,14 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
       diagMoneyLoaded = true;
       renderApiCallTracker();
       renderSyndyUsage().then(renderRunningCosts); // running costs reads window._syndyTotalCostUsd, set by renderSyndyUsage — sequenced, not parallel, to avoid reading it before it's set
+      renderAdminDues();
+      populateAdminBonusTargetSelect();
+      renderAdminBonusHistory();
+    }
+    if(target === 'squad' && !diagSquadLoaded){
+      diagSquadLoaded = true;
+      renderAdminRoster();
+      renderAdminBadges();
     }
     if(target === 'play' && !diagPlayLoaded){
       diagPlayLoaded = true;
@@ -17135,13 +17443,11 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
         renderTimeSpentBars(document.getElementById('timeSpentTabsArea'), tabTotals, TAB_DISPLAY_NAMES);
         renderTimeSpentBars(document.getElementById('timeSpentGamesArea'), gameTotals, CASINO_GAME_LABELS);
       });
-      Promise.all([timeSpentPromise, activityPromise, loadLatestHealthSnapshot()]).then(([timeData, activityEntries, healthSnap]) => {
-        renderWeeklyReport({ timeData, activityEntries, healthSnap });
-      });
     }
     if(target === 'actions' && !diagActionsLoaded){
       diagActionsLoaded = true;
       renderAdminSlips();
+      renderAdminHistory();
     }
   });
 });
