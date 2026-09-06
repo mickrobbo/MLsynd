@@ -278,7 +278,7 @@
           <label style="font-size:11px; color:var(--muted);">Notes (what "Other" covers, etc.)
             <textarea id="rcNotes" rows="2" style="width:100%; margin-top:3px; resize:vertical;"></textarea>
           </label>
-          <button type="button" id="saveRunningCostsBtn" class="btn-secondary">Save</button>
+          <button type="button" id="saveRunningCostsBtn" class="btn-secondary">💾 Save</button>
           <div class="status-msg" id="runningCostsStatus"></div>
         </div>
       </div>
@@ -287,12 +287,12 @@
       <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">This device</h3>
       <div class="hint">Tracks calls made from this device/browser only (localStorage) — not a shared count across all members, since instrumenting the actual Netlify functions server-side would need touching each one's own source directly.</div>
       <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
-      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">Reset stats</button>
+      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">🔄 Reset stats</button>
     </div>
     <div class="panel">
       <h2>🔔 Test Push Notification</h2>
       <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
-      <button type="button" id="testPushBtn">Send test notification</button>
+      <button type="button" id="testPushBtn">🔔 Send test notification</button>
       <div class="status-msg" id="testPushStatus"></div>
     </div>
     <div class="panel">
@@ -380,7 +380,7 @@
     <div class="panel">
       <h2>💾 Backup</h2>
       <div class="hint">Downloads everything — members, dues, financials, history, slips, plus Tipping and account data — as a file to your phone/computer. This is a real backup independent of browser storage or the internet. Do this regularly, or at least weekly.</div>
-      <button type="button" id="adminBackupBtn" class="small" style="margin-top:10px;">Download backup</button>
+      <button type="button" id="adminBackupBtn" class="small" style="margin-top:10px;">💾 Download backup</button>
       <div class="status-msg" id="adminBackupStatus"></div>
       <div class="hint" id="adminLastBackupHint" style="margin-top:6px;"></div>
       <div class="hint" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">Restore-from-backup isn't here yet, deliberately — it replaces everything live and shared, which needs more care than a first pass. Still only in the Ledger for now.</div>
@@ -3246,7 +3246,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.47"; // Batch 1 of the Ledger-to-Dashboard migration: Roster, Badges, Money Owed (+ its one-time XP back-pay), Give Bonus XP, Season History, and Backup (download only) — all moved into the Admin tab. Added a new "Squad" sub-mode for Roster/Badges; extended "Money" with Money Owed and Bonus XP; extended "Actions" with Season History and Backup. Every write scoped to its own sub-path (/state/members.json, /state/rolloutBonusHistory.json, /state/duesXPBackpaidAt.json) — never a full /state.json overwrite, same principle as the earlier Slips migration. Ported bumpLifetimeEarned and awardXPToUidAdmin from the Ledger since the Dashboard's own awardXP() is hardcoded to currentUserUid (self-awarding only, used for game wins) and had no arbitrary-uid path — needed genuinely new, not reused. Two things deliberately pulled OUT of this batch on inspection rather than rushed in: Restore-from-backup (fully replaces live shared state — a Batch 3 risk profile, not Batch 1, regardless of the original "Backup" label covering it) and Rename-a-member-everywhere (touches Board name, Tipping profile, and past picks across multiple systems — needs its own dedicated pass). Caught and fixed a real overflow bug via an actual render, not assumption — the Bonus XP target <select> had no min-width:0, causing a horizontal scrollbar in its flex row — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.48"; // Fixed a real, app-wide styling gap per report: plain buttons/inputs/selects/textareas with no specific class had ZERO CSS behind them at all — confirmed by checking the stylesheet directly, not assumed — so they fell straight through to raw browser defaults (white background, black text) throughout the Admin tab (Reset stats, Send test notification, Back-pay XP, Give Bonus XP's dropdown/input, Running Costs' whole form, every text input). Even .btn-secondary and .danger existed as class names in the HTML already but had never had any CSS written for them — .danger in particular meant every "Remove" button was silently indistinguishable from a harmless one. Added a genuine global fallback (button, .btn-secondary, .danger, and every plain text-style input/select/textarea) matching the established gold-outline-on-felt language, deliberately lower CSS specificity than any class-based rule so nothing already styled changes. Added missing emojis to three buttons that had none (Reset stats, Send test notification, running costs' Save) to match how every other button in this app is labelled. Confirmed via an actual render matching the exact elements from the report, not assumed to look right — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

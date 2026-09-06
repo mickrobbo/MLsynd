@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.47",
+  "version": "2026-09-02.48",
   "date": "2026-09-02",
   "changes": [
-    "Batch 1 of moving the Ledger into the Dashboard: Roster, Badges, Money Owed, Give Bonus XP, Season History, and Backup (download) now all live in the Admin tab \u2014 a new Squad section for members, and Money/Actions extended with the rest. Restore-from-backup and member renaming are deliberately not here yet, both need their own dedicated pass."
+    "Fixed every plain button, text input, dropdown, and text area in the Admin tab that was falling back to raw white browser styling \u2014 they now match the same gold-on-felt premium look as the rest of the app. 'Remove' buttons are also now genuinely red, not visually identical to a harmless button."
   ]
 }

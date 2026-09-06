@@ -2801,6 +2801,50 @@
     padding:8px 14px; border-radius:8px; cursor:pointer;
   }
   button.small:active{ background: rgba(199,162,72,0.12); }
+  /* Global fallback for any plain button/input/select/textarea with no
+     specific class of its own — these were falling straight through to
+     raw browser defaults (white background, black text, system font),
+     starkly out of place against this app's dark felt + gold theme. A
+     real reported gap: an admin page is still part of the same product,
+     it doesn't get to look like an unstyled form just because it's
+     admin-only. Lower specificity than any class-based rule (button.small
+     etc.), so those keep winning exactly as before — this only fills in
+     for genuinely bare elements that had nothing at all. */
+  button{
+    background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.25));
+    border:1px solid var(--brass-dim); color: var(--brass);
+    font-family:'IBM Plex Sans', sans-serif; font-size:13px; font-weight:600;
+    padding:10px 16px; border-radius:8px; cursor:pointer;
+    transition: background .15s, transform .1s;
+  }
+  button:active{ background: rgba(199,162,72,.12); transform: scale(.98); }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn-secondary{
+    background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.25));
+    border:1px solid var(--brass-dim); color: var(--brass);
+    font-family:'IBM Plex Sans', sans-serif; font-size:13px; font-weight:600;
+    padding:10px 16px; border-radius:8px; cursor:pointer;
+  }
+  .btn-secondary:active{ background: rgba(199,162,72,.12); }
+  /* Destructive actions get an actual visual warning now — .danger
+     existed as a class name in several places (Remove buttons etc.) but
+     had zero CSS behind it, so it was silently doing nothing and every
+     "Remove" button looked identical to a completely harmless one. Same
+     red-hue language already used for a negative XP balance elsewhere. */
+  button.danger, .btn-secondary.danger{
+    background: linear-gradient(165deg, rgba(193,96,74,.18), rgba(0,0,0,.25));
+    border-color: rgba(193,96,74,.5); color: var(--loss);
+  }
+  button.danger:active, .btn-secondary.danger:active{ background: rgba(193,96,74,.25); }
+  input[type="text"], input[type="number"], input[type="email"], input[type="password"], input[type="url"], input[type="search"], select, textarea{
+    background: rgba(0,0,0,.25); border:1px solid var(--brass-dim); border-radius:8px;
+    padding:9px 12px; color: var(--chalk); font-family:'IBM Plex Sans', sans-serif; font-size:13px;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, input[type="email"]:focus, input[type="password"]:focus, input[type="url"]:focus, input[type="search"]:focus, select:focus, textarea:focus{
+    outline:none; border-color: var(--brass); box-shadow: 0 0 0 2px rgba(199,162,72,.2);
+  }
+  input[type="text"]::placeholder, input[type="number"]::placeholder, textarea::placeholder{ color: var(--muted); }
+  select{ cursor:pointer; }
   .status-msg{ font-size:11px; color: var(--muted); margin-top:6px; }
   .status-msg.error{ color: var(--loss); }
   .status-msg.ok{ color: var(--win); }
@@ -3700,11 +3744,17 @@
 .casino-panel-h2{ justify-content:center; text-align:center; }
 .xp-log-row{
   display:flex; align-items:baseline; justify-content:space-between; gap:10px;
-  padding:7px 0; border-bottom:1px solid var(--line); font-size:12px;
+  padding:7px 0; border-bottom:1px solid var(--line); font-size:12px; width:100%;
 }
 .xp-log-row .xp-log-who{ color:var(--brass-light); font-weight:600; flex-shrink:0; }
-.xp-log-row .xp-log-reason{ color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.xp-log-row .xp-log-amt{ font-weight:700; flex-shrink:0; font-family:'IBM Plex Mono', monospace; }
+/* max-width reserves guaranteed room for xp-log-amt explicitly, rather
+   than relying purely on flex-grow/shrink negotiation to leave enough
+   space — a real report showed the amount disappearing entirely on an
+   actual phone despite this working in a desktop-style render test, so
+   this is deliberately belt-and-braces rather than assuming flexbox
+   alone was enough. */
+.xp-log-row .xp-log-reason{ color:var(--muted); flex:1; min-width:0; max-width:calc(100% - 68px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xp-log-row .xp-log-amt{ font-weight:700; flex-shrink:0; font-family:'IBM Plex Mono', monospace; min-width:56px; text-align:right; }
 .casino-floor-toggle{ display:flex; justify-content:center; gap:8px; margin-bottom:10px; }
 .casino-floor-scroll{
   max-height:280px; overflow-y:auto; -webkit-overflow-scrolling:touch;
