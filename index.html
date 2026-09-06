@@ -411,6 +411,11 @@
       <div class="hint">Commits everything above to real season totals — every member's stats, real XP awards, real fines, and this week's history record, all in one action. This is genuinely new and hasn't been run against live data before — check it against a week the Ledger has already saved and compare the numbers before trusting it with a brand new week.</div>
       <button type="button" id="adminSaveWeekBtn" class="small danger" style="margin-top:10px;">💾 Save week</button>
       <div class="status-msg" id="adminEntryStatus"></div>
+      <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
+        <div class="hint">Reverses the single most recently saved week — everyone's stats, XP, and fines back to exactly how they were before it, using the amounts actually stored on that week's own history record, not recomputed. Only ever undoes one week at a time, always the last one.</div>
+        <button type="button" id="adminUndoWeekBtn" class="small danger" style="margin-top:10px;">↩️ Undo last saved week</button>
+        <div class="status-msg" id="adminUndoWeekStatus"></div>
+      </div>
     </div>
     </div>
 
@@ -3459,7 +3464,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.57"; // Visual pass on the Admin tab per request: sub-tab buttons rebuilt as a proper 3-per-row grid of large, easy-to-tap circular buttons (own dedicated .admin-submode-grid/.admin-submode-btn classes, no longer borrowing the Casino's much smaller .craps-winmode-btn, which was genuinely too small for something used every visit here). Every admin panel made collapsible — one generic function (initAdminCollapsiblePanels) auto-wraps each panel's content and adds a clickable chevron header, rather than hand-editing 30+ panels individually; scoped strictly to #homeSubview-diag via a real DOM query so nothing elsewhere in the app (casino game panels also use <h2> inside .panel) is affected. Panels stay expanded by default — this adds the ABILITY to collapse, doesn't impose a collapsed state on anything already visible. Caught a real CSS Grid rendering gap during testing (a 3-column grid-template-columns rendered as a single column) and switched to flexbox with explicit flex-basis percentages instead, the same reliable pattern already used everywhere else in this app. Also caught and immediately fixed a self-inflicted str_replace mistake mid-edit that deleted part of an existing comment — verified the exact original text was restored before moving on. Confirmed via an actual render of the grid + collapsed/expanded panels together. Answering the two questions asked alongside this: the Pulse/diagnostics tab was never something to migrate FROM the Ledger — it's always been Dashboard-native; the Ledger only ever had a lightweight mirror of the Dashboard's own health summary logic, confirmed by reading its own comment which explicitly says it avoids "re-running the Dashboard's full diagnostic suite." Separately, cross-checking every single <h2> section left in the Ledger against what's been migrated surfaced one genuine, previously-unflagged gap: Undo Week was never ported to the Dashboard — everything else checks out as either migrated or a deliberate, already-documented skip (Leaderboard, Weekly Report, Live sync's own status text) — remember to match this in version.json on deploy (empty changes array, admin-only)
+const APP_VERSION = "2026-09-02.58"; // Undo Week — the one genuine gap the last visual-pass cross-check surfaced, now closed. Genuinely simpler to build than Save Week itself: reuses every supporting function Save Week already needed (applyAdminXPAwards with reverse=true, applyAdminCasinoPotFine with a negative amount, refundAdminFinePersonalShare, bumpAdminFineHistory with negative deltas) rather than needing any new infrastructure. Refunds the EXACT personal fine amounts stored on the history record at save time, not a recomputed 10% — matches the Ledger's own stated reasoning for why that distinction matters (a person's balance may have moved since). Same working-copy pattern as Save Week: every mutation happens locally first, nothing writes back until every step succeeds. Placed directly in the Save Week panel, matching the Ledger's own layout where both live together. Verified with the same rigor as Save Week given the stakes are identical — every function call confirmed to resolve to exactly one definition, every ID checked, and an actual render before calling this done. Still genuinely untested against live data, same honest caveat as Save Week itself — remember to match this in version.json on deploy (empty changes array, admin-only)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18902,6 +18907,130 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
     console.error('save week failed:', err);
     status.className = 'status-msg error';
     status.textContent = 'Something went wrong saving this week: ' + err.message + ' — check the Ledger directly to see what actually landed before trying again.';
+  }
+});
+
+// ==== Admin: Undo Week ====
+// The exact reverse of Save Week, reusing the same helper functions
+// Save Week already needed (applyAdminXPAwards with reverse=true,
+// applyAdminCasinoPotFine with a negative amount, refundAdminFinePersonal
+// Share, bumpAdminFineHistory with negative deltas) — no new supporting
+// infrastructure needed here, unlike Save Week which had to port seven
+// functions from scratch first. Refunds the EXACT personal fine amounts
+// stored on the history record at save time, not a recomputed 10% —
+// matches the Ledger's own refundFinePersonalShare reasoning exactly,
+// since the person's balance may have moved since. Only ever touches the
+// single most recently saved week, same as the Ledger's own version.
+let adminUndoWeekInFlight = false;
+document.getElementById('adminUndoWeekBtn').addEventListener('click', async () => {
+  if(adminUndoWeekInFlight) return;
+  const status = document.getElementById('adminUndoWeekStatus');
+  const history = currentState.history || [];
+  if(history.length === 0){
+    status.className = 'status-msg error';
+    status.textContent = 'No saved weeks to undo.';
+    return;
+  }
+  const last = history[history.length - 1];
+  if(!confirm(`Undo "${last.label}"? This reverses everyone's totals, XP, and fines back to exactly before that week was saved. This cannot be re-applied except by running Save Week again from scratch.`)) return;
+
+  adminUndoWeekInFlight = true;
+  const btn = document.getElementById('adminUndoWeekBtn');
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Undoing — reversing XP and fines, this can take a few seconds…';
+  try{
+    // Working copies — same principle as Save Week: every mutation below
+    // happens locally first, nothing is written back until every step
+    // succeeds, so a mid-failure never leaves currentState half-updated
+    // in memory even if a later write fails.
+    const workingMembers = JSON.parse(JSON.stringify(currentState.members || []));
+    const workingGroup = { ...(currentState.group || {}) };
+    const workingHistory = history.slice(0, -1);
+
+    if(last.xpAwarded) await applyAdminXPAwards(last.xpAwarded, true);
+    if(last.potFineAmount > 0 && last.potFinePeriodKey){
+      await applyAdminCasinoPotFine(-last.potFineAmount, last.potFinePeriodKey, 'Group Multi fines (reversed — week undone)');
+    }
+    if(last.personalFineDeductions){
+      for(const [uid, amount] of Object.entries(last.personalFineDeductions)){
+        await refundAdminFinePersonalShare(uid, amount, 'Group Multi / Individual Bet Fine (personal share — reversed, week undone)');
+      }
+    }
+    if(last.legLossesByUid){
+      for(const [uid, count] of Object.entries(last.legLossesByUid)){
+        await bumpAdminFineHistory(uid, 'groupMultiLegs', -count);
+      }
+    }
+    if(last.miaLegsByUid){
+      for(const [uid, count] of Object.entries(last.miaLegsByUid)){
+        await bumpAdminFineHistory(uid, 'groupMultiMIA', -count);
+      }
+    }
+    if(last.lowOddsLegsByUid){
+      for(const [uid, count] of Object.entries(last.lowOddsLegsByUid)){
+        await bumpAdminFineHistory(uid, 'groupMultiLowOdds', -count);
+      }
+    }
+    if(last.individualLossesByUid){
+      for(const [uid, count] of Object.entries(last.individualLossesByUid)){
+        await bumpAdminFineHistory(uid, 'individualBetLosses', -count);
+      }
+    }
+
+    Object.entries(last.groupEntries || {}).forEach(([name, e]) => {
+      const m = workingMembers.find(mm => mm.name === name);
+      if(!m) return;
+      m.legs = (m.legs || 0) - (e.legs || 0);
+      if(e.result === 'Win') m.wins = (m.wins || 0) - 1;
+      if(e.result === 'Loss') m.losses = (m.losses || 0) - 1;
+      if(e.result === 'Void') m.voids = (m.voids || 0) - 1;
+      if(e.result === 'MIA') m.mia = (m.mia || 0) - 1;
+      if(e.odds !== null && e.odds > 0 && e.result !== 'MIA'){ m.oddsSum = (m.oddsSum || 0) - e.odds; m.oddsCount = (m.oddsCount || 0) - 1; }
+    });
+    Object.entries(last.individualEntries || {}).forEach(([name, e]) => {
+      const m = workingMembers.find(mm => mm.name === name);
+      if(!m) return;
+      m.indWin = (m.indWin || 0) - (e.indWin || 0);
+      m.indLoss = (m.indLoss || 0) - (e.indLoss || 0);
+      m.pl = (m.pl || 0) - (e.pl || 0);
+    });
+    workingGroup.lottoOut = (workingGroup.lottoOut || 0) - (last.group.lottoOut || 0);
+    workingGroup.lottoRet = (workingGroup.lottoRet || 0) - (last.group.lottoRet || 0);
+    workingGroup.multiOut = (workingGroup.multiOut || 0) - (last.group.multiOut || 0);
+    workingGroup.multiRet = (workingGroup.multiRet || 0) - (last.group.multiRet || 0);
+    workingGroup.bonus = (workingGroup.bonus || 0) - (last.group.bonus || 0);
+    workingGroup.sgmWin = (workingGroup.sgmWin || 0) - (last.group.sgmWin || 0);
+
+    await authedFetch('/state/members.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingMembers)
+    });
+    await authedFetch('/state/group.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingGroup)
+    });
+    await authedFetch('/state/history.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingHistory)
+    });
+    currentState.members = workingMembers;
+    currentState.group = workingGroup;
+    currentState.history = workingHistory;
+
+    renderAdminFinIndRows();
+    renderAdminGroupEntry();
+    renderAdminHistory();
+    populateAdminFixWeekSelect();
+    renderAdminClearGroupWarnList();
+
+    status.className = 'status-msg ok';
+    status.textContent = `${last.label} undone.`;
+    showToast(`${last.label} undone`);
+  }catch(err){
+    console.error('undo week failed:', err);
+    status.className = 'status-msg error';
+    status.textContent = 'Something went wrong undoing this week: ' + err.message + ' — check the Ledger directly to see what actually landed before trying again.';
+  }finally{
+    btn.disabled = false;
+    adminUndoWeekInFlight = false;
   }
 });
 
