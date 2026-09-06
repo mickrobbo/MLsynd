@@ -1502,6 +1502,13 @@
     box-shadow: 0 4px 16px rgba(199,162,72,.4);
   }
   .admin-submode-btn:active{ transform: scale(0.93); }
+  .admin-submode-badge{
+    position:absolute; top:4px; right:8px; min-width:16px; height:16px; padding:0 4px;
+    border-radius:20px; background:var(--loss); color:#fff;
+    font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700; text-align:center;
+    box-shadow:0 1px 4px rgba(0,0,0,.4);
+    display:none; align-items:center; justify-content:center;
+  }
   /* Place bets — classic rounded number pucks laid out like a real table's
      place-bet boxes, gold-embossed when live so a working bet reads at a
      glance without needing to check the amount text. */
