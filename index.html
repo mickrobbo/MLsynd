@@ -353,8 +353,38 @@
 
     <div class="diag-submode" data-submode-panel="entry">
     <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">🚧 Step 1 of 4 — Under Construction</span>
-      <div class="hint" style="margin-top:4px; margin-bottom:0;">This is the actual weekly entry workflow — the highest-stakes piece in the whole migration. Being built in verified, sequential steps rather than all at once. Group Multi entry is live below; Individual Bets, the Weekly Bets preview card, Bettor Rotation, and Save Week itself are not here yet. Keep using the Ledger for Save Week until this note is gone.</div>
+      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">🚧 Step 2 of 4 — Under Construction</span>
+      <div class="hint" style="margin-top:4px; margin-bottom:0;">This is the actual weekly entry workflow — the highest-stakes piece in the whole migration. Being built in verified, sequential steps rather than all at once. Group Multi and This Week's Financials are live below; the Weekly Bets preview card, Bettor Rotation, and Save Week itself are not here yet. Keep using the Ledger for Save Week until this note is gone.</div>
+    </div>
+    <div class="panel">
+      <h2>📅 Week Label</h2>
+      <div class="hint">Which week this entry belongs to — auto-saves as a draft the moment you pick one.</div>
+      <select id="adminWeekLabel" style="width:100%; margin-top:10px;"><option value="">Select week</option></select>
+    </div>
+    <div class="panel">
+      <h2>💰 This Week's Financials</h2>
+      <div class="hint">Outlays prefilled at your fixed rates, just enter returns. Every field here auto-saves as a draft the moment you type — nothing commits to the bank balance yet, that still only happens via Save Week in the Ledger.</div>
+      <div class="admin-fin-header-row" style="margin-top:10px;"><span></span><span class="admin-fin-col-lbl">Outlay</span><span class="admin-fin-col-lbl">Return</span></div>
+      <div class="admin-fin-row-entry">
+        <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">Group</span>
+        <input type="number" id="adminGMultiOut" step="0.01" value="12.50">
+        <input type="number" id="adminGMultiRet" step="0.01">
+      </div>
+      <div id="adminFinIndRows"></div>
+      <div class="admin-fin-row-entry">
+        <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">SGM bonus win</span>
+        <input type="number" id="adminGSgmWin" step="0.01" placeholder="0.00">
+      </div>
+      <div class="hint" style="margin-top:-6px; margin-bottom:10px;">If someone's SGM bonus bet wins, the winnings go straight to the bank — not tied to a person's individual stats since it wasn't real money staked. Leave blank most weeks.</div>
+      <div class="admin-fin-row-entry">
+        <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">Lotto</span>
+        <input type="number" id="adminGLottoOut" step="0.01" value="80.50">
+        <input type="number" id="adminGLottoRet" step="0.01">
+      </div>
+      <div class="admin-fin-row-entry">
+        <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">Bonus pot</span>
+        <input type="number" id="adminGBonus" step="0.01" value="10">
+      </div>
     </div>
     <div class="panel">
       <h2>🎯 Group Multi Entry</h2>
@@ -3408,7 +3438,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.53"; // Step 1 of 4 in migrating the actual weekly entry workflow (Save Week itself, the highest-stakes piece in this whole project) — deliberately NOT one big push. New "Entry" sub-mode, currently just Group Multi entry: odds/result per member not already on an individual bet, with its own already-safely-scoped draft autosave to /state/groupEntryDraft.json (excludes anyone in individualBetDraft, matching the Ledger's own exclusion rule). Explicit on-screen "Step 1 of 4 — Under Construction" notice naming exactly what's missing (Individual Bets, the Weekly Bets preview card, Bettor Rotation, Save Week itself) so nobody mistakes this for a working replacement yet — Save Week stays in the Ledger until all four steps are done and verified. No Save Week logic exists here at all yet; this step is pure entry UI plus its own low-risk draft persistence. Confirmed via an actual render before considering even this first step done — remember to match this in version.json on deploy (empty changes array, admin-only, still mid-migration)
+const APP_VERSION = "2026-09-02.54"; // Step 2 of 4 in migrating the weekly entry workflow. Added Week Label and This Week's Financials (Group/SGM bonus win/Lotto/Bonus pot outlay-return fields, plus the dynamic Individual Bet rows) — discovered during scoping that these live together as one section in the Ledger, not as a standalone "Individual Bets table" as originally assumed, so built them together rather than split across two separate steps. All four draft paths (weekLabelDraft, groupFinancialsDraft, individualBetDraft, groupEntryDraft) already safely scoped from the Ledger's own design, ported directly. Caught and fixed a real sync bug before it shipped: Group Multi's exclusion list was reading currentState.individualBetDraft, which only updates locally after a full Firebase round-trip — editing the Individual Bets grid wouldn't have been reflected in who's excluded from Group Multi until the next poll. Fixed to read the Individual Bets grid's live DOM values directly instead, matching exactly how the Ledger's own code avoids this same staleness. Still no Save Week logic anywhere in this tab — Individual Bets preview card, Bettor Rotation, and Save Week itself remain the next two steps. Confirmed via an actual render of the full section before calling this step done — remember to match this in version.json on deploy (empty changes array, admin-only, still mid-migration)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -17956,7 +17986,13 @@ function renderAdminGroupEntry(){
     wrap.innerHTML = '<div class="empty">No members on the roster yet.</div>';
     return;
   }
-  const excludedNames = (currentState.individualBetDraft || []).map(v => v.name).filter(Boolean);
+  // Reads the individual bets grid's LIVE DOM values, not
+  // currentState.individualBetDraft — that field only updates locally
+  // after a full round-trip through Firebase, so it would lag behind
+  // whatever's actually just been typed in the Individual Bets rows
+  // this same session. Matches the Ledger's own approach exactly, which
+  // reads its own live form the same way for the same reason.
+  const excludedNames = adminReadIndividualValues().map(v => v.name).filter(Boolean);
   const eligible = members.filter(m => !excludedNames.includes(m.name));
   if(eligible.length === 0){
     wrap.innerHTML = '<div class="empty">Everyone is on an individual bet this week.</div>';
@@ -17989,6 +18025,143 @@ function renderAdminGroupEntry(){
       currentState.groupEntryDraft[name].result = resultEl.value || null;
       scheduleAdminGroupDraftSave();
     });
+  });
+}
+
+// ==== Admin: Entry — Step 2, Week Label + This Week's Financials ====
+// Week Label and the four fixed financial fields (Group/SGM/Lotto/Bonus)
+// use the SAME draft mechanism the Ledger already built for them
+// (groupFinancialsDraft, weekLabelDraft) — genuinely separate paths from
+// groupEntryDraft/individualBetDraft, which is why each gets its own
+// small save function rather than being folded into one. The Individual
+// Bet rows (name/outlay/return) are dynamic — add/remove — same pattern
+// as Group Multi's rows above, just with row-count changes instead of a
+// fixed roster-sized list.
+function populateAdminWeekLabel(){
+  const sel = document.getElementById('adminWeekLabel');
+  if(!sel) return;
+  let opts = '<option value="">Select week</option>';
+  for(let i = 1; i <= 52; i++) opts += `<option value="Week ${i}">Week ${i}</option>`;
+  sel.innerHTML = opts;
+  if(currentState.weekLabelDraft) sel.value = currentState.weekLabelDraft;
+}
+document.getElementById('adminWeekLabel').addEventListener('change', () => {
+  currentState.weekLabelDraft = document.getElementById('adminWeekLabel').value || null;
+  authedFetch('/state/weekLabelDraft.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(currentState.weekLabelDraft)
+  }).catch(() => {});
+});
+
+const ADMIN_GROUP_FINANCIALS_FIELD_IDS = ['adminGMultiOut', 'adminGMultiRet', 'adminGSgmWin', 'adminGLottoOut', 'adminGLottoRet', 'adminGBonus'];
+// Maps this file's admin-prefixed field ids to the Ledger's own draft key
+// names, since the underlying stored draft object's keys must stay
+// exactly what the Ledger already expects to read back on its own side.
+const ADMIN_TO_LEDGER_FIELD_KEY = { adminGMultiOut: 'gMultiOut', adminGMultiRet: 'gMultiRet', adminGSgmWin: 'gSgmWin', adminGLottoOut: 'gLottoOut', adminGLottoRet: 'gLottoRet', adminGBonus: 'gBonus' };
+let adminGroupFinancialsSaveTimer = null;
+function scheduleAdminGroupFinancialsSave(){
+  clearTimeout(adminGroupFinancialsSaveTimer);
+  adminGroupFinancialsSaveTimer = setTimeout(saveAdminGroupFinancialsDraft, 800);
+}
+async function saveAdminGroupFinancialsDraft(){
+  const draft = {};
+  ADMIN_GROUP_FINANCIALS_FIELD_IDS.forEach(id => {
+    draft[ADMIN_TO_LEDGER_FIELD_KEY[id]] = document.getElementById(id).value;
+  });
+  currentState.groupFinancialsDraft = draft;
+  try{
+    await authedFetch('/state/groupFinancialsDraft.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft)
+    });
+  }catch(e){}
+}
+function restoreAdminGroupFinancialsDraft(){
+  const draft = currentState.groupFinancialsDraft;
+  if(!draft || typeof draft !== 'object') return;
+  ADMIN_GROUP_FINANCIALS_FIELD_IDS.forEach(id => {
+    const key = ADMIN_TO_LEDGER_FIELD_KEY[id];
+    if(draft[key] !== undefined && draft[key] !== null) document.getElementById(id).value = draft[key];
+  });
+}
+ADMIN_GROUP_FINANCIALS_FIELD_IDS.forEach(id => {
+  document.getElementById(id).addEventListener('input', scheduleAdminGroupFinancialsSave);
+});
+
+// Individual Bet rows — dynamic add/remove, same shape as the Ledger's
+// own indDraftRows (name/outlay/ret), just named for this file.
+let adminIndDraftRows = [{ name: '', outlay: '50', ret: '' }, { name: '', outlay: '50', ret: '' }];
+function adminReadIndividualValues(){
+  const wrap = document.getElementById('adminFinIndRows');
+  const rows = [];
+  wrap.querySelectorAll('.adminIndName').forEach(sel => {
+    const row = sel.dataset.row;
+    const outlayEl = wrap.querySelector(`.adminIndOutlay[data-row="${row}"]`);
+    const returnEl = wrap.querySelector(`.adminIndReturn[data-row="${row}"]`);
+    rows.push({ name: sel.value, outlay: outlayEl.value, ret: returnEl.value });
+  });
+  return rows;
+}
+let adminIndDraftSaveTimer = null;
+function scheduleAdminIndDraftSave(){
+  clearTimeout(adminIndDraftSaveTimer);
+  adminIndDraftSaveTimer = setTimeout(saveAdminIndividualBetDraft, 800);
+}
+async function saveAdminIndividualBetDraft(){
+  try{
+    await authedFetch('/state/individualBetDraft.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(adminIndDraftRows || [])
+    });
+  }catch(e){}
+}
+function renderAdminFinIndRows(preserve){
+  const wrap = document.getElementById('adminFinIndRows');
+  const members = currentState.members || [];
+  if(members.length === 0){
+    wrap.innerHTML = '<div class="empty">Add people to the roster first.</div>';
+    return;
+  }
+  const vals = preserve || adminIndDraftRows;
+  adminIndDraftRows = vals;
+  const rowsHtml = vals.map((v, row) => `
+    <div class="admin-fin-row-entry">
+      <select class="adminIndName" data-row="${row}">${adminNameOptionsHtml(v.name)}</select>
+      <input type="number" class="adminIndOutlay" data-row="${row}" step="0.01" value="${v.outlay}">
+      <input type="number" class="adminIndReturn" data-row="${row}" step="0.01" value="${v.ret}">
+      <button type="button" class="admin-btn-step small danger adminIndRemove" data-row="${row}" title="Remove this bet">×</button>
+    </div>`).join('');
+  wrap.innerHTML = rowsHtml + `<button type="button" id="adminAddIndBetBtn" class="small" style="margin-top:4px;">➕ Add another bet</button>`;
+
+  wrap.querySelectorAll('.adminIndName').forEach(sel => {
+    sel.addEventListener('change', () => {
+      renderAdminFinIndRows(adminReadIndividualValues());
+      renderAdminGroupEntry(); // exclusion list depends on who's now on an individual bet
+      scheduleAdminIndDraftSave();
+    });
+  });
+  wrap.querySelectorAll('.adminIndOutlay, .adminIndReturn').forEach(el => {
+    el.addEventListener('input', () => {
+      adminIndDraftRows = adminReadIndividualValues();
+      scheduleAdminIndDraftSave();
+    });
+  });
+  wrap.querySelectorAll('.adminIndRemove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const row = parseInt(btn.dataset.row, 10);
+      const current = adminReadIndividualValues();
+      current.splice(row, 1);
+      if(current.length === 0) current.push({ name: '', outlay: '50', ret: '' });
+      renderAdminFinIndRows(current);
+      renderAdminGroupEntry();
+      scheduleAdminIndDraftSave();
+    });
+  });
+  document.getElementById('adminAddIndBetBtn').addEventListener('click', () => {
+    const current = adminReadIndividualValues();
+    current.push({ name: '', outlay: '50', ret: '' });
+    renderAdminFinIndRows(current);
+    renderAdminGroupEntry();
+    scheduleAdminIndDraftSave();
   });
 }
 
@@ -18816,6 +18989,12 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
     }
     if(target === 'entry' && !diagEntryLoaded){
       diagEntryLoaded = true;
+      populateAdminWeekLabel();
+      restoreAdminGroupFinancialsDraft();
+      if(Array.isArray(currentState.individualBetDraft) && currentState.individualBetDraft.length > 0){
+        adminIndDraftRows = currentState.individualBetDraft;
+      }
+      renderAdminFinIndRows();
       renderAdminGroupEntry();
     }
     if(target === 'access' && !diagAccessLoaded){
