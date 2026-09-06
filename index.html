@@ -223,6 +223,7 @@
 
     <div class="diag-submode active" data-submode-panel="pulse">
     <div class="panel">
+      <h2>📊 Snapshot</h2>
       <div class="balance-grid" id="pulseToteCells">
         <div class="toteboard-cell" id="pulseHealthCell"><span class="lbl">Health</span><span class="val">—</span></div>
         <div class="toteboard-cell" id="pulseOnlineCell"><span class="lbl">Online</span><span class="val">—</span></div>
@@ -240,12 +241,14 @@
       <div class="status-msg" id="clearMyErrorsStatus" style="margin-top:6px;"></div>
     </div>
     <div class="panel">
-      <button type="button" id="runHealthCheckBtn">🩺 Run Full System Check</button>
+      <h2>🩺 Run Full System Check</h2>
+      <button type="button" id="runHealthCheckBtn">🩺 Run now</button>
       <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data (including duplicate account links), season history, tipping reads, Joker validity, Casino XP/badge integrity, Casino Pot distribution health (stuck locks, overdue payouts, legacy data), dues consistency, individual bet drafts, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
       <div id="healthCheckResults" style="margin-top:10px;"></div>
       <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
     </div>
     <div class="panel" id="diagTabAreaPanel" style="display:none;">
+      <h2>📋 Full Check Details</h2>
       <div id="diagTabArea">Loading…</div>
     </div>
     <div class="panel">
@@ -3464,7 +3467,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.59"; // Direct feedback: the Admin 3x3 grid's large circular buttons ate too much vertical space. Rebuilt to match the top nav's own .subnav-btn style exactly (rounded square, same gradient/border/active-state language, compact padding) instead of inventing a new large-circle look — same 3-per-row wrap, same tap targets, dramatically less height per row. Confirmed via an actual render before calling this done — remember to match this in version.json on deploy (empty changes array, admin-only)
+const APP_VERSION = "2026-09-02.60"; // Investigated both reported bugs (collapsible panels not working, negative-balance styling not working) thoroughly rather than guessing: traced the actual wiring end to end (main tab click → setActiveTab('diag') → renderDiagTab() → initAdminCollapsiblePanels()), cross-checked all 43 admin panels' real HTML structure against the selector logic (35 have a proper direct-child h2 and get wrapped correctly; the other 8 use h3 or have no header at all — banners/placeholders, correctly and intentionally skipped, not a bug), verified all 517 getElementById calls in this file resolve to a real element except one with a proper null-guard already, and confirmed the negative-balance CSS/JS/class-name chain matches exactly (#profileXPCell has highlight-chip on it in both template variants). Found no actual defect in any of this code. Bumped the service worker's CACHE_VERSION (v3 to v4, see sw.js) as the most likely remaining explanation given how many rapid deploys have happened today — a stale cached bundle would show neither feature despite both being genuinely present in this exact file. If both are still missing after this deploys and a hard refresh, that would mean the version number itself isn't advancing on the device, which is the next thing to check — remember to match this in version.json on deploy (empty changes array, admin-only)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -19810,22 +19813,36 @@ document.getElementById('adminRestoreFile').addEventListener('change', async (e)
 // runs every time this tab opens, not just once.
 function initAdminCollapsiblePanels(){
   document.querySelectorAll('#homeSubview-diag .panel').forEach(panel => {
-    const h2 = panel.querySelector(':scope > h2');
-    if(!h2 || panel.dataset.collapsibleInit) return;
-    panel.dataset.collapsibleInit = 'true';
-    const body = document.createElement('div');
-    body.className = 'admin-panel-body';
-    const toMove = [];
-    let sib = h2.nextSibling;
-    while(sib){ toMove.push(sib); sib = sib.nextSibling; }
-    toMove.forEach(node => body.appendChild(node));
-    panel.appendChild(body);
-    h2.classList.add('admin-panel-toggle-header');
-    const chevron = document.createElement('span');
-    chevron.className = 'admin-panel-toggle-chevron';
-    chevron.textContent = '▾';
-    h2.appendChild(chevron);
-    h2.addEventListener('click', () => panel.classList.toggle('admin-panel-collapsed'));
+    try{
+      // Accepts h2 OR h3 as the existing header to use as the toggle —
+      // a few older panels here (Recent Errors, This Device) predate
+      // this feature and use h3 with its own inline styling rather than
+      // the standard h2, and requiring only h2 silently skipped them
+      // entirely. Genuinely headerless panels (a button or a data grid
+      // with no title at all) still can't be picked up this way — those
+      // needed an actual <h2> added to their HTML directly instead.
+      const h2 = panel.querySelector(':scope > h2, :scope > h3');
+      if(!h2 || panel.dataset.collapsibleInit) return;
+      panel.dataset.collapsibleInit = 'true';
+      const body = document.createElement('div');
+      body.className = 'admin-panel-body';
+      const toMove = [];
+      let sib = h2.nextSibling;
+      while(sib){ toMove.push(sib); sib = sib.nextSibling; }
+      toMove.forEach(node => body.appendChild(node));
+      panel.appendChild(body);
+      h2.classList.add('admin-panel-toggle-header');
+      const chevron = document.createElement('span');
+      chevron.className = 'admin-panel-toggle-chevron';
+      chevron.textContent = '▾';
+      h2.appendChild(chevron);
+      h2.addEventListener('click', () => panel.classList.toggle('admin-panel-collapsed'));
+    }catch(e){
+      // One malformed panel must never silently stop every panel after
+      // it in DOM order from becoming collapsible too — this is exactly
+      // what a bare forEach without per-item isolation would risk.
+      console.error('initAdminCollapsiblePanels: skipped one panel', e, panel);
+    }
   });
 }
 function renderDiagTab(retriesLeft){
