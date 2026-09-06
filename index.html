@@ -92,7 +92,7 @@
       <button type="button" class="subnav-btn active" data-homesub="overview"><span class="subnav-icon">🏠</span>Overview</button>
       <button type="button" class="subnav-btn" data-homesub="cash"><span class="subnav-icon">💰</span>Cash</button>
       <button type="button" class="subnav-btn" data-homesub="slips"><span class="subnav-icon">📎</span>Slips</button>
-      <button type="button" class="subnav-btn" data-homesub="diag" id="homeDiagSubBtn" style="display:none;"><span class="subnav-icon">🔧</span>Diag</button>
+      <button type="button" class="subnav-btn" data-homesub="diag" id="homeDiagSubBtn" style="display:none;"><span class="subnav-icon">🛠️</span>Admin</button>
     </div>
 
     <div id="homeSubview-overview" class="home-subview">
@@ -205,7 +205,7 @@
 
     <div id="homeSubview-diag" class="home-subview" style="display:none;">
     <div class="panel">
-      <h2>🔧 Diagnostics</h2>
+      <h2>🛠️ Admin</h2>
       <div class="hint">Admin only. Not shown to anyone else — this pill doesn't even exist for other accounts.</div>
     </div>
 
@@ -213,6 +213,7 @@
       <button type="button" class="craps-winmode-btn active" data-submode="pulse">🩺 Pulse</button>
       <button type="button" class="craps-winmode-btn" data-submode="money">💰 Money</button>
       <button type="button" class="craps-winmode-btn" data-submode="play">🎲 Play</button>
+      <button type="button" class="craps-winmode-btn" data-submode="actions">⚙️ Actions</button>
     </div>
 
     <div class="diag-submode active" data-submode-panel="pulse">
@@ -319,6 +320,25 @@
       <button type="button" id="snapshotWeekBtn" class="btn-secondary" style="width:100%; margin-top:8px;">📸 Snapshot this week</button>
       <div class="status-msg" id="snapshotWeekStatus"></div>
       <div id="weeklyReportArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    </div>
+    <div class="diag-submode" data-submode-panel="actions">
+    <div class="panel">
+      <h2>📎 Bet Slips</h2>
+      <div class="hint">Upload a screenshot of the lotto ticket or bet slip each week — or paste a link instead. Select more than one at once if a bet needs a few (cropped sections, multiple tickets, etc) — they'll all get added together. Shows up on everyone's Slips tab immediately.</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input type="file" id="adminSlipFileInput" accept="image/*" multiple style="display:none;">
+        <button type="button" id="adminSlipUploadBtn" class="small">📷 Upload screenshot(s)</button>
+      </div>
+      <div id="adminSlipUploadStatus" class="status-msg"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminSlipLabel" placeholder="Label (e.g. Week 30 multi)" style="flex:1;">
+      </div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminSlipUrl" placeholder="…or paste a link https://…" style="flex:1;">
+        <button type="button" id="adminAddSlipBtn" class="small">Add</button>
+      </div>
+      <div id="adminSlipsArea" style="margin-top:12px;"><div class="empty">Loading…</div></div>
     </div>
     </div>
     </div>
@@ -3198,7 +3218,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.43"; // Follow-up to negative balances now being allowed: per request, a negative Casino XP tile on the profile gets a real red hue across the whole tile, not just the number itself — same "colour the whole card" language already used for Sovereign/Immortal elsewhere, red instead of violet/gold since this is a warning. Confirmed via an actual render comparing a normal tile against a negative one side by side rather than assuming the CSS looked right. The class resets for free every time a profile opens, since profileXPCell is part of the template rebuilt fresh via innerHTML each time — a new profile simply never carries the class over from whoever was viewed before — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.45"; // First step of the Ledger-to-Dashboard migration: Bet Slips upload/add/remove, moved into the existing Admin tab's Actions sub-mode (that button already existed and led nowhere — no panel was ever built for it). Critical design decision: writes go ONLY to /state/slips.json, never a full overwrite of /state.json the way the Ledger's own saveState() does — that whole-object approach is fine there since the Ledger is the sole owner of that entire tree, but the Dashboard is primarily a read-only consumer of it, so writing back a full copy of a possibly-stale currentState risked silently clobbering financials/history/members that the Ledger owns. Reused compressImageForChat (already generic, just called with the Ledger's own original slip dimensions/quality — 1000px/0.72 — instead of duplicating a near-identical function) and the existing IMAGE_EXT constant (declared in casino-videopoker.js, shared window scope — same cross-file dependency the existing public Slips tab already relies on, not a new fragility). Confirmed firebase-rules.json needs zero changes — /state already has a broad write rule for any approved non-tipping-tier user, not even admin-gated specifically, and the whole Actions panel sits inside the Admin tab which was already fully gated to the admin email before this. The public Slips tab picks up new uploads immediately since currentState.slips gets updated and re-rendered locally right after each write, not just on the next poll cycle — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10397,7 +10417,7 @@ function openBoardProfile(m, name){
 
     <div class="profile-stat-category" data-cat="activity" style="display:none;">
       <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Every XP change, from every source — tipping, betting, dues, casino games, pot distributions and jackpots — most recent first.</div>
-      <div style="grid-column:1/-1;" id="profileActivityArea">${m.linkedUid ? '<div class="empty">Loading…</div>' : '<div class="empty">No linked account.</div>'}</div>
+      <div id="profileActivityArea">${m.linkedUid ? '<div class="empty">Loading…</div>' : '<div class="empty">No linked account.</div>'}</div>
     </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
@@ -10765,7 +10785,7 @@ function openTippingOnlyProfile(uid, name){
 
     <div class="profile-stat-category" data-cat="activity" style="display:none;">
       <div class="profile-fines-note" style="grid-column:1/-1; margin-bottom:2px;">Every XP change, from every source — tipping, dues, casino games, pot distributions and jackpots — most recent first.</div>
-      <div style="grid-column:1/-1;" id="profileActivityArea"><div class="empty">Loading…</div></div>
+      <div id="profileActivityArea"><div class="empty">Loading…</div></div>
     </div>
   `;
   document.getElementById('profileModal').dataset.openName = name;
@@ -16934,6 +16954,130 @@ document.getElementById('clearMyErrorsBtn').addEventListener('click', async () =
 
 let diagMoneyLoaded = false;
 let diagPlayLoaded = false;
+let diagActionsLoaded = false;
+
+// ---- Admin: Bet Slips management (migrated from the Ledger app) ----
+// Writes ONLY to /state/slips.json, never the whole /state.json object —
+// that whole-object approach is how the Ledger's own saveState() works,
+// which is fine there since the Ledger is the sole owner/writer of that
+// entire state tree. The Dashboard is primarily a READ-only consumer of
+// it; if this wrote back a full copy of currentState, any field that
+// happened to be stale in the Dashboard's own in-memory copy (financials,
+// history, anything the Ledger owns) could silently overwrite genuinely
+// newer data sitting in Firebase. Scoping the write to just this one
+// sub-path makes that entire class of bug structurally impossible.
+async function saveSlipsToFirebase(slipsArray){
+  await authedFetch('/state/slips.json', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(slipsArray)
+  });
+  currentState.slips = slipsArray; // keep the in-memory copy in sync so the public Slips tab reflects this immediately without waiting for the next poll
+  render(currentState);
+}
+function renderAdminSlips(){
+  const area = document.getElementById('adminSlipsArea');
+  const slips = currentState.slips || [];
+  if(slips.length === 0){
+    area.innerHTML = '<div class="empty">No slips added yet.</div>';
+    return;
+  }
+  let html = '';
+  [...slips].reverse().forEach((s) => {
+    const idx = slips.indexOf(s);
+    const isImage = IMAGE_EXT.test(s.url) || (s.url || '').startsWith('data:image');
+    const isDataUrl = (s.url || '').startsWith('data:');
+    const labelMarkup = isDataUrl
+      ? `<a href="#" class="admin-slip-open" data-idx="${idx}">${escapeHtml(s.label || 'Bet slip')}</a>`
+      : `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label || s.url)}</a>`;
+    html += `<div class="slip-card">
+      <div class="slip-thumb${isDataUrl ? ' admin-slip-open' : ''}" ${isDataUrl ? `data-idx="${idx}"` : ''}>${isImage ? `<img src="${escapeHtml(s.url)}" alt="${escapeHtml(s.label)}" loading="lazy">` : `<span class="slip-icon">🔗</span>`}</div>
+      <div class="slip-info">
+        ${labelMarkup}
+        <span class="slip-date">${new Date(s.addedAt).toLocaleDateString()}</span>
+      </div>
+      <button type="button" class="small danger admin-slip-remove" data-idx="${idx}">Remove</button>
+    </div>`;
+  });
+  area.innerHTML = html;
+  area.querySelectorAll('.admin-slip-open').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const idx = parseInt(el.dataset.idx, 10);
+      const slip = slips[idx];
+      if(slip){
+        document.getElementById('imgModalImg').src = slip.url;
+        document.getElementById('imgModal').classList.add('open');
+      }
+    });
+  });
+  area.querySelectorAll('.admin-slip-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const next = [...slips];
+      next.splice(idx, 1);
+      await saveSlipsToFirebase(next);
+      renderAdminSlips();
+    });
+  });
+}
+document.getElementById('adminAddSlipBtn').addEventListener('click', async () => {
+  const labelInput = document.getElementById('adminSlipLabel');
+  const urlInput = document.getElementById('adminSlipUrl');
+  const url = urlInput.value.trim();
+  if(!url) return;
+  const next = [...(currentState.slips || []), { label: labelInput.value.trim(), url, addedAt: Date.now() }];
+  await saveSlipsToFirebase(next);
+  labelInput.value = '';
+  urlInput.value = '';
+  renderAdminSlips();
+});
+document.getElementById('adminSlipUploadBtn').addEventListener('click', () => {
+  document.getElementById('adminSlipFileInput').click();
+});
+document.getElementById('adminSlipFileInput').addEventListener('change', async (e) => {
+  const files = e.target.files ? Array.from(e.target.files) : [];
+  const status = document.getElementById('adminSlipUploadStatus');
+  const labelInput = document.getElementById('adminSlipLabel');
+  if(files.length === 0) return;
+  const baseLabel = labelInput.value.trim();
+  const next = [...(currentState.slips || [])];
+  let uploaded = 0, failed = 0;
+  // Sequential, not parallel — same reasoning as the Ledger's original:
+  // compressing several screenshots at once is real memory/CPU pressure
+  // on a phone browser, and this lets the status line show honest
+  // per-file progress rather than one silent wait.
+  for(let i = 0; i < files.length; i++){
+    const file = files[i];
+    status.className = 'status-msg';
+    status.textContent = files.length > 1 ? `Uploading ${i + 1} of ${files.length}…` : 'Uploading…';
+    try{
+      const dataUrl = await compressImageForChat(file, 1000, 0.72); // same target dimensions/quality the Ledger's own slip uploads always used, just reusing the Dashboard's existing generic compressor instead of a duplicate function
+      if(dataUrl.length > 2_500_000) throw new Error('too large after compression');
+      const label = baseLabel
+        ? (files.length > 1 ? `${baseLabel} (${i + 1} of ${files.length})` : baseLabel)
+        : (file.name || 'Bet slip');
+      next.push({ label, url: dataUrl, addedAt: Date.now() });
+      uploaded++;
+    }catch(err){
+      failed++;
+    }
+  }
+  labelInput.value = '';
+  e.target.value = ''; // allow re-selecting the same file(s) later without the browser silently no-oping on an unchanged file list
+  await saveSlipsToFirebase(next);
+  if(failed === 0){
+    status.className = 'status-msg ok';
+    status.textContent = uploaded === 1 ? 'Uploaded.' : `Uploaded all ${uploaded}.`;
+    showToast(uploaded === 1 ? 'Slip uploaded' : `${uploaded} slips uploaded`);
+  } else if(uploaded > 0){
+    status.className = 'status-msg error';
+    status.textContent = `Uploaded ${uploaded}, but ${failed} failed (likely too large even after compression — try a lower-res screenshot for those).`;
+  } else {
+    status.className = 'status-msg error';
+    status.textContent = 'Upload failed — images still too large after compression, try lower-res screenshots.';
+  }
+  renderAdminSlips();
+});
 function renderDiagTab(retriesLeft){
   // Can fire before currentState is populated — the sessionStorage
   // tab-restore near the bottom of this file calls this unconditionally
@@ -16994,6 +17138,10 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
       Promise.all([timeSpentPromise, activityPromise, loadLatestHealthSnapshot()]).then(([timeData, activityEntries, healthSnap]) => {
         renderWeeklyReport({ timeData, activityEntries, healthSnap });
       });
+    }
+    if(target === 'actions' && !diagActionsLoaded){
+      diagActionsLoaded = true;
+      renderAdminSlips();
     }
   });
 });

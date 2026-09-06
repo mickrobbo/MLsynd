@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.43",
+  "version": "2026-09-02.45",
   "date": "2026-09-02",
   "changes": [
-    "A negative Casino XP balance on the profile now shows a real red hue across the whole tile, not just the number \u2014 matching how Sovereign/Immortal already colour their whole row."
+    "First step of moving the Ledger into the Dashboard: Bet Slips upload/add/remove now live in the Admin tab (Actions sub-mode) \u2014 upload a screenshot, paste a link, or remove one, all from the Dashboard. Everyone's public Slips tab updates immediately."
   ]
 }
