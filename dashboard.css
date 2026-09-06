@@ -1473,6 +1473,29 @@
     background: linear-gradient(165deg, var(--brass-light), var(--brass)); color:#2a2005; border-color:var(--brass-light);
     box-shadow:0 0 10px rgba(255,214,120,.4);
   }
+  /* Admin's own 3x3 sub-tab grid — deliberately NOT sharing
+     .craps-winmode-btn (that class is sized for the Casino's compact
+     win-mode/line-count selectors, genuinely too small to reliably tap
+     for something used every visit to this tab). Large circular buttons,
+     icon over label, exactly 3 per row regardless of screen width. */
+  .admin-submode-grid{
+    display:flex; flex-wrap:wrap; gap:12px;
+    margin:0 0 16px;
+  }
+  .admin-submode-btn{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    flex:0 0 calc(33.333% - 8px); aspect-ratio:1; border-radius:50%; cursor:pointer;
+    background:rgba(0,0,0,.22); border:1.5px solid var(--brass-dim); color:var(--muted);
+    font-family:'Barlow Condensed', sans-serif; font-weight:700; letter-spacing:.3px;
+    transition: all .15s ease; padding:8px; box-sizing:border-box;
+  }
+  .admin-submode-icon{ font-size:26px; line-height:1; }
+  .admin-submode-label{ font-size:13px; }
+  .admin-submode-btn.active{
+    background: linear-gradient(165deg, var(--brass-light), var(--brass)); color:#2a2005; border-color:var(--brass-light);
+    box-shadow:0 0 14px rgba(255,214,120,.45);
+  }
+  .admin-submode-btn:active{ transform:scale(.96); }
   /* Place bets — classic rounded number pucks laid out like a real table's
      place-bet boxes, gold-embossed when live so a working bet reads at a
      glance without needing to check the amount text. */
@@ -2846,6 +2869,21 @@
   input[type="text"]::placeholder, input[type="number"]::placeholder, textarea::placeholder{ color: var(--muted); }
   select{ cursor:pointer; }
   .status-msg{ font-size:11px; color: var(--muted); margin-top:6px; }
+  /* Admin panels made collapsible — the header itself becomes the toggle,
+     with a chevron that flips on collapse. Panels stay expanded by
+     default (no surprise re-hiding of anything already visible) — this
+     only adds the ability to collapse, never imposes a collapsed state
+     nobody asked for. */
+  .admin-panel-toggle-header{
+    cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    user-select:none;
+  }
+  .admin-panel-toggle-chevron{
+    font-size:13px; color:var(--brass-dim); transition:transform .2s ease; flex-shrink:0;
+  }
+  .admin-panel-collapsed .admin-panel-toggle-chevron{ transform:rotate(-90deg); }
+  .admin-panel-body{ overflow:hidden; }
+  .admin-panel-collapsed .admin-panel-body{ display:none; }
   /* Ported from the Ledger for the new Admin > Access/Tipping panels —
      these classes had zero CSS anywhere in this file before, would have
      rendered as plain unstyled stacked divs otherwise. */
