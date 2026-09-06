@@ -336,6 +336,18 @@
       <div class="hint">Tick a box to award that badge — shows on their profile on the dashboard (tap their name on the Board).</div>
       <div id="adminBadgeAwardRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
+    <div class="panel">
+      <h2>✏️ Rename a Member — Everywhere</h2>
+      <div class="hint">Renames someone's Board name, Tipping profile, and sweeps their past picks, all in one go. Only needed if you're renaming someone on their behalf — if they can do it themselves, their own Edit Name does the same thing.</div>
+      <select id="adminRenameMemberSelect" style="width:100%; margin-top:10px; margin-bottom:8px;"><option value="">Pick a member…</option></select>
+      <div id="adminRenameLinkStatus" class="hint" style="margin-bottom:8px;"></div>
+      <div id="adminRenameManualLinkWrap" style="display:none; margin-bottom:8px;">
+        <select id="adminRenameManualLinkSelect" style="width:100%;"><option value="">Pick their account by email…</option></select>
+      </div>
+      <input type="text" id="adminRenameNewName" placeholder="New name" style="width:100%; margin-bottom:8px;">
+      <button type="button" id="adminRenameSaveBtn" class="small" disabled>✏️ Rename everywhere</button>
+      <div class="status-msg" id="adminRenameStatus"></div>
+    </div>
     </div>
 
     <div class="diag-submode" data-submode-panel="access">
@@ -397,9 +409,36 @@
       <select id="adminSubmissionsRoundSelect" style="width:100%; margin-top:10px; margin-bottom:10px;"><option value="">Loading rounds…</option></select>
       <div id="adminTippingSubmissionsArea"><div class="empty">Pick a round above.</div></div>
     </div>
+    <div class="panel">
+      <h2>💵 Tipping Dues</h2>
+      <div class="hint">A separate, one-off fee for whoever wants to play the Tipping competition — completely independent of Board dues, and works for genuinely Tipping-only accounts too (no Board membership needed). Same rule as Board dues: 1 Casino XP per $2 paid, real money only.</div>
+      <div style="display:flex; align-items:center; gap:8px; margin:10px 0;">
+        <label style="font-size:12px; color:var(--muted); flex-shrink:0;">Default fee per person ($)</label>
+        <input type="number" id="adminTippingDuesDefaultFee" min="0" step="1" style="width:80px;" placeholder="TBD">
+        <button type="button" id="adminTippingDuesSaveDefaultBtn" class="small" style="flex-shrink:0;">💾 Save</button>
+      </div>
+      <div class="hint" id="adminTippingDuesDefaultFeeStatus" style="margin-bottom:8px;"></div>
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <select id="adminTippingDuesAddSelect" style="flex:1;"><option value="">Add a participant…</option></select>
+        <button type="button" id="adminTippingDuesAddBtn" class="small">➕ Add</button>
+      </div>
+      <div id="adminTippingDuesArea"><div class="empty">Loading…</div></div>
+    </div>
     <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
       <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">⚠️ Season Setup</span>
-      <div class="hint" style="margin-top:4px; margin-bottom:0;">Archiving and starting a new season isn't here yet, deliberately — it's a full season reset/archive in one irreversible-feeling action, closer to Reset Season in risk than anything else in this tab. Still only in the Ledger for now.</div>
+      <div class="hint" style="margin-top:4px; margin-bottom:0;">Archives the current season's final ladder, prize pot, and Joker picks under that year, then resets first round/prize pot/Jokers/round-lock times for the new season in one go. Use this once, at the actual end of the season — not the boxes above, which are for mid-season tweaks.</div>
+    </div>
+    <div class="panel">
+      <h2>🏁 Archive Season &amp; Start New One</h2>
+      <div class="hint" id="adminTippingSeasonYearHint">Current season: —</div>
+      <div class="hint" style="margin-top:6px;"><b>Before running this, open the Dashboard's Tipping tab once yourself</b> so the ladder snapshot this reads from is fully up to date. Picks/results history is kept, never touched — only the live config resets.</div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
+        <label style="flex:1; font-size:11px; color:var(--muted);">New season year<input type="number" id="adminNewSeasonYearInput" step="1" min="2020" style="width:100%; margin-top:4px;"></label>
+        <label style="flex:1; font-size:11px; color:var(--muted);">New first round<input type="number" id="adminNewSeasonFirstRoundInput" step="1" min="1" value="1" style="width:100%; margin-top:4px;"></label>
+        <label style="flex:1; font-size:11px; color:var(--muted);">New prize pot ($)<input type="number" id="adminNewSeasonPrizePotInput" step="1" min="0" value="0" style="width:100%; margin-top:4px;"></label>
+      </div>
+      <button type="button" id="adminArchiveResetSeasonBtn" class="small danger" style="margin-top:10px;">🏁 Archive season &amp; start new one</button>
+      <div class="status-msg" id="adminArchiveResetSeasonStatus"></div>
     </div>
     </div>
 
@@ -420,6 +459,14 @@
       <div id="adminClearGroupWarnList" class="hint" style="margin:10px 0;"></div>
       <button type="button" id="adminClearGroupWarnBtn" class="small">🧹 Clear for all flagged weeks</button>
       <div class="status-msg" id="adminClearGroupWarnStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>🛠️ Fix a Saved Week</h2>
+      <div class="hint">For correcting an already-saved week's individual bet numbers directly — e.g. if a second bet for the same person that week wasn't captured correctly at the time. Recalculate above only re-sums what's already stored, so it can't fix a week where the wrong number was saved in the first place; this edits the actual saved entry, then automatically recalculates every member's totals from scratch afterward so the fix ripples through correctly.</div>
+      <select id="adminFixWeekSelect" style="width:100%; margin-top:10px; margin-bottom:8px;"><option value="">Pick a saved week…</option></select>
+      <div id="adminFixWeekEditor"></div>
+      <button type="button" id="adminFixWeekSaveBtn" class="small danger" style="margin-top:8px; display:none;">💾 Save correction &amp; recalculate</button>
+      <div class="status-msg" id="adminFixWeekStatus"></div>
     </div>
     <div class="panel">
       <h2>💣 Reset Season</h2>
@@ -479,7 +526,13 @@
       <button type="button" id="adminBackupBtn" class="small" style="margin-top:10px;">💾 Download backup</button>
       <div class="status-msg" id="adminBackupStatus"></div>
       <div class="hint" id="adminLastBackupHint" style="margin-top:6px;"></div>
-      <div class="hint" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">Restore-from-backup isn't here yet, deliberately — it replaces everything live and shared, which needs more care than a first pass. Still only in the Ledger for now.</div>
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+        <div class="hint" style="color:var(--loss); font-weight:600;">Restore replaces EVERYTHING currently live and shared with what's in the file you pick — members, financials, history, all of it. This cannot be undone except by restoring a newer backup. Shows exactly what's in the file before anything is written.</div>
+        <input type="file" id="adminRestoreFile" accept="application/json" style="display:none;">
+        <button type="button" id="adminRestoreBtn" class="small danger" style="margin-top:8px;">📂 Choose backup file to restore</button>
+        <div id="adminRestorePreview" style="display:none; margin-top:10px;"></div>
+        <div class="status-msg" id="adminRestoreStatus"></div>
+      </div>
     </div>
     </div>
     </div>
@@ -3342,7 +3395,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.50"; // Batch 3 (partial, deliberately) of the Ledger-to-Dashboard migration, admin-only, no wider-group changelog entry. New "Repair" sub-mode: Recalculate Balances From History, Clear "Missing groupEntries" Warning, and Reset Season — the most destructive action in the whole app. Every write scoped to its own specific sub-path (/state/group.json, /state/members.json, /state/history/{idx}/groupEntries.json, /state/seasonArchive.json, /state/history.json, /state/lastSnapshot.json) — never a full /state.json overwrite. Reset Season specifically writes seasonArchive FIRST, before anything is zeroed, so a failed archive write can never result in lost stats with zero record of them; the remaining writes are sequential rather than a single atomic multi-path update, since introducing an untested new write pattern for the single highest-stakes button in the app seemed like the wrong place to take that risk — the catch block is honest that a partial failure is possible and says so explicitly rather than implying full atomicity it doesn't have. Reset Season also has a typed "RESET" confirmation gating the button's disabled state, on top of the original two confirm() dialogs — deliberately more friction than anything else in this tab. Deliberately NOT included despite being in the original Batch 3 scope: Fix a saved week (a genuinely large editing UI touching multiple interconnected fields inside historical records, wants its own dedicated pass) — remember to match this in version.json on deploy (empty changes array, admin-only)
+const APP_VERSION = "2026-09-02.52"; // The last remaining item on the Ledger-to-Dashboard migration checklist: Fix a Saved Week — the most complex feature migrated this whole project. Edits happen on a deep-cloned local working copy (adminFixWeekWorking), never touching currentState.history directly until Save is explicitly clicked, matching the Ledger's own "mutate in-memory, save on demand" approach. Caught and fixed a real bug of my own during this build, before it ever shipped: my first draft had two separate, partially-duplicate render functions (one for the initial render, one for post-add/remove-row re-renders) that could have drifted out of sync with each other, and the second one had a genuinely dead no-op line left in from an earlier attempt at the re-render logic. Consolidated into one single render path that both the initial load and every row-edit re-render always call, so there's structurally only one place this logic can live. On save: writes the two corrected fields scoped to that one week's own path (/state/history/{idx}/individualEntries, /state/history/{idx}/groupEntries), then reuses recalculateAllFromHistoryAdmin() — the exact same function the plain Recalculate button already uses — to rebuild every member's totals, rather than duplicating that logic a second time. Ported CSS too (admin-fin-row-entry, admin-entry-row etc, prefixed to avoid colliding with anything unrelated) since the Ledger's originals had zero styling anywhere in this file. Verified with a full ID cross-reference (all exactly one match), a check for any leftover Ledger-only variable references (none from this feature), and an actual render of the completed editor before calling this done. This closes out the entire Ledger-to-Dashboard migration checklist in full — remember to match this in version.json on deploy (empty changes array, admin-only)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -17112,6 +17165,7 @@ function renderAdminRoster(){
       await saveMembersToFirebase(next);
       renderAdminBadges();
       renderAdminDues();
+      renderAdminRenamePanel();
     });
   });
   area.querySelectorAll('.adminRemoveRosterBtn').forEach(btn => {
@@ -17125,6 +17179,7 @@ function renderAdminRoster(){
       renderAdminRoster();
       renderAdminBadges();
       renderAdminDues();
+      renderAdminRenamePanel();
     });
   });
 }
@@ -17138,6 +17193,7 @@ document.getElementById('adminAddMemberBtn').addEventListener('click', async () 
   renderAdminRoster();
   renderAdminBadges();
   renderAdminDues();
+  renderAdminRenamePanel();
 });
 // Same badge definitions as the Ledger's own — kept identical since a
 // badge id awarded here has to match what the profile's own badge
@@ -17186,6 +17242,120 @@ function renderAdminBadges(){
     });
   });
 }
+
+// ==== Admin: Rename a Member — Everywhere ====
+// Ported carefully — this is the one migrated feature that genuinely
+// touches three separate systems in one action (Board roster, Tipping
+// profile, past picks), so each step is its own try/catch-worthy write
+// rather than one big implicit assumption that all of it succeeds
+// together. The member-name/link update is scoped to that ONE member's
+// own two fields (/state/members/{idx}/name, /state/members/{idx}/
+// linkedUid), never the whole members array or /state.json — same
+// reasoning as every other migrated write this session.
+function renderAdminRenamePanel(){
+  const select = document.getElementById('adminRenameMemberSelect');
+  if(!select) return;
+  const members = currentState.members || [];
+  select.innerHTML = '<option value="">Pick a member…</option>' +
+    members.map((m, i) => `<option value="${i}">${escapeHtml(m.name)}</option>`).join('');
+}
+let adminRenameTargetUid = null;
+async function onAdminRenameMemberChange(){
+  const idx = document.getElementById('adminRenameMemberSelect').value;
+  const statusEl = document.getElementById('adminRenameLinkStatus');
+  const manualWrap = document.getElementById('adminRenameManualLinkWrap');
+  const saveBtn = document.getElementById('adminRenameSaveBtn');
+  adminRenameTargetUid = null;
+  saveBtn.disabled = true;
+  manualWrap.style.display = 'none';
+  if(idx === ''){ statusEl.textContent = ''; return; }
+  const member = currentState.members[idx];
+  document.getElementById('adminRenameNewName').value = member.name;
+  if(member.linkedUid){
+    let match = null;
+    try{
+      const res = await authedFetch(`/users/${member.linkedUid}.json`);
+      match = await res.json();
+    }catch(e){}
+    statusEl.textContent = match ? `Linked to: ${match.email}` : 'Linked, but their account details could not be loaded.';
+    adminRenameTargetUid = member.linkedUid;
+    saveBtn.disabled = false;
+  } else {
+    statusEl.textContent = "This member hasn't linked a Tipping account yet — pick which approved account is theirs below.";
+    try{
+      const res = await authedFetch('/users.json');
+      const all = (await res.json()) || {};
+      const approved = Object.entries(all).filter(([, u]) => u && u.status === 'approved');
+      const manualSelect = document.getElementById('adminRenameManualLinkSelect');
+      manualSelect.innerHTML = '<option value="">Pick their account by email…</option>' +
+        approved.map(([uid, u]) => `<option value="${uid}">${escapeHtml(u.email || uid)}${u.name ? ' (' + escapeHtml(u.name) + ')' : ''}</option>`).join('');
+      manualWrap.style.display = '';
+    }catch(e){}
+  }
+}
+document.getElementById('adminRenameMemberSelect').addEventListener('change', onAdminRenameMemberChange);
+document.getElementById('adminRenameManualLinkSelect').addEventListener('change', (e) => {
+  adminRenameTargetUid = e.target.value || null;
+  document.getElementById('adminRenameSaveBtn').disabled = !adminRenameTargetUid;
+});
+document.getElementById('adminRenameSaveBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('adminRenameStatus');
+  const idx = document.getElementById('adminRenameMemberSelect').value;
+  const newName = document.getElementById('adminRenameNewName').value.trim();
+  if(idx === '' || !newName || !adminRenameTargetUid){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Pick a member, their account, and enter a name first.';
+    return;
+  }
+  const saveBtn = document.getElementById('adminRenameSaveBtn');
+  saveBtn.disabled = true;
+  statusEl.className = 'status-msg';
+  statusEl.textContent = 'Renaming — this can take a few seconds while past picks are swept…';
+  try{
+    // Board name + link — scoped to this one member's own two fields.
+    await authedFetch(`/state/members/${idx}/name.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newName)
+    });
+    await authedFetch(`/state/members/${idx}/linkedUid.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(adminRenameTargetUid)
+    });
+    currentState.members[idx].name = newName;
+    currentState.members[idx].linkedUid = adminRenameTargetUid;
+
+    // Tipping profile name
+    await authedFetch(`/users/${adminRenameTargetUid}/name.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newName)
+    });
+
+    // Sweep past picks — same idea as a person's own self-service rename,
+    // just admin-triggered for someone else's uid.
+    const fixRes = await fetch('https://mlsynddash.netlify.app/.netlify/functions/afl-fixtures', { cache: 'no-store' });
+    const fixData = await fixRes.json();
+    const games = fixData.games || [];
+    let swept = 0;
+    await Promise.all(games.map(async g => {
+      try{
+        const res = await authedFetch(`/tipping/picks/${g.id}/${adminRenameTargetUid}.json`);
+        const mine = await res.json();
+        if(mine){
+          await authedFetch(`/tipping/picks/${g.id}/${adminRenameTargetUid}/name.json`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newName)
+          });
+          swept++;
+        }
+      }catch(e){}
+    }));
+
+    renderAdminRenamePanel();
+    statusEl.className = 'status-msg ok';
+    statusEl.textContent = `Renamed everywhere — ${swept} past pick(s) updated.`;
+    showToast('Renamed everywhere');
+  }catch(e){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Something went wrong partway through — check the Board and Tipping tabs to see what landed.';
+  }
+  saveBtn.disabled = false;
+});
 // ==== Admin: Approvals / Guest Link / Access Levels / Tipping Squad ====
 // One combined fetch of /users.json powers all four panels at once, same
 // design as the Ledger's own renderPendingUsers — avoids four separate
@@ -17520,6 +17690,230 @@ async function loadAdminSubmissionsForRound(round){
   }
 }
 
+// ==== Admin: Tipping Dues — genuinely separate from Board dues, lives
+// entirely at /tippingDues/{uid} and /tippingDuesConfig, nowhere near
+// /state.json, so this needed none of the scoped-write redesign
+// Roster/Badges/Money Owed needed. Uses awardXPToUidAdmin (uid-keyed),
+// not the members-array-based dues logic Money Owed uses — a Tipping-
+// only participant has no Board roster entry to key off. ====
+async function loadAdminTippingDuesDefaultFee(){
+  try{
+    const res = await authedFetch('/tippingDuesConfig/amountPerPerson.json');
+    const val = await res.json();
+    const input = document.getElementById('adminTippingDuesDefaultFee');
+    if(input && val != null) input.value = val;
+  }catch(e){}
+}
+document.getElementById('adminTippingDuesSaveDefaultBtn').addEventListener('click', async () => {
+  const input = document.getElementById('adminTippingDuesDefaultFee');
+  const status = document.getElementById('adminTippingDuesDefaultFeeStatus');
+  const val = parseFloat(input.value);
+  if(isNaN(val) || val < 0){ status.textContent = 'Enter a fee of 0 or more.'; return; }
+  try{
+    await authedFetch('/tippingDuesConfig/amountPerPerson.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(val)
+    });
+    status.textContent = `Saved — new participants added from now on default to $${val}.`;
+    showToast('Default tipping fee saved');
+  }catch(e){
+    status.textContent = 'Could not save — try again.';
+  }
+});
+async function populateAdminTippingDuesAddSelect(){
+  const sel = document.getElementById('adminTippingDuesAddSelect');
+  if(!sel) return;
+  try{
+    const [usersRes, duesRes] = await Promise.all([
+      authedFetch('/users.json'),
+      authedFetch('/tippingDues.json')
+    ]);
+    const all = (await usersRes.json()) || {};
+    const existing = (await duesRes.json()) || {};
+    const approved = Object.entries(all)
+      .filter(([uid, u]) => u && u.status === 'approved' && !existing[uid])
+      .sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
+    sel.innerHTML = '<option value="">Add a participant…</option>' +
+      approved.map(([uid, u]) => `<option value="${uid}" data-name="${escapeHtml(u.name || u.email || uid.slice(0,8))}">${escapeHtml(u.name || u.email || uid.slice(0,8))}</option>`).join('');
+  }catch(e){}
+}
+document.getElementById('adminTippingDuesAddBtn').addEventListener('click', async () => {
+  const sel = document.getElementById('adminTippingDuesAddSelect');
+  const uid = sel.value;
+  if(!uid) return;
+  const name = sel.options[sel.selectedIndex].dataset.name;
+  const defaultFeeInput = document.getElementById('adminTippingDuesDefaultFee');
+  const commitment = parseFloat(defaultFeeInput.value) || 0;
+  try{
+    await authedFetch(`/tippingDues/${uid}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, commitment, owed: commitment, addedAt: Date.now() })
+    });
+    showToast(`Added ${name} to Tipping Dues`);
+    await populateAdminTippingDuesAddSelect();
+    await renderAdminTippingDues();
+  }catch(e){
+    showToast('Could not add — try again');
+  }
+});
+async function renderAdminTippingDues(){
+  const area = document.getElementById('adminTippingDuesArea');
+  if(!area) return;
+  await loadAdminTippingDuesDefaultFee();
+  try{
+    const res = await authedFetch('/tippingDues.json');
+    const all = (await res.json()) || {};
+    const entries = Object.entries(all).sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
+    if(entries.length === 0){
+      area.innerHTML = '<div class="empty">Nobody added yet — pick someone above.</div>';
+      return;
+    }
+    // Same row style as Money Owed above, for visual consistency —
+    // deliberately not reusing the Ledger's own .dues-row/.dues-name
+    // classes, which have no CSS anywhere in this file and would need
+    // porting on top of a style this app already has proven working.
+    area.innerHTML = entries.map(([uid, d]) => {
+      const owed = Math.round(d.owed);
+      const commitment = Math.round(d.commitment);
+      return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid var(--line);">
+        <span style="color:var(--chalk); font-size:13px;">${escapeHtml(d.name)}${owed <= 0 && commitment > 0 ? ' ✅' : ''}</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass-light);">$<input type="number" class="adminTippingDuesOwedInput" data-uid="${uid}" value="${owed}" step="1" style="width:60px; background:none; border:none; color:inherit; font:inherit;"> / $${commitment}</span>
+          <button type="button" class="small danger" data-admin-tipping-dues-remove="${uid}" data-name="${escapeHtml(d.name)}">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+    area.querySelectorAll('.adminTippingDuesOwedInput').forEach(inp => {
+      inp.addEventListener('change', async (e) => {
+        const uid = e.target.dataset.uid;
+        const d = all[uid];
+        const before = Math.round(d.owed);
+        const val = parseFloat(e.target.value);
+        const newOwed = Math.max(0, Math.min(Math.round(d.commitment), isNaN(val) ? 0 : val));
+        const paid = before - newOwed;
+        try{
+          await authedFetch(`/tippingDues/${uid}/owed.json`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newOwed)
+          });
+          if(paid > 0){
+            const xp = Math.floor(paid / 2);
+            if(xp > 0) await awardXPToUidAdmin(uid, xp, `Tipping dues payment ($${paid})`);
+          }
+          renderAdminTippingDues();
+        }catch(err){
+          showToast('Could not save — try again');
+        }
+      });
+    });
+    area.querySelectorAll('[data-admin-tipping-dues-remove]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const uid = e.target.dataset.adminTippingDuesRemove;
+        const name = e.target.dataset.name;
+        if(!confirm(`Remove ${name} from Tipping Dues? This doesn't claw back any XP already awarded.`)) return;
+        try{
+          await authedFetch(`/tippingDues/${uid}.json`, { method: 'DELETE' });
+          showToast(`Removed ${name}`);
+          await populateAdminTippingDuesAddSelect();
+          renderAdminTippingDues();
+        }catch(err){
+          showToast('Could not remove — try again');
+        }
+      });
+    });
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load Tipping Dues.</div>';
+  }
+}
+
+// ==== Admin: Tipping Season Setup — Archive & start new season ====
+// Already well-designed in the Ledger before this port: validates a
+// ladder snapshot exists first, writes the archive record and checks its
+// response status explicitly before touching anything live, then uses a
+// single atomic PATCH across firstRound/prizePot/year/joker/roundLockTime/
+// lastComputedLadder so the reset can't half-apply (e.g. clearing Jokers
+// but leaving the old first round in place). Never touches /state.json
+// at all — entirely within /tipping, /tippingArchive, and one unrelated
+// flag — so this needed none of the scoped-write redesign other features
+// did, just a direct, careful port.
+let adminCurrentSeasonYear = null;
+async function loadAdminTippingSeasonYear(){
+  const hint = document.getElementById('adminTippingSeasonYearHint');
+  try{
+    const res = await authedFetch('/tipping/config/year.json');
+    const val = await res.json();
+    adminCurrentSeasonYear = val != null ? Number(val) : new Date().getFullYear();
+    hint.textContent = `Current season: ${adminCurrentSeasonYear}${val == null ? ' (assumed — not explicitly set yet)' : ''}`;
+    const newYearInput = document.getElementById('adminNewSeasonYearInput');
+    if(!newYearInput.value) newYearInput.value = adminCurrentSeasonYear + 1;
+  }catch(e){
+    hint.textContent = 'Current season: could not load.';
+  }
+}
+document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('adminArchiveResetSeasonStatus');
+  const newYear = Number(document.getElementById('adminNewSeasonYearInput').value);
+  const newFirstRound = document.getElementById('adminNewSeasonFirstRoundInput').value !== '' ? Number(document.getElementById('adminNewSeasonFirstRoundInput').value) : 1;
+  const newPrizePot = document.getElementById('adminNewSeasonPrizePotInput').value !== '' ? Number(document.getElementById('adminNewSeasonPrizePotInput').value) : 0;
+  const outgoingYear = adminCurrentSeasonYear != null ? adminCurrentSeasonYear : new Date().getFullYear();
+  if(!newYear){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Enter a new season year first.';
+    return;
+  }
+  if(!confirm(`Archive the ${outgoingYear} season and reset Tipping for ${newYear}? This wipes all Jokers and round-lock times, and sets first round to ${newFirstRound} and prize pot to $${newPrizePot}. Picks/results history is kept (never touched), only the live config resets. This cannot be undone.`)) return;
+  if(!confirm('Definitely sure? This is your last chance to back out.')) return;
+  statusEl.className = 'status-msg';
+  statusEl.textContent = 'Archiving…';
+  try{
+    const [ladderRes, prizePotRes, jokerRes] = await Promise.all([
+      authedFetch('/tipping/lastComputedLadder.json'),
+      authedFetch('/tipping/config/prizePot.json'),
+      authedFetch('/tipping/joker.json'),
+    ]);
+    const ladderSnapshot = await ladderRes.json();
+    const outgoingPrizePot = await prizePotRes.json();
+    const outgoingJokers = await jokerRes.json();
+    if(!ladderSnapshot){
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = "No ladder snapshot found — open the Dashboard's Tipping tab once first (this is what captures the final ladder), then try again.";
+      return;
+    }
+    const archiveRes = await authedFetch(`/tippingArchive/${outgoingYear}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        archivedAt: Date.now(), ladder: ladderSnapshot,
+        prizePot: outgoingPrizePot != null ? outgoingPrizePot : 0, jokers: outgoingJokers || {},
+      })
+    });
+    if(!archiveRes.ok){
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = `Archive write failed (HTTP ${archiveRes.status}) — nothing was reset, safe to retry.`;
+      return;
+    }
+    const resetRes = await authedFetch('/tipping.json', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        'config/firstRound': newFirstRound, 'config/prizePot': newPrizePot, 'config/year': newYear,
+        'joker': null, 'roundLockTime': null, 'lastComputedLadder': null,
+      })
+    });
+    if(!resetRes.ok){
+      statusEl.className = 'status-msg error';
+      statusEl.textContent = `Archived ${outgoingYear} OK, but the reset itself failed (HTTP ${resetRes.status}) — check firstRound/prizePot/Joker manually before the new season starts.`;
+      return;
+    }
+    authedFetch('/pushJokerLastChanceNotified.json', { method: 'DELETE' }).catch(() => {});
+    statusEl.className = 'status-msg ok';
+    statusEl.textContent = `${outgoingYear} archived, ${newYear} season ready (Round ${newFirstRound}, $${newPrizePot} pot).`;
+    showToast(`${outgoingYear} season archived — ${newYear} ready to go`);
+    loadAdminPrizePot();
+    loadAdminFirstRound();
+    loadAdminTippingSeasonYear();
+  }catch(e){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Could not complete — ' + e.message + '. Check firstRound/prizePot/Joker manually before assuming anything reset.';
+  }
+});
+
 // ==== Admin: Repair tools — Recalculate / Clear warning / Reset Season ====
 // Real stakes here: Reset Season in particular wipes live shared history
 // beyond what a backup can undo mid-session. Every write below is scoped
@@ -17645,6 +18039,206 @@ document.getElementById('adminClearGroupWarnBtn').addEventListener('click', asyn
   }
   btn.disabled = false;
 });
+// ==== Admin: Fix a Saved Week — the most complex migrated feature ====
+// Edits individualEntries/groupEntries directly inside one specific
+// history record, then reuses recalculateAllFromHistoryAdmin() (already
+// built for the plain Recalculate button above) to rebuild every
+// member's totals from the corrected history — same infrastructure, not
+// duplicated logic. Row edits happen on a local working copy of the
+// week (adminFixWeekWorking), matching the Ledger's own approach of
+// mutating its in-memory state as rows are added/removed — nothing
+// reaches Firebase until "Save correction" is actually clicked. Only
+// then does it write the two corrected fields scoped to that one week's
+// own path (/state/history/{idx}/individualEntries, /state/history/{idx}/
+// groupEntries), followed by the same scoped group/members writes
+// Recalculate already uses — never a full /state.json overwrite.
+let adminFixWeekWorking = null;
+function adminNameOptionsHtml(selected){
+  let opts = '<option value="">— pick name —</option>';
+  (currentState.members || []).forEach(m => {
+    opts += `<option value="${escapeHtml(m.name)}" ${m.name === selected ? 'selected' : ''}>${escapeHtml(m.name)}</option>`;
+  });
+  return opts;
+}
+function populateAdminFixWeekSelect(){
+  const sel = document.getElementById('adminFixWeekSelect');
+  if(!sel) return;
+  const opts = ['<option value="">Pick a saved week…</option>'];
+  (currentState.history || []).forEach((w, i) => {
+    const when = w.savedAt ? new Date(w.savedAt).toLocaleDateString() : '';
+    opts.push(`<option value="${i}">${escapeHtml(w.label || ('Week ' + (i+1)))}${when ? ' — ' + when : ''}</option>`);
+  });
+  sel.innerHTML = opts.join('');
+}
+function renderAdminFixWeekEditor(weekIdx){
+  const editor = document.getElementById('adminFixWeekEditor');
+  const saveBtn = document.getElementById('adminFixWeekSaveBtn');
+  if(weekIdx === '' || weekIdx == null){
+    editor.innerHTML = '';
+    saveBtn.style.display = 'none';
+    adminFixWeekWorking = null;
+    return;
+  }
+  // Deep-cloned working copy — edits (add/remove row) mutate THIS, never
+  // currentState.history directly, until Save is actually clicked.
+  adminFixWeekWorking = JSON.parse(JSON.stringify(currentState.history[weekIdx]));
+  saveBtn.style.display = 'inline-block';
+  renderAdminFixWeekEditorFromWorking();
+}
+// Single render path for both the initial render and every subsequent
+// add/remove-row re-render — always reads from adminFixWeekWorking, the
+// one shared working copy, so there's no risk of two separate render
+// functions drifting out of sync with each other.
+function renderAdminFixWeekEditorFromWorking(){
+  const week = adminFixWeekWorking;
+  const editor = document.getElementById('adminFixWeekEditor');
+  const entries = Object.entries(week.individualEntries || {});
+  const rowsHtml = entries.map(([name, e], i) => `
+    <div class="admin-fin-row-entry" data-fixrow="${i}">
+      <select class="adminFixwName" data-i="${i}">${adminNameOptionsHtml(name)}</select>
+      <input type="number" class="adminFixwWin" data-i="${i}" step="1" value="${e.indWin || 0}" title="Wins" style="width:50px;">
+      <input type="number" class="adminFixwLoss" data-i="${i}" step="1" value="${e.indLoss || 0}" title="Losses" style="width:50px;">
+      <input type="number" class="adminFixwPl" data-i="${i}" step="0.01" value="${e.pl || 0}" title="Total P/L $">
+      <button type="button" class="admin-btn-step small danger adminFixwRemove" data-i="${i}" title="Remove this person's entry">×</button>
+      <input type="number" class="adminFixwMaxpl" data-i="${i}" step="0.01" value="${e.maxPl != null ? e.maxPl : (e.pl || 0)}" title="Biggest single bet $ — feeds the 'Best individual bet win' highlight" style="grid-column: 2 / 4; margin-top:4px; width:100%;">
+    </div>`).join('');
+  const ge = week.groupEntries || {};
+  const groupRowsHtml = (currentState.members || []).map(m => {
+    const e = ge[m.name] || {};
+    const oddsVal = e.odds != null ? e.odds : '';
+    const result = e.result || '';
+    return `<div class="admin-entry-row" data-fixgname="${escapeHtml(m.name)}">
+      <span class="admin-entry-col-name">${escapeHtml(m.name)}</span>
+      <input type="number" class="adminFixgOdds admin-entry-col-odds" data-name="${escapeHtml(m.name)}" step="0.01" placeholder="Odds" value="${oddsVal}">
+      <select class="adminFixgResult admin-entry-col-result" data-name="${escapeHtml(m.name)}">
+        <option value=""${!result ? ' selected' : ''}>No bet</option>
+        <option value="Win"${result === 'Win' ? ' selected' : ''}>Win</option>
+        <option value="Loss"${result === 'Loss' ? ' selected' : ''}>Loss</option>
+        <option value="Void"${result === 'Void' ? ' selected' : ''}>Void</option>
+        <option value="MIA"${result === 'MIA' ? ' selected' : ''}>MIA</option>
+      </select>
+    </div>`;
+  }).join('');
+  editor.innerHTML = `
+    <div class="hint" style="margin:10px 0 6px;">Win / Loss are counts (2 wins that week = 2), P/L is the combined dollar result across all their bets that week. The extra field below each row is their single BIGGEST bet that week — used for the "Best individual bet win" highlight, which needs the biggest one bet, not the week's combined total.</div>
+    <div class="admin-fin-header-row"><span></span><span class="admin-fin-col-lbl">W</span><span class="admin-fin-col-lbl">L</span><span class="admin-fin-col-lbl">P/L $</span></div>
+    ${rowsHtml}
+    <button type="button" id="adminFixwAddRowBtn" class="small" style="margin-top:4px;">➕ Add person</button>
+    <h3 style="margin-top:18px; font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px;">Group Multi</h3>
+    <div class="hint" style="margin-bottom:6px;">Each member's leg result and odds for this week — "No bet" if they weren't in. Only touch this if the health check flagged this week as missing groupEntries, or you know a result here is wrong; leave everyone else exactly as shown.</div>
+    <div class="admin-fin-header-row"><span></span><span class="admin-fin-col-lbl">Odds</span><span class="admin-fin-col-lbl">Result</span></div>
+    ${groupRowsHtml}
+  `;
+  document.getElementById('adminFixwAddRowBtn').addEventListener('click', () => {
+    if(!week.individualEntries) week.individualEntries = {};
+    const tempKey = '__new_' + Date.now();
+    week.individualEntries[tempKey] = { indWin: 0, indLoss: 0, pl: 0, outlay: 0, maxPl: 0 };
+    renderAdminFixWeekEditorFromWorking();
+  });
+  editor.querySelectorAll('.adminFixwRemove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i, 10);
+      const key = Object.entries(week.individualEntries)[i][0];
+      delete week.individualEntries[key];
+      renderAdminFixWeekEditorFromWorking();
+    });
+  });
+}
+document.getElementById('adminFixWeekSelect').addEventListener('change', (e) => {
+  renderAdminFixWeekEditor(e.target.value);
+});
+document.getElementById('adminFixWeekSaveBtn').addEventListener('click', async () => {
+  const status = document.getElementById('adminFixWeekStatus');
+  const weekIdx = document.getElementById('adminFixWeekSelect').value;
+  if(weekIdx === '' || !adminFixWeekWorking) return;
+  const week = adminFixWeekWorking;
+  const editor = document.getElementById('adminFixWeekEditor');
+
+  const rebuilt = {};
+  const originalKeys = Object.keys(week.individualEntries || {});
+  editor.querySelectorAll('.admin-fin-row-entry').forEach(row => {
+    const i = parseInt(row.dataset.fixrow, 10);
+    const nameSel = row.querySelector('.adminFixwName');
+    const name = nameSel.value;
+    if(!name) return;
+    const indWin = parseInt(row.querySelector('.adminFixwWin').value, 10) || 0;
+    const indLoss = parseInt(row.querySelector('.adminFixwLoss').value, 10) || 0;
+    const pl = parseFloat(row.querySelector('.adminFixwPl').value) || 0;
+    const maxPl = parseFloat(row.querySelector('.adminFixwMaxpl').value) || 0;
+    const existingOutlay = (week.individualEntries[originalKeys[i]] || {}).outlay || 0;
+    // Accumulate rather than overwrite — the whole point of this tool is
+    // fixing a week where someone had TWO separate bets, so a second row
+    // for the same name has to add to the first one, not replace it.
+    if(rebuilt[name]){
+      rebuilt[name].indWin += indWin;
+      rebuilt[name].indLoss += indLoss;
+      rebuilt[name].pl += pl;
+      rebuilt[name].outlay += existingOutlay;
+      rebuilt[name].maxPl = Math.max(rebuilt[name].maxPl, maxPl);
+    } else {
+      rebuilt[name] = { indWin, indLoss, pl, outlay: existingOutlay, maxPl };
+    }
+  });
+
+  const weekLabel = currentState.history[weekIdx].label;
+  if(!confirm(`Save this correction to "${weekLabel}" and recalculate every member's totals from scratch? This can't be undone with any Undo feature — only by restoring a backup.`)) return;
+
+  const rebuiltGroupEntries = {};
+  editor.querySelectorAll('.admin-entry-row[data-fixgname]').forEach(row => {
+    const name = row.dataset.fixgname;
+    const oddsEl = row.querySelector('.adminFixgOdds');
+    const resultEl = row.querySelector('.adminFixgResult');
+    const result = resultEl.value;
+    if(!result) return;
+    const oddsRaw = oddsEl.value;
+    const odds = oddsRaw !== '' ? parseFloat(oddsRaw) : null;
+    const legs = result !== 'MIA' ? 1 : 0;
+    rebuiltGroupEntries[name] = { legs, odds, result };
+  });
+
+  const saveBtn = document.getElementById('adminFixWeekSaveBtn');
+  saveBtn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Saving correction and recalculating…';
+  try{
+    await authedFetch(`/state/history/${weekIdx}/individualEntries.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rebuilt)
+    });
+    await authedFetch(`/state/history/${weekIdx}/groupEntries.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rebuiltGroupEntries)
+    });
+    currentState.history[weekIdx].individualEntries = rebuilt;
+    currentState.history[weekIdx].groupEntries = rebuiltGroupEntries;
+
+    // Reuses the exact same rebuild Recalculate uses — one corrected week
+    // needs the whole season's totals rebuilt from history just like a
+    // full recalculate does, not a partial patch.
+    const { newGroup, newMembers } = recalculateAllFromHistoryAdmin();
+    await authedFetch('/state/group.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newGroup)
+    });
+    await authedFetch('/state/members.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newMembers)
+    });
+    currentState.group = newGroup;
+    currentState.members = newMembers;
+
+    status.className = 'status-msg ok';
+    status.textContent = `${weekLabel} corrected and every member's totals recalculated from scratch.`;
+    showToast('Week corrected');
+    document.getElementById('adminFixWeekEditor').innerHTML = '';
+    saveBtn.style.display = 'none';
+    document.getElementById('adminFixWeekSelect').value = '';
+    adminFixWeekWorking = null;
+    renderAdminHistory();
+    renderAdminClearGroupWarnList();
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Something went wrong partway through — check the Ledger directly to see what actually landed before trying again.';
+  }
+  saveBtn.disabled = false;
+});
+
 // Reset Season — a typed confirmation on top of the two dialogs below,
 // deliberately more friction than anything else in this tab, matching
 // the actual stakes: this is the single most destructive button in the
@@ -17707,6 +18301,8 @@ document.getElementById('adminResetSeasonBtn').addEventListener('click', async (
     document.getElementById('adminResetSeasonConfirmInput').value = '';
     renderAdminHistory();
     renderAdminClearGroupWarnList();
+    populateAdminFixWeekSelect();
+    renderAdminFixWeekEditor(''); // clears any week that was mid-edit — that week may no longer even exist post-reset
   }catch(e){
     status.className = 'status-msg error';
     status.textContent = 'Reset failed partway through — check the Ledger directly before trying again, some fields may have changed and others not.';
@@ -18005,6 +18601,87 @@ document.getElementById('adminBackupBtn').addEventListener('click', async () => 
 });
 renderAdminLastBackupHint();
 
+// ==== Admin: Restore from backup ====
+// The one deliberate exception to "never a full /state.json overwrite"
+// in this whole migration — restoring is BY DEFINITION replacing
+// everything with the backup's contents, so a full overwrite here is
+// the correct, intended behaviour, not the risk a partial-currentState
+// overwrite would be elsewhere. The real safeguards are: a genuine
+// preview of what's actually in the file (member count, saved weeks,
+// export date) shown BEFORE anything is written, and a typed "RESTORE"
+// confirmation gating the actual write — neither of which the Ledger's
+// own version had. __tipping/__users/etc are the extra data this app's
+// own Backup download bundles in for convenience (separate Firebase
+// trees, not part of /state.json itself) — stripped out here since they
+// were never meant to be written back to /state.json.
+let adminPendingRestoreState = null;
+document.getElementById('adminRestoreBtn').addEventListener('click', () => {
+  document.getElementById('adminRestoreFile').click();
+});
+document.getElementById('adminRestoreFile').addEventListener('change', async (e) => {
+  const status = document.getElementById('adminRestoreStatus');
+  const preview = document.getElementById('adminRestorePreview');
+  const file = e.target.files[0];
+  adminPendingRestoreState = null;
+  preview.style.display = 'none';
+  preview.innerHTML = '';
+  status.className = 'status-msg';
+  status.textContent = '';
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if(!parsed || !Array.isArray(parsed.members)) throw new Error("That doesn't look like a valid backup file — no members array found.");
+    // Strip the extra bundled data this app's own Backup adds — those
+    // are separate Firebase trees (/tipping, /users, etc), never part of
+    // /state.json, and must not be written there.
+    const { __tipping, __users, __groupChat, __predictionMarkets, __legBets, __predictionMarketReserve, __actsOfGodHistory, __exportedAt, ...stateOnly } = parsed;
+    adminPendingRestoreState = stateOnly;
+    const memberCount = stateOnly.members.length;
+    const weekCount = Array.isArray(stateOnly.history) ? stateOnly.history.length : 0;
+    const exportedLabel = __exportedAt ? new Date(__exportedAt).toLocaleString() : 'unknown date';
+    preview.innerHTML = `
+      <div class="hint" style="color:var(--chalk);">
+        <b>This file contains:</b><br>
+        ${memberCount} member(s), ${weekCount} saved week(s)<br>
+        Exported: ${escapeHtml(exportedLabel)}
+      </div>
+      <div class="hint" style="margin-top:8px; color:var(--loss); font-weight:600;">Type RESTORE below to enable the button. This will immediately overwrite live shared data for everyone.</div>
+      <input type="text" id="adminRestoreConfirmInput" placeholder="Type RESTORE to confirm" style="width:100%; margin-top:8px;">
+      <button type="button" id="adminRestoreConfirmBtn" class="small danger" style="margin-top:8px;" disabled>💥 Restore now — overwrite live data</button>
+    `;
+    preview.style.display = 'block';
+    document.getElementById('adminRestoreConfirmInput').addEventListener('input', (ev) => {
+      document.getElementById('adminRestoreConfirmBtn').disabled = ev.target.value.trim() !== 'RESTORE';
+    });
+    document.getElementById('adminRestoreConfirmBtn').addEventListener('click', async () => {
+      if(!confirm(`Restore from this backup (${memberCount} members, ${weekCount} weeks, exported ${exportedLabel})? This replaces everything currently live and shared. This cannot be undone except by restoring a newer backup.`)) return;
+      const confirmBtn = document.getElementById('adminRestoreConfirmBtn');
+      confirmBtn.disabled = true;
+      status.className = 'status-msg';
+      status.textContent = 'Restoring…';
+      try{
+        await authedFetch('/state.json', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(adminPendingRestoreState)
+        });
+        status.className = 'status-msg ok';
+        status.textContent = 'Restored. Reload the app to see the restored data reflected everywhere.';
+        showToast('Restored from backup — reload to see it fully applied');
+        preview.style.display = 'none';
+        adminPendingRestoreState = null;
+      }catch(err){
+        status.className = 'status-msg error';
+        status.textContent = 'Restore failed: ' + err.message;
+        confirmBtn.disabled = false;
+      }
+    });
+  }catch(err){
+    status.className = 'status-msg error';
+    status.textContent = 'Could not read that file: ' + err.message;
+  }
+  e.target.value = '';
+});
+
 function renderDiagTab(retriesLeft){
   // Can fire before currentState is populated — the sessionStorage
   // tab-restore near the bottom of this file calls this unconditionally
@@ -18057,6 +18734,7 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
       diagSquadLoaded = true;
       renderAdminRoster();
       renderAdminBadges();
+      renderAdminRenamePanel();
     }
     if(target === 'access' && !diagAccessLoaded){
       diagAccessLoaded = true;
@@ -18067,10 +18745,14 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
       loadAdminPrizePot();
       loadAdminFirstRound();
       loadAdminSubmissionsRounds();
+      populateAdminTippingDuesAddSelect();
+      renderAdminTippingDues();
+      loadAdminTippingSeasonYear();
     }
     if(target === 'repair' && !diagRepairLoaded){
       diagRepairLoaded = true;
       renderAdminClearGroupWarnList();
+      populateAdminFixWeekSelect();
     }
     if(target === 'play' && !diagPlayLoaded){
       diagPlayLoaded = true;

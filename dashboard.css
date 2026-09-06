@@ -2869,6 +2869,30 @@
   .role-group-readonly{ background:rgba(120,160,200,.06); border-color:rgba(120,160,200,.4); }
   .role-group-readonly .role-group-title{ color:#9cc2e6; }
   .role-group .pending-user-row{ border-bottom-color:rgba(239,234,216,.08); }
+  /* Ported from the Ledger for the Fix a Saved Week editor — prefixed
+     admin- since these are otherwise generic names (.entry-row etc)
+     that could collide with something unrelated elsewhere in this file. */
+  .admin-fin-header-row{ display:flex; gap:6px; padding:0 0 4px; }
+  .admin-fin-header-row .admin-fin-col-lbl{
+    flex:1; font-family:'IBM Plex Mono', monospace; font-size:9px; text-transform:uppercase;
+    letter-spacing:1px; color:var(--muted); text-align:left;
+  }
+  .admin-fin-header-row span:first-child{ flex:0 0 76px; }
+  .admin-fin-row-entry{ display:flex; gap:6px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+  .admin-fin-row-entry:last-of-type{ border-bottom:none; }
+  .admin-fin-row-entry input, .admin-fin-row-entry select{ flex:1; min-width:0; padding:7px 6px; font-size:12px; }
+  .admin-btn-step{
+    width:30px; height:30px; padding:0; border-radius:50%; flex-shrink:0;
+    font-family:'IBM Plex Mono', monospace; font-size:16px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .admin-entry-row{ display:flex; align-items:center; gap:6px; padding:7px 0; border-bottom:1px solid var(--line); }
+  .admin-entry-row:last-child{ border-bottom:none; }
+  .admin-entry-row input, .admin-entry-row select{ padding:7px 6px; font-size:12px; }
+  .admin-entry-col-name{ flex:1 1 auto; min-width:0; }
+  span.admin-entry-col-name{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--chalk); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .admin-entry-col-odds{ flex:0 0 62px; width:62px; }
+  .admin-entry-col-result{ flex:0 0 78px; width:78px; }
   .status-msg.error{ color: var(--loss); }
   .status-msg.ok{ color: var(--win); }
   .img-modal{
