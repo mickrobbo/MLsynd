@@ -213,6 +213,8 @@
       <button type="button" class="craps-winmode-btn active" data-submode="pulse">🩺 Pulse</button>
       <button type="button" class="craps-winmode-btn" data-submode="money">💰 Money</button>
       <button type="button" class="craps-winmode-btn" data-submode="squad">👥 Squad</button>
+      <button type="button" class="craps-winmode-btn" data-submode="access">🔐 Access</button>
+      <button type="button" class="craps-winmode-btn" data-submode="tipping">🏉 Tipping</button>
       <button type="button" class="craps-winmode-btn" data-submode="play">🎲 Play</button>
       <button type="button" class="craps-winmode-btn" data-submode="actions">⚙️ Actions</button>
     </div>
@@ -332,6 +334,71 @@
       <h2>🏅 Badges</h2>
       <div class="hint">Tick a box to award that badge — shows on their profile on the dashboard (tap their name on the Board).</div>
       <div id="adminBadgeAwardRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    </div>
+
+    <div class="diag-submode" data-submode-panel="access">
+    <div class="panel">
+      <h2>✅ Approvals</h2>
+      <div class="hint">People who've signed up but aren't approved yet. Choose their access level to approve them.</div>
+      <div style="display:flex; align-items:center; gap:8px; margin:10px 0;">
+        <button type="button" id="adminCopyTippingInviteBtn" class="small">🏉 Copy Tipping invite link</button>
+        <span class="status-msg" id="adminCopyTippingInviteStatus"></span>
+      </div>
+      <div class="hint" style="margin-bottom:10px;">A permanent link (doesn't expire, reusable by anyone) that opens the signup form with a "you're joining Tipping" banner and tags their request so it shows below — approval and role are still entirely up to you, this is just a hint.</div>
+      <div id="adminPendingUsersArea"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>🔗 Guest Link</h2>
+      <div class="hint">Generates a 2-hour link that opens the Dashboard signed in as the read-only guest — no password needed, no signup, expires automatically. Requires the read-only guest account to already exist (approve one as "Read-only" above first).</div>
+      <button type="button" id="adminGenGuestLinkBtn" style="margin-top:10px;">🔗 Generate guest link (2h)</button>
+      <div class="status-msg" id="adminGuestLinkStatus"></div>
+      <div id="adminGuestLinkResultWrap" style="display:none; margin-top:8px;">
+        <input type="text" id="adminGuestLinkResultInput" readonly style="width:100%; margin-bottom:6px; font-family:'IBM Plex Mono', monospace; font-size:11px;">
+        <button type="button" id="adminGuestLinkCopyBtn" class="small">📋 Copy link</button>
+        <div class="hint" id="adminGuestLinkExpiryHint" style="margin-top:6px;"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>👁️ Access Levels</h2>
+      <div class="hint">Dashboard only can view the dashboard but can't open the Ledger. Full access can use both.</div>
+      <div id="adminApprovedUsersArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    </div>
+
+    <div class="diag-submode" data-submode-panel="tipping">
+    <div class="panel">
+      <h2>🏉 Tipping Squad</h2>
+      <div class="hint">Everyone with tipping access, whether they want in or not — tap a name's button to add or remove them from the tipping squad specifically, separate from their app access.</div>
+      <div id="adminTippingSquadArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>🏆 Prize Pot</h2>
+      <div class="hint">Shown on the Dashboard's Tipping tab, above the ladder.</div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
+        <input type="number" id="adminPrizePotInput" step="1" min="0" placeholder="0" style="flex:1;">
+        <button type="button" id="adminSavePrizePotBtn" class="small">💾 Save</button>
+      </div>
+      <div class="status-msg" id="adminPrizePotStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>🚦 Competition Starts From Round</h2>
+      <div class="hint">The ladder only scores this round onward — everything before it is ignored entirely (no auto-tip penalty, nothing). Set to 1 for a normal full season.</div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
+        <input type="number" id="adminFirstRoundInput" step="1" min="1" placeholder="1" style="flex:1;">
+        <button type="button" id="adminSaveFirstRoundBtn" class="small">💾 Save</button>
+      </div>
+      <div class="status-msg" id="adminFirstRoundStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>📝 Who's Submitted</h2>
+      <div class="hint">Doesn't show what anyone picked — just whether they've tipped for a round yet.</div>
+      <select id="adminSubmissionsRoundSelect" style="width:100%; margin-top:10px; margin-bottom:10px;"><option value="">Loading rounds…</option></select>
+      <div id="adminTippingSubmissionsArea"><div class="empty">Pick a round above.</div></div>
+    </div>
+    <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
+      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">⚠️ Season Setup</span>
+      <div class="hint" style="margin-top:4px; margin-bottom:0;">Archiving and starting a new season isn't here yet, deliberately — it's a full season reset/archive in one irreversible-feeling action, closer to Reset Season in risk than anything else in this tab. Still only in the Ledger for now.</div>
     </div>
     </div>
 
@@ -3246,7 +3313,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.48"; // Fixed a real, app-wide styling gap per report: plain buttons/inputs/selects/textareas with no specific class had ZERO CSS behind them at all — confirmed by checking the stylesheet directly, not assumed — so they fell straight through to raw browser defaults (white background, black text) throughout the Admin tab (Reset stats, Send test notification, Back-pay XP, Give Bonus XP's dropdown/input, Running Costs' whole form, every text input). Even .btn-secondary and .danger existed as class names in the HTML already but had never had any CSS written for them — .danger in particular meant every "Remove" button was silently indistinguishable from a harmless one. Added a genuine global fallback (button, .btn-secondary, .danger, and every plain text-style input/select/textarea) matching the established gold-outline-on-felt language, deliberately lower CSS specificity than any class-based rule so nothing already styled changes. Added missing emojis to three buttons that had none (Reset stats, Send test notification, running costs' Save) to match how every other button in this app is labelled. Confirmed via an actual render matching the exact elements from the report, not assumed to look right — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.49"; // Batch 2 of the Ledger-to-Dashboard migration, admin-only — no wider-group changelog entry needed for this one. Approvals, Guest Link, Access Levels (new "Access" sub-mode) and Tipping Squad/Prize Pot/Competition Start Round/Who's Submitted (new "Tipping" sub-mode). One combined /users.json fetch powers Approvals+Access+Squad together, same design as the Ledger's own renderPendingUsers, rather than three separate reads of the same data. Every write here was already naturally scoped before porting (PATCH/DELETE on a single /users/{uid}, or a single member's own /state/members/{idx}/linkedUid) — none of this needed the whole-array-rewrite treatment Roster/Badges/Dues needed last batch. Ported the actual CSS too, not just the HTML/JS — .pending-user-row, .role-group, .role-badge etc had zero styling anywhere in this file, confirmed by checking directly, would have rendered as plain unstyled stacked divs. Confirmed via an actual render, not assumed. Deliberately left OUT: Tipping season setup (archive current season + reset for a new one) — on inspection this is a full, irreversible-feeling season reset marked "danger" in its own source, genuinely closer to Reset Season's risk profile than anything else in this batch, not a mid-season tweak like Prize Pot/First round are — remember to match this in version.json on deploy (empty changes array, admin-only)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -16856,6 +16923,8 @@ let diagMoneyLoaded = false;
 let diagPlayLoaded = false;
 let diagActionsLoaded = false;
 let diagSquadLoaded = false;
+let diagAccessLoaded = false;
+let diagTippingLoaded = false;
 
 // ---- Admin: Bet Slips management (migrated from the Ledger app) ----
 // Writes ONLY to /state/slips.json, never the whole /state.json object —
@@ -17087,6 +17156,340 @@ function renderAdminBadges(){
     });
   });
 }
+// ==== Admin: Approvals / Guest Link / Access Levels / Tipping Squad ====
+// One combined fetch of /users.json powers all four panels at once, same
+// design as the Ledger's own renderPendingUsers — avoids four separate
+// reads of the same data. Every write here is already naturally scoped
+// (PATCH/DELETE on a single /users/{uid}, or a single member's own
+// /state/members/{idx}/linkedUid) — none of this needed the same
+// whole-array rewrite treatment Roster/Badges/Dues needed.
+const ADMIN_ROLE_LABELS = { full: 'Full access', dashboard: 'Dashboard only', tipping: 'Tipping only', readonly: 'Read-only (guest)' };
+async function renderAdminUsers(){
+  const pendingWrap = document.getElementById('adminPendingUsersArea');
+  const approvedWrap = document.getElementById('adminApprovedUsersArea');
+  const squadArea = document.getElementById('adminTippingSquadArea');
+  try{
+    const res = await authedFetch('/users.json');
+    const all = (await res.json()) || {};
+    const entries = Object.entries(all).filter(([uid, u]) => !!u);
+    const pending = entries.filter(([uid, u]) => u.status !== 'approved');
+    const approved = entries.filter(([uid, u]) => u.status === 'approved');
+
+    if(pending.length === 0){
+      pendingWrap.innerHTML = '<div class="empty">No one waiting on approval.</div>';
+    } else {
+      pendingWrap.innerHTML = pending.map(([uid, u]) => `
+        <div class="pending-user-row">
+          <div class="pending-user-info">
+            <div class="pending-user-name">${escapeHtml(u.name || '(no name)')}</div>
+            <div class="pending-user-email">${escapeHtml(u.email || '')}</div>
+            ${u.requestedRole ? `<div class="hint" style="color:var(--brass); margin-top:2px;">🏉 Came via the Tipping invite link</div>` : ''}
+          </div>
+          <div class="pending-user-actions">
+            <button data-admin-approve-uid="${uid}" data-role="readonly" class="small">👁️ Read-only</button>
+            <button data-admin-approve-uid="${uid}" data-role="tipping" class="small">🏉 Tipping only</button>
+            <button data-admin-approve-uid="${uid}" data-role="dashboard" class="small">📱 Dashboard only</button>
+            <button data-admin-approve-uid="${uid}" data-role="full" class="small">✅ Full access</button>
+            <button data-admin-reject-uid="${uid}" class="small danger">✕ Reject</button>
+          </div>
+        </div>`).join('');
+      pendingWrap.querySelectorAll('[data-admin-approve-uid]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          await authedFetch(`/users/${btn.dataset.adminApproveUid}.json`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'approved', role: btn.dataset.role })
+          });
+          showToast('Approved — ' + ADMIN_ROLE_LABELS[btn.dataset.role].toLowerCase());
+          renderAdminUsers();
+        });
+      });
+      pendingWrap.querySelectorAll('[data-admin-reject-uid]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if(!confirm('Remove this person\'s pending request? They won\'t get access unless they sign up again.')) return;
+          btn.disabled = true;
+          await authedFetch(`/users/${btn.dataset.adminRejectUid}.json`, { method: 'DELETE' });
+          showToast('Removed');
+          renderAdminUsers();
+        });
+      });
+    }
+
+    if(approved.length === 0){
+      approvedWrap.innerHTML = '<div class="empty">No one approved yet.</div>';
+    } else {
+      const groups = { full: [], dashboard: [], tipping: [], readonly: [] };
+      approved.forEach(([uid, u]) => { groups[u.role || 'full'].push([uid, u]); });
+      const groupMeta = {
+        full: { title: 'Full Access', cls: 'role-group-full' },
+        dashboard: { title: 'Dashboard Only', cls: 'role-group-dashboard' },
+        tipping: { title: 'Tipping Only', cls: 'role-group-tipping' },
+        readonly: { title: 'Read-only (guests)', cls: 'role-group-readonly' },
+      };
+      const memberOptions = (currentLinkedIdx) => {
+        const options = ['<option value="">— unlink —</option>'];
+        (currentState.members || []).forEach((m, i) => {
+          const takenByOther = m.linkedUid && i !== currentLinkedIdx;
+          options.push(`<option value="${i}"${i === currentLinkedIdx ? ' selected' : ''}>${escapeHtml(m.name)}${takenByOther ? ' (already linked elsewhere)' : ''}</option>`);
+        });
+        return options.join('');
+      };
+      approvedWrap.innerHTML = ['full', 'dashboard', 'tipping', 'readonly'].map(role => {
+        const members = groups[role];
+        if(members.length === 0) return '';
+        const rows = members.map(([uid, u]) => {
+          const isSelf = u.email && u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+          const linkedIdx = (currentState.members || []).findIndex(m => m.linkedUid === uid);
+          const linkedName = linkedIdx !== -1 ? currentState.members[linkedIdx].name : null;
+          return `
+          <div class="pending-user-row">
+            <div class="pending-user-info">
+              <div class="pending-user-name">${escapeHtml(u.name || '(no name)')}</div>
+              <div class="pending-user-email">${escapeHtml(u.email || '')}</div>
+              <div class="hint" style="margin-top:2px;">Roster link: ${linkedName ? `<b>${escapeHtml(linkedName)}</b>` : '<span style="color:var(--loss);">none</span>'}</div>
+            </div>
+            ${isSelf ? '' : `
+            <div class="pending-user-actions">
+              <select data-admin-role-select-uid="${uid}">
+                <option value="full"${role === 'full' ? ' selected' : ''}>Full access</option>
+                <option value="dashboard"${role === 'dashboard' ? ' selected' : ''}>Dashboard only</option>
+                <option value="tipping"${role === 'tipping' ? ' selected' : ''}>Tipping only</option>
+                <option value="readonly"${role === 'readonly' ? ' selected' : ''}>Read-only (guest)</option>
+              </select>
+              <select data-admin-relink-uid="${uid}" style="margin-top:6px;">${memberOptions(linkedIdx)}</select>
+              <button data-admin-remove-uid="${uid}" class="small danger">✕ Remove</button>
+            </div>`}
+          </div>`;
+        }).join('');
+        return `<div class="role-group ${groupMeta[role].cls}">
+          <div class="role-group-title">${groupMeta[role].title}<span class="role-group-count">${members.length}</span></div>
+          ${rows}
+        </div>`;
+      }).join('');
+      approvedWrap.querySelectorAll('[data-admin-relink-uid]').forEach(sel => {
+        sel.addEventListener('change', async () => {
+          const uid = sel.dataset.adminRelinkUid;
+          const newIdx = sel.value === '' ? null : parseInt(sel.value, 10);
+          if(!currentState.members) return;
+          sel.disabled = true;
+          try{
+            const oldIdx = currentState.members.findIndex(m => m.linkedUid === uid);
+            if(oldIdx !== -1 && oldIdx !== newIdx){
+              await authedFetch(`/state/members/${oldIdx}/linkedUid.json`, { method: 'DELETE' });
+              currentState.members[oldIdx].linkedUid = null;
+            }
+            if(newIdx !== null){
+              await authedFetch(`/state/members/${newIdx}/linkedUid.json`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(uid)
+              });
+              currentState.members[newIdx].linkedUid = uid;
+            }
+            showToast('Roster link updated');
+          }catch(e){
+            showToast('Could not update link — try again');
+          }
+          renderAdminUsers();
+        });
+      });
+      approvedWrap.querySelectorAll('[data-admin-role-select-uid]').forEach(sel => {
+        sel.addEventListener('change', async () => {
+          sel.disabled = true;
+          await authedFetch(`/users/${sel.dataset.adminRoleSelectUid}.json`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role: sel.value })
+          });
+          showToast('Access updated');
+          renderAdminUsers();
+        });
+      });
+      approvedWrap.querySelectorAll('[data-admin-remove-uid]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if(!confirm('Remove this person\'s access? They\'ll be signed out and locked out of both apps until you approve them again.')) return;
+          btn.disabled = true;
+          await authedFetch(`/users/${btn.dataset.adminRemoveUid}.json`, { method: 'DELETE' });
+          showToast('Access removed');
+          renderAdminUsers();
+        });
+      });
+    }
+
+    if(approved.length === 0){
+      squadArea.innerHTML = '<div class="empty">No one has tipping access yet.</div>';
+    } else {
+      const sortedSquad = approved.filter(([, u]) => (u.role || 'full') !== 'readonly').sort(([, a], [, b]) => (a.name || '').localeCompare(b.name || ''));
+      squadArea.innerHTML = sortedSquad.map(([uid, u]) => {
+        const optedOut = u.tippingOptOut === true;
+        return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid var(--line);">
+          <span style="flex:1; min-width:0;">
+            <span style="display:block; color:var(--chalk); font-size:13px;">${escapeHtml(u.name || '(no name)')}</span>
+            <span style="display:block; font-size:10px; color:var(--muted);">${escapeHtml(u.email || '')}</span>
+          </span>
+          <button type="button" class="small ${optedOut ? '' : 'danger'}" data-admin-toggle-tipping-uid="${uid}" data-new-state="${optedOut ? 'false' : 'true'}">${optedOut ? '✓ Add to squad' : '✕ In squad'}</button>
+        </div>`;
+      }).join('');
+      squadArea.querySelectorAll('[data-admin-toggle-tipping-uid]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          const optOut = btn.dataset.newState === 'true';
+          await authedFetch(`/users/${btn.dataset.adminToggleTippingUid}.json`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tippingOptOut: optOut })
+          });
+          showToast(optOut ? 'Removed from tipping' : 'Added to tipping');
+          renderAdminUsers();
+        });
+      });
+    }
+  }catch(e){
+    pendingWrap.innerHTML = '<div class="empty">Could not load users.</div>';
+  }
+}
+document.getElementById('adminCopyTippingInviteBtn').addEventListener('click', async () => {
+  const url = 'https://mlsynddash.netlify.app/?invite=tipping';
+  const statusEl = document.getElementById('adminCopyTippingInviteStatus');
+  try{
+    await navigator.clipboard.writeText(url);
+    statusEl.textContent = 'Copied!';
+  }catch(e){
+    statusEl.textContent = url;
+  }
+  setTimeout(() => { statusEl.textContent = ''; }, 4000);
+});
+document.getElementById('adminGenGuestLinkBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminGenGuestLinkBtn');
+  const status = document.getElementById('adminGuestLinkStatus');
+  const resultWrap = document.getElementById('adminGuestLinkResultWrap');
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Generating…';
+  try{
+    const token = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, '');
+    const createdAt = Date.now();
+    const expiresAt = createdAt + (2 * 60 * 60 * 1000);
+    const res = await authedFetch(`/guestLinks/${token}.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ createdAt, expiresAt })
+    });
+    if(!res.ok) throw new Error('Write rejected (status ' + res.status + ')');
+    const url = `https://mlsynddash.netlify.app/?guest=${token}`;
+    document.getElementById('adminGuestLinkResultInput').value = url;
+    document.getElementById('adminGuestLinkExpiryHint').textContent = 'Expires ' + new Date(expiresAt).toLocaleString() + ' — generate a new one after that.';
+    resultWrap.style.display = 'block';
+    status.textContent = '';
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = e.message || 'Could not generate link — try again.';
+  }finally{
+    btn.disabled = false;
+  }
+});
+document.getElementById('adminGuestLinkCopyBtn').addEventListener('click', () => {
+  const input = document.getElementById('adminGuestLinkResultInput');
+  input.select();
+  navigator.clipboard?.writeText(input.value).then(() => showToast('Link copied')).catch(() => {
+    document.execCommand('copy');
+    showToast('Link copied');
+  });
+});
+
+// ==== Admin: Tipping — prize pot, first round, submissions ====
+async function loadAdminPrizePot(){
+  try{
+    const res = await authedFetch('/tipping/config/prizePot.json');
+    const val = await res.json();
+    document.getElementById('adminPrizePotInput').value = val != null ? val : '';
+  }catch(e){}
+}
+document.getElementById('adminSavePrizePotBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('adminPrizePotStatus');
+  const input = document.getElementById('adminPrizePotInput');
+  const val = input.value !== '' ? Number(input.value) : 0;
+  try{
+    await authedFetch('/tipping/config/prizePot.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(val)
+    });
+    statusEl.className = 'status-msg ok';
+    statusEl.textContent = 'Saved.';
+    showToast('Prize pot updated');
+  }catch(e){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Could not save — try again.';
+  }
+});
+async function loadAdminFirstRound(){
+  try{
+    const res = await authedFetch('/tipping/config/firstRound.json');
+    const val = await res.json();
+    document.getElementById('adminFirstRoundInput').value = val != null ? val : 1;
+  }catch(e){}
+}
+document.getElementById('adminSaveFirstRoundBtn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('adminFirstRoundStatus');
+  const input = document.getElementById('adminFirstRoundInput');
+  const val = input.value !== '' ? parseInt(input.value, 10) : 1;
+  try{
+    await authedFetch('/tipping/config/firstRound.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(val)
+    });
+    statusEl.className = 'status-msg ok';
+    statusEl.textContent = 'Saved.';
+    showToast('First round updated');
+  }catch(e){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = 'Could not save — try again.';
+  }
+});
+async function loadAdminSubmissionsRounds(){
+  const select = document.getElementById('adminSubmissionsRoundSelect');
+  try{
+    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/afl-fixtures', { cache: 'no-store' });
+    const data = await res.json();
+    const games = data.games || [];
+    const allRounds = [...new Set(games.map(g => g.round))].sort((a, b) => a - b);
+    const openRounds = games.filter(g => g.complete < 100).map(g => g.round);
+    const currentRound = openRounds.length ? Math.min(...openRounds) : Math.max(...allRounds);
+    select.innerHTML = '<option value="">Pick a round</option>' + allRounds.map(r =>
+      `<option value="${r}">Round ${r}${r === currentRound ? ' — current' : ''}</option>`
+    ).join('');
+    select.value = currentRound;
+    loadAdminSubmissionsForRound(currentRound);
+  }catch(e){
+    select.innerHTML = '<option value="">Could not load rounds</option>';
+  }
+}
+document.getElementById('adminSubmissionsRoundSelect').addEventListener('change', (e) => {
+  if(e.target.value) loadAdminSubmissionsForRound(e.target.value);
+});
+async function loadAdminSubmissionsForRound(round){
+  const area = document.getElementById('adminTippingSubmissionsArea');
+  if(!round){ area.innerHTML = '<div class="empty">Pick a round above.</div>'; return; }
+  area.innerHTML = '<div class="empty">Loading…</div>';
+  try{
+    const [usersRes, subsRes] = await Promise.all([
+      authedFetch('/users.json'),
+      authedFetch(`/tipping/submissions/${round}.json`)
+    ]);
+    const allUsers = (await usersRes.json()) || {};
+    const submitted = (await subsRes.json()) || {};
+    const eligible = Object.entries(allUsers).filter(([, u]) => u && u.status === 'approved' && u.tippingOptOut !== true);
+    if(eligible.length === 0){
+      area.innerHTML = '<div class="empty">No tipping-eligible people yet.</div>';
+      return;
+    }
+    const sorted = eligible.sort(([, a], [, b]) => (a.name || '').localeCompare(b.name || ''));
+    area.innerHTML = sorted.map(([uid, u]) => `
+      <div class="pending-user-row" style="padding:8px 0;">
+        <div class="pending-user-info">
+          <div class="pending-user-name">${escapeHtml(u.name || '(no name)')}</div>
+          <div class="pending-user-email">${escapeHtml(u.email || '')}</div>
+        </div>
+        <span class="role-badge ${submitted[uid] ? 'role-tipping' : 'role-dashboard'}">${submitted[uid] ? '✅ Submitted' : '⏳ Not yet'}</span>
+      </div>`).join('');
+  }catch(e){
+    area.innerHTML = '<div class="empty">Could not load submissions.</div>';
+  }
+}
+
 const ADMIN_DUES_STEP = 70;
 function renderAdminDues(){
   const area = document.getElementById('adminDuesArea');
@@ -17430,6 +17833,16 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
       diagSquadLoaded = true;
       renderAdminRoster();
       renderAdminBadges();
+    }
+    if(target === 'access' && !diagAccessLoaded){
+      diagAccessLoaded = true;
+      renderAdminUsers();
+    }
+    if(target === 'tipping' && !diagTippingLoaded){
+      diagTippingLoaded = true;
+      loadAdminPrizePot();
+      loadAdminFirstRound();
+      loadAdminSubmissionsRounds();
     }
     if(target === 'play' && !diagPlayLoaded){
       diagPlayLoaded = true;

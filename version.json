@@ -1,7 +1,5 @@
 {
-  "version": "2026-09-02.48",
+  "version": "2026-09-02.49",
   "date": "2026-09-02",
-  "changes": [
-    "Fixed every plain button, text input, dropdown, and text area in the Admin tab that was falling back to raw white browser styling \u2014 they now match the same gold-on-felt premium look as the rest of the app. 'Remove' buttons are also now genuinely red, not visually identical to a harmless button."
-  ]
+  "changes": []
 }
