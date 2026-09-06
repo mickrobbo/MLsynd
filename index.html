@@ -215,6 +215,7 @@
       <button type="button" class="craps-winmode-btn" data-submode="squad">👥 Squad</button>
       <button type="button" class="craps-winmode-btn" data-submode="access">🔐 Access</button>
       <button type="button" class="craps-winmode-btn" data-submode="tipping">🏉 Tipping</button>
+      <button type="button" class="craps-winmode-btn" data-submode="repair">🔧 Repair</button>
       <button type="button" class="craps-winmode-btn" data-submode="play">🎲 Play</button>
       <button type="button" class="craps-winmode-btn" data-submode="actions">⚙️ Actions</button>
     </div>
@@ -399,6 +400,34 @@
     <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
       <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">⚠️ Season Setup</span>
       <div class="hint" style="margin-top:4px; margin-bottom:0;">Archiving and starting a new season isn't here yet, deliberately — it's a full season reset/archive in one irreversible-feeling action, closer to Reset Season in risk than anything else in this tab. Still only in the Ledger for now.</div>
+    </div>
+    </div>
+
+    <div class="diag-submode" data-submode-panel="repair">
+    <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
+      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">⚠️ Maintenance &amp; Repair Tools</span>
+      <div class="hint" style="margin-top:4px; margin-bottom:0;">Not everyday actions — for fixing data that's drifted or gone missing. Everything here is safe to run when genuinely needed, but not something to reach for casually.</div>
+    </div>
+    <div class="panel">
+      <h2>🔄 Recalculate Balances From History</h2>
+      <div class="hint">Rebuilds the bank total and every member's stats (wins/losses/legs/P&amp;L) completely from scratch, by re-summing every saved week in history. Use this if a save/undo ever leaves numbers looking off — history is treated as the source of truth, so this fixes drift without touching your saved weeks themselves or dues owed. Safe to run — nothing here changes unless the numbers genuinely didn't match.</div>
+      <button type="button" id="adminRecalcBtn" class="small" style="margin-top:10px;">🔄 Recalculate now</button>
+      <div class="status-msg" id="adminRecalcStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>🧹 Clear "Missing groupEntries" Warning</h2>
+      <div class="hint">For weeks where nobody had a group multi leg on purpose (not a data-loss bug) — the health check can't tell "genuinely nothing to record" apart from "field never got saved," so it warns on both. This sets those specific weeks' groupEntries to an empty (but present) record, which is enough to satisfy the check without inventing any leg data — nothing about anyone's stats or the bank changes.</div>
+      <div id="adminClearGroupWarnList" class="hint" style="margin:10px 0;"></div>
+      <button type="button" id="adminClearGroupWarnBtn" class="small">🧹 Clear for all flagged weeks</button>
+      <div class="status-msg" id="adminClearGroupWarnStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>💣 Reset Season</h2>
+      <div class="hint">Zeroes every member's stats, dues, and group financials back to a clean slate, and clears saved-week history. Use this if you're going to re-enter the season from Week 1 so the graph and totals build up correctly. Names and bet slips are kept. Lifetime stats are archived first, so profile history isn't lost.</div>
+      <div class="hint" style="margin-top:6px; color:var(--loss); font-weight:600;">This cannot be undone except by restoring a backup. Type RESET below to enable the button.</div>
+      <input type="text" id="adminResetSeasonConfirmInput" placeholder="Type RESET to confirm" style="width:100%; margin-top:10px;">
+      <button type="button" id="adminResetSeasonBtn" class="small danger" style="margin-top:8px;" disabled>💣 Reset season to zero</button>
+      <div class="status-msg" id="adminResetSeasonStatus"></div>
     </div>
     </div>
 
@@ -3313,7 +3342,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.49"; // Batch 2 of the Ledger-to-Dashboard migration, admin-only — no wider-group changelog entry needed for this one. Approvals, Guest Link, Access Levels (new "Access" sub-mode) and Tipping Squad/Prize Pot/Competition Start Round/Who's Submitted (new "Tipping" sub-mode). One combined /users.json fetch powers Approvals+Access+Squad together, same design as the Ledger's own renderPendingUsers, rather than three separate reads of the same data. Every write here was already naturally scoped before porting (PATCH/DELETE on a single /users/{uid}, or a single member's own /state/members/{idx}/linkedUid) — none of this needed the whole-array-rewrite treatment Roster/Badges/Dues needed last batch. Ported the actual CSS too, not just the HTML/JS — .pending-user-row, .role-group, .role-badge etc had zero styling anywhere in this file, confirmed by checking directly, would have rendered as plain unstyled stacked divs. Confirmed via an actual render, not assumed. Deliberately left OUT: Tipping season setup (archive current season + reset for a new one) — on inspection this is a full, irreversible-feeling season reset marked "danger" in its own source, genuinely closer to Reset Season's risk profile than anything else in this batch, not a mid-season tweak like Prize Pot/First round are — remember to match this in version.json on deploy (empty changes array, admin-only)
+const APP_VERSION = "2026-09-02.50"; // Batch 3 (partial, deliberately) of the Ledger-to-Dashboard migration, admin-only, no wider-group changelog entry. New "Repair" sub-mode: Recalculate Balances From History, Clear "Missing groupEntries" Warning, and Reset Season — the most destructive action in the whole app. Every write scoped to its own specific sub-path (/state/group.json, /state/members.json, /state/history/{idx}/groupEntries.json, /state/seasonArchive.json, /state/history.json, /state/lastSnapshot.json) — never a full /state.json overwrite. Reset Season specifically writes seasonArchive FIRST, before anything is zeroed, so a failed archive write can never result in lost stats with zero record of them; the remaining writes are sequential rather than a single atomic multi-path update, since introducing an untested new write pattern for the single highest-stakes button in the app seemed like the wrong place to take that risk — the catch block is honest that a partial failure is possible and says so explicitly rather than implying full atomicity it doesn't have. Reset Season also has a typed "RESET" confirmation gating the button's disabled state, on top of the original two confirm() dialogs — deliberately more friction than anything else in this tab. Deliberately NOT included despite being in the original Batch 3 scope: Fix a saved week (a genuinely large editing UI touching multiple interconnected fields inside historical records, wants its own dedicated pass) — remember to match this in version.json on deploy (empty changes array, admin-only)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -16925,6 +16954,7 @@ let diagActionsLoaded = false;
 let diagSquadLoaded = false;
 let diagAccessLoaded = false;
 let diagTippingLoaded = false;
+let diagRepairLoaded = false;
 
 // ---- Admin: Bet Slips management (migrated from the Ledger app) ----
 // Writes ONLY to /state/slips.json, never the whole /state.json object —
@@ -17490,6 +17520,200 @@ async function loadAdminSubmissionsForRound(round){
   }
 }
 
+// ==== Admin: Repair tools — Recalculate / Clear warning / Reset Season ====
+// Real stakes here: Reset Season in particular wipes live shared history
+// beyond what a backup can undo mid-session. Every write below is scoped
+// to its own specific sub-path (/state/group.json, /state/members.json,
+// /state/history/{idx}/groupEntries.json, etc.) — never a full /state.json
+// overwrite the way the Ledger's own saveState() does, since the
+// Dashboard's currentState is a read-mostly copy that could be stale for
+// fields this code doesn't itself manage. Fix a saved week and Restore-
+// from-backup are deliberately NOT here — both need their own dedicated,
+// slower pass rather than being rushed into this one.
+function recalculateAllFromHistoryAdmin(){
+  const history = currentState.history || [];
+  const newGroup = { lottoOut: 0, lottoRet: 0, multiOut: 0, multiRet: 0, bonus: 0, sgmWin: 0 };
+  const newMembers = (currentState.members || []).map(m => ({
+    ...m, legs: 0, wins: 0, losses: 0, voids: 0, mia: 0,
+    oddsSum: 0, oddsCount: 0, indWin: 0, indLoss: 0, pl: 0,
+  }));
+  history.forEach(week => {
+    if(week.group){
+      newGroup.lottoOut += week.group.lottoOut || 0;
+      newGroup.lottoRet += week.group.lottoRet || 0;
+      newGroup.multiOut += week.group.multiOut || 0;
+      newGroup.multiRet += week.group.multiRet || 0;
+      newGroup.bonus += week.group.bonus || 0;
+      newGroup.sgmWin += week.group.sgmWin || 0;
+    }
+    Object.entries(week.groupEntries || {}).forEach(([name, e]) => {
+      const m = newMembers.find(mm => mm.name === name);
+      if(!m || !e) return;
+      m.legs += e.legs || 0;
+      if(e.result === 'Win') m.wins += 1;
+      if(e.result === 'Loss') m.losses += 1;
+      if(e.result === 'Void') m.voids += 1;
+      if(e.result === 'MIA') m.mia += 1;
+      if(e.odds != null && e.odds > 0 && e.result !== 'MIA'){ m.oddsSum += e.odds; m.oddsCount += 1; }
+    });
+    Object.entries(week.individualEntries || {}).forEach(([name, e]) => {
+      const m = newMembers.find(mm => mm.name === name);
+      if(!m || !e) return;
+      m.indWin += e.indWin || 0;
+      m.indLoss += e.indLoss || 0;
+      m.pl += e.pl || 0;
+    });
+  });
+  return { newGroup, newMembers };
+}
+document.getElementById('adminRecalcBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminRecalcBtn');
+  const status = document.getElementById('adminRecalcStatus');
+  const history = currentState.history || [];
+  if(history.length === 0){
+    status.className = 'status-msg error';
+    status.textContent = 'No saved history to recalculate from.';
+    return;
+  }
+  if(!confirm(`Recalculate the bank total and every member's stats from all ${history.length} saved week(s)? This overwrites the current running totals with fresh numbers rebuilt from history — dues owed and saved weeks themselves aren't touched.`)) return;
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Recalculating…';
+  try{
+    const before = { ...(currentState.group || {}) };
+    const { newGroup, newMembers } = recalculateAllFromHistoryAdmin();
+    await authedFetch('/state/group.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newGroup)
+    });
+    await authedFetch('/state/members.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newMembers)
+    });
+    currentState.group = newGroup;
+    currentState.members = newMembers;
+    const changed = ['lottoOut','lottoRet','multiOut','multiRet','bonus','sgmWin']
+      .filter(k => Math.abs((before[k] || 0) - (newGroup[k] || 0)) > 0.01);
+    status.className = 'status-msg ok';
+    status.textContent = changed.length === 0
+      ? 'Recalculated — everything already matched, nothing changed.'
+      : `Recalculated — corrected: ${changed.join(', ')}.`;
+    showToast('Balances recalculated from history');
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Could not recalculate — try again.';
+  }
+  btn.disabled = false;
+});
+function renderAdminClearGroupWarnList(){
+  const listEl = document.getElementById('adminClearGroupWarnList');
+  const btn = document.getElementById('adminClearGroupWarnBtn');
+  if(!listEl || !btn) return;
+  const history = currentState.history || [];
+  const flagged = history.map((w, i) => ({ i, label: w.label || `(unlabeled, index ${i})` })).filter(w => !history[w.i].groupEntries);
+  if(flagged.length === 0){
+    listEl.textContent = 'No weeks currently flagged.';
+    btn.style.display = 'none';
+  } else {
+    listEl.textContent = `Currently flagged: ${flagged.map(w => w.label).join(', ')}`;
+    btn.style.display = 'inline-block';
+  }
+}
+document.getElementById('adminClearGroupWarnBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminClearGroupWarnBtn');
+  const status = document.getElementById('adminClearGroupWarnStatus');
+  const history = currentState.history || [];
+  const flaggedIdx = history.map((w, i) => i).filter(i => !history[i].groupEntries);
+  if(flaggedIdx.length === 0) return;
+  const labels = flaggedIdx.map(i => history[i].label || `(unlabeled, index ${i})`);
+  if(!confirm(`Set groupEntries to empty on ${flaggedIdx.length} week(s) (${labels.join(', ')})? This only clears the health check warning — it does not add or change any leg, win/loss, or odds data, and doesn't touch the bank or anyone's P/L.`)) return;
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Clearing…';
+  try{
+    for(const idx of flaggedIdx){
+      await authedFetch(`/state/history/${idx}/groupEntries.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
+      });
+      currentState.history[idx].groupEntries = {};
+    }
+    status.className = 'status-msg ok';
+    status.textContent = `Cleared on ${flaggedIdx.length} week(s).`;
+    showToast('Warning cleared');
+    renderAdminClearGroupWarnList();
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Could not clear — try again.';
+  }
+  btn.disabled = false;
+});
+// Reset Season — a typed confirmation on top of the two dialogs below,
+// deliberately more friction than anything else in this tab, matching
+// the actual stakes: this is the single most destructive button in the
+// app, only recoverable via a full backup restore.
+document.getElementById('adminResetSeasonConfirmInput').addEventListener('input', (e) => {
+  document.getElementById('adminResetSeasonBtn').disabled = e.target.value.trim() !== 'RESET';
+});
+document.getElementById('adminResetSeasonBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminResetSeasonBtn');
+  const status = document.getElementById('adminResetSeasonStatus');
+  if(!confirm('Reset the whole season to zero? This wipes every member\'s legs, wins, P/L, dues progress, group financials, and saved-week history so you can re-enter from Week 1. This cannot be undone.')) return;
+  if(!confirm('Definitely sure? This is your last chance to back out.')) return;
+
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Resetting…';
+  try{
+    const seasonArchive = Array.isArray(currentState.seasonArchive) ? [...currentState.seasonArchive] : [];
+    seasonArchive.push({
+      endedAt: Date.now(),
+      label: `Season ending ${new Date().toLocaleDateString()}`,
+      members: (currentState.members || []).map(m => ({
+        name: m.name, legs: m.legs, wins: m.wins, losses: m.losses, voids: m.voids,
+        indWin: m.indWin, indLoss: m.indLoss, pl: m.pl, oddsSum: m.oddsSum, oddsCount: m.oddsCount,
+      })),
+    });
+    const newMembers = (currentState.members || []).map(m => ({
+      ...m, legs: 0, wins: 0, losses: 0, voids: 0, indWin: 0, indLoss: 0, pl: 0,
+      oddsSum: 0, oddsCount: 0, prevRank: null, duesCommitment: 840, duesOwed: 840,
+    }));
+    const newGroup = { lottoOut: 0, lottoRet: 0, multiOut: 0, multiRet: 0, bonus: 0, sgmWin: 0 };
+
+    // Archive written FIRST, before anything is zeroed — if this specific
+    // write fails, the function throws and nothing else below runs, so a
+    // failed archive can never result in lost stats with no record of
+    // them anywhere.
+    await authedFetch('/state/seasonArchive.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(seasonArchive)
+    });
+    await authedFetch('/state/members.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newMembers)
+    });
+    await authedFetch('/state/group.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newGroup)
+    });
+    await authedFetch('/state/history.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify([])
+    });
+    await authedFetch('/state/lastSnapshot.json', { method: 'DELETE' });
+
+    currentState.seasonArchive = seasonArchive;
+    currentState.members = newMembers;
+    currentState.group = newGroup;
+    currentState.history = [];
+    currentState.lastSnapshot = null;
+
+    status.className = 'status-msg ok';
+    status.textContent = 'Season reset to zero and archived — lifetime stats carry over, start saving from Week 1.';
+    showToast('Season reset');
+    document.getElementById('adminResetSeasonConfirmInput').value = '';
+    renderAdminHistory();
+    renderAdminClearGroupWarnList();
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Reset failed partway through — check the Ledger directly before trying again, some fields may have changed and others not.';
+  }
+  btn.disabled = true;
+});
+
 const ADMIN_DUES_STEP = 70;
 function renderAdminDues(){
   const area = document.getElementById('adminDuesArea');
@@ -17843,6 +18067,10 @@ document.querySelectorAll('#diagSubmodeRow .craps-winmode-btn').forEach(btn => {
       loadAdminPrizePot();
       loadAdminFirstRound();
       loadAdminSubmissionsRounds();
+    }
+    if(target === 'repair' && !diagRepairLoaded){
+      diagRepairLoaded = true;
+      renderAdminClearGroupWarnList();
     }
     if(target === 'play' && !diagPlayLoaded){
       diagPlayLoaded = true;
