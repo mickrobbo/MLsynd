@@ -3461,7 +3461,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.67"; // Fines tab now visually matches Floor per direct request: added a new "Most Fined — All Time" spotlight card using the exact same .casino-floor-spotlight/.fs-* classes Floor's own "Biggest Win" card uses, rather than inventing a parallel style for what's structurally the same kind of "who's leading" highlight. Genuinely a running, all-time tally (not scoped to the current quarter) — the existing "Total This Quarter" card stays exactly as it was, kept per direct instruction, sitting right below the new spotlight. Computed from the same already-fetched fineEvents data the rest of the view already uses, no new fetch. Confirmed via a render showing both cards together before shipping. This is NOT admin-only — Members > Fines is visible to everyone, so unlike recent versions this one gets a real changelog entry — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.68"; // Found the actual reason Fines' "Most Fined" spotlight still didn't match Floor's "Biggest Win" despite sharing the same CSS classes and HTML structure: my sub-text ("Running tally across every quarter...") was far longer than Floor's own ("Video Poker — Full House"), making the cards different heights whenever seen side by side rather than in isolation. Per direct instruction ("no need for the description on either"), removed the .fs-sub line from BOTH cards — not just the new one — so they're now structurally identical (icon + label + value only) regardless of content length, rather than only matching when both happened to have short text. Also switched the Fines total from quarterly to a genuine calendar year that resets Jan 1st (Dec 31st close-out) per direct request — added yearKeyFor() using the same timezone-aware Intl.DateTimeFormat pattern the app's other period-key helpers already use, and removed quarterKeyFor() entirely once it had no remaining callers rather than leave it as dead code. Confirmed via a render placing both spotlight cards together — the actual test that would have caught this the first time — before shipping. Fines tab is visible to everyone (Casino > Members), not admin-only, so this gets a real changelog entry — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8719,7 +8719,7 @@ async function renderCasinoFloorFeed(){
       const monthWins = flat.filter(e => (e.amount > 0) && casinoPotPeriodKey(new Date(e.ts || 0)) === monthKey);
       const biggest = monthWins.reduce((best, e) => (!best || e.amount > best.amount) ? e : best, null);
       spotlightEl.innerHTML = biggest
-        ? `<span class="fs-icon">🔥</span><div><span class="fs-label">Biggest Win This Period</span><span class="fs-val">${escapeHtml(biggest.name)} +${biggest.amount.toLocaleString()}</span><span class="fs-sub">${escapeHtml(biggest.reason || '')}</span></div>`
+        ? `<span class="fs-icon">🔥</span><div><span class="fs-label">Biggest Win This Period</span><span class="fs-val">${escapeHtml(biggest.name)} +${biggest.amount.toLocaleString()}</span></div>`
         : '';
       spotlightEl.style.display = biggest ? 'flex' : 'none';
     }
@@ -9654,12 +9654,14 @@ async function renderXPLeaderboard(){
 // costs nothing in practice.
 // "YYYY-Qn" — same AEST-timezone-aware approach as casinoPotPeriodKey,
 // just bucketing by calendar quarter instead of twice-monthly period.
-function quarterKeyFor(d){
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CASINO_POT_TIMEZONE, year: 'numeric', month: '2-digit' }).formatToParts(d || new Date());
-  const y = parts.find(p => p.type === 'year').value;
-  const m = Number(parts.find(p => p.type === 'month').value);
-  const q = Math.floor((m - 1) / 3) + 1;
-  return `${y}-Q${q}`;
+// Same timezone-aware approach as the app's other period-key helpers
+// (casinoPotPeriodKey etc), just year-grained — for the Fines tab's
+// running total switching from quarterly to a calendar year that resets
+// Dec 31st, per direct request. Replaces quarterKeyFor, which had no
+// other callers left once the Fines total moved off quarters.
+function yearKeyFor(d){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CASINO_POT_TIMEZONE, year: 'numeric' }).formatToParts(d || new Date());
+  return parts.find(p => p.type === 'year').value;
 }
 async function renderMembersFinesView(){
   const area = document.getElementById('membersFinesArea');
@@ -9678,34 +9680,36 @@ async function renderMembersFinesView(){
       .filter(e => e && typeof e === 'object' && e.amount > 0);
 
     // Most Fined spotlight — a genuine running tally, all-time, not
-    // scoped to the current quarter like the card below it. Same visual
+    // scoped to the current year like the card below it. Same visual
     // language as the Floor tab's own "Biggest Win" spotlight (same
     // .casino-floor-spotlight/.fs-* classes) per direct request that
-    // Fines should look like Floor, rather than inventing a new style
-    // for what's structurally the same kind of "who's leading" card.
+    // Fines should look like Floor — no .fs-sub line here, matching
+    // Floor's own card once ITS sub-text was also dropped, so both
+    // are structurally identical regardless of content length rather
+    // than only matching when both happen to have short text.
     if(mostFinedEl){
       const totalsByName = {};
       allEntries.forEach(e => { totalsByName[e.name] = (totalsByName[e.name] || 0) + (e.amount || 0); });
       const sorted = Object.entries(totalsByName).sort((a, b) => b[1] - a[1]);
       if(sorted.length > 0){
         const [mostFinedName, mostFinedTotal] = sorted[0];
-        mostFinedEl.innerHTML = `<span class="fs-icon">🎯</span><div><span class="fs-label">Most Fined — All Time</span><span class="fs-val">${escapeHtml(mostFinedName)} -${mostFinedTotal.toLocaleString()}</span><span class="fs-sub">Running tally across every quarter, not just this one</span></div>`;
+        mostFinedEl.innerHTML = `<span class="fs-icon">🎯</span><div><span class="fs-label">Most Fined — All Time</span><span class="fs-val">${escapeHtml(mostFinedName)} -${mostFinedTotal.toLocaleString()}</span></div>`;
         mostFinedEl.style.display = 'flex';
       } else {
         mostFinedEl.style.display = 'none';
       }
     }
 
-    // Running total for the current calendar quarter — computed from
-    // the FULL dataset, not the 100-capped list below, so it stays
-    // accurate even once a quarter has racked up more than 100 fines.
-    // Resets naturally every quarter since it's a live filter against
-    // "now", not a stored/accumulated figure — nothing to explicitly
-    // reset, roll over, or archive.
+    // Running total for the current CALENDAR YEAR (resets Jan 1st, not
+    // quarterly) — computed from the FULL dataset, not the 100-capped
+    // list below, so it stays accurate even once a year has racked up
+    // more than 100 fines. Resets naturally every year since it's a
+    // live filter against "now", not a stored/accumulated figure —
+    // nothing to explicitly reset, roll over, or archive.
     if(quarterEl){
-      const nowQ = quarterKeyFor(new Date());
-      const qTotal = allEntries.filter(e => quarterKeyFor(new Date(e.ts || 0)) === nowQ).reduce((s, e) => s + (e.amount || 0), 0);
-      quarterEl.innerHTML = `<span class="hl-icon">📅</span><div><span class="hl-label">Total This Quarter (${nowQ})</span><span class="hl-val">${qTotal.toLocaleString()} XP</span></div>`;
+      const nowY = yearKeyFor(new Date());
+      const yTotal = allEntries.filter(e => yearKeyFor(new Date(e.ts || 0)) === nowY).reduce((s, e) => s + (e.amount || 0), 0);
+      quarterEl.innerHTML = `<span class="hl-icon">📅</span><div><span class="hl-label">Total This Year (${nowY})</span><span class="hl-val">${yTotal.toLocaleString()} XP</span></div>`;
       quarterEl.style.display = 'flex';
     }
 
