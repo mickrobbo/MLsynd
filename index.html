@@ -3468,7 +3468,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.63"; // The Activity log fix from the previous version was real but incomplete — confirmed by the report that it still persisted, including on SHORT entries like "Weekly XP top-up" that had plenty of visible room, which was the key clue: this was never about one row's own text length, it's the whole list's shared container getting forced wide by whichever entry anywhere in it happens to be longest, so every row (long or short) inherits that same oversized width and has its amount pushed off-screen equally. The missing piece: .profile-stat-category is flex-direction:column, and even with align-items:stretch as the default, a flex-column child can still be forced WIDER than its stretched width if ITS OWN nested content demands more room — min-width:0 on the .profile-stat-category container alone (the previous fix) wasn't enough, each direct child (#profileActivityArea among them) needed it too. Added `.profile-stat-category > *{ min-width:0; }` to cover every child generically rather than just the one that happened to get reported, plus min-width:0 directly on .xp-log-row itself for the same belt-and-braces reasoning already established in this exact area. Verified this time with the precise real nesting (.profile-stat-category > #profileActivityArea > .xp-log-row) and a genuine mix of one long entry plus a short one — confirmed the short entry's amount, which would have been the first sign the fix was actually incomplete, now renders correctly alongside the long one's truncated text. Remember to match this in version.json on deploy (empty changes array, admin-only)
+const APP_VERSION = "2026-09-02.64"; // Found the ACTUAL location of the negative-balance bug after two previous attempts fixed real but unrelated issues elsewhere (the profile modal's XP chip, the Activity log's container width) — this is the main Board leaderboard row itself, a completely separate render function that never had ANY conditional colour logic at all: the primary value's color was hardcoded to var(--brass) regardless of sign, confirmed by reading the line directly rather than assuming a shared component was responsible. Added the same "colour the whole tile, not just the number" treatment already established elsewhere: the value itself goes var(--loss) when negative, and the row gets a subtle red-tinted background (same visual weight as the tier-based Sovereign/Immortal row treatments, correctly still taking precedence over this per the existing bg fallback chain). Caught and fixed a mistake of my own mid-edit: my first pass at this replacement accidentally deleted the streakBadge and isTippingCat variable definitions that the same template still uses further down — caught by reviewing the full function after editing rather than assuming the str_replace was clean, restored both, then verified via syntax check and a search confirming each is defined exactly once in this function. Rendered the exact reported row (Damon, -8,750) side by side with an unaffected positive row (Murph, 750) to confirm only the negative one gets the treatment — remember to match this in version.json on deploy (empty changes array, admin-only)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9593,7 +9593,19 @@ async function renderXPLeaderboard(){
         : tierKey === 'immortal'
         ? 'background:linear-gradient(90deg, rgba(245,197,24,.26), rgba(245,197,24,.05)); border-radius:10px; box-shadow:inset 0 0 22px rgba(245,197,24,.2);'
         : null;
-      const bg = tierRowBg || (isMe ? 'background:rgba(203,177,102,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : ''));
+      const primaryVal = isThisMonth ? (r.monthEarned != null ? '+' + r.monthEarned.toLocaleString() : '—') : (r.balance != null ? r.balance.toLocaleString() : '—');
+      const secondaryLabel = isThisMonth ? `💰 ${r.balance != null ? r.balance.toLocaleString() : '—'} balance` : `🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime`;
+      // Negative balance gets the same "colour the whole tile, not just
+      // the number" treatment already used on the profile's own XP chip
+      // — this row template never had ANY conditional colour logic at
+      // all before, hardcoded to brass regardless of sign, which is the
+      // actual reason a negative balance never showed red here no matter
+      // what got fixed elsewhere (the profile modal's own chip is a
+      // completely separate render path from this leaderboard row).
+      const primaryRaw = isThisMonth ? r.monthEarned : r.balance;
+      const isNegativeBalance = primaryRaw != null && primaryRaw < 0;
+      const negativeRowBg = isNegativeBalance ? 'background:linear-gradient(90deg, rgba(193,96,74,.16), rgba(193,96,74,.03)); border-radius:10px; box-shadow:inset 0 0 16px rgba(193,96,74,.12);' : null;
+      const bg = tierRowBg || negativeRowBg || (isMe ? 'background:rgba(203,177,102,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : ''));
       // A streak of 1 or 2 is just a normal win — only 3+ in a row reads
       // as an actual "heater" worth calling out on the board.
       const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
@@ -9607,14 +9619,12 @@ async function renderXPLeaderboard(){
       // screenshot showing the badge on people who are clearly Board
       // members with a linked account.
       const isTippingCat = r.uid ? !(currentState.members || []).some(m => m.linkedUid === r.uid) : false;
-      const primaryVal = isThisMonth ? (r.monthEarned != null ? '+' + r.monthEarned.toLocaleString() : '—') : (r.balance != null ? r.balance.toLocaleString() : '—');
-      const secondaryLabel = isThisMonth ? `💰 ${r.balance != null ? r.balance.toLocaleString() : '—'} balance` : `🏆 ${r.lifetime != null ? r.lifetime.toLocaleString() : '—'} lifetime`;
       return `<div class="xp-lb-row" data-name="${escapeHtml(r.name)}" style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '13px 8px' : '10px 4px'}; border-bottom:1px solid var(--line); cursor:pointer; ${bg}">
         <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
         ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40, isTippingCat)}
         <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${streakBadge}</span>
         <span style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
-          <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:var(--brass);">${primaryVal}</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:${isNegativeBalance ? 'var(--loss)' : 'var(--brass)'};">${primaryVal}</span>
           <span class="lb-lifetime-telly">${secondaryLabel}</span>
         </span>
       </div>`;
