@@ -1,7 +1,5 @@
 {
-  "version": "2026-09-02.78",
+  "version": "2026-09-02.79",
   "date": "2026-09-02",
-  "changes": [
-    "Fixed a real bug where a Casino Pot period could get distributed twice with two different jackpot winners \u2014 the distribution is now genuinely atomic."
-  ]
+  "changes": []
 }

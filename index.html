@@ -553,6 +553,20 @@
       <div class="status-msg" id="adminFixWeekStatus"></div>
     </div>
     <div class="panel">
+      <h2>🔍 Fix Duplicate Casino Pot Payout</h2>
+      <div class="hint">For a Casino Pot period that got distributed more than once (a real bug, now fixed going forward — see version notes). Scans every approved user's XP log for entries matching the period label you enter, shows exactly who was credited more than once and by how much, and only reverses the genuine excess — the first, legitimate credit for each person and category is always left untouched. Nothing is changed until you review the scan results and type CONFIRM.</div>
+      <input type="text" id="adminDupPotLabelInput" placeholder="Period label, e.g. 2026-09-01" style="width:100%; margin-top:10px;">
+      <button type="button" id="adminDupPotScanBtn" class="small" style="margin-top:8px;">🔍 Scan for duplicates</button>
+      <div class="status-msg" id="adminDupPotScanStatus"></div>
+      <div id="adminDupPotResults" style="display:none; margin-top:10px;"></div>
+      <div id="adminDupPotConfirmWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+        <div class="hint" style="color:var(--loss); font-weight:600;">This will deduct the excess amounts shown above and log a reversal entry for each. Type CONFIRM below to enable the button.</div>
+        <input type="text" id="adminDupPotConfirmInput" placeholder="Type CONFIRM to enable" style="width:100%; margin-top:10px;">
+        <button type="button" id="adminDupPotReverseBtn" class="small danger" style="margin-top:8px;" disabled>💸 Reverse the excess</button>
+        <div class="status-msg" id="adminDupPotReverseStatus"></div>
+      </div>
+    </div>
+    <div class="panel">
       <h2>💣 Reset Season</h2>
       <div class="hint">Zeroes every member's stats, dues, and group financials back to a clean slate, and clears saved-week history. Use this if you're going to re-enter the season from Week 1 so the graph and totals build up correctly. Names and bet slips are kept. Lifetime stats are archived first, so profile history isn't lost.</div>
       <div class="hint" style="margin-top:6px; color:var(--loss); font-weight:600;">This cannot be undone except by restoring a backup. Type RESET below to enable the button.</div>
@@ -3462,7 +3476,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.78"; // Fixed a genuinely serious bug: the same "2026-09-01" distribution got credited twice with two different random jackpot winners (Damon, then Billy) — confirmed real by checking the actual calendar (Sept 1 2026 is a Tuesday, not a Monday my new weekly key would ever produce, meaning this label is a leftover from the OLD twice-monthly scheme that got reprocessed after the weekly change shipped). Root cause: the idempotency check ("read history, if empty proceed, write history at the very end") was never actually atomic — a real gap between the read and the eventual write, and this app has TWO separate, independent copies of this exact distribution logic (the server-side scheduled function, and the client-side admin "close overdue periods" recovery tool) with no shared lock between them at all. Both could pass the same "not yet distributed" check before either had written anything, race past each other, and each independently draw and credit its own jackpot winner for the same label — the exact symptom in the screenshots. Fixed BOTH copies with a genuine atomic claim (the same ETag compare-and-swap the distribution lock already uses, applied to the history write itself) — claims the label immediately before any XP is credited, not after, so only one invocation can ever win regardless of which of the two tools gets there first or how many times either one is invoked. Real consequence worth being direct about: this fix prevents it happening again, it does NOT undo whatever double-crediting already happened for 2026-09-01 — that period's actual XP balances may need a manual review against its history entry to identify and correct any genuine over-payment. Remember to deploy casino-pot-distribute-scheduled.js alongside this — the fix is incomplete without it
+const APP_VERSION = "2026-09-02.79"; // New admin tool for reversing the duplicate Casino Pot payouts caused by the double-distribution bug fixed last version. Scans every approved user's XP log for entries matching a given period label, in both the Even Split and Jackpot categories, rather than guessing who was affected — the eligible even-split pool actually differed between the runs that caused this, so who got extra genuinely isn't obvious without checking. Keeps each person's EARLIEST matching credit per category as legitimate, flags everything after it as excess to reverse — the first real distribution is treated as the one that should have counted. Read-only scan first: nothing is written until the admin reviews the actual numbers shown and types CONFIRM, same two-step pattern as every other destructive tool in Maintenance. Confirmed via a render that the results table (name, category, exact amount to reverse) reads clearly before shipping. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -19544,6 +19558,129 @@ document.getElementById('adminFixWeekSaveBtn').addEventListener('click', async (
     status.textContent = 'Something went wrong partway through — check the Ledger directly to see what actually landed before trying again.';
   }
   saveBtn.disabled = false;
+});
+
+// Fix Duplicate Casino Pot Payout — built specifically for the "same
+// period distributed twice with two different jackpot winners" bug (see
+// version notes). Scans every approved user's XP log rather than trusting
+// any one person's memory of who got extra — the eligible pool for the
+// even-split actually differed between the runs that caused this, so
+// "who was affected" genuinely isn't obvious without checking. Keeps
+// each person's EARLIEST matching credit per category as the legitimate
+// one and flags everything after it as excess — the first real
+// distribution is treated as the one that should have counted, any
+// repeat is the bug's fault, not a second real payout. Read-only scan
+// first, nothing written until the admin reviews the actual numbers and
+// types CONFIRM — same two-step pattern as every other destructive tool
+// in this tab.
+let adminDupPotScanResults = null;
+async function scanForDuplicatePotPayouts(label){
+  const users = await getAdminApprovedUsersCache();
+  const findings = []; // { uid, name, category, keepEntry, excessEntries, excessTotal }
+  for(const u of users){
+    let log;
+    try{
+      const res = await authedFetch(`/xp/${u.uid}/log.json`);
+      log = (await res.json()) || {};
+    }catch(e){ continue; }
+    const entries = Object.values(log).filter(e => e && typeof e.reason === 'string');
+    ['Even Split', 'Jackpot'].forEach(category => {
+      const prefix = `Casino Pot – ${category} (${label})`;
+      const matching = entries.filter(e => e.reason === prefix || e.reason.startsWith(prefix + ' '));
+      if(matching.length > 1){
+        matching.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        const keepEntry = matching[0];
+        const excessEntries = matching.slice(1);
+        const excessTotal = excessEntries.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+        if(excessTotal > 0){
+          findings.push({ uid: u.uid, name: u.name, category, keepEntry, excessEntries, excessTotal });
+        }
+      }
+    });
+  }
+  return findings;
+}
+document.getElementById('adminDupPotScanBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminDupPotScanBtn');
+  const status = document.getElementById('adminDupPotScanStatus');
+  const resultsEl = document.getElementById('adminDupPotResults');
+  const confirmWrap = document.getElementById('adminDupPotConfirmWrap');
+  const label = document.getElementById('adminDupPotLabelInput').value.trim();
+  if(!label){
+    status.className = 'status-msg error';
+    status.textContent = 'Enter the period label first, e.g. 2026-09-01.';
+    return;
+  }
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Scanning every approved user\'s XP log — this can take a moment…';
+  resultsEl.style.display = 'none';
+  confirmWrap.style.display = 'none';
+  try{
+    const findings = await scanForDuplicatePotPayouts(label);
+    adminDupPotScanResults = { label, findings };
+    if(findings.length === 0){
+      status.className = 'status-msg ok';
+      status.textContent = `No duplicates found for "${label}" — every person has at most one credit per category.`;
+      return;
+    }
+    const totalExcess = findings.reduce((s, f) => s + f.excessTotal, 0);
+    resultsEl.innerHTML = `<div class="hint" style="margin-bottom:8px;">Found <b>${findings.length}</b> duplicate credit${findings.length === 1 ? '' : 's'} totaling <b>${totalExcess.toLocaleString()} XP</b> to reverse:</div>` +
+      findings.map(f => `<div class="xp-log-row"><span class="xp-log-who">${escapeHtml(f.name)}</span><span class="xp-log-reason">${escapeHtml(f.category)} — credited ${f.excessEntries.length + 1}×, keeping earliest</span><span class="xp-log-amt" style="color:var(--loss);">-${f.excessTotal.toLocaleString()}</span></div>`).join('');
+    resultsEl.style.display = 'block';
+    confirmWrap.style.display = 'block';
+    status.className = 'status-msg';
+    status.textContent = 'Review the above before confirming — nothing has been changed yet.';
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Scan failed: ' + e.message;
+  }finally{
+    btn.disabled = false;
+  }
+});
+document.getElementById('adminDupPotConfirmInput').addEventListener('input', (e) => {
+  document.getElementById('adminDupPotReverseBtn').disabled = e.target.value.trim() !== 'CONFIRM';
+});
+document.getElementById('adminDupPotReverseBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminDupPotReverseBtn');
+  const status = document.getElementById('adminDupPotReverseStatus');
+  if(!adminDupPotScanResults || adminDupPotScanResults.findings.length === 0){
+    status.className = 'status-msg error';
+    status.textContent = 'Nothing to reverse — run a scan first.';
+    return;
+  }
+  if(!confirm(`Reverse ${adminDupPotScanResults.findings.length} duplicate credit(s) totaling ${adminDupPotScanResults.findings.reduce((s,f)=>s+f.excessTotal,0).toLocaleString()} XP? This directly adjusts real balances.`)) return;
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Reversing…';
+  const label = adminDupPotScanResults.label;
+  let done = 0, failed = 0;
+  for(const f of adminDupPotScanResults.findings){
+    try{
+      const balRes = await authedFetch(`/xp/${f.uid}/balance.json`);
+      const bal = (await balRes.json()) || 0;
+      const next = bal - f.excessTotal;
+      await authedFetch(`/xp/${f.uid}/balance.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+      });
+      await authedFetch(`/xp/${f.uid}/log.json`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: -f.excessTotal, reason: `Casino Pot Duplicate Payout Reversal (correcting Casino Pot – ${f.category} (${label}))`, balanceAfter: next, ts: Date.now() })
+      });
+      done++;
+    }catch(e){
+      failed++;
+    }
+  }
+  status.className = failed === 0 ? 'status-msg ok' : 'status-msg error';
+  status.textContent = failed === 0
+    ? `Reversed ${done} duplicate credit(s).`
+    : `Reversed ${done}, but ${failed} failed — check those people manually.`;
+  adminDupPotScanResults = null;
+  document.getElementById('adminDupPotResults').style.display = 'none';
+  document.getElementById('adminDupPotConfirmWrap').style.display = 'none';
+  document.getElementById('adminDupPotConfirmInput').value = '';
+  btn.disabled = true;
 });
 
 // Reset Season — a typed confirmation on top of the two dialogs below,
