@@ -1028,7 +1028,7 @@
       <div class="casino-pot-countdown" id="casinoPotCountdown"></div>
       <button type="button" class="casino-pot-details-toggle" id="potDetailsToggleBtn">▾ Details</button>
       <div class="casino-pot-details" id="casinoPotDetailsWrap">
-        <div class="casino-pot-split-legend"><span>60% SHARED</span><span>20% JACKPOT</span><span>20% BURNED</span></div>
+        <div class="casino-pot-split-legend"><span>52.5% SHARED</span><span>17.5% JACKPOT</span><span>30% BURNED</span></div>
         <div class="casino-pot-split-bar"><span class="cp-share"></span><span class="cp-jackpot"></span></div>
         <div id="casinoPotMeWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);"></div>
         <div style="text-align:center; margin-top:10px;">
@@ -3462,7 +3462,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.75"; // Correcting a genuine mistake from the previous version, caught before it could actually cause harm in the field. Built an entire new "tap the chip display to type a custom bet" mechanism for the min-bet-to-1 change, without first checking whether this already existed — it did, for all 12 games, already wired up, already allowing any amount ≥1 with no minimum gate at the prompt level (if(!(amount > 0)) return, no "< 5" anywhere in any of them). My addition duplicated every one of these — a second click listener on the same chip display element in every single casino game, meaning every chip tap would have opened two sequential prompts. Removed the entire duplicate block outright. The two changes that were actually needed and correct all along — HTML min="5" to min="1" on the (readonly, cosmetic-only) inputs, and the seven external game files' own hardcoded "bet < 5" validation at deal-time — are untouched by this and remain exactly as shipped, since the existing prompt mechanism was always sufficient for actually TYPING 1 through 4, it was only the deal-time check that ever blocked using it. Verified this properly this time: grepped every one of the 12 game files for their existing chip-display click handler before concluding nothing more was needed, not assumed from one file. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.77"; // Restored the weekly bonus per direct request, but scoped exclusively to Tipping-only accounts now (full/dashboard accounts have the weekly Casino Pot as their own equivalent instead) — button, functions, and XP Ecosystem text all correctly gated on currentUserRole === 'tipping' this time, not shown-but-disabled for everyone the way it originally worked. Also built a new jackpot-eligibility path for Tipping-only accounts: tipping 50 DISTINCT games within one Casino Pot week earns a place in that week's jackpot draw, the same draw casino players qualify for via 20+ plays — tracked as a set of game ids (not a counter) specifically so re-saving/editing an already-picked game can't inflate the count, keyed to each GAME's own scheduled date (not when the pick was saved) so a pick made near a week boundary counts toward the week the game is actually in. Caught and fixed a real bug of my own before shipping: my first pass parsed each game's date with a naive `new Date(meta.date)`, but that date is a local AEST/AEDT "YYYY-MM-DD HH:MM:SS" string from Squiggle that needs the same 'T'+offset transformation already used everywhere else this exact format gets parsed elsewhere in this file — without it, a misparsed date could silently bucket a game's tip into the wrong week entirely. Also caught a second, more serious issue purely by checking rather than assuming: firebase-rules.json only has explicit named children under each period (playCounts/losses/fines), not a wildcard — the new tippingGames write path had genuinely no matching rule at all, meaning Firebase's default-deny would have silently rejected every single write this feature makes without ever surfacing an error, and the whole feature would have done nothing while looking like it worked. Added the missing rule. Server-side, casino-pot-distribute-scheduled.js now aggregates tippingGames across every period bucket being distributed and adds anyone crossing the 50-game threshold into the jackpot candidate pool — deliberately jackpot-only, not the proportional even-split pool, matching exactly what was asked. Remember: firebase-rules.json needs to be manually republished in the Firebase console — nothing else auto-deploys it, and without doing so this entire feature does nothing despite the code being correct. Also deploy casino-pot-distribute-scheduled.js alongside this. Match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3516,11 +3516,10 @@ function renderChangelogBanner(data){
 // already accepted elsewhere in this app for a friendly ~11-person group.
 const XP_RATES = { perTippingPoint: 2500, perDollarIndividualWin: 1500, perGroupLegWin: 3500, perGroupLegLoss: 1000 };
 const XP_SIGNUP_BONUS = 5000;
-// A tipping-tier account can't see Board/Cash/Slips (no individual bets or
-// group multi legs to earn XP from), so a small recurring bonus plus their
-// Tipping points conversion are deliberately their ONLY XP sources — full
-// and dashboard-tier accounts also see this bonus, it's just not their
-// only source the way it is for tipping-tier.
+// Restored, but scoped to Tipping-only accounts specifically — full and
+// dashboard-tier accounts now have the weekly Casino Pot as their own
+// primary recurring source, so this stays exclusively theirs rather than
+// showing for everyone the way it originally did.
 const XP_WEEKLY_BONUS = 5000;
 function xpWeekKey(d){
   const now = d || new Date();
@@ -3581,6 +3580,9 @@ async function claimWeeklyBonus(){
 async function refreshWeeklyBonusButton(){
   const btn = document.getElementById('weeklyBonusBtn');
   if(!btn || !currentUserUid) return;
+  // Tipping-only visibility — this button simply doesn't exist for
+  // anyone else now, rather than existing-but-disabled.
+  if(currentUserRole !== 'tipping'){ btn.style.display = 'none'; return; }
   const status = await getWeeklyBonusStatus();
   if(!status) return;
   btn.style.display = 'inline-block';
@@ -3834,10 +3836,15 @@ function renderXpInfoView(){
   const isTipping = currentUserRole === 'tipping';
   const rows = [
     ['🎁 Signup bonus', `+${XP_SIGNUP_BONUS} once, the first time you open Casino`],
-    ['📅 Weekly bonus', `+${XP_WEEKLY_BONUS} once every week — claim it from the button above the Leaderboard`],
     ['🎡 Spin the Wheel', `A random prize (up to 2,500 XP on the Jackpot) once every 2 days — free, no XP staked, though some segments are Zero`],
     ['🏉 Tipping points', `+${XP_RATES.perTippingPoint} XP per correct tip, awarded automatically once a round finishes (Joker doubles it, same as your Tipping score)`],
   ];
+  // Weekly bonus is Tipping-only now — full/dashboard accounts have the
+  // weekly Casino Pot as their own equivalent recurring source instead,
+  // so this row only appears in their version of this list at all.
+  if(isTipping){
+    rows.push(['📅 Weekly bonus', `+${XP_WEEKLY_BONUS} once every week — claim it from the button above the Leaderboard`]);
+  }
   if(!isTipping){
     rows.push(['🎲 Individual bet wins', `+${XP_RATES.perDollarIndividualWin} XP per $ won`]);
     rows.push(['🤝 Group multi leg wins', `+${XP_RATES.perGroupLegWin} XP per winning leg`]);
@@ -3845,7 +3852,7 @@ function renderXpInfoView(){
   }
   let html = `<div class="xp-eco-section-label">💰 Earning</div>` + rows.map(([label, desc]) =>
     `<div class="xp-source-row"><span>${escapeHtml(label)}</span></div><div class="hint" style="padding:0 4px 10px;">${escapeHtml(desc)}</div>`).join('')
-    + (isTipping ? `<div class="hint" style="margin-top:6px;">Your account earns XP from the weekly bonus and Tipping points only — the individual bet and group multi sources apply to full-access accounts.</div>` : '');
+    + (isTipping ? `<div class="hint" style="margin-top:6px;">Your account earns XP from the weekly bonus and Tipping points — the individual bet and group multi sources apply to full-access accounts. Play 50 tipped games in a single week and you're also in the draw for the Casino Pot jackpot that week, same as anyone playing the tables.</div>` : '');
 
   if(!isTipping){
     html += `<div class="xp-eco-section-label">🎰 Playing</div>
@@ -3856,9 +3863,9 @@ function renderXpInfoView(){
 
     html += `<div class="xp-eco-section-label">🔥 Burning — where XP actually leaves for good</div>
       <div class="xp-source-row"><span>Casino Pot burn</span></div>
-      <div class="hint" style="padding:0 4px 10px;">20% of every pot is permanently removed at each twice-monthly distribution — otherwise the pot would just pay back out exactly what it took in, and never shrink.</div>
+      <div class="hint" style="padding:0 4px 10px;">30% of every pot is permanently removed at each weekly distribution — otherwise the pot would just pay back out exactly what it took in, and never shrink.</div>
       <div class="xp-source-row"><span>Casino Pot cap</span></div>
-      <div class="hint" style="padding:0 4px 10px;">The pot is also hard-capped at ${CASINO_POT_CAP_DISPLAY.toLocaleString()} XP per period — anything collected above that is burned outright too, on top of the 20%.</div>
+      <div class="hint" style="padding:0 4px 10px;">The pot is also hard-capped at ${CASINO_POT_CAP_DISPLAY.toLocaleString()} XP per period — anything collected above that is burned outright too, on top of the 30%.</div>
       <div class="xp-source-row"><span>Fines</span></div>
       <div class="hint" style="padding:0 4px 10px;">
         <b>${CASINO_POT_INDIVIDUAL_LOSS_FINE_DISPLAY.toLocaleString()} XP</b> — Losing Individual bet (not the SGM Bonus field — that's already excluded from your normal tally)<br>
@@ -7683,7 +7690,10 @@ const CASINO_POT_MISSED_TIP_FINE_DISPLAY = 15000;
 const CASINO_POT_TIPPING_FINE_DISPLAY = 30000;
 // Display-only copy of the hard cap applied at distribution time — same
 // reasoning as every other _DISPLAY constant here, kept in sync manually.
-const CASINO_POT_CAP_DISPLAY = 250000000;
+// Rescaled from 250M down for the move from twice-monthly to weekly
+// periods (see casino-pot-distribute-scheduled.js's own comment on this
+// same number for the exact reasoning).
+const CASINO_POT_CAP_DISPLAY = 120000000;
 // Display-only copy of the Clean Record Bonus base amount — the actual
 // mechanic lives entirely in casino-pot-distribute-scheduled.js (a
 // separate deployed function), same reasoning as every other _DISPLAY
@@ -7710,28 +7720,37 @@ let sessionLossNudgeShown = false;
 const SESSION_LOSS_NUDGE_THRESHOLD = 500;
 const CASINO_POT_TIMEZONE = 'Australia/Melbourne'; // AEST/AEDT — the actual cutoff authority, not each device's local clock
 
-// Changed from monthly to twice-monthly per request (smaller, more
-// frequent payouts instead of one lump sum) — each calendar month is now
-// two periods: the 1st through the 15th, and the 16th through the last
-// day of the month. Distribution runs 8am on whichever of the 1st/16th
-// closes that period. Period key format is "YYYY-MM-01" or "YYYY-MM-16"
-// (the period's own start date) — deliberately still stored under the
-// same /casinoPot/months path server-side (that node's Firebase rule is a
-// $monthKey wildcard, so it accepts any child key shape) rather than
-// migrating to a new path, to avoid touching security rules for a pure
-// bucketing-scheme change.
+// Changed from twice-monthly to weekly per request — every calendar
+// week (Monday through Sunday) is now its own period. Distribution runs
+// 8am Monday, closing out the week that just ended. Period key format is
+// the Monday date that starts the week ("YYYY-MM-DD") — deliberately
+// still stored under the same /casinoPot/months path server-side (that
+// node's Firebase rule is a $monthKey wildcard, so it accepts any child
+// key shape) rather than migrating to a new path, to avoid touching
+// security rules for a pure bucketing-scheme change. MUST stay in exact
+// lockstep with casino-pot-distribute-scheduled.js's own periodKeyFor()
+// — this is the same key space the server reads from when it distributes,
+// so a mismatch here would mean losses/fines get bucketed under a key
+// the server-side distribution never looks for.
 //
 // Pinned to AEST/AEDT specifically (via Intl, so daylight saving is
 // handled automatically) rather than each player's own device timezone —
 // someone with their phone set to a different zone shouldn't be able to
 // end up in the "wrong" period's bucket right around the boundary.
 function casinoPotPeriodKey(d){
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CASINO_POT_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d || new Date());
-  const y = parts.find(p => p.type === 'year').value;
-  const m = parts.find(p => p.type === 'month').value;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: CASINO_POT_TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).formatToParts(d || new Date());
+  const y = Number(parts.find(p => p.type === 'year').value);
+  const m = Number(parts.find(p => p.type === 'month').value);
   const day = Number(parts.find(p => p.type === 'day').value);
-  const periodStartDay = day <= 15 ? '01' : '16';
-  return `${y}-${m}-${periodStartDay}`;
+  const weekdayStr = parts.find(p => p.type === 'weekday').value;
+  const weekdayIndex = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[weekdayStr];
+  const asUTC = Date.UTC(y, m - 1, day);
+  const mondayUTC = asUTC - weekdayIndex * 86400000;
+  const mondayDate = new Date(mondayUTC);
+  const yy = mondayDate.getUTCFullYear();
+  const mm = String(mondayDate.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(mondayDate.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 }
 
 // Given any instant, finds the first later moment that reports a
@@ -7741,7 +7760,7 @@ function casinoPotPeriodKey(d){
 function casinoPotPeriodEndDate(probeMs){
   const probeKey = casinoPotPeriodKey(new Date(probeMs));
   let lo = probeMs;
-  let hi = probeMs + 17 * 24 * 60 * 60 * 1000; // definitely past the end of any period (longest is ~16 days)
+  let hi = probeMs + 9 * 24 * 60 * 60 * 1000; // comfortably past the end of any period (a week is 7 days)
   for(let i = 0; i < 40; i++){ // binary search to the minute is plenty precise
     const mid = Math.floor((lo + hi) / 2);
     if(casinoPotPeriodKey(new Date(mid)) === probeKey) lo = mid; else hi = mid;
@@ -7905,14 +7924,11 @@ function renderCasinoPotCountdown(){
   const el = document.getElementById('casinoPotCountdown');
   if(!el) return;
   const diff = casinoPotCutoffDate().getTime() - Date.now();
-  // The payout is always within the current period (at most ~15 days
-  // away) so a bare ordinal is unambiguous — derived from the period key
-  // itself (ends "-01" -> pays the 16th, ends "-16" -> pays the 1st)
-  // rather than ever being hardcoded, so this stays correct automatically
-  // as the date rolls forward.
-  const periodKey = casinoPotPeriodKey();
-  const payoutDay = periodKey.endsWith('-01') ? '16th' : '1st';
-  el.innerHTML = `⏳ Locks in <b>${formatPotCountdown(diff)}</b> · redistributed 8am AEST on the ${payoutDay}`;
+  // Always Monday now, regardless of date — no need to derive which day
+  // from the period key the way the old twice-monthly scheme had to
+  // (that inferred "16th" vs "1st" from whether the key ended in "-01";
+  // a weekly Monday-date key doesn't carry that same ambiguity to resolve).
+  el.innerHTML = `⏳ Locks in <b>${formatPotCountdown(diff)}</b> · redistributed 8am AEST every Monday`;
 }
 setInterval(renderCasinoPotCountdown, 30000);
 
@@ -8164,21 +8180,24 @@ async function distributeCasinoPotLocked(monthKeys){
   // Hard cap per request — same reasoning and identical constant to the
   // scheduled function's own copy: a percentage burn alone can't bound
   // the absolute number once a few people are staking amounts that dwarf
-  // everyone else's. Applied before the existing 20% burn, so it caps
+  // everyone else's. Applied before the burn rate below, so it caps
   // what enters that pipeline rather than being a second burn concept.
-  const CASINO_POT_CAP = 250000000;
+  // Rescaled from 250M for the move from twice-monthly to weekly periods
+  // — see the scheduled function's own comment on this same number.
+  const CASINO_POT_CAP = 120000000;
   const cappedPot = Math.min(totalPot, CASINO_POT_CAP);
   const capBurnedAmount = totalPot - cappedPot;
 
-  // 20% burned outright per request — otherwise the pot is a pure wash:
-  // 100% of what's collected gets redistributed straight back to players,
-  // so nothing ever actually leaves the XP economy through it, and the
-  // numbers involved only ever grow. The remaining 85% still splits at
-  // the existing 75/25 ratio, unchanged — burnedAmount is logged in the
-  // distribution history for a real audit trail rather than just quietly
-  // vanishing with no record. Single named constant, easy to retune —
-  // kept identical to the scheduled function's own copy of this constant.
-  const CASINO_POT_BURN_RATE = 0.20;
+  // 30% burned outright per request (raised from 20%) — otherwise the pot
+  // is a pure wash: 100% of what's collected gets redistributed straight
+  // back to players, so nothing ever actually leaves the XP economy
+  // through it, and the numbers involved only ever grow. The remaining
+  // 70% still splits at the existing 75/25 ratio, unchanged — burnedAmount
+  // is logged in the distribution history for a real audit trail rather
+  // than just quietly vanishing with no record. Single named constant,
+  // easy to retune — kept identical to the scheduled function's own copy
+  // of this constant.
+  const CASINO_POT_BURN_RATE = 0.30;
   const regularBurnedAmount = Math.floor(cappedPot * CASINO_POT_BURN_RATE);
   const burnedAmount = capBurnedAmount + regularBurnedAmount;
   const distributable = cappedPot - regularBurnedAmount;
@@ -8441,7 +8460,7 @@ document.getElementById('closeMonthPotBtn').addEventListener('click', async () =
   const stale = await findStaleCasinoPotMonths();
   if(stale.length === 0){
     status.className = 'status-msg';
-    status.textContent = 'Nothing overdue — the current period only closes on its own schedule (1st/16th, 8am AEST).';
+    status.textContent = 'Nothing overdue — the current period only closes on its own schedule (Monday, 8am AEST).';
     return;
   }
   if(!confirm(`Close out ${stale.length} overdue period${stale.length === 1 ? '' : 's'} that never distributed? This does NOT touch the current, still-open period.`)) return;
@@ -9970,8 +9989,8 @@ const CASINO_RULES = {
     <h3>Where it comes from</h3>
     <p>Every XP you lose at any table — Blackjack, Baccarat, Roulette, Casino War, Craps, Slots, Video Poker, or a losing Spin the Wheel — goes into a shared pot for the period, on top of your own loss. Nobody's XP balance is touched twice; this just also tracks the total separately.</p>
     <h3>How it's split</h3>
-    <p>The pot is also capped at <b>250,000,000 XP</b> per period. Everything collected above that is burned outright, on top of the 20% below — a percentage alone can't stop the number spiraling once a few people are staking huge amounts, only a hard ceiling can. Your own losses always count toward your personal tally either way, whether or not the shared pot is capped.</p>
-    <p><b>20%</b> of every pot (after the cap) is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (60% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (20% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
+    <p>The pot is also capped at <b>120,000,000 XP</b> per period. Everything collected above that is burned outright, on top of the 30% below — a percentage alone can't stop the number spiraling once a few people are staking huge amounts, only a hard ceiling can. Your own losses always count toward your personal tally either way, whether or not the shared pot is capped.</p>
+    <p><b>30%</b> of every pot (after the cap) is burned — permanently removed, credited to nobody — to stop the pot's numbers from just growing forever, since it would otherwise pay back out exactly what it takes in. Of what's left: <b>75%</b> (52.5% of the original pot) is split evenly among everyone eligible that period — same share for everyone, regardless of how much you personally lost. <b>25%</b> (17.5% of the original pot) is a single random jackpot, drawn with equal odds among everyone who played at all that period — win or lose, your losses don't affect your jackpot odds at all.</p>
     <h3>Fines</h3>
     <p>The pot also takes real fines off the top before it's ever distributed. 90% of each comes out of the shared pot — the remaining 10% comes off your own balance directly:</p>
     <ul style="margin:4px 0 0; padding-left:20px; line-height:1.6;">
@@ -9983,9 +10002,9 @@ const CASINO_RULES = {
       <li><b>8,000 XP</b> — Group Multi leg placed under $1.22</li>
     </ul>
     <h3>Eligibility</h3>
-    <p>You qualify for the 75% share if you played the tables <b>20 times or more</b> this period, <b>or</b> earned any real (non-casino) XP this period — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
+    <p>You qualify for the 75% share if you played the tables <b>20 times or more</b> this period, <b>or</b> earned any real (non-casino) XP this period — betting results, dues, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>
     <h3>Timing</h3>
-    <p>The pot pays out twice a month instead of once, to keep payouts smaller and more regular rather than one big lump sum: the 1st–15th locks and pays out <b>8am AEST on the 16th</b>, and the 16th–end of month locks and pays out <b>8am AEST on the 1st</b>. If nobody qualified in a given period, the pot simply rolls into the next one rather than disappearing.</p>
+    <p>The pot pays out weekly, every Monday, to keep payouts smaller and more regular rather than one big lump sum: each week (Monday through Sunday) locks and pays out <b>8am AEST</b> the following Monday. If nobody qualified in a given period, the pot simply rolls into the next one rather than disappearing.</p>
   `},
   tiers: { title: '🏅 Player Tiers', body: `
     <h3>What the badge means</h3>
@@ -15524,6 +15543,36 @@ async function saveAllTippingPicks(auth){
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
       }).catch(() => {});
     });
+    // Casino Pot jackpot eligibility for Tipping-only accounts — per
+    // request, tipping 50 distinct games within one Casino Pot week
+    // (Monday-Sunday) earns a place in that week's jackpot draw, the same
+    // draw full-access accounts qualify for by playing 20+ casino games.
+    // Keyed to each GAME's own scheduled date (via tippingRoundGameMeta's
+    // .date), not when this save happened, so a pick saved right at a
+    // week boundary counts toward the week the game is actually IN, not
+    // the week it happened to be typed up. A set of distinct game ids
+    // (not a counter) — re-saving/editing an already-picked game must
+    // never inflate the count a second time. Only written for Tipping-
+    // only accounts; full/dashboard accounts already have their own path
+    // to jackpot eligibility via actual casino play, so this would be
+    // meaningless additional writes for them.
+    if(currentUserRole === 'tipping'){
+      toWrite.forEach(w => {
+        const meta = tippingRoundGameMeta[w.gameId];
+        if(!meta || !meta.date) return;
+        // meta.date is a local AEST/AEDT "YYYY-MM-DD HH:MM:SS" string from
+        // Squiggle (see gameHasStarted's own comment on this same format)
+        // — needs the same 'T'+offset transformation used everywhere else
+        // this exact date format gets parsed, or a naive new Date(...)
+        // risks misreading it as the browser's own local time instead.
+        const gameDate = new Date(meta.date.replace(' ', 'T') + '+10:00');
+        if(isNaN(gameDate.getTime())) return;
+        const gamePeriodKey = casinoPotPeriodKey(gameDate);
+        authedFetch(`/casinoPot/months/${gamePeriodKey}/tippingGames/${auth.uid}/${w.gameId}.json`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
+        }).catch(() => {});
+      });
+    }
     statusEl.className = 'status-msg ok';
     statusEl.textContent = `All ${toWrite.length} pick${toWrite.length === 1 ? '' : 's'} saved.`;
     showToast('Picks saved');
@@ -18629,7 +18678,7 @@ async function isAdminUserTippingTier(uid){
 // (uid-keyed, used by Give Bonus XP), since Save Week naturally works in
 // terms of squad member names from the entry grids, not uids directly.
 // Skips tipping-tier accounts on purpose — their XP only ever comes from
-// the weekly bonus and Tipping points, both entirely Dashboard-side.
+// Tipping points, entirely Dashboard-side.
 async function applyAdminXPAwards(xpByName, reverse, reason){
   for(const [name, amount] of Object.entries(xpByName)){
     if(!amount) continue;

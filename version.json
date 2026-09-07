@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.75",
+  "version": "2026-09-02.77",
   "date": "2026-09-02",
   "changes": [
-    "Fixed a double-prompt bug in the previous update \u2014 tapping a bet chip in any Casino game would have opened two amount prompts instead of one."
+    "Tipping-only accounts get their weekly bonus back, plus a new path to the Casino Pot jackpot: tip 50 different games in one week and you're in the draw."
   ]
 }

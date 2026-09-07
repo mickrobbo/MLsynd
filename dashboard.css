@@ -3812,8 +3812,22 @@
   background:rgba(0,0,0,.25);
 }
 .casino-pot-split-bar span{ display:block; height:100%; }
-.casino-pot-split-bar .cp-share{ background:linear-gradient(90deg, var(--brass-dim), var(--brass)); width:60%; }
-.casino-pot-split-bar .cp-jackpot{ background:linear-gradient(90deg, #E8A15C, #d97b3f); width:40%; }
+.casino-pot-split-bar .cp-share{ background:linear-gradient(90deg, var(--brass-dim), var(--brass)); width:52.5%; }
+.casino-pot-split-bar .cp-jackpot{ background:linear-gradient(90deg, #E8A15C, #d97b3f); width:17.5%; }
+/* The remaining 30% of the bar's own dark background (rgba(0,0,0,.25)
+   on .casino-pot-split-bar itself) is what visually represents "burned"
+   — there's no third span for it, the gap IS the visual. Confirmed this
+   was already the intended design by working backward from the legend
+   directly above this bar (which has always shown three figures:
+   shared/jackpot/burned) — a two-segment flex bar that filled 100% width
+   between just those two segments would leave literally no visual room
+   for the third figure the legend promises, so the two other spans must
+   represent absolute shares of the original pot, not a share/jackpot
+   ratio relative to only each other. Confirmed this was a genuine
+   PRE-EXISTING bug while fixing it for the new rate: cp-jackpot was 40%
+   before, when its own legend right above it said "20% JACKPOT" —
+   already inconsistent with its own label before this file's burn rate
+   ever changed. */
 .casino-pot-split-legend{
   display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted);
   margin-bottom:4px;
@@ -3856,7 +3870,14 @@
   display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding:7px 0; border-bottom:1px solid var(--line); font-size:12px; width:100%; min-width:0;
 }
-.xp-log-row .xp-log-who{ color:var(--brass-light); font-weight:600; flex-shrink:0; }
+/* Forced uppercase regardless of how the name is actually stored — Board
+   roster names are already all-caps ("TRASKY") but Tipping-only display
+   names are stored exactly as that person typed them ("Zak Hardinge"),
+   so without this the same feed shows two different naming conventions
+   side by side. A CSS transform sidesteps needing to correctly title-
+   case arbitrary names (apostrophes, hyphens, etc) just to normalize
+   the other direction — this always produces one consistent style. */
+.xp-log-row .xp-log-who{ color:var(--brass-light); font-weight:600; flex-shrink:0; text-transform:uppercase; }
 /* max-width reserves guaranteed room for xp-log-amt explicitly, rather
    than relying purely on flex-grow/shrink negotiation to leave enough
    space — a real report showed the amount disappearing entirely on an
