@@ -110,8 +110,8 @@ async function donFlip(choice){
 
   if(!donRoundActive){
     const bet = parseInt(document.getElementById('donBetInput').value, 10) || 0;
-    if(!bet || bet < 5){
-      errEl.textContent = 'Minimum bet is 5 XP.';
+    if(!bet || bet < 1){
+      errEl.textContent = 'Place a bet first.';
       donFlipping = false; donSetButtonsDisabled(false);
       return;
     }

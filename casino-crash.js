@@ -187,8 +187,8 @@ async function crashStart(){
   const errEl = document.getElementById('crashBetError');
   errEl.textContent = '';
   const bet = parseInt(document.getElementById('crashBetInput').value, 10) || 0;
-  if(!bet || bet < 5){
-    errEl.textContent = 'Minimum bet is 5 XP.';
+  if(!bet || bet < 1){
+    errEl.textContent = 'Place a bet first.';
     crashRunning = false; crashSetStartVisible(true);
     return;
   }

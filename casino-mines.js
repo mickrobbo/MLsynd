@@ -119,7 +119,7 @@ async function minesStartInner(){
   const errEl = document.getElementById('minesBetError');
   errEl.textContent = '';
   const bet = parseInt(document.getElementById('minesBetInput').value, 10) || 0;
-  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
+  if(!bet || bet < 1){ errEl.textContent = 'Place a bet first.'; return; }
   if(bet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per round is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`; return; }
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }

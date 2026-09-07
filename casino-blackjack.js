@@ -310,8 +310,8 @@ async function bjStartHandInner(){
   const ppBet = parseInt(document.getElementById('bjPerfectPairsAmount').value, 10) || 0;
   const balance = await getXPBalance();
   const totalStake = bet + (ppOn ? ppBet : 0);
-  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
-  if(ppOn && ppBet < 5){ errEl.textContent = 'Minimum Perfect Pairs side bet is 5 XP.'; return; }
+  if(!bet || bet < 1){ errEl.textContent = 'Place a bet first.'; return; }
+  if(ppOn && ppBet < 1){ errEl.textContent = 'Add a Perfect Pairs side bet amount first.'; return; }
   if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
@@ -450,7 +450,6 @@ async function bjResolveInsuranceOutcome(taken, insuranceCost){
     }
     const bal = await getXPBalance();
     updateXPBalanceDisplay(bal);
-    renderXPLog();
   }
   if(dealerBJ){
     await bjWait(400);
@@ -738,7 +737,6 @@ async function bjResolveHand(){
   if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? 'Blackjack win' : 'Blackjack loss', { silent: true });
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
-  renderXPLog();
 }
 function bjNewHand(){
   document.getElementById('bjBetPanel').style.display = 'block';

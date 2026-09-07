@@ -37,8 +37,8 @@ async function warDealInner(){
   const ppBet = parseInt(document.getElementById('warPerfectPairsAmount').value, 10) || 0;
   const balance = await getXPBalance();
   const totalStake = bet + (ppOn ? ppBet : 0);
-  if(!bet || bet < 5){ errEl.textContent = 'Minimum bet is 5 XP.'; return; }
-  if(ppOn && ppBet < 5){ errEl.textContent = 'Minimum Pairs side bet is 5 XP.'; return; }
+  if(!bet || bet < 1){ errEl.textContent = 'Place a bet first.'; return; }
+  if(ppOn && ppBet < 1){ errEl.textContent = 'Add a Pairs side bet amount first.'; return; }
   if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
   if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
