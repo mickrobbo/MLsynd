@@ -3462,7 +3462,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.70"; // Third attempt at this, and finally found the actual mismatch: the spotlight cards I'd been fixing were never the problem — it was the FEED ROWS below them. Floor's feed uses .xp-log-row/.xp-log-who/.xp-log-reason/.xp-log-amt (single-line, name+reason+amount). Fines' feed was an entirely different component — .xp-lb-row, inline-styled, a two-line name-then-reason-and-time stack — not a differently-themed version of the same row, a genuinely different one. That's why matching the spotlight classes never touched what the screenshots were actually showing. Rewrote Fines' rows to use Floor's exact classes — deliberately WITHOUT the 🔥 big-win badge, since that's specifically a win treatment and every fine is a loss; every row now renders like Floor's own plain loss rows do, no card background, no badge, just the row. Investigated the name-casing difference visible in the screenshots too (TRASKY vs Zak Hardinge) before assuming it was part of this bug — confirmed it's a genuine, pre-existing data-source difference (Board roster names vs self-entered Tipping-only display names) that exists within Floor's own feed too (JOSH is equally all-caps there), not something Fines vs Floor specific, and not something a CSS text-transform could fix without breaking one name style to fix the other — left alone rather than force a change that wasn't actually asked for. Confirmed via a render placing both feeds' actual row markup together this time, not just the wrapper cards — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.72"; // Floor and Fines feeds now show first name only ("Zak Hardinge" → "ZAK", "Chris Murphy" → "CHRIS") — single-word names unaffected. New firstNameOnly() helper, purely a display transform on the visible .xp-log-who text only — deliberately NOT touched: Fines' data-name attribute (still the full name, needed for its click-to-profile handler to match correctly) and Floor's showBigWinModal (which never reads the row's displayed text at all, it looks up the original entry by index from casinoFloorMergedEntries, so it already shows the full name in its own modal regardless of what the feed row displays). Confirmed via a render mixing single-word and multi-word names together — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8740,7 +8740,7 @@ async function renderCasinoFloorFeed(){
       const isBigWin = amount >= BIG_WIN_THRESHOLD;
       return `
       <div class="xp-log-row${isBigWin ? ' xp-log-big-win xp-log-clickable' : ''}"${isBigWin ? ` data-win-idx="${i}"` : ''}>
-        <span class="xp-log-who">${isBigWin ? '<span class="xp-log-big-win-badge">🔥</span>' : ''}${escapeHtml(e.name)}</span>
+        <span class="xp-log-who">${isBigWin ? '<span class="xp-log-big-win-badge">🔥</span>' : ''}${escapeHtml(firstNameOnly(e.name))}</span>
         <span class="xp-log-reason">${escapeHtml(reason)}</span>
         <span class="xp-log-amt" style="color:${amount >= 0 ? 'var(--win)' : 'var(--loss)'};">${amount >= 0 ? '+' : ''}${amount}</span>
       </div>`;
@@ -9746,7 +9746,7 @@ async function renderMembersFinesView(){
     // plain loss rows: no card background, no badge, just the row.
     area.innerHTML = entries.map(e => `
       <div class="xp-log-row" data-name="${escapeHtml(e.name || '')}" style="cursor:pointer;">
-        <span class="xp-log-who">${escapeHtml(e.name || '?')}</span>
+        <span class="xp-log-who">${escapeHtml(firstNameOnly(e.name) || '?')}</span>
         <span class="xp-log-reason">${escapeHtml(e.category || 'Fine')} · ${timeAgo(e.ts)}</span>
         <span class="xp-log-amt" style="color:var(--loss);">-${(e.amount || 0).toLocaleString()}</span>
       </div>`).join('');
@@ -20622,6 +20622,16 @@ function renderTippingHistoryYear(){
 }
 // ================= /Tipping =================
 
+// First name only, for feeds where the full name takes up more room than
+// it's worth (Floor/Fines rows sit next to a reason column and an amount,
+// unlike a profile header where the full name is the point). Purely a
+// display transform — never touches the stored name, and never used for
+// the data-name attribute those same rows still use to open the right
+// profile on tap, which needs the full, exact name to match correctly.
+function firstNameOnly(name){
+  if(!name) return name;
+  return name.trim().split(/\s+/)[0];
+}
 function timeAgo(dateStr){
   if(!dateStr) return '';
   const then = new Date(dateStr).getTime();

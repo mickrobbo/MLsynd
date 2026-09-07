@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.70",
+  "version": "2026-09-02.72",
   "date": "2026-09-02",
   "changes": [
-    "Fines list (Casino > Members > Fines) now uses the exact same row style as the Floor feed \u2014 it was a genuinely different layout before, not just a different color."
+    "Floor and Fines feeds now show first name only, keeping rows shorter and more consistent."
   ]
 }
