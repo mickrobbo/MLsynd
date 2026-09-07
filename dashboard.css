@@ -1477,25 +1477,28 @@
      style (rounded square, same gradient/border language) per direct
      feedback that the original large circles ate too much vertical
      space. Kept as its own class rather than reusing .subnav-btn
-     directly, since this needs 3-per-row wrapping instead of that one's
-     flex:1 four-across row. */
+     directly, since this needs 4-per-row wrapping instead of that one's
+     flex:1 four-across row (same 4-across math, just via flex-basis
+     instead of flex:1, since flex-wrap needs an explicit basis to know
+     where to break). 8 buttons total, so this lands as exactly 2 clean
+     rows rather than 3 rows with a half-empty last one. */
   .admin-submode-grid{
     display:flex; flex-wrap:wrap; gap:8px;
     margin:0 0 16px;
   }
   .admin-submode-btn{
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-    flex:0 0 calc(33.333% - 6px); box-sizing:border-box;
+    flex:0 0 calc(25% - 6px); box-sizing:border-box;
     background: linear-gradient(165deg, var(--felt-3), var(--felt-2));
     border:1px solid var(--brass-dim); border-radius:10px;
-    padding:10px 6px; cursor:pointer;
+    padding:10px 4px; cursor:pointer;
     font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:12px;
-    letter-spacing:1px; text-transform:uppercase; color:var(--muted);
+    letter-spacing:.3px; text-transform:uppercase; color:var(--muted);
     box-shadow: 0 3px 10px rgba(0,0,0,.2);
     transition: all .15s ease;
   }
   .admin-submode-icon{ font-size:20px; line-height:1; }
-  .admin-submode-label{ font-size:12px; }
+  .admin-submode-label{ font-size:11px; max-width:100%; text-align:center; }
   .admin-submode-btn.active{
     background: linear-gradient(165deg, #dab868, var(--brass) 60%);
     border-color: var(--brass); color:#151007;
