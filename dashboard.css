@@ -3098,6 +3098,7 @@
      Costs the nice fade-in; guarantees it can never get stuck again. */
   .profile-sheet{
     width:100%; max-width:720px; max-height:88vh; overflow-y:auto; overflow-x:hidden; position:relative;
+    min-width:0;
     background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--line);
     border-radius:18px 18px 0 0; padding:22px 20px calc(22px + env(safe-area-inset-bottom, 0));
     box-shadow:0 -10px 40px rgba(0,0,0,.5), 0 -1px 0 rgba(255,224,150,.08) inset;
@@ -3554,7 +3555,7 @@
     background:linear-gradient(165deg, var(--brass-light), var(--brass));
     box-shadow:0 0 16px rgba(255,214,120,.5), 0 3px 8px rgba(0,0,0,.3);
   }
-  .profile-stat-category{ display:flex; flex-direction:column; gap:8px; animation:profileCatIn var(--ease-smooth) both; }
+  .profile-stat-category{ display:flex; flex-direction:column; gap:8px; min-width:0; animation:profileCatIn var(--ease-smooth) both; }
   @keyframes profileCatIn{ 0%{ opacity:0; transform:translateY(5px); } 100%{ opacity:1; transform:translateY(0); } }
   /* Staggered cascade for whatever's inside a freshly-shown tab — cells,
      the fines note, the XP breakdown bars, Recent Form — every direct
@@ -3841,7 +3842,7 @@
 .casino-ticker-text b{ color:var(--brass-light); }
 .casino-panel-h2{ justify-content:center; text-align:center; }
 .xp-log-row{
-  display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
   padding:7px 0; border-bottom:1px solid var(--line); font-size:12px; width:100%;
 }
 .xp-log-row .xp-log-who{ color:var(--brass-light); font-weight:600; flex-shrink:0; }
