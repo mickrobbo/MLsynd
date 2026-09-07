@@ -3462,7 +3462,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.77"; // Restored the weekly bonus per direct request, but scoped exclusively to Tipping-only accounts now (full/dashboard accounts have the weekly Casino Pot as their own equivalent instead) — button, functions, and XP Ecosystem text all correctly gated on currentUserRole === 'tipping' this time, not shown-but-disabled for everyone the way it originally worked. Also built a new jackpot-eligibility path for Tipping-only accounts: tipping 50 DISTINCT games within one Casino Pot week earns a place in that week's jackpot draw, the same draw casino players qualify for via 20+ plays — tracked as a set of game ids (not a counter) specifically so re-saving/editing an already-picked game can't inflate the count, keyed to each GAME's own scheduled date (not when the pick was saved) so a pick made near a week boundary counts toward the week the game is actually in. Caught and fixed a real bug of my own before shipping: my first pass parsed each game's date with a naive `new Date(meta.date)`, but that date is a local AEST/AEDT "YYYY-MM-DD HH:MM:SS" string from Squiggle that needs the same 'T'+offset transformation already used everywhere else this exact format gets parsed elsewhere in this file — without it, a misparsed date could silently bucket a game's tip into the wrong week entirely. Also caught a second, more serious issue purely by checking rather than assuming: firebase-rules.json only has explicit named children under each period (playCounts/losses/fines), not a wildcard — the new tippingGames write path had genuinely no matching rule at all, meaning Firebase's default-deny would have silently rejected every single write this feature makes without ever surfacing an error, and the whole feature would have done nothing while looking like it worked. Added the missing rule. Server-side, casino-pot-distribute-scheduled.js now aggregates tippingGames across every period bucket being distributed and adds anyone crossing the 50-game threshold into the jackpot candidate pool — deliberately jackpot-only, not the proportional even-split pool, matching exactly what was asked. Remember: firebase-rules.json needs to be manually republished in the Firebase console — nothing else auto-deploys it, and without doing so this entire feature does nothing despite the code being correct. Also deploy casino-pot-distribute-scheduled.js alongside this. Match this in version.json on deploy
+const APP_VERSION = "2026-09-02.78"; // Fixed a genuinely serious bug: the same "2026-09-01" distribution got credited twice with two different random jackpot winners (Damon, then Billy) — confirmed real by checking the actual calendar (Sept 1 2026 is a Tuesday, not a Monday my new weekly key would ever produce, meaning this label is a leftover from the OLD twice-monthly scheme that got reprocessed after the weekly change shipped). Root cause: the idempotency check ("read history, if empty proceed, write history at the very end") was never actually atomic — a real gap between the read and the eventual write, and this app has TWO separate, independent copies of this exact distribution logic (the server-side scheduled function, and the client-side admin "close overdue periods" recovery tool) with no shared lock between them at all. Both could pass the same "not yet distributed" check before either had written anything, race past each other, and each independently draw and credit its own jackpot winner for the same label — the exact symptom in the screenshots. Fixed BOTH copies with a genuine atomic claim (the same ETag compare-and-swap the distribution lock already uses, applied to the history write itself) — claims the label immediately before any XP is credited, not after, so only one invocation can ever win regardless of which of the two tools gets there first or how many times either one is invoked. Real consequence worth being direct about: this fix prevents it happening again, it does NOT undo whatever double-crediting already happened for 2026-09-01 — that period's actual XP balances may need a manual review against its history entry to identify and correct any genuine over-payment. Remember to deploy casino-pot-distribute-scheduled.js alongside this — the fix is incomplete without it
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8135,6 +8135,34 @@ async function distributeCasinoPot(monthKeys){
   }
 }
 
+// Atomic claim on the history path — the client-side twin of the
+// scheduled function's own claimDistributionLabel, using the same ETag
+// compare-and-swap. This is the actual reason two different jackpot
+// winners were ever recorded for the exact same period label: this tool
+// and the server-side scheduled function are two genuinely separate,
+// independent copies of the same distribution logic with no shared
+// in-memory lock between them, and the old "check history, then write it
+// later" pattern here had a real gap — both could read "not yet
+// distributed" before either had written anything, race past each other,
+// and each independently draw and credit its own jackpot winner for the
+// same label. Claiming the label atomically before any XP is credited —
+// not after, the way the history write used to happen right at the very
+// end — closes that gap regardless of which of the two tools gets there
+// first.
+async function claimDistributionLabelClient(label){
+  const path = `/casinoPot/history/${label.replace(/\./g, '_')}.json`;
+  const getRes = await authedFetch(path, { headers: { 'X-Firebase-ETag': 'true' } });
+  const etag = getRes.headers.get('ETag');
+  const current = await getRes.json();
+  if(current != null) return false; // already has a real history entry
+  const putRes = await authedFetch(path, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', 'If-Match': etag },
+    body: JSON.stringify({ claiming: true, claimedAt: Date.now() })
+  });
+  if(putRes.status === 412) return false; // lost the race to another concurrent invocation
+  if(!putRes.ok) throw new Error(`Claim failed: ${putRes.status}`);
+  return true;
+}
 async function distributeCasinoPotLocked(monthKeys){
   const combinedLosses = {};
   const combinedPlayCounts = {};
@@ -8153,15 +8181,6 @@ async function distributeCasinoPotLocked(monthKeys){
   const totalPot = Math.max(0, rawPot - combinedFines);
   const label = monthKeys.length === 1 ? monthKeys[0] : `${monthKeys[0]}..${monthKeys[monthKeys.length - 1]}`;
 
-  // Belt-and-braces idempotency check, same as the scheduled function: if
-  // this label is already recorded in history, never credit it again even
-  // if a stale lock somehow let two runs both get this far.
-  try{
-    const histRes = await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`);
-    const existingHistory = await histRes.json();
-    if(existingHistory) return { skipped: true, reason: 'already distributed (idempotency check)', label };
-  }catch(e){}
-
   const allUids = new Set([...Object.keys(combinedLosses), ...Object.keys(combinedPlayCounts)]);
   const eligible = [];
   for(const uid of allUids){
@@ -8170,11 +8189,20 @@ async function distributeCasinoPotLocked(monthKeys){
   }
 
   if(totalPot <= 0 || eligible.length === 0){
-    // Nothing to distribute (or no one qualifies) — leave the month
-    // bucket(s) exactly as they are. They'll be picked up and merged
-    // into whichever future run finally has an eligible winner, which is
-    // the "roll the pot into next month" behaviour.
+    // Nothing to distribute (or no one qualifies) — return before ever
+    // attempting a claim, so this label stays open for a future run —
+    // claiming here and then bailing out would leave a permanent
+    // "claiming: true" placeholder blocking this label forever, since
+    // nothing later would ever overwrite it with a real history entry.
     return { skipped: true, rolled: true, totalPot };
+  }
+
+  // Atomic claim — see claimDistributionLabelClient's own comment for the
+  // full reasoning. Placed here, right before the actual crediting below,
+  // once eligibility is already confirmed — never earlier.
+  const claimed = await claimDistributionLabelClient(label);
+  if(!claimed){
+    return { skipped: true, reason: 'already distributed or claimed by another invocation', label };
   }
 
   // Hard cap per request — same reasoning and identical constant to the
