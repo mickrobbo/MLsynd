@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.69",
+  "version": "2026-09-02.70",
   "date": "2026-09-02",
   "changes": [
-    "Leaderboard, Floor, and Fines tabs (Casino > Members) now all show the same style of highlight card at the top \u2014 Leaderboard's was missing entirely before."
+    "Fines list (Casino > Members > Fines) now uses the exact same row style as the Floor feed \u2014 it was a genuinely different layout before, not just a different color."
   ]
 }

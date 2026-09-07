@@ -3462,7 +3462,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.69"; // Understood the actual request properly this time: all THREE Members tabs (Leaderboard, Floor, Fines) needed uniform top highlight cards, not just Floor and Fines matching each other — Leaderboard had no spotlight card at all, which was the real reason "three different tabs all different." Added a new "Current Leader" (or "Leading This Month" in that toggle mode) spotlight to Leaderboard using the exact same .casino-floor-spotlight/.fs-* classes and icon+label+value-only structure as the other two, derived from data renderXPLeaderboard already computes (rows[0] after its existing sort) — no new fetch. All three now render pixel-identical in font, size, and color, differing only by icon (👑/🔥/🎯) and content, confirmed via a render placing all three together rather than assuming uniformity from shared class names alone. This is a real, wider-facing fix (all three tabs are visible to everyone under Casino > Members) — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.70"; // Third attempt at this, and finally found the actual mismatch: the spotlight cards I'd been fixing were never the problem — it was the FEED ROWS below them. Floor's feed uses .xp-log-row/.xp-log-who/.xp-log-reason/.xp-log-amt (single-line, name+reason+amount). Fines' feed was an entirely different component — .xp-lb-row, inline-styled, a two-line name-then-reason-and-time stack — not a differently-themed version of the same row, a genuinely different one. That's why matching the spotlight classes never touched what the screenshots were actually showing. Rewrote Fines' rows to use Floor's exact classes — deliberately WITHOUT the 🔥 big-win badge, since that's specifically a win treatment and every fine is a loss; every row now renders like Floor's own plain loss rows do, no card background, no badge, just the row. Investigated the name-casing difference visible in the screenshots too (TRASKY vs Zak Hardinge) before assuming it was part of this bug — confirmed it's a genuine, pre-existing data-source difference (Board roster names vs self-entered Tipping-only display names) that exists within Floor's own feed too (JOSH is equally all-caps there), not something Fines vs Floor specific, and not something a CSS text-transform could fix without breaking one name style to fix the other — left alone rather than force a change that wasn't actually asked for. Confirmed via a render placing both feeds' actual row markup together this time, not just the wrapper cards — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9736,15 +9736,21 @@ async function renderMembersFinesView(){
       area.innerHTML = '<div class="empty">No fines logged yet.</div>';
       return;
     }
+    // Same .xp-log-row/.xp-log-who/.xp-log-reason/.xp-log-amt structure
+    // Floor's own feed uses — this was a genuinely different component
+    // before (.xp-lb-row, inline-styled, two-line name-then-reason
+    // stack), not just a differently-themed version of the same one,
+    // which is why matching classes on the spotlight cards alone never
+    // fixed this. No 🔥 big-win badge here — that's specifically a win
+    // treatment, wrong on a fine — so every row renders like Floor's own
+    // plain loss rows: no card background, no badge, just the row.
     area.innerHTML = entries.map(e => `
-      <div class="xp-lb-row" data-name="${escapeHtml(e.name || '')}" style="display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--line); cursor:pointer;">
-        <span style="flex:1; min-width:0;">
-          <span style="font-size:13px; font-weight:600; color:var(--chalk);">${escapeHtml(e.name || '?')}</span>
-          <span style="display:block; font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(e.category || 'Fine')} · ${timeAgo(e.ts)}</span>
-        </span>
-        <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; color:var(--loss); flex-shrink:0;">-${(e.amount || 0).toLocaleString()}</span>
+      <div class="xp-log-row" data-name="${escapeHtml(e.name || '')}" style="cursor:pointer;">
+        <span class="xp-log-who">${escapeHtml(e.name || '?')}</span>
+        <span class="xp-log-reason">${escapeHtml(e.category || 'Fine')} · ${timeAgo(e.ts)}</span>
+        <span class="xp-log-amt" style="color:var(--loss);">-${(e.amount || 0).toLocaleString()}</span>
       </div>`).join('');
-    area.querySelectorAll('.xp-lb-row[data-name]').forEach(row => {
+    area.querySelectorAll('.xp-log-row[data-name]').forEach(row => {
       if(row.dataset.name) row.addEventListener('click', () => openProfile(row.dataset.name));
     });
   }catch(e){
