@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.73",
+  "version": "2026-09-02.75",
   "date": "2026-09-02",
   "changes": [
-    "Fines rules text reordered highest to lowest, XP amount shown first and bold."
+    "Fixed a double-prompt bug in the previous update \u2014 tapping a bet chip in any Casino game would have opened two amount prompts instead of one."
   ]
 }
