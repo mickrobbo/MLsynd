@@ -1068,6 +1068,7 @@
       </div>
       <div id="membersFinesView" style="display:none;">
         <div class="hint" style="margin-bottom:8px;">Every fine as it happens, most recent first — tap anyone to see their own profile.</div>
+        <div class="casino-floor-spotlight" id="membersFinesMostFinedSpotlight"></div>
         <div class="highlight-chip" id="membersFinesQuarterTotal" style="display:none; margin-bottom:10px;"></div>
         <div id="membersFinesArea"><div class="empty">Loading…</div></div>
       </div>
@@ -3460,7 +3461,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.66"; // Admin grid changed from 3-per-row to 4-per-row per direct request — 8 buttons now land as exactly 2 clean rows instead of 3 rows with a half-empty last one. Caught a real overflow during testing before shipping: "MAINTENANCE" (the longest label) extended slightly past its button's right edge at the narrower 25% width with the old 12px/1px-letter-spacing sizing — fixed with a small, uniform adjustment (11px label size, .3px letter-spacing, tighter horizontal padding) rather than special-casing that one label, confirmed via a re-render that it now sits cleanly inside its border. Remember to match this in version.json on deploy (empty changes array, admin-only)
+const APP_VERSION = "2026-09-02.67"; // Fines tab now visually matches Floor per direct request: added a new "Most Fined — All Time" spotlight card using the exact same .casino-floor-spotlight/.fs-* classes Floor's own "Biggest Win" card uses, rather than inventing a parallel style for what's structurally the same kind of "who's leading" highlight. Genuinely a running, all-time tally (not scoped to the current quarter) — the existing "Total This Quarter" card stays exactly as it was, kept per direct instruction, sitting right below the new spotlight. Computed from the same already-fetched fineEvents data the rest of the view already uses, no new fetch. Confirmed via a render showing both cards together before shipping. This is NOT admin-only — Members > Fines is visible to everyone, so unlike recent versions this one gets a real changelog entry — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9663,16 +9664,37 @@ function quarterKeyFor(d){
 async function renderMembersFinesView(){
   const area = document.getElementById('membersFinesArea');
   const quarterEl = document.getElementById('membersFinesQuarterTotal');
+  const mostFinedEl = document.getElementById('membersFinesMostFinedSpotlight');
   try{
     const res = await authedFetch('/casinoPot/fineEvents.json');
     if(!res.ok){
       area.innerHTML = `<div class="empty">Couldn't load fines (server said ${res.status}).</div>`;
       if(quarterEl) quarterEl.style.display = 'none';
+      if(mostFinedEl) mostFinedEl.style.display = 'none';
       return;
     }
     const data = await res.json();
     const allEntries = (data && typeof data === 'object' ? Object.values(data) : [])
       .filter(e => e && typeof e === 'object' && e.amount > 0);
+
+    // Most Fined spotlight — a genuine running tally, all-time, not
+    // scoped to the current quarter like the card below it. Same visual
+    // language as the Floor tab's own "Biggest Win" spotlight (same
+    // .casino-floor-spotlight/.fs-* classes) per direct request that
+    // Fines should look like Floor, rather than inventing a new style
+    // for what's structurally the same kind of "who's leading" card.
+    if(mostFinedEl){
+      const totalsByName = {};
+      allEntries.forEach(e => { totalsByName[e.name] = (totalsByName[e.name] || 0) + (e.amount || 0); });
+      const sorted = Object.entries(totalsByName).sort((a, b) => b[1] - a[1]);
+      if(sorted.length > 0){
+        const [mostFinedName, mostFinedTotal] = sorted[0];
+        mostFinedEl.innerHTML = `<span class="fs-icon">🎯</span><div><span class="fs-label">Most Fined — All Time</span><span class="fs-val">${escapeHtml(mostFinedName)} -${mostFinedTotal.toLocaleString()}</span><span class="fs-sub">Running tally across every quarter, not just this one</span></div>`;
+        mostFinedEl.style.display = 'flex';
+      } else {
+        mostFinedEl.style.display = 'none';
+      }
+    }
 
     // Running total for the current calendar quarter — computed from
     // the FULL dataset, not the 100-capped list below, so it stays
@@ -9706,6 +9728,7 @@ async function renderMembersFinesView(){
   }catch(e){
     area.innerHTML = '<div class="empty">Couldn\'t load fines — try again.</div>';
     if(quarterEl) quarterEl.style.display = 'none';
+    if(mostFinedEl) mostFinedEl.style.display = 'none';
   }
 }
 document.getElementById('xpLbTimeToggle').addEventListener('click', (e) => {

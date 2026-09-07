@@ -1,5 +1,7 @@
 {
-  "version": "2026-09-02.66",
+  "version": "2026-09-02.67",
   "date": "2026-09-02",
-  "changes": []
+  "changes": [
+    "Fines tab in Casino > Members now shows a \"Most Fined \u2014 All Time\" spotlight, same style as the Floor tab's Biggest Win card, alongside the existing quarterly total."
+  ]
 }
