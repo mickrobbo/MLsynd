@@ -3556,6 +3556,14 @@
     box-shadow:0 0 16px rgba(255,214,120,.5), 0 3px 8px rgba(0,0,0,.3);
   }
   .profile-stat-category{ display:flex; flex-direction:column; gap:8px; min-width:0; animation:profileCatIn var(--ease-smooth) both; }
+  /* Every direct child of this flex-column needs its own min-width:0 too
+     — align-items:stretch (the default) makes children fill the parent's
+     width, but a child can still be forced WIDER than that stretched
+     size if its own nested content (here: nowrap XP/fine reason text)
+     demands more room, unless the child itself opts out via min-width:0.
+     Setting it only on the parent wasn't enough on its own — confirmed
+     by this exact bug persisting after that fix alone. */
+  .profile-stat-category > *{ min-width:0; }
   @keyframes profileCatIn{ 0%{ opacity:0; transform:translateY(5px); } 100%{ opacity:1; transform:translateY(0); } }
   /* Staggered cascade for whatever's inside a freshly-shown tab — cells,
      the fines note, the XP breakdown bars, Recent Form — every direct
@@ -3843,7 +3851,7 @@
 .casino-panel-h2{ justify-content:center; text-align:center; }
 .xp-log-row{
   display:flex; align-items:center; justify-content:space-between; gap:10px;
-  padding:7px 0; border-bottom:1px solid var(--line); font-size:12px; width:100%;
+  padding:7px 0; border-bottom:1px solid var(--line); font-size:12px; width:100%; min-width:0;
 }
 .xp-log-row .xp-log-who{ color:var(--brass-light); font-weight:600; flex-shrink:0; }
 /* max-width reserves guaranteed room for xp-log-amt explicitly, rather
