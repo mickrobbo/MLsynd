@@ -204,10 +204,6 @@
     </div>
 
     <div id="homeSubview-diag" class="home-subview" style="display:none;">
-    <div class="panel">
-      <h2>🛠️ Admin</h2>
-      <div class="hint">Admin only. Not shown to anyone else — this pill doesn't even exist for other accounts.</div>
-    </div>
 
     <div class="admin-submode-grid" id="diagSubmodeRow">
       <button type="button" class="admin-submode-btn active" data-submode="entry"><span class="admin-submode-icon">📝</span><span class="admin-submode-label">Entry</span></button>
@@ -369,10 +365,6 @@
     </div>
 
     <div class="diag-submode active" data-submode-panel="entry">
-    <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">✅ Step 4 of 4 — All Four Steps Built</span>
-      <div class="hint" style="margin-top:4px; margin-bottom:0;">This is the actual weekly entry workflow — the highest-stakes piece in the whole migration. All four steps are now built: Group Multi, This Week's Financials, the Weekly Bets preview card, Bettor Rotation, and Save Week itself. This is genuinely new and hasn't been run against live data yet — verify it against a week the Ledger has already saved before trusting it with a real one. Keep the Ledger available as a fallback for now.</div>
-    </div>
     <div class="panel" style="text-align:center; padding:10px;">
       <span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;">Last saved week</span>
       <div id="adminLastSavedWeekIndicator" style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px; color:var(--brass-light); margin-top:2px;">—</div>
@@ -3468,7 +3460,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.64"; // Found the ACTUAL location of the negative-balance bug after two previous attempts fixed real but unrelated issues elsewhere (the profile modal's XP chip, the Activity log's container width) — this is the main Board leaderboard row itself, a completely separate render function that never had ANY conditional colour logic at all: the primary value's color was hardcoded to var(--brass) regardless of sign, confirmed by reading the line directly rather than assuming a shared component was responsible. Added the same "colour the whole tile, not just the number" treatment already established elsewhere: the value itself goes var(--loss) when negative, and the row gets a subtle red-tinted background (same visual weight as the tier-based Sovereign/Immortal row treatments, correctly still taking precedence over this per the existing bg fallback chain). Caught and fixed a mistake of my own mid-edit: my first pass at this replacement accidentally deleted the streakBadge and isTippingCat variable definitions that the same template still uses further down — caught by reviewing the full function after editing rather than assuming the str_replace was clean, restored both, then verified via syntax check and a search confirming each is defined exactly once in this function. Rendered the exact reported row (Damon, -8,750) side by side with an unaffected positive row (Murph, 750) to confirm only the negative one gets the treatment — remember to match this in version.json on deploy (empty changes array, admin-only)
+const APP_VERSION = "2026-09-02.65"; // Two direct requests. Removed the top-level "Admin — Admin only, not shown to anyone else" banner and the Entry tab's "Step 4 of 4 — All Four Steps Built" banner — both had served their purpose (confirming the feature existed and worked) and were now just clutter. Also intensified the negative-balance treatment on the Board leaderboard per direct feedback that the previous version was "barely noticeable": roughly doubled the row background/glow opacity, added a 3px solid red left-border accent for a stronger at-a-glance signal, and switched the number itself from the shared, muted var(--loss) to a brighter dedicated red (#FF6B5B) with its own text-shadow glow — deliberately not changing var(--loss) globally, since that would've affected every other use of that variable throughout the app for a change that was only ever about this one high-scan-speed context. Confirmed via a render comparing the negative row directly against an unaffected positive one before calling this done — remember to match this in version.json on deploy (empty changes array, admin-only)
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9604,7 +9596,7 @@ async function renderXPLeaderboard(){
       // completely separate render path from this leaderboard row).
       const primaryRaw = isThisMonth ? r.monthEarned : r.balance;
       const isNegativeBalance = primaryRaw != null && primaryRaw < 0;
-      const negativeRowBg = isNegativeBalance ? 'background:linear-gradient(90deg, rgba(193,96,74,.16), rgba(193,96,74,.03)); border-radius:10px; box-shadow:inset 0 0 16px rgba(193,96,74,.12);' : null;
+      const negativeRowBg = isNegativeBalance ? 'background:linear-gradient(90deg, rgba(193,96,74,.38), rgba(193,96,74,.08)); border-radius:10px; box-shadow:inset 0 0 20px rgba(193,96,74,.28); border-left:3px solid var(--loss);' : null;
       const bg = tierRowBg || negativeRowBg || (isMe ? 'background:rgba(203,177,102,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : ''));
       // A streak of 1 or 2 is just a normal win — only 3+ in a row reads
       // as an actual "heater" worth calling out on the board.
@@ -9624,7 +9616,7 @@ async function renderXPLeaderboard(){
         ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40, isTippingCat)}
         <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${streakBadge}</span>
         <span style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
-          <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:${isNegativeBalance ? 'var(--loss)' : 'var(--brass)'};">${primaryVal}</span>
+          <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:${isNegativeBalance ? '#FF6B5B' : 'var(--brass)'}; ${isNegativeBalance ? 'text-shadow:0 0 8px rgba(255,107,91,.5);' : ''}">${primaryVal}</span>
           <span class="lb-lifetime-telly">${secondaryLabel}</span>
         </span>
       </div>`;
