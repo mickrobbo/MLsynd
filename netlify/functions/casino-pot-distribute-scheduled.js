@@ -1,12 +1,12 @@
-// Runs hourly and only actually distributes when it's 8am on the 1st or
-// 16th of the month in Australia/Melbourne time — same self-gating
-// pattern as check-lockouts-scheduled.js. Twice-monthly instead of once,
-// per request, to keep payouts smaller and more regular rather than one
-// large lump sum. Checking the real AEST/AEDT wall-clock hour via Intl
-// (rather than hand-picking a single UTC cron time) means this stays
-// correct through daylight-saving changes automatically, and running
-// hourly rather than once means a missed/failed run just gets picked up
-// again next hour rather than waiting up to two weeks.
+// Runs hourly and only actually distributes when it's 8am on Monday in
+// Australia/Melbourne time — same self-gating pattern as check-lockouts-
+// scheduled.js. Weekly per request (previously twice-monthly, 1st/16th),
+// to keep payouts smaller and more frequent still. Checking the real
+// AEST/AEDT wall-clock hour via Intl (rather than hand-picking a single
+// UTC cron time) means this stays correct through daylight-saving changes
+// automatically, and running hourly rather than once means a missed/
+// failed run just gets picked up again next hour rather than waiting up
+// to a week.
 //
 // Deploy alongside your other scheduled functions. Needs the same
 // VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, and VAPID_SUBJECT env vars
@@ -102,27 +102,60 @@ async function getFirebaseAccessToken(){
 }
 
 function isDistributionTime(){
+  const parts = new Intl.DateTimeFormat('en-AU', { timeZone: TIMEZONE, weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(new Date());
+  const weekday = parts.find(p => p.type === 'weekday').value;
+  const hour = parts.find(p => p.type === 'hour').value;
+  return weekday === 'Mon' && Number(hour) === DISTRIBUTE_HOUR;
+}
+// Separate from isDistributionTime() on purpose. The Clean Record Bonus
+// is monthly and was never meant to change when the pot's own cadence
+// did — but it used to piggyback on periodKeyFor()'s output ending in
+// "-01" to detect month-start, which only worked back when that function
+// returned a twice-monthly "-01"/"-16" key. Now that periodKeyFor()
+// returns a weekly Monday date instead, that check would almost never
+// be true (only on the rare month where the 1st happens to fall on a
+// Monday) — silently breaking a feature nobody asked to change, just as
+// a side effect of the pot becoming weekly. This gives month-start its
+// own independent, direct check instead of inferring it from a key
+// format that no longer encodes that information.
+function isMonthStartTime(){
   const parts = new Intl.DateTimeFormat('en-AU', { timeZone: TIMEZONE, day: 'numeric', hour: 'numeric', hourCycle: 'h23' }).formatToParts(new Date());
   const day = parts.find(p => p.type === 'day').value;
   const hour = parts.find(p => p.type === 'hour').value;
-  return (day === '1' || day === '16') && Number(hour) === DISTRIBUTE_HOUR;
+  return day === '1' && Number(hour) === DISTRIBUTE_HOUR;
+}
+function currentMonthLabel(){
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE, year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+  return `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
 }
 
-// Twice-monthly period key ("YYYY-MM-01" for the 1st-15th, "YYYY-MM-16"
-// for the 16th through the end of the month) — deliberately still stored
-// under the same /casinoPot/months path (its Firebase rule is a $monthKey
-// wildcard, so it accepts any child key shape) rather than migrating to a
-// new path, to avoid touching security rules for a pure bucketing-scheme
-// change. Kept the function name periodKeyFor (was monthKeyFor) but left
+// Weekly period key — the Monday date (in TIMEZONE) that starts the
+// current week, e.g. "2026-09-07" for the week beginning that Monday.
+// Deliberately still stored under the same /casinoPot/months path (its
+// Firebase rule is a $monthKey wildcard, so it accepts any child key
+// shape) rather than migrating to a new path, to avoid touching security
+// rules for a pure bucketing-scheme change. Kept the function name
+// periodKeyFor (was monthKeyFor, then the twice-monthly version) but left
 // every call site's local variable names as monthKey/monthKeys/nowKey —
 // purely cosmetic, not worth the risk of a wider rename.
 function periodKeyFor(date, timeZone){
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
-  const y = parts.find(p => p.type === 'year').value;
-  const m = parts.find(p => p.type === 'month').value;
-  const day = Number(parts.find(p => p.type === 'day').value);
-  const periodStartDay = day <= 15 ? '01' : '16';
-  return `${y}-${m}-${periodStartDay}`;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).formatToParts(date);
+  const y = Number(parts.find(p => p.type === 'year').value);
+  const m = Number(parts.find(p => p.type === 'month').value);
+  const d = Number(parts.find(p => p.type === 'day').value);
+  const weekdayStr = parts.find(p => p.type === 'weekday').value;
+  const weekdayIndex = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[weekdayStr];
+  // Walk back to that week's Monday using UTC date math on the
+  // timezone-local y/m/d — safe here since we only need calendar-day
+  // arithmetic, not a real instant, and this avoids DST edge cases that
+  // constructing a local Date from these parts directly could hit.
+  const asUTC = Date.UTC(y, m - 1, d);
+  const mondayUTC = asUTC - weekdayIndex * 86400000;
+  const mondayDate = new Date(mondayUTC);
+  const yy = mondayDate.getUTCFullYear();
+  const mm = String(mondayDate.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(mondayDate.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 }
 
 async function dbGet(path, secret){
@@ -231,20 +264,26 @@ async function distributePot(secret){
   const nowKey = periodKeyFor(new Date(), TIMEZONE);
   const allMonths = (await dbGet('/casinoPot/months', secret)) || {};
   // Everything under /casinoPot/months is by definition from before now —
-  // this function only ever runs on the 1st or 16th, so any bucket present
-  // here (including one matching a stale nowKey from a prior run this same
-  // hour) is fair game to close out. Excluding an exact nowKey match just
-  // guards against a same-day double-run within the hour this fires.
+  // this function only ever runs Monday 8am (weekly), so any bucket
+  // present here (including one matching a stale nowKey from a prior run
+  // this same hour) is fair game to close out. Excluding an exact nowKey
+  // match just guards against a same-day double-run within the hour this
+  // fires.
   const monthKeys = Object.keys(allMonths).filter(k => k !== nowKey).sort();
   if(monthKeys.length === 0) return { skipped: true, reason: 'nothing open' };
 
   const combinedLosses = {};
   const combinedPlayCounts = {};
+  const combinedTippingGames = {}; // uid -> Set of distinct game ids tipped this period(s)
   let combinedFines = 0;
   for(const mk of monthKeys){
     const data = allMonths[mk] || {};
     Object.entries(data.losses || {}).forEach(([uid, v]) => { combinedLosses[uid] = (combinedLosses[uid] || 0) + (Number(v) || 0); });
     Object.entries(data.playCounts || {}).forEach(([uid, v]) => { combinedPlayCounts[uid] = (combinedPlayCounts[uid] || 0) + (Number(v) || 0); });
+    Object.entries(data.tippingGames || {}).forEach(([uid, games]) => {
+      if(!combinedTippingGames[uid]) combinedTippingGames[uid] = new Set();
+      Object.keys(games || {}).forEach(gameId => combinedTippingGames[uid].add(gameId));
+    });
     combinedFines += Number(data.fines) || 0;
   }
   // Fines (Group Multi leg losses from the Ledger, AFL Tipping misses from
@@ -280,32 +319,38 @@ async function distributePot(secret){
     return { skipped: true, reason: 'no eligible / empty pot', totalPot };
   }
 
-  // Hard cap per request — the 20% burn alone trims a PERCENTAGE, which
+  // Hard cap per request — the burn rate alone trims a PERCENTAGE, which
   // can't actually stop the absolute number spiraling once a few people
   // are staking amounts that dwarf everyone else's (the custom-bet chip
   // makes that trivially possible). A percentage burn scales WITH the
   // problem; a cap is the only thing that actually bounds it. Applied
-  // BEFORE the existing 20% burn — i.e. it caps what enters that
-  // pipeline, rather than being a second, separate burn concept bolted
-  // on top — so everything below this line (the 75/25 split math, the
-  // eligibility logic) is completely unchanged and still just operates
-  // on "the pot," whatever that turned out to be this period.
+  // BEFORE the burn — i.e. it caps what enters that pipeline, rather than
+  // being a second, separate burn concept bolted on top — so everything
+  // below this line (the 75/25 split math, the eligibility logic) is
+  // completely unchanged and still just operates on "the pot," whatever
+  // that turned out to be this period.
   // capBurnedAmount is logged separately from the regular burn in
   // history, purely for admin visibility into how often/how hard the
-  // cap is actually being hit — worth watching to see if 250M needs
-  // retuning once a few real periods have gone through it.
-  const CASINO_POT_CAP = 250000000;
+  // cap is actually being hit — worth watching to see if this needs
+  // retuning once a few real weekly periods have gone through it.
+  // Rescaled from 250M down for the move from twice-monthly to weekly
+  // periods (roughly 2.17x more frequent — ~4.33 weekly periods/month vs
+  // 2 twice-monthly ones) — keeps roughly the same effective monthly cap
+  // rate rather than accidentally quadrupling how much can flow through
+  // in a month just because periods got shorter and more frequent.
+  const CASINO_POT_CAP = 120000000;
   const cappedPot = Math.min(totalPot, CASINO_POT_CAP);
   const capBurnedAmount = totalPot - cappedPot; // always >= 0; 0 in a normal period that never reaches the cap
 
-  // 20% burned outright per request — otherwise the pot is a pure wash:
-  // 100% of what's collected gets redistributed straight back to players,
-  // so nothing ever actually leaves the XP economy through it, and the
-  // numbers involved only ever grow. The remaining 85% still splits at
-  // the existing 75/25 ratio, unchanged — burnedAmount is logged in the
-  // distribution history for a real audit trail rather than just quietly
-  // vanishing with no record. Single named constant, easy to retune.
-  const CASINO_POT_BURN_RATE = 0.20;
+  // 30% burned outright per request (raised from 20%) — otherwise the pot
+  // is a pure wash: 100% of what's collected gets redistributed straight
+  // back to players, so nothing ever actually leaves the XP economy
+  // through it, and the numbers involved only ever grow. The remaining
+  // 70% still splits at the existing 75/25 ratio, unchanged — burnedAmount
+  // is logged in the distribution history for a real audit trail rather
+  // than just quietly vanishing with no record. Single named constant,
+  // easy to retune.
+  const CASINO_POT_BURN_RATE = 0.30;
   const regularBurnedAmount = Math.floor(cappedPot * CASINO_POT_BURN_RATE);
   const burnedAmount = capBurnedAmount + regularBurnedAmount; // combined figure — what players see as "burned" is one honest number, not two to reconcile
   const distributable = cappedPot - regularBurnedAmount;
@@ -324,9 +369,19 @@ async function distributePot(secret){
   // Jackpot: pure equal-chance draw among anyone who played at all this
   // month — deliberately NOT weighted by losses, play count, or anything
   // else, and deliberately a separate pool from the proportional
-  // eligibility above.
-  const jackpotCandidates = Object.keys(combinedPlayCounts).filter(uid => (combinedPlayCounts[uid] || 0) > 0);
-  const jackpotPoolCandidates = jackpotCandidates.length > 0 ? jackpotCandidates : eligible;
+  // eligibility above. Tipping-only accounts have no casino play at all
+  // to qualify via, so per request they get their own equivalent path in:
+  // 50+ DISTINCT games tipped within the period(s) being distributed
+  // (tracked as a set client-side specifically to prevent re-saving/
+  // editing an already-picked game from inflating the count). Same
+  // jackpot, same odds, same random draw — just a different, parallel
+  // route to the same candidate pool, not a separate or lesser prize.
+  const TIPPING_JACKPOT_GAME_THRESHOLD = 50;
+  const jackpotCandidates = new Set(Object.keys(combinedPlayCounts).filter(uid => (combinedPlayCounts[uid] || 0) > 0));
+  Object.entries(combinedTippingGames).forEach(([uid, gameSet]) => {
+    if(gameSet.size >= TIPPING_JACKPOT_GAME_THRESHOLD) jackpotCandidates.add(uid);
+  });
+  const jackpotPoolCandidates = jackpotCandidates.size > 0 ? [...jackpotCandidates] : eligible;
   const jackpotWinner = jackpotPoolCandidates[Math.floor(Math.random() * jackpotPoolCandidates.length)];
 
   for(const uid of Object.keys(proportional)){
@@ -415,12 +470,10 @@ async function sendPotPushNotifications(secret, result){
 const CLEAN_RECORD_BONUS_BASE = 15000;
 
 async function runCleanRecordBonus(secret){
-  const nowKey = periodKeyFor(new Date(), TIMEZONE);
-  // Monthly, not twice-monthly — only ever evaluated on the month-start
-  // ("-01") run, never on the 16th.
-  if(!nowKey.endsWith('-01')) return { skipped: true, reason: 'not a month-start run' };
-
-  const monthLabel = nowKey.slice(0, 7); // "YYYY-MM"
+  // Independent check now — see isMonthStartTime()'s own comment for why
+  // this could no longer piggyback on periodKeyFor() once that switched
+  // to a weekly key.
+  const monthLabel = currentMonthLabel(); // "YYYY-MM"
   // Idempotency — this whole function already only runs under the same
   // distribution lock as distributePot, but this is a second, cheap
   // guard specifically against ever double-evaluating (and so
@@ -488,8 +541,17 @@ async function runCleanRecordBonus(secret){
 }
 
 export default async () => {
-  if(!isDistributionTime()){
-    return new Response(`Not ${DISTRIBUTE_HOUR}am on the 1st or 16th in ${TIMEZONE} — skipping.`, { status: 200 });
+  // Two genuinely independent schedules now share this one hourly check:
+  // the pot itself (Monday 8am, weekly) and the Clean Record Bonus
+  // (the 1st of the month at 8am, whatever weekday that lands on — could
+  // easily be a Monday, but just as easily not). Neither is nested inside
+  // the other any more — each fires on its own condition below, so the
+  // monthly bonus is never silently skipped just because the 1st wasn't
+  // also a Monday that particular month.
+  const runDistribution = isDistributionTime();
+  const runCleanRecord = isMonthStartTime();
+  if(!runDistribution && !runCleanRecord){
+    return new Response(`Not ${DISTRIBUTE_HOUR}am on Monday or the 1st in ${TIMEZONE} — skipping.`, { status: 200 });
   }
   let secret;
   try{
@@ -510,19 +572,25 @@ export default async () => {
     return new Response('Another distribution run is already in progress or ran within the last 10 minutes — skipping.', { status: 200 });
   }
   try{
-    const result = await distributePot(secret);
-    console.log('Casino pot distribution result:', JSON.stringify(result));
-    if(!result.skipped) await sendPotPushNotifications(secret, result);
-    // Clean Record Bonus — runs under the exact same lock, right after
-    // the regular distribution. It self-gates on being a month-start
-    // ("-01") run, so calling it here every 1st/16th is safe; it's a
-    // genuine no-op on the 16th.
+    let result = { skipped: true, reason: 'not the weekly distribution hour' };
+    if(runDistribution){
+      result = await distributePot(secret);
+      console.log('Casino pot distribution result:', JSON.stringify(result));
+      if(!result.skipped) await sendPotPushNotifications(secret, result);
+    }
+    // Clean Record Bonus — runs under the exact same lock (harmless to
+    // share even on the rare month where the 1st IS a Monday, since the
+    // lock only ever guards against a genuine concurrent double-run, not
+    // against two unrelated tasks running back to back in the one
+    // invocation that legitimately owns the lock).
     let cleanRecordResult = null;
-    try{
-      cleanRecordResult = await runCleanRecordBonus(secret);
-      console.log('Clean Record Bonus result:', JSON.stringify(cleanRecordResult));
-    }catch(e){
-      console.error('Clean Record Bonus failed (regular pot distribution still succeeded):', e);
+    if(runCleanRecord){
+      try{
+        cleanRecordResult = await runCleanRecordBonus(secret);
+        console.log('Clean Record Bonus result:', JSON.stringify(cleanRecordResult));
+      }catch(e){
+        console.error('Clean Record Bonus failed (regular pot distribution still succeeded):', e);
+      }
     }
     return new Response(JSON.stringify({ ...result, cleanRecordBonus: cleanRecordResult }), { status: 200 });
   }catch(e){
