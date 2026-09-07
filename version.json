@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.68",
+  "version": "2026-09-02.69",
   "date": "2026-09-02",
   "changes": [
-    "Fines tab: \"Most Fined\" now matches the Floor tab's \"Biggest Win\" card exactly, and the running total switched from quarterly to a calendar year (resets Jan 1st)."
+    "Leaderboard, Floor, and Fines tabs (Casino > Members) now all show the same style of highlight card at the top \u2014 Leaderboard's was missing entirely before."
   ]
 }
