@@ -163,6 +163,40 @@ async function dbGet(path, secret){
   if(!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
   return res.json();
 }
+// Atomic claim on the history path itself, using the exact same ETag
+// compare-and-swap the distribution lock already uses — not a second,
+// independent safety net, the ACTUAL mechanism that makes double-crediting
+// impossible. The plain "check history, then later dbPut history" pattern
+// this replaced had a real gap: checking and writing were two separate
+// awaits with no atomicity between them, so two invocations racing here —
+// whether that's two overlapping scheduled runs, OR the server-side
+// scheduled function racing the client-side admin "close overdue periods"
+// recovery tool, which is a genuinely separate, independent copy of this
+// same logic with no shared in-memory lock at all — could both pass the
+// old read-then-write check before either one had written anything yet,
+// and both go on to independently draw a jackpot winner and credit XP.
+// That's the exact "same period, two different jackpot winners" symptom.
+// Claiming the label BEFORE any XP is credited (not after, the way the
+// history dbPut used to happen right at the very end) means only one
+// invocation can ever win this compare-and-swap; every other one gets
+// HTTP 412 and bails out having credited nothing at all.
+async function claimDistributionLabel(label, secret){
+  const path = `/casinoPot/history/${label.replace(/\./g, '_')}`;
+  const url = `${FIREBASE_URL}${path}.json?access_token=${secret}`;
+  const getRes = await fetch(url, { headers: { 'X-Firebase-ETag': 'true' } });
+  if(!getRes.ok) throw new Error(`Claim GET failed: ${getRes.status}`);
+  const etag = getRes.headers.get('ETag');
+  const current = await getRes.json();
+  if(current != null) return false; // already has a real history entry — genuinely already distributed
+  const putRes = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'If-Match': etag },
+    body: JSON.stringify({ claiming: true, claimedAt: Date.now() })
+  });
+  if(putRes.status === 412) return false; // lost the race to another concurrent invocation/tool
+  if(!putRes.ok) throw new Error(`Claim PUT failed: ${putRes.status}`);
+  return true;
+}
 async function dbPut(path, secret, value){
   const res = await fetch(`${FIREBASE_URL}${path}.json?access_token=${secret}`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value)
@@ -295,16 +329,6 @@ async function distributePot(secret){
   const totalPot = Math.max(0, rawPot - combinedFines);
   const label = monthKeys.length === 1 ? monthKeys[0] : `${monthKeys[0]}..${monthKeys[monthKeys.length - 1]}`;
 
-  // Belt-and-braces idempotency check: if this exact month label was
-  // already distributed and recorded in history, never credit it again —
-  // even if a stale/expired lock somehow let two invocations both reach
-  // this point. Cheap, and it's the same check the lock is trying to make
-  // unnecessary, so it costs nothing to keep as a second layer.
-  const existingHistory = await dbGet(`/casinoPot/history/${label.replace(/\./g, '_')}`, secret);
-  if(existingHistory){
-    return { skipped: true, reason: 'already distributed (idempotency check)', label };
-  }
-
   const allUids = new Set([...Object.keys(combinedLosses), ...Object.keys(combinedPlayCounts)]);
   const eligible = [];
   for(const uid of allUids){
@@ -313,10 +337,26 @@ async function distributePot(secret){
   }
 
   if(totalPot <= 0 || eligible.length === 0){
-    // Nothing to distribute (or no one qualifies yet) — leave the month
-    // bucket(s) untouched so they roll into whichever future run finally
-    // has an eligible winner.
+    // Nothing to distribute (or no one qualifies) — return before ever
+    // attempting a claim, so this label stays open for a future run to
+    // try again once conditions actually allow a real distribution
+    // (claiming here and then bailing out would leave a permanent
+    // "claiming: true" placeholder blocking this label forever, since
+    // nothing later would ever overwrite it with a real history entry).
     return { skipped: true, reason: 'no eligible / empty pot', totalPot };
+  }
+
+  // Atomic claim — see claimDistributionLabel's own comment for the full
+  // reasoning. This is the actual mechanism preventing this exact label
+  // from ever being credited twice, whether that's two overlapping
+  // scheduled runs or this same logic's separate client-side admin-tool
+  // copy racing against it. Placed here — as close as possible to the
+  // real crediting below, after eligibility is already confirmed — so
+  // the claim only ever happens when a distribution is genuinely about
+  // to occur, never earlier.
+  const claimed = await claimDistributionLabel(label, secret);
+  if(!claimed){
+    return { skipped: true, reason: 'already distributed or claimed by another invocation', label };
   }
 
   // Hard cap per request — the burn rate alone trims a PERCENTAGE, which
