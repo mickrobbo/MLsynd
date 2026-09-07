@@ -3462,7 +3462,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.72"; // Floor and Fines feeds now show first name only ("Zak Hardinge" → "ZAK", "Chris Murphy" → "CHRIS") — single-word names unaffected. New firstNameOnly() helper, purely a display transform on the visible .xp-log-who text only — deliberately NOT touched: Fines' data-name attribute (still the full name, needed for its click-to-profile handler to match correctly) and Floor's showBigWinModal (which never reads the row's displayed text at all, it looks up the original entry by index from casinoFloorMergedEntries, so it already shows the full name in its own modal regardless of what the feed row displays). Confirmed via a render mixing single-word and multi-word names together — remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.73"; // Rewrote the Fines rules text in both places it appears (XP Ecosystem panel, and the separate Casino Pot rules modal) per direct request: XP figure first and bold, description after, sorted highest to lowest (100k Individual loss → 80k Group Multi loss → 60k MIA → 30k wrong tip → 15k missed tip → 8k low odds). Fixed both locations for consistency rather than just the one in the screenshot — same fine categories and amounts shown twice in this app, leaving one reformatted and the other not would've been its own inconsistency. Verified the sort order against the actual constant values (CASINO_POT_*_FINE_DISPLAY) rather than assuming the screenshot's order was already correct. Confirmed via a render — remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -3861,12 +3861,12 @@ function renderXpInfoView(){
       <div class="hint" style="padding:0 4px 10px;">The pot is also hard-capped at ${CASINO_POT_CAP_DISPLAY.toLocaleString()} XP per period — anything collected above that is burned outright too, on top of the 20%.</div>
       <div class="xp-source-row"><span>Fines</span></div>
       <div class="hint" style="padding:0 4px 10px;">
-        Losing Group Multi leg — ${CASINO_POT_LEG_LOSS_FINE_DISPLAY.toLocaleString()} XP<br>
-        MIA Group Multi leg — ${CASINO_POT_MIA_LEG_FINE_DISPLAY.toLocaleString()} XP<br>
-        Group Multi leg under $${CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY} — ${CASINO_POT_LOW_ODDS_FINE_DISPLAY.toLocaleString()} XP<br>
-        Losing Individual bet — ${CASINO_POT_INDIVIDUAL_LOSS_FINE_DISPLAY.toLocaleString()} XP (not the SGM Bonus field — that's already excluded from your normal tally)<br>
-        Wrong AFL tip — ${CASINO_POT_TIPPING_FINE_DISPLAY.toLocaleString()} XP<br>
-        Missed AFL tip — ${CASINO_POT_MISSED_TIP_FINE_DISPLAY.toLocaleString()} XP<br>
+        <b>${CASINO_POT_INDIVIDUAL_LOSS_FINE_DISPLAY.toLocaleString()} XP</b> — Losing Individual bet (not the SGM Bonus field — that's already excluded from your normal tally)<br>
+        <b>${CASINO_POT_LEG_LOSS_FINE_DISPLAY.toLocaleString()} XP</b> — Losing Group Multi leg<br>
+        <b>${CASINO_POT_MIA_LEG_FINE_DISPLAY.toLocaleString()} XP</b> — MIA Group Multi leg<br>
+        <b>${CASINO_POT_TIPPING_FINE_DISPLAY.toLocaleString()} XP</b> — Wrong AFL tip<br>
+        <b>${CASINO_POT_MISSED_TIP_FINE_DISPLAY.toLocaleString()} XP</b> — Missed AFL tip<br>
+        <b>${CASINO_POT_LOW_ODDS_FINE_DISPLAY.toLocaleString()} XP</b> — Group Multi leg under $${CASINO_POT_LOW_ODDS_THRESHOLD_DISPLAY}<br>
         90% of every fine goes to the shared pot — the remaining 10% comes off your own balance directly.
       </div>
       <div class="xp-source-row"><span>Clean Record Bonus</span></div>
@@ -9975,12 +9975,12 @@ const CASINO_RULES = {
     <h3>Fines</h3>
     <p>The pot also takes real fines off the top before it's ever distributed. 90% of each comes out of the shared pot — the remaining 10% comes off your own balance directly:</p>
     <ul style="margin:4px 0 0; padding-left:20px; line-height:1.6;">
-      <li>Losing Group Multi leg — <b>80,000 XP</b></li>
-      <li>MIA (no-show) Group Multi leg — <b>60,000 XP</b></li>
-      <li>Group Multi leg placed under $1.22 — <b>8,000 XP</b></li>
-      <li>Losing Individual bet — <b>100,000 XP</b> (not the SGM Bonus field — that's already excluded from your normal tally)</li>
-      <li>Wrong AFL tip — <b>30,000 XP</b></li>
-      <li>Missed AFL tip — <b>15,000 XP</b></li>
+      <li><b>100,000 XP</b> — Losing Individual bet (not the SGM Bonus field — that's already excluded from your normal tally)</li>
+      <li><b>80,000 XP</b> — Losing Group Multi leg</li>
+      <li><b>60,000 XP</b> — MIA (no-show) Group Multi leg</li>
+      <li><b>30,000 XP</b> — Wrong AFL tip</li>
+      <li><b>15,000 XP</b> — Missed AFL tip</li>
+      <li><b>8,000 XP</b> — Group Multi leg placed under $1.22</li>
     </ul>
     <h3>Eligibility</h3>
     <p>You qualify for the 75% share if you played the tables <b>20 times or more</b> this period, <b>or</b> earned any real (non-casino) XP this period — betting results, dues, weekly bonus, and so on. The jackpot draw has no threshold at all: play once, you're in the draw.</p>

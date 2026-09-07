@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-02.72",
+  "version": "2026-09-02.73",
   "date": "2026-09-02",
   "changes": [
-    "Floor and Fines feeds now show first name only, keeping rows shorter and more consistent."
+    "Fines rules text reordered highest to lowest, XP amount shown first and bold."
   ]
 }
