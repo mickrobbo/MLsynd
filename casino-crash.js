@@ -368,13 +368,11 @@ document.getElementById('crashBetInput').addEventListener('input', (e) => {
   chip.textContent = e.target.value || '0';
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
 });
-document.getElementById('crashChipDisplay').addEventListener('click', () => {
+document.getElementById('crashChipDisplay').addEventListener('click', async () => {
   if(crashRunning) return;
   const input = document.getElementById('crashBetInput');
-  const entry = prompt('Bet amount (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
 });

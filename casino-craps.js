@@ -291,12 +291,10 @@ document.getElementById('crapsBetInput').addEventListener('input', (e) => {
 });
 // Tap the chip readout to type any amount — the 10/25/50/100/250 buttons
 // are quick-pick shortcuts, not a ceiling; there's no house limit here.
-document.getElementById('crapsChipDisplay').addEventListener('click', () => {
+document.getElementById('crapsChipDisplay').addEventListener('click', async () => {
   const input = document.getElementById('crapsBetInput');
-  const entry = prompt('Bet amount (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
   document.querySelectorAll('#crapsBetPanel .table-chip').forEach(c => c.classList.remove('active-chip'));
@@ -340,7 +338,14 @@ async function crapsRollInner(){
   if(stagedTotal === 0 && alreadyLive === 0){ errEl.textContent = 'Place at least one bet first.'; return; }
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(crapsTotalAtRisk() > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total at risk is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP across every live bet (currently: ${crapsTotalAtRisk().toLocaleString()}).`; return; }
+  // Cap applies to NEW money staged this roll only, not the running total —
+  // Press/Ride wins compound Place & Hardway bets straight out of winnings
+  // (crapsWinMode), with no new chips ever staked, and that growth is
+  // deliberately uncapped (same category as Blackjack Double/Split and
+  // War's go-to-war). Capping crapsTotalAtRisk() as a whole meant a long
+  // pressed run could grow past the cap and then lock the table — Roll
+  // would refuse to fire at all, even with zero new chips on the felt.
+  if(stagedTotal > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum new stake per roll is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (staged: ${stagedTotal.toLocaleString()}).`; return; }
   if(crapsTotalAtRisk() > balance){ errEl.textContent = `You only have ${balance} XP (at risk: ${crapsTotalAtRisk()}).`; return; }
 
   scrollIntoViewSmooth('crapsTableRail');

@@ -194,12 +194,20 @@
     100%{ transform:scale(1) rotate(0deg); }
   }
   .bj-chip.pc-chip-pulse{ animation: chipPulse .45s cubic-bezier(.34,1.6,.5,1); }
-  /* Roulette & Craps: the chip readout is tappable to type any custom
-     amount (see the click handlers on rouletteChipDisplay/crapsChipDisplay)
-     — no house limit on either table, the 10-250 buttons are just quick
-     picks. A small pencil badge hints it's editable, not just a display. */
-  #rouletteChipDisplay, #crapsChipDisplay{ cursor:pointer; position:relative; }
-  #rouletteChipDisplay::after, #crapsChipDisplay::after{
+  /* Every game's chip readout is tappable to type any custom amount (see
+     openChipAmountModal + each game's chipDisplay click handler) — no
+     house limit. Originally only Roulette & Craps got the pencil badge
+     hinting this; the other 10 games have the identical feature but gave
+     zero visual cue it existed, so most players had no way to discover
+     it. Applied uniformly to every game's chip display for consistency. */
+  #rouletteChipDisplay, #crapsChipDisplay, #bacChipDisplay, #bigWheelChipDisplay,
+  #bjChipDisplay, #crashChipDisplay, #donChipDisplay, #minesChipDisplay,
+  #plinkoChipDisplay, #slotsChipDisplay, #vpChipDisplay, #warChipDisplay{
+    cursor:pointer; position:relative;
+  }
+  #rouletteChipDisplay::after, #crapsChipDisplay::after, #bacChipDisplay::after, #bigWheelChipDisplay::after,
+  #bjChipDisplay::after, #crashChipDisplay::after, #donChipDisplay::after, #minesChipDisplay::after,
+  #plinkoChipDisplay::after, #slotsChipDisplay::after, #vpChipDisplay::after, #warChipDisplay::after{
     content:'✎'; position:absolute; bottom:-3px; right:-3px; width:16px; height:16px; border-radius:50%;
     background:var(--ink); border:1px solid var(--brass-light); color:var(--brass-light);
     font-size:9px; display:flex; align-items:center; justify-content:center;
@@ -542,7 +550,7 @@
   }
   .casino-view{ display:none; }
   .casino-view.active{ display:block; }
-  #casinoRulesHubList, #xpInfoModalBody .xp-source-row{
+  #xpInfoModalBody .xp-source-row{
     display:flex; justify-content:space-between; align-items:center; gap:10px;
     padding:10px 4px; border-bottom:1px solid var(--line); font-size:12.5px;
   }
@@ -560,11 +568,6 @@
     content:''; position:absolute; left:0; top:13px; width:5px; height:5px; border-radius:50%;
     background:var(--brass-light); box-shadow:0 0 6px rgba(255,224,150,.6);
   }
-  #casinoRulesHubList button{
-    width:100%; text-align:left; background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--chalk);
-    border-radius:10px; padding:12px 14px; margin-bottom:8px; font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer;
-  }
-  #casinoRulesHubList button:active{ border-color:var(--brass); }
 
   /* ---- Head-to-head challenges ---- */
   .challenge-row{

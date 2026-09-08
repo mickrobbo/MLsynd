@@ -406,12 +406,10 @@ document.getElementById('rouletteBetInput').addEventListener('input', (e) => {
 });
 // Tap the chip readout to type any amount — the 10/25/50/100/250 buttons
 // are quick-pick shortcuts, not a ceiling; there's no house limit here.
-document.getElementById('rouletteChipDisplay').addEventListener('click', () => {
+document.getElementById('rouletteChipDisplay').addEventListener('click', async () => {
   const input = document.getElementById('rouletteBetInput');
-  const entry = prompt('Bet amount (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
   document.querySelectorAll('#rouletteBetPanel .table-chip').forEach(c => c.classList.remove('active-chip'));

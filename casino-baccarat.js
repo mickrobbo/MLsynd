@@ -244,14 +244,12 @@ document.getElementById('bacBetInput').addEventListener('input', (e) => {
 // visible (rather than a dedicated hand-active flag, which this game
 // doesn't have) — same "can't change your bet mid-hand" intent as Deal
 // already enforces by hiding this panel the moment a hand starts.
-document.getElementById('bacChipDisplay').addEventListener('click', () => {
+document.getElementById('bacChipDisplay').addEventListener('click', async () => {
   const panel = document.getElementById('bacBetPanel');
   if(panel && panel.style.display === 'none') return;
   const input = document.getElementById('bacBetInput');
-  const entry = prompt('Bet amount (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
 });

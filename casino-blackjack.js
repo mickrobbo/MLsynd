@@ -544,12 +544,12 @@ async function bjDoubleDown(){
       errEl.style.color = 'var(--loss)';
       return;
     }
-    if(bjCurrentBet * 2 > CASINO_MAX_BET_PER_HAND){
-      const errEl = document.getElementById('bjOutcomeMsg');
-      errEl.textContent = `Doubling would put ${(bjCurrentBet * 2).toLocaleString()} XP at risk — max per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()}.`;
-      errEl.style.color = 'var(--loss)';
-      return;
-    }
+    // No cap on the doubled amount, deliberately — the initial bet was
+    // already checked against CASINO_MAX_BET_PER_HAND when it was placed;
+    // Double Down is a compounding action (same category as Craps'
+    // Press/Ride and War's go-to-war), not a fresh new stake, so it's
+    // exempt from the per-bet cap. The balance check above is still the
+    // real backstop — you can only double what you can actually cover.
     document.getElementById('bjDoubleBtn').style.display = 'none';
     document.getElementById('bjHitBtn').style.display = 'none';
     document.getElementById('bjSplitBtn').style.display = 'none';
@@ -582,12 +582,9 @@ async function bjSplit(){
       errEl.style.color = 'var(--loss)';
       return;
     }
-    if(bjCurrentBet * 2 > CASINO_MAX_BET_PER_HAND){
-      const errEl = document.getElementById('bjOutcomeMsg');
-      errEl.textContent = `Splitting would put ${(bjCurrentBet * 2).toLocaleString()} XP at risk — max per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()}.`;
-      errEl.style.color = 'var(--loss)';
-      return;
-    }
+    // No cap on the split amount, deliberately — same reasoning as
+    // Double Down above: the initial bet already passed the per-bet cap
+    // when placed, and Split is a compounding action, not a fresh stake.
     bjPlayChipSound();
     document.getElementById('bjSplitBtn').style.display = 'none';
     document.getElementById('bjDoubleBtn').style.display = 'none';
@@ -754,13 +751,11 @@ document.getElementById('bjBetInput').addEventListener('input', (e) => {
 // Click the chip to type any custom amount — same pattern every other
 // game's main bet chip already uses (Mines, Video Poker, Roulette, etc.),
 // added here per report that it was missing on Blackjack specifically.
-document.getElementById('bjChipDisplay').addEventListener('click', () => {
+document.getElementById('bjChipDisplay').addEventListener('click', async () => {
   if(bjHandActive) return;
   const input = document.getElementById('bjBetInput');
-  const entry = prompt('Bet amount (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
 });

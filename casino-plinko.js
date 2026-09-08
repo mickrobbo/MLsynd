@@ -61,13 +61,11 @@ document.getElementById('plinkoBetInput').addEventListener('input', (e) => {
   }
   plinkoUpdateStakeHint();
 });
-document.getElementById('plinkoChipDisplay').addEventListener('click', () => {
+document.getElementById('plinkoChipDisplay').addEventListener('click', async () => {
   if(plinkoDropping) return;
   const input = document.getElementById('plinkoBetInput');
-  const entry = prompt('Bet amount per ball (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount per ball (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
 });

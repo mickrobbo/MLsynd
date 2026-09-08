@@ -397,12 +397,10 @@ document.getElementById('slotsBetInput').addEventListener('input', (e) => {
 // slotsSetControlsLockedForFreeSpins already sets pointer-events:none on
 // this exact element during a bonus round, so a click simply can't reach
 // this handler at all while free spins are active.
-document.getElementById('slotsChipDisplay').addEventListener('click', () => {
+document.getElementById('slotsChipDisplay').addEventListener('click', async () => {
   const input = document.getElementById('slotsBetInput');
-  const entry = prompt('Bet amount per line (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount per line (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
 });

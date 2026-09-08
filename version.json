@@ -1,7 +1,8 @@
 {
-  "version": "2026-09-08.83",
+  "version": "2026-09-08.84",
   "date": "2026-09-08",
   "changes": [
-    "Replaced both duplicate-fix admin tools with a single first-principles Reconcile Casino Pot From Source tool, fixing a real over-correction bug (refunding a flagged entry could put a duplicate payout straight back)"
+    "Removed the 250k bet cap from compounding actions (Blackjack Double/Split, War go-to-war) and fixed a real Craps bug where pressed/ridden winnings could grow past the cap and lock the Roll button entirely",
+    "Replaced every game's tap-to-adjust chip (window.prompt, unreliable inside an installed Android PWA) with one shared, on-brand modal"
   ]
 }

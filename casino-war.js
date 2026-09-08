@@ -142,11 +142,11 @@ async function warGoToWar(){
     if(errEl){ errEl.textContent = 'Not enough XP to go to war — try Surrender instead.'; errEl.style.color = 'var(--loss)'; }
     return;
   }
-  if(warOriginalBet * 2 > CASINO_MAX_BET_PER_HAND){
-    const errEl = document.getElementById('warOutcomeMsg');
-    if(errEl){ errEl.textContent = `Going to war would put ${(warOriginalBet * 2).toLocaleString()} XP at risk — max per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()}. Try Surrender instead.`; errEl.style.color = 'var(--loss)'; }
-    return;
-  }
+  // No cap on the doubled amount, deliberately — same reasoning as
+  // Blackjack Double Down/Split and Craps Press/Ride: the original bet
+  // already passed the per-bet cap when placed, and going to war is a
+  // compounding action, not a fresh stake. The balance check above is
+  // still the real backstop.
   document.getElementById('warGoBtn').style.display = 'none';
   document.getElementById('warSurrenderBtn').style.display = 'none';
   bjPlayChipSound();
@@ -204,14 +204,12 @@ document.getElementById('warBetInput').addEventListener('input', (e) => {
 // game's main bet chip already uses. Guarded on the bet panel still being
 // visible, same "can't change your bet mid-hand" intent as Deal already
 // enforces by hiding this panel the moment a hand starts.
-document.getElementById('warChipDisplay').addEventListener('click', () => {
+document.getElementById('warChipDisplay').addEventListener('click', async () => {
   const panel = document.getElementById('warBetPanel');
   if(panel && panel.style.display === 'none') return;
   const input = document.getElementById('warBetInput');
-  const entry = prompt('Bet amount (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
 });

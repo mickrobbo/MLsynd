@@ -1135,6 +1135,15 @@
       </div>
     </div>
 
+    <div id="chipAmountModal" class="profile-modal">
+      <div class="profile-sheet" style="text-align:center;">
+        <button type="button" class="profile-close" id="chipAmountModalCloseBtn">✕</button>
+        <h2 style="font-size:15px; margin-bottom:14px;" id="chipAmountModalTitle">Bet amount (XP)</h2>
+        <input type="number" id="chipAmountModalInput" inputmode="numeric" min="1" placeholder="e.g. 50" style="width:100%; margin-bottom:14px; padding:10px; border-radius:8px; background:rgba(0,0,0,.25); border:1px solid var(--line); color:var(--chalk); box-sizing:border-box; text-align:center; font-size:18px;">
+        <button type="button" class="pill-btn pill-btn-primary" id="chipAmountModalConfirmBtn" style="width:100%;">Set Amount</button>
+      </div>
+    </div>
+
     <div id="bookAddReserveModal" class="profile-modal">
       <div class="profile-sheet" style="text-align:center;">
         <button type="button" class="profile-close" id="bookAddReserveCloseBtn">✕</button>
@@ -3475,7 +3484,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.83"; // Replaced both duplicate-fix admin tools with one "Reconcile Casino Pot From Source" tool, after a real report that refunding the previous tool's flagged entries put a duplicate payout straight back — because that tool (and the one before it) both depended on recognising specific reversal wording, including an old one-off correction script's wording from before either tool existed. The new tool ignores reversal wording entirely: it reads every original Casino Pot credit for a period, works out what SHOULD exist (one share per eligible person for an Even Split, exactly one earliest-winner for a Jackpot), and corrects straight to that state in one pass — safe to re-run, since it always recomputes from the full log including its own prior corrections. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.84"; // Casino games pass, per request: (1) removed the artificial 250k cap on compounding actions — Blackjack Double Down/Split, War's go-to-war, and fixed a real Craps lockout where pressed/ridden winnings growing the total-at-risk past 250k blocked Roll entirely even with zero new chips staked; the cap now only ever applies to fresh new stakes, never to winnings compounding via Press/Ride/Double/Split. Confirmed min bet of 1 XP was already correctly enforced everywhere. (2) Fixed "tap to adjust coin not working on some games" — root cause wasn't a bug in any individual game (all 12 had it wired identically and correctly), it's window.prompt() being unreliable inside an installed/standalone PWA on Android. Replaced all 12 games' prompt() calls with one shared on-brand modal (chipAmountModal, matching the existing .profile-modal pattern) for a reliable, consistent experience everywhere. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7723,6 +7732,48 @@ const CLEAN_RECORD_BONUS_BASE_DISPLAY = 15000;
 // 100K bets placed at once should still be blocked, not waved through
 // because no single one of them exceeds the cap on its own.
 const CASINO_MAX_BET_PER_HAND = 250000;
+// Shared "tap the chip to type a custom amount" modal — every casino
+// game's chip-display click handler used window.prompt() for this,
+// which is a real problem specifically in the context this app is
+// actually used in: window.prompt() is unreliable inside an installed/
+// standalone PWA on Android (silently returns null, or never renders at
+// all, depending on WebView version) — reported as "tap to adjust coin
+// not working on some games", and it's not a bug in any individual
+// game's code (all 12 had this wired identically and correctly) — it's
+// the native dialog itself being unreliable in this specific context.
+// One shared, on-brand modal (same .profile-modal/.profile-sheet
+// pattern used everywhere else in this app) replaces all 12 separate
+// prompt() calls, fixes the reliability problem, and gives every game
+// the same min/max enforcement from one place instead of copy-pasted
+// validation.
+let chipAmountModalResolve = null;
+function openChipAmountModal(currentValue, label){
+  const modal = document.getElementById('chipAmountModal');
+  const input = document.getElementById('chipAmountModalInput');
+  const title = document.getElementById('chipAmountModalTitle');
+  if(!modal || !input) return Promise.resolve(null);
+  title.textContent = label || 'Bet amount (XP)';
+  input.value = currentValue || '';
+  modal.classList.add('open');
+  // Autofocus + select so retyping the whole amount is a single tap+type,
+  // matching how the old prompt() prefilled-and-selected the value.
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+  return new Promise((resolve) => { chipAmountModalResolve = resolve; });
+}
+function closeChipAmountModal(value){
+  const modal = document.getElementById('chipAmountModal');
+  if(modal) modal.classList.remove('open');
+  if(chipAmountModalResolve){ chipAmountModalResolve(value); chipAmountModalResolve = null; }
+}
+document.getElementById('chipAmountModalCloseBtn').addEventListener('click', () => closeChipAmountModal(null));
+document.getElementById('chipAmountModalConfirmBtn').addEventListener('click', () => {
+  const input = document.getElementById('chipAmountModalInput');
+  const amount = Math.floor(Number(input.value));
+  closeChipAmountModal(amount > 0 ? amount : null);
+});
+document.getElementById('chipAmountModalInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('chipAmountModalConfirmBtn').click(); }
+});
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely
