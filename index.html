@@ -3475,7 +3475,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.80"; // Two real fixes to the duplicate-payout tool, both found by actually testing it rather than assuming it worked. (1) The typed label input was reported to find nothing despite genuine duplicates being visible in the exact same log — traced to an exact-string-match against manually-typed input: "08-09-2026" (natural DD-MM-YYYY reading) never matches an actually-logged "(2026-09-01)" label. Removed the input entirely — the tool now parses every "Casino Pot – Even Split/Jackpot (label)" entry directly out of each person's own log via regex and covers every period automatically, so there's no format left to get wrong. (2) Caught a second, more serious gap purely by testing my own first draft against the real scenario before shipping it: per-person duplicate detection is correct for Even Split (several different people legitimately each get one credit, so a duplicate means the SAME person got it twice) but completely wrong for Jackpot, where exactly one winner should ever exist per period — Damon winning it once and Billy winning it once are two different uids, neither individually "duplicated" by a per-person check, yet the jackpot still paid out twice total. A per-person-only scan would have silently missed that entire half of the actual bug. Jackpot excess is now computed by pooling every recipient for a given label together and keeping only the earliest payout as legitimate, regardless of who received each one. Verified with a concrete test simulating the real Damon/Billy/Zak scenario before shipping, not just re-reading the code. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.81"; // Fixed a real bug I hadn't caught until directly asked "will a rescan show 0" — reversing writes a compensating negative entry but never deletes the original duplicate credits (deliberately, for a clean audit trail), so a rescan would have found the exact same original entries still sitting in the log and flagged the same duplicate all over again — and confirming a second time would have deducted the excess TWICE, a genuine new bug rather than a harmless re-check. Fixed by having the scan also look for its own "Casino Pot Duplicate Payout Reversal (correcting ...)" entries and subtract however many have already been applied per person/category/label before deciding what's still outstanding. Verified both directions with concrete tests before shipping: the original three-duplicate scenario still detects correctly with no reversals present, and the exact same scenario with reversals already applied now correctly returns zero findings. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -19593,10 +19593,12 @@ document.getElementById('adminFixWeekSaveBtn').addEventListener('click', async (
 // label, not per-uid.
 const CASINO_POT_CREDIT_PATTERN = /^Casino Pot – (Even Split|Jackpot) \(([^)]+)\)$/;
 let adminDupPotScanResults = null;
+const CASINO_POT_REVERSAL_PATTERN = /^Casino Pot Duplicate Payout Reversal \(correcting Casino Pot – (Even Split|Jackpot) \(([^)]+)\)\)$/;
 async function scanForDuplicatePotPayouts(){
   const users = await getAdminApprovedUsersCache();
   const evenSplitByUidLabel = {}; // "uid|||label" -> entries[]
   const jackpotByLabel = {}; // "label" -> [{uid, name, entry}]
+  const reversalCounts = {}; // "uid|||category|||label" -> how many reversals this person already has for it
   for(const u of users){
     let log;
     try{
@@ -19605,30 +19607,50 @@ async function scanForDuplicatePotPayouts(){
     }catch(e){ continue; }
     Object.values(log).forEach(e => {
       if(!e || typeof e.reason !== 'string') return;
-      const m = e.reason.match(CASINO_POT_CREDIT_PATTERN);
-      if(!m) return;
-      const [, category, label] = m;
-      if(category === 'Even Split'){
-        const key = `${u.uid}|||${label}`;
-        if(!evenSplitByUidLabel[key]) evenSplitByUidLabel[key] = [];
-        evenSplitByUidLabel[key].push(e);
-      } else { // Jackpot — pooled across everyone, not per-uid
-        if(!jackpotByLabel[label]) jackpotByLabel[label] = [];
-        jackpotByLabel[label].push({ uid: u.uid, name: u.name, entry: e });
+      const creditMatch = e.reason.match(CASINO_POT_CREDIT_PATTERN);
+      if(creditMatch){
+        const [, category, label] = creditMatch;
+        if(category === 'Even Split'){
+          const key = `${u.uid}|||${label}`;
+          if(!evenSplitByUidLabel[key]) evenSplitByUidLabel[key] = [];
+          evenSplitByUidLabel[key].push(e);
+        } else { // Jackpot — pooled across everyone, not per-uid
+          if(!jackpotByLabel[label]) jackpotByLabel[label] = [];
+          jackpotByLabel[label].push({ uid: u.uid, name: u.name, entry: e });
+        }
+        return;
+      }
+      // A reversal already applied for this person/category/label means
+      // that many of their excess credits are already corrected — without
+      // tracking this, a rescan after a successful reversal would find the
+      // SAME original credit entries still sitting in the log (reversing
+      // never deletes them, it only adds a compensating negative entry
+      // alongside them for a clean audit trail) and flag the exact same
+      // duplicate all over again, and confirming a second time would
+      // deduct the excess TWICE — the second pass would be a genuine new
+      // bug of its own, not a harmless re-check.
+      const reversalMatch = e.reason.match(CASINO_POT_REVERSAL_PATTERN);
+      if(reversalMatch){
+        const [, category, label] = reversalMatch;
+        const key = `${u.uid}|||${category}|||${label}`;
+        reversalCounts[key] = (reversalCounts[key] || 0) + 1;
       }
     });
   }
 
-  const findings = []; // { uid, name, category, label, excessEntries: [{entry, name?}], excessTotal }
+  const findings = [];
   Object.entries(evenSplitByUidLabel).forEach(([key, matching]) => {
     if(matching.length <= 1) return;
     const [uid, label] = key.split('|||');
     const user = users.find(u => u.uid === uid);
     matching.sort((a, b) => (a.ts || 0) - (b.ts || 0));
-    const excessEntries = matching.slice(1);
-    const excessTotal = excessEntries.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const alreadyReversed = reversalCounts[`${uid}|||Even Split|||${label}`] || 0;
+    // Skip the earliest (kept as legitimate) PLUS however many excess
+    // credits have already been corrected by a prior reversal run.
+    const stillExcess = matching.slice(1 + alreadyReversed);
+    const excessTotal = stillExcess.reduce((s, e) => s + (Number(e.amount) || 0), 0);
     if(excessTotal > 0){
-      findings.push({ uid, name: user ? user.name : uid, category: 'Even Split', label, excessTotal, detail: `credited ${matching.length}×, keeping earliest` });
+      findings.push({ uid, name: user ? user.name : uid, category: 'Even Split', label, excessTotal, detail: `credited ${matching.length}×, keeping earliest${alreadyReversed ? ` (${alreadyReversed} already corrected)` : ''}` });
     }
   });
   Object.entries(jackpotByLabel).forEach(([label, matching]) => {
@@ -19636,6 +19658,8 @@ async function scanForDuplicatePotPayouts(){
     matching.sort((a, b) => (a.entry.ts || 0) - (b.entry.ts || 0));
     const excess = matching.slice(1); // each could be a different uid entirely
     excess.forEach(x => {
+      const alreadyReversed = reversalCounts[`${x.uid}|||Jackpot|||${label}`] || 0;
+      if(alreadyReversed > 0) return; // this specific person's excess jackpot credit was already corrected
       const amount = Number(x.entry.amount) || 0;
       if(amount > 0){
         findings.push({ uid: x.uid, name: x.name, category: 'Jackpot', label, excessTotal: amount, detail: `jackpot for this period already paid to someone else first — this later payout is the duplicate` });
