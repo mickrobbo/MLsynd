@@ -1,8 +1,8 @@
 {
-  "version": "2026-09-08.84",
+  "version": "2026-09-08.85",
   "date": "2026-09-08",
   "changes": [
-    "Removed the 250k bet cap from compounding actions (Blackjack Double/Split, War go-to-war) and fixed a real Craps bug where pressed/ridden winnings could grow past the cap and lock the Roll button entirely",
-    "Replaced every game's tap-to-adjust chip (window.prompt, unreliable inside an installed Android PWA) with one shared, on-brand modal"
+    "Extended the tap-to-edit chip pencil badge to all 12 games (was only on Roulette/Craps) and removed one confirmed-dead CSS rule",
+    "Fixed Slots Gamble's Collect/Red/Black/suit buttons getting stuck permanently disabled after your first successful Collect in a session"
   ]
 }

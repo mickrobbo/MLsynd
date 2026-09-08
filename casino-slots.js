@@ -416,6 +416,15 @@ function slotsOfferGamble(winAmount){
   document.getElementById('slotsGambleCardFace').textContent = '';
   slotsGambleUpdateDisplay();
   slotsGambleSetSuitButtonsVisible(true);
+  // Real bug, confirmed: slotsGambleCollect's SUCCESS path disables these
+  // buttons then calls slotsGambleClose(), which resets slotsGambleBusy
+  // but never re-enables them — only the catch block did. So after your
+  // first successful Collect in a session, every button here stayed
+  // disabled=true forever, carried silently into every later gamble
+  // offer. Unconditionally re-enabling on every fresh offer, regardless
+  // of whatever state they were left in, is the one fix point that
+  // covers all paths into this screen.
+  slotsGambleSetButtonsDisabled(false);
 }
 function slotsGambleUpdateDisplay(){
   document.getElementById('slotsGamblePotVal').textContent = slotsGamblePot.toLocaleString();
