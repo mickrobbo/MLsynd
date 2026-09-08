@@ -554,9 +554,8 @@
     </div>
     <div class="panel">
       <h2>🔍 Fix Duplicate Casino Pot Payout</h2>
-      <div class="hint">For a Casino Pot period that got distributed more than once (a real bug, now fixed going forward — see version notes). Scans every approved user's XP log for entries matching the period label you enter, shows exactly who was credited more than once and by how much, and only reverses the genuine excess — the first, legitimate credit for each person and category is always left untouched. Nothing is changed until you review the scan results and type CONFIRM.</div>
-      <input type="text" id="adminDupPotLabelInput" placeholder="Period label, e.g. 2026-09-01" style="width:100%; margin-top:10px;">
-      <button type="button" id="adminDupPotScanBtn" class="small" style="margin-top:8px;">🔍 Scan for duplicates</button>
+      <div class="hint">For a Casino Pot period that got distributed more than once (a real bug, now fixed going forward — see version notes). Scans every approved user's XP log across every period automatically — no date or label to type — shows exactly who was credited more than once and by how much, and only reverses the genuine excess — the first, legitimate credit for each person, category, and period is always left untouched. Nothing is changed until you review the scan results and type CONFIRM.</div>
+      <button type="button" id="adminDupPotScanBtn" class="small" style="margin-top:10px;">🔍 Scan for duplicates</button>
       <div class="status-msg" id="adminDupPotScanStatus"></div>
       <div id="adminDupPotResults" style="display:none; margin-top:10px;"></div>
       <div id="adminDupPotConfirmWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
@@ -3476,7 +3475,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.79"; // New admin tool for reversing the duplicate Casino Pot payouts caused by the double-distribution bug fixed last version. Scans every approved user's XP log for entries matching a given period label, in both the Even Split and Jackpot categories, rather than guessing who was affected — the eligible even-split pool actually differed between the runs that caused this, so who got extra genuinely isn't obvious without checking. Keeps each person's EARLIEST matching credit per category as legitimate, flags everything after it as excess to reverse — the first real distribution is treated as the one that should have counted. Read-only scan first: nothing is written until the admin reviews the actual numbers shown and types CONFIRM, same two-step pattern as every other destructive tool in Maintenance. Confirmed via a render that the results table (name, category, exact amount to reverse) reads clearly before shipping. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-02.80"; // Two real fixes to the duplicate-payout tool, both found by actually testing it rather than assuming it worked. (1) The typed label input was reported to find nothing despite genuine duplicates being visible in the exact same log — traced to an exact-string-match against manually-typed input: "08-09-2026" (natural DD-MM-YYYY reading) never matches an actually-logged "(2026-09-01)" label. Removed the input entirely — the tool now parses every "Casino Pot – Even Split/Jackpot (label)" entry directly out of each person's own log via regex and covers every period automatically, so there's no format left to get wrong. (2) Caught a second, more serious gap purely by testing my own first draft against the real scenario before shipping it: per-person duplicate detection is correct for Even Split (several different people legitimately each get one credit, so a duplicate means the SAME person got it twice) but completely wrong for Jackpot, where exactly one winner should ever exist per period — Damon winning it once and Billy winning it once are two different uids, neither individually "duplicated" by a per-person check, yet the jackpot still paid out twice total. A per-person-only scan would have silently missed that entire half of the actual bug. Jackpot excess is now computed by pooling every recipient for a given label together and keeping only the earliest payout as legitimate, regardless of who received each one. Verified with a concrete test simulating the real Damon/Billy/Zak scenario before shipping, not just re-reading the code. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -19566,38 +19565,83 @@ document.getElementById('adminFixWeekSaveBtn').addEventListener('click', async (
 // any one person's memory of who got extra — the eligible pool for the
 // even-split actually differed between the runs that caused this, so
 // "who was affected" genuinely isn't obvious without checking. Keeps
-// each person's EARLIEST matching credit per category as the legitimate
-// one and flags everything after it as excess — the first real
-// distribution is treated as the one that should have counted, any
-// repeat is the bug's fault, not a second real payout. Read-only scan
-// first, nothing written until the admin reviews the actual numbers and
-// types CONFIRM — same two-step pattern as every other destructive tool
-// in this tab.
+// each legitimate credit EARLIEST-first and flags everything after it as
+// excess — the first real distribution is treated as the one that should
+// have counted, any repeat is the bug's fault, not a second real payout.
+//
+// No longer takes a typed label at all — a real report showed exactly
+// why that was too fragile: a label typed as "08-09-2026" (the natural
+// DD-MM-YYYY reading for an Australian date) never matches an actually-
+// logged "(2026-09-01)" label, so an exact-string-match scan against
+// manually-typed input silently found nothing even with genuine
+// duplicates sitting right there in the same log. Fixed by removing the
+// input entirely and parsing every matching entry directly out of each
+// person's own log via regex — covers every period automatically.
+//
+// TWO DIFFERENT DETECTION RULES, not one — caught this distinction only
+// by testing my own first draft against the actual reported scenario
+// before shipping it, not by assuming per-person checking was enough
+// everywhere: Even Split legitimately credits several different people
+// once each, so a duplicate there means the SAME uid got credited twice.
+// Jackpot is different — exactly one winner should ever exist per label,
+// so a second Jackpot credit for that same label is itself the bug even
+// when it went to a completely different person (Damon once, Billy once
+// — two different uids, neither individually "duplicated", yet the
+// jackpot still paid out twice total). A per-person check alone would
+// never have caught that half of this exact bug at all. Jackpot excess
+// is therefore computed across ALL recipients combined for a given
+// label, not per-uid.
+const CASINO_POT_CREDIT_PATTERN = /^Casino Pot – (Even Split|Jackpot) \(([^)]+)\)$/;
 let adminDupPotScanResults = null;
-async function scanForDuplicatePotPayouts(label){
+async function scanForDuplicatePotPayouts(){
   const users = await getAdminApprovedUsersCache();
-  const findings = []; // { uid, name, category, keepEntry, excessEntries, excessTotal }
+  const evenSplitByUidLabel = {}; // "uid|||label" -> entries[]
+  const jackpotByLabel = {}; // "label" -> [{uid, name, entry}]
   for(const u of users){
     let log;
     try{
       const res = await authedFetch(`/xp/${u.uid}/log.json`);
       log = (await res.json()) || {};
     }catch(e){ continue; }
-    const entries = Object.values(log).filter(e => e && typeof e.reason === 'string');
-    ['Even Split', 'Jackpot'].forEach(category => {
-      const prefix = `Casino Pot – ${category} (${label})`;
-      const matching = entries.filter(e => e.reason === prefix || e.reason.startsWith(prefix + ' '));
-      if(matching.length > 1){
-        matching.sort((a, b) => (a.ts || 0) - (b.ts || 0));
-        const keepEntry = matching[0];
-        const excessEntries = matching.slice(1);
-        const excessTotal = excessEntries.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-        if(excessTotal > 0){
-          findings.push({ uid: u.uid, name: u.name, category, keepEntry, excessEntries, excessTotal });
-        }
+    Object.values(log).forEach(e => {
+      if(!e || typeof e.reason !== 'string') return;
+      const m = e.reason.match(CASINO_POT_CREDIT_PATTERN);
+      if(!m) return;
+      const [, category, label] = m;
+      if(category === 'Even Split'){
+        const key = `${u.uid}|||${label}`;
+        if(!evenSplitByUidLabel[key]) evenSplitByUidLabel[key] = [];
+        evenSplitByUidLabel[key].push(e);
+      } else { // Jackpot — pooled across everyone, not per-uid
+        if(!jackpotByLabel[label]) jackpotByLabel[label] = [];
+        jackpotByLabel[label].push({ uid: u.uid, name: u.name, entry: e });
       }
     });
   }
+
+  const findings = []; // { uid, name, category, label, excessEntries: [{entry, name?}], excessTotal }
+  Object.entries(evenSplitByUidLabel).forEach(([key, matching]) => {
+    if(matching.length <= 1) return;
+    const [uid, label] = key.split('|||');
+    const user = users.find(u => u.uid === uid);
+    matching.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    const excessEntries = matching.slice(1);
+    const excessTotal = excessEntries.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    if(excessTotal > 0){
+      findings.push({ uid, name: user ? user.name : uid, category: 'Even Split', label, excessTotal, detail: `credited ${matching.length}×, keeping earliest` });
+    }
+  });
+  Object.entries(jackpotByLabel).forEach(([label, matching]) => {
+    if(matching.length <= 1) return;
+    matching.sort((a, b) => (a.entry.ts || 0) - (b.entry.ts || 0));
+    const excess = matching.slice(1); // each could be a different uid entirely
+    excess.forEach(x => {
+      const amount = Number(x.entry.amount) || 0;
+      if(amount > 0){
+        findings.push({ uid: x.uid, name: x.name, category: 'Jackpot', label, excessTotal: amount, detail: `jackpot for this period already paid to someone else first — this later payout is the duplicate` });
+      }
+    });
+  });
   return findings;
 }
 document.getElementById('adminDupPotScanBtn').addEventListener('click', async () => {
@@ -19605,28 +19649,22 @@ document.getElementById('adminDupPotScanBtn').addEventListener('click', async ()
   const status = document.getElementById('adminDupPotScanStatus');
   const resultsEl = document.getElementById('adminDupPotResults');
   const confirmWrap = document.getElementById('adminDupPotConfirmWrap');
-  const label = document.getElementById('adminDupPotLabelInput').value.trim();
-  if(!label){
-    status.className = 'status-msg error';
-    status.textContent = 'Enter the period label first, e.g. 2026-09-01.';
-    return;
-  }
   btn.disabled = true;
   status.className = 'status-msg';
   status.textContent = 'Scanning every approved user\'s XP log — this can take a moment…';
   resultsEl.style.display = 'none';
   confirmWrap.style.display = 'none';
   try{
-    const findings = await scanForDuplicatePotPayouts(label);
-    adminDupPotScanResults = { label, findings };
+    const findings = await scanForDuplicatePotPayouts();
+    adminDupPotScanResults = findings;
     if(findings.length === 0){
       status.className = 'status-msg ok';
-      status.textContent = `No duplicates found for "${label}" — every person has at most one credit per category.`;
+      status.textContent = 'No duplicates found — every person has at most one credit per Casino Pot period and category.';
       return;
     }
     const totalExcess = findings.reduce((s, f) => s + f.excessTotal, 0);
     resultsEl.innerHTML = `<div class="hint" style="margin-bottom:8px;">Found <b>${findings.length}</b> duplicate credit${findings.length === 1 ? '' : 's'} totaling <b>${totalExcess.toLocaleString()} XP</b> to reverse:</div>` +
-      findings.map(f => `<div class="xp-log-row"><span class="xp-log-who">${escapeHtml(f.name)}</span><span class="xp-log-reason">${escapeHtml(f.category)} — credited ${f.excessEntries.length + 1}×, keeping earliest</span><span class="xp-log-amt" style="color:var(--loss);">-${f.excessTotal.toLocaleString()}</span></div>`).join('');
+      findings.map(f => `<div class="xp-log-row"><span class="xp-log-who">${escapeHtml(f.name)}</span><span class="xp-log-reason">${escapeHtml(f.category)} (${escapeHtml(f.label)}) — ${escapeHtml(f.detail)}</span><span class="xp-log-amt" style="color:var(--loss);">-${f.excessTotal.toLocaleString()}</span></div>`).join('');
     resultsEl.style.display = 'block';
     confirmWrap.style.display = 'block';
     status.className = 'status-msg';
@@ -19644,18 +19682,17 @@ document.getElementById('adminDupPotConfirmInput').addEventListener('input', (e)
 document.getElementById('adminDupPotReverseBtn').addEventListener('click', async () => {
   const btn = document.getElementById('adminDupPotReverseBtn');
   const status = document.getElementById('adminDupPotReverseStatus');
-  if(!adminDupPotScanResults || adminDupPotScanResults.findings.length === 0){
+  if(!adminDupPotScanResults || adminDupPotScanResults.length === 0){
     status.className = 'status-msg error';
     status.textContent = 'Nothing to reverse — run a scan first.';
     return;
   }
-  if(!confirm(`Reverse ${adminDupPotScanResults.findings.length} duplicate credit(s) totaling ${adminDupPotScanResults.findings.reduce((s,f)=>s+f.excessTotal,0).toLocaleString()} XP? This directly adjusts real balances.`)) return;
+  if(!confirm(`Reverse ${adminDupPotScanResults.length} duplicate credit(s) totaling ${adminDupPotScanResults.reduce((s,f)=>s+f.excessTotal,0).toLocaleString()} XP? This directly adjusts real balances.`)) return;
   btn.disabled = true;
   status.className = 'status-msg';
   status.textContent = 'Reversing…';
-  const label = adminDupPotScanResults.label;
   let done = 0, failed = 0;
-  for(const f of adminDupPotScanResults.findings){
+  for(const f of adminDupPotScanResults){
     try{
       const balRes = await authedFetch(`/xp/${f.uid}/balance.json`);
       const bal = (await balRes.json()) || 0;
@@ -19665,7 +19702,7 @@ document.getElementById('adminDupPotReverseBtn').addEventListener('click', async
       });
       await authedFetch(`/xp/${f.uid}/log.json`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: -f.excessTotal, reason: `Casino Pot Duplicate Payout Reversal (correcting Casino Pot – ${f.category} (${label}))`, balanceAfter: next, ts: Date.now() })
+        body: JSON.stringify({ amount: -f.excessTotal, reason: `Casino Pot Duplicate Payout Reversal (correcting Casino Pot – ${f.category} (${f.label}))`, balanceAfter: next, ts: Date.now() })
       });
       done++;
     }catch(e){
