@@ -553,29 +553,16 @@
       <div class="status-msg" id="adminFixWeekStatus"></div>
     </div>
     <div class="panel">
-      <h2>🔍 Fix Duplicate Casino Pot Payout</h2>
-      <div class="hint">For a Casino Pot period that got distributed more than once (a real bug, now fixed going forward — see version notes). Scans every approved user's XP log across every period automatically — no date or label to type — shows exactly who was credited more than once and by how much, and only reverses the genuine excess — the first, legitimate credit for each person, category, and period is always left untouched. Nothing is changed until you review the scan results and type CONFIRM.</div>
-      <button type="button" id="adminDupPotScanBtn" class="small" style="margin-top:10px;">🔍 Scan for duplicates</button>
-      <div class="status-msg" id="adminDupPotScanStatus"></div>
-      <div id="adminDupPotResults" style="display:none; margin-top:10px;"></div>
-      <div id="adminDupPotConfirmWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
-        <div class="hint" style="color:var(--loss); font-weight:600;">This will deduct the excess amounts shown above and log a reversal entry for each. Type CONFIRM below to enable the button.</div>
-        <input type="text" id="adminDupPotConfirmInput" placeholder="Type CONFIRM to enable" style="width:100%; margin-top:10px;">
-        <button type="button" id="adminDupPotReverseBtn" class="small danger" style="margin-top:8px;" disabled>💸 Reverse the excess</button>
-        <div class="status-msg" id="adminDupPotReverseStatus"></div>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>💸 Refund Incorrect Duplicate-Reversals</h2>
-      <div class="hint">For the specific mix-up where the Fix Duplicate Casino Pot Payout tool above re-reversed a credit that had already been manually corrected earlier (its own reversal record predates this tool and used different wording, so the tool didn't recognise it as already-fixed). Scans every approved user's XP log for entries logged by that tool ("Casino Pot Duplicate Payout Reversal…"), totals them per person, and lets you refund exactly those amounts back. Nothing is changed until you review the results and type REFUND.</div>
-      <button type="button" id="adminRefundDupScanBtn" class="small" style="margin-top:10px;">🔍 Scan for incorrect reversals</button>
-      <div class="status-msg" id="adminRefundDupScanStatus"></div>
-      <div id="adminRefundDupResults" style="display:none; margin-top:10px;"></div>
-      <div id="adminRefundDupConfirmWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
-        <div class="hint" style="color:var(--loss); font-weight:600;">This will credit each person the exact amount shown above and log a correction entry for each. Type REFUND below to enable the button.</div>
-        <input type="text" id="adminRefundDupConfirmInput" placeholder="Type REFUND to enable" style="width:100%; margin-top:10px;">
-        <button type="button" id="adminRefundDupBtn" class="small danger" style="margin-top:8px;" disabled>💸 Refund these accounts</button>
-        <div class="status-msg" id="adminRefundDupStatus"></div>
+      <h2>🧮 Reconcile Casino Pot From Source</h2>
+      <div class="hint">Replaces the two earlier duplicate-fix tools, which both depended on recognising specific reversal wording — including a one-off correction script from before either tool existed, whose different wording caused a real over-correction (a duplicate got "fixed" twice, wiping out a legitimate payout). This tool ignores reversal wording entirely. For every Casino Pot period, it reads every original credit ever logged and works out the correct end result from scratch — one share per eligible person for an Even Split, exactly one winner (the earliest legitimate draw) for a Jackpot — then compares that to what everyone's log currently nets out to, and shows the exact one-time correction needed to reach the correct state. Safe to run more than once: since it always recomputes from the full log including any correction it already made, a second run will find nothing left to fix for anything already corrected. Can both credit AND debit accounts — read each line carefully. Nothing is changed until you review the results and type RECONCILE.</div>
+      <button type="button" id="adminReconcilePotScanBtn" class="small" style="margin-top:10px;">🔍 Scan for out-of-sync accounts</button>
+      <div class="status-msg" id="adminReconcilePotScanStatus"></div>
+      <div id="adminReconcilePotResults" style="display:none; margin-top:10px;"></div>
+      <div id="adminReconcilePotConfirmWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+        <div class="hint" style="color:var(--loss); font-weight:600;">This will adjust each balance shown above (up or down) to the correct amount and log a reconciliation entry for each. Type RECONCILE below to enable the button.</div>
+        <input type="text" id="adminReconcilePotConfirmInput" placeholder="Type RECONCILE to enable" style="width:100%; margin-top:10px;">
+        <button type="button" id="adminReconcilePotBtn" class="small danger" style="margin-top:8px;" disabled>🧮 Apply corrections</button>
+        <div class="status-msg" id="adminReconcilePotStatus"></div>
       </div>
     </div>
     <div class="panel">
@@ -3488,7 +3475,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.82"; // Added "Refund Incorrect Duplicate-Reversals" admin tool: the duplicate-scan tool above didn't recognise the wording used by the earlier one-off casino-pot-emergency-fix.js cleanup (which predates this tool), so it re-reversed already-corrected Sep 1 triple-payout credits a second time — a genuine over-correction, not a real duplicate. New tool scans for every entry the duplicate-scan tool itself logged, totals the over-correction per person, and refunds it back after a review-then-type-REFUND step, same pattern as the tool it corrects. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.83"; // Replaced both duplicate-fix admin tools with one "Reconcile Casino Pot From Source" tool, after a real report that refunding the previous tool's flagged entries put a duplicate payout straight back — because that tool (and the one before it) both depended on recognising specific reversal wording, including an old one-off correction script's wording from before either tool existed. The new tool ignores reversal wording entirely: it reads every original Casino Pot credit for a period, works out what SHOULD exist (one share per eligible person for an Even Split, exactly one earliest-winner for a Jackpot), and corrects straight to that state in one pass — safe to re-run, since it always recomputes from the full log including its own prior corrections. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -19572,46 +19559,46 @@ document.getElementById('adminFixWeekSaveBtn').addEventListener('click', async (
   saveBtn.disabled = false;
 });
 
-// Fix Duplicate Casino Pot Payout — built specifically for the "same
-// period distributed twice with two different jackpot winners" bug (see
-// version notes). Scans every approved user's XP log rather than trusting
-// any one person's memory of who got extra — the eligible pool for the
-// even-split actually differed between the runs that caused this, so
-// "who was affected" genuinely isn't obvious without checking. Keeps
-// each legitimate credit EARLIEST-first and flags everything after it as
-// excess — the first real distribution is treated as the one that should
-// have counted, any repeat is the bug's fault, not a second real payout.
+// Reconcile Casino Pot From Source — replaces the earlier two duplicate-
+// fix tools. Both of those depended on recognising specific reversal
+// wording to know what was "already handled" — and a real report showed
+// exactly why that's fragile: a one-off correction script written before
+// either tool existed used different wording, so the first tool didn't
+// recognise its work and re-flagged an already-fixed duplicate, and then
+// refunding that re-flagged entry put the duplicate straight back —
+// "back to square one," reported directly.
 //
-// No longer takes a typed label at all — a real report showed exactly
-// why that was too fragile: a label typed as "08-09-2026" (the natural
-// DD-MM-YYYY reading for an Australian date) never matches an actually-
-// logged "(2026-09-01)" label, so an exact-string-match scan against
-// manually-typed input silently found nothing even with genuine
-// duplicates sitting right there in the same log. Fixed by removing the
-// input entirely and parsing every matching entry directly out of each
-// person's own log via regex — covers every period automatically.
-//
-// TWO DIFFERENT DETECTION RULES, not one — caught this distinction only
-// by testing my own first draft against the actual reported scenario
-// before shipping it, not by assuming per-person checking was enough
-// everywhere: Even Split legitimately credits several different people
-// once each, so a duplicate there means the SAME uid got credited twice.
-// Jackpot is different — exactly one winner should ever exist per label,
-// so a second Jackpot credit for that same label is itself the bug even
-// when it went to a completely different person (Damon once, Billy once
-// — two different uids, neither individually "duplicated", yet the
-// jackpot still paid out twice total). A per-person check alone would
-// never have caught that half of this exact bug at all. Jackpot excess
-// is therefore computed across ALL recipients combined for a given
-// label, not per-uid.
-const CASINO_POT_CREDIT_PATTERN = /^Casino Pot – (Even Split|Jackpot) \(([^)]+)\)$/;
-let adminDupPotScanResults = null;
-const CASINO_POT_REVERSAL_PATTERN = /^Casino Pot Duplicate Payout Reversal \(correcting Casino Pot – (Even Split|Jackpot) \(([^)]+)\)\)$/;
-async function scanForDuplicatePotPayouts(){
+// This tool sidesteps the whole problem: instead of trying to interpret
+// a chain of credits and reversals in different wordings, it reads every
+// log entry that mentions "Casino Pot" and extracts just the category
+// ("Even Split"/"Jackpot") and label via one generic pattern — matching
+// regardless of whether the entry is an original credit, this app's own
+// reversal, the old emergency script's reversal (whatever it said, AS
+// LONG AS it also names the category+label in parentheses, which every
+// version of every message here always has), or even an earlier, wrong
+// refund from the previous tool. Every matching entry's amount is summed
+// to get the CURRENT net effect on that person's balance for that period
+// — then compared against what the net effect SHOULD be:
+//   - Even Split: exactly one share, for anyone genuinely eligible —
+//     taken as the amount of the earliest positive credit for that
+//     person+label, same "keep earliest as legitimate" rule the original
+//     tool used.
+//   - Jackpot: exactly one winner across EVERYONE for that label — the
+//     single earliest positive credit system-wide for that label. Every
+//     other uid with any entries for that label should net to zero.
+// The difference between current and correct is the one-time correction
+// applied. Self-correcting by construction: because it always recomputes
+// from the complete log — including any correction entry this same tool
+// previously wrote, which is deliberately worded to also match the
+// pattern — a second run against already-fixed data finds nothing left
+// to do, rather than needing separate "already handled" bookkeeping that
+// could itself drift out of sync with reality the way the last two did.
+const CASINO_POT_LABEL_PATTERN = /(Even Split|Jackpot)\s*\(([^)]+)\)/;
+let adminReconcilePotResults = null;
+
+async function reconcileCasinoPotFromSource(){
   const users = await getAdminApprovedUsersCache();
-  const evenSplitByUidLabel = {}; // "uid|||label" -> entries[]
-  const jackpotByLabel = {}; // "label" -> [{uid, name, entry}]
-  const reversalCounts = {}; // "uid|||category|||label" -> how many reversals this person already has for it
+  const perKeyByUid = {}; // "category|||label" -> { uid: [{amount, ts}] }
   for(const u of users){
     let log;
     try{
@@ -19620,92 +19607,79 @@ async function scanForDuplicatePotPayouts(){
     }catch(e){ continue; }
     Object.values(log).forEach(e => {
       if(!e || typeof e.reason !== 'string') return;
-      const creditMatch = e.reason.match(CASINO_POT_CREDIT_PATTERN);
-      if(creditMatch){
-        const [, category, label] = creditMatch;
-        if(category === 'Even Split'){
-          const key = `${u.uid}|||${label}`;
-          if(!evenSplitByUidLabel[key]) evenSplitByUidLabel[key] = [];
-          evenSplitByUidLabel[key].push(e);
-        } else { // Jackpot — pooled across everyone, not per-uid
-          if(!jackpotByLabel[label]) jackpotByLabel[label] = [];
-          jackpotByLabel[label].push({ uid: u.uid, name: u.name, entry: e });
+      if(!e.reason.includes('Casino Pot')) return;
+      const m = e.reason.match(CASINO_POT_LABEL_PATTERN);
+      if(!m) return;
+      const category = m[1], label = m[2];
+      const clKey = `${category}|||${label}`;
+      if(!perKeyByUid[clKey]) perKeyByUid[clKey] = {};
+      if(!perKeyByUid[clKey][u.uid]) perKeyByUid[clKey][u.uid] = [];
+      perKeyByUid[clKey][u.uid].push({ amount: Number(e.amount) || 0, ts: e.ts || 0 });
+    });
+  }
+
+  const findings = [];
+  Object.entries(perKeyByUid).forEach(([clKey, byUid]) => {
+    const [category, label] = clKey.split('|||');
+    if(category === 'Even Split'){
+      Object.entries(byUid).forEach(([uid, entries]) => {
+        const actualNet = entries.reduce((s, e) => s + e.amount, 0);
+        const positives = entries.filter(e => e.amount > 0).sort((a, b) => a.ts - b.ts);
+        const correctNet = positives.length > 0 ? positives[0].amount : 0;
+        const adjustment = correctNet - actualNet;
+        if(adjustment !== 0){
+          const user = users.find(x => x.uid === uid);
+          findings.push({ uid, name: user ? user.name : uid, category, label, actualNet, correctNet, adjustment });
         }
-        return;
-      }
-      // A reversal already applied for this person/category/label means
-      // that many of their excess credits are already corrected — without
-      // tracking this, a rescan after a successful reversal would find the
-      // SAME original credit entries still sitting in the log (reversing
-      // never deletes them, it only adds a compensating negative entry
-      // alongside them for a clean audit trail) and flag the exact same
-      // duplicate all over again, and confirming a second time would
-      // deduct the excess TWICE — the second pass would be a genuine new
-      // bug of its own, not a harmless re-check.
-      const reversalMatch = e.reason.match(CASINO_POT_REVERSAL_PATTERN);
-      if(reversalMatch){
-        const [, category, label] = reversalMatch;
-        const key = `${u.uid}|||${category}|||${label}`;
-        reversalCounts[key] = (reversalCounts[key] || 0) + 1;
-      }
-    });
-  }
-
-  const findings = [];
-  Object.entries(evenSplitByUidLabel).forEach(([key, matching]) => {
-    if(matching.length <= 1) return;
-    const [uid, label] = key.split('|||');
-    const user = users.find(u => u.uid === uid);
-    matching.sort((a, b) => (a.ts || 0) - (b.ts || 0));
-    const alreadyReversed = reversalCounts[`${uid}|||Even Split|||${label}`] || 0;
-    // Skip the earliest (kept as legitimate) PLUS however many excess
-    // credits have already been corrected by a prior reversal run.
-    const stillExcess = matching.slice(1 + alreadyReversed);
-    const excessTotal = stillExcess.reduce((s, e) => s + (Number(e.amount) || 0), 0);
-    if(excessTotal > 0){
-      findings.push({ uid, name: user ? user.name : uid, category: 'Even Split', label, excessTotal, detail: `credited ${matching.length}×, keeping earliest${alreadyReversed ? ` (${alreadyReversed} already corrected)` : ''}` });
+      });
+    } else { // Jackpot — one winner across everyone for this label
+      let winnerUid = null, winnerTs = Infinity, winnerAmount = 0;
+      Object.entries(byUid).forEach(([uid, entries]) => {
+        entries.filter(e => e.amount > 0).forEach(e => {
+          if(e.ts < winnerTs){ winnerTs = e.ts; winnerUid = uid; winnerAmount = e.amount; }
+        });
+      });
+      Object.entries(byUid).forEach(([uid, entries]) => {
+        const actualNet = entries.reduce((s, e) => s + e.amount, 0);
+        const correctNet = (uid === winnerUid) ? winnerAmount : 0;
+        const adjustment = correctNet - actualNet;
+        if(adjustment !== 0){
+          const user = users.find(x => x.uid === uid);
+          findings.push({ uid, name: user ? user.name : uid, category, label, actualNet, correctNet, adjustment });
+        }
+      });
     }
   });
-  Object.entries(jackpotByLabel).forEach(([label, matching]) => {
-    if(matching.length <= 1) return;
-    matching.sort((a, b) => (a.entry.ts || 0) - (b.entry.ts || 0));
-    const excess = matching.slice(1); // each could be a different uid entirely
-    excess.forEach(x => {
-      const alreadyReversed = reversalCounts[`${x.uid}|||Jackpot|||${label}`] || 0;
-      if(alreadyReversed > 0) return; // this specific person's excess jackpot credit was already corrected
-      const amount = Number(x.entry.amount) || 0;
-      if(amount > 0){
-        findings.push({ uid: x.uid, name: x.name, category: 'Jackpot', label, excessTotal: amount, detail: `jackpot for this period already paid to someone else first — this later payout is the duplicate` });
-      }
-    });
-  });
+  findings.sort((a, b) => Math.abs(b.adjustment) - Math.abs(a.adjustment));
   return findings;
 }
-document.getElementById('adminDupPotScanBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('adminDupPotScanBtn');
-  const status = document.getElementById('adminDupPotScanStatus');
-  const resultsEl = document.getElementById('adminDupPotResults');
-  const confirmWrap = document.getElementById('adminDupPotConfirmWrap');
+
+document.getElementById('adminReconcilePotScanBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminReconcilePotScanBtn');
+  const status = document.getElementById('adminReconcilePotScanStatus');
+  const resultsEl = document.getElementById('adminReconcilePotResults');
+  const confirmWrap = document.getElementById('adminReconcilePotConfirmWrap');
   btn.disabled = true;
   status.className = 'status-msg';
-  status.textContent = 'Scanning every approved user\'s XP log — this can take a moment…';
+  status.textContent = 'Reading every approved user\'s full XP log — this can take a moment…';
   resultsEl.style.display = 'none';
   confirmWrap.style.display = 'none';
   try{
-    const findings = await scanForDuplicatePotPayouts();
-    adminDupPotScanResults = findings;
+    const findings = await reconcileCasinoPotFromSource();
+    adminReconcilePotResults = findings;
     if(findings.length === 0){
       status.className = 'status-msg ok';
-      status.textContent = 'No duplicates found — every person has at most one credit per Casino Pot period and category.';
+      status.textContent = 'Nothing out of sync — every Casino Pot period nets out correctly for everyone.';
       return;
     }
-    const totalExcess = findings.reduce((s, f) => s + f.excessTotal, 0);
-    resultsEl.innerHTML = `<div class="hint" style="margin-bottom:8px;">Found <b>${findings.length}</b> duplicate credit${findings.length === 1 ? '' : 's'} totaling <b>${totalExcess.toLocaleString()} XP</b> to reverse:</div>` +
-      findings.map(f => `<div class="xp-log-row"><span class="xp-log-who">${escapeHtml(f.name)}</span><span class="xp-log-reason">${escapeHtml(f.category)} (${escapeHtml(f.label)}) — ${escapeHtml(f.detail)}</span><span class="xp-log-amt" style="color:var(--loss);">-${f.excessTotal.toLocaleString()}</span></div>`).join('');
+    const totalCredit = findings.filter(f => f.adjustment > 0).reduce((s, f) => s + f.adjustment, 0);
+    const totalDebit = findings.filter(f => f.adjustment < 0).reduce((s, f) => s + f.adjustment, 0);
+    resultsEl.innerHTML = `<div class="hint" style="margin-bottom:8px;">Found <b>${findings.length}</b> out-of-sync entr${findings.length === 1 ? 'y' : 'ies'} — <b>+${totalCredit.toLocaleString()}</b> to credit, <b>${totalDebit.toLocaleString()}</b> to debit:</div>` +
+      findings.map(f => `<div class="xp-log-row"><span class="xp-log-who">${escapeHtml(f.name)}</span><span class="xp-log-reason">${escapeHtml(f.category)} (${escapeHtml(f.label)}) — currently nets ${f.actualNet.toLocaleString()}, should be ${f.correctNet.toLocaleString()}</span><span class="xp-log-amt" style="color:${f.adjustment > 0 ? 'var(--win)' : 'var(--loss)'};">${f.adjustment > 0 ? '+' : ''}${f.adjustment.toLocaleString()}</span></div>`).join('');
     resultsEl.style.display = 'block';
     confirmWrap.style.display = 'block';
     status.className = 'status-msg';
-    status.textContent = 'Review the above before confirming — nothing has been changed yet.';
+    status.textContent = 'Review the above carefully before confirming — some are credits, some are debits.';
   }catch(e){
     status.className = 'status-msg error';
     status.textContent = 'Scan failed: ' + e.message;
@@ -19713,33 +19687,34 @@ document.getElementById('adminDupPotScanBtn').addEventListener('click', async ()
     btn.disabled = false;
   }
 });
-document.getElementById('adminDupPotConfirmInput').addEventListener('input', (e) => {
-  document.getElementById('adminDupPotReverseBtn').disabled = e.target.value.trim() !== 'CONFIRM';
+document.getElementById('adminReconcilePotConfirmInput').addEventListener('input', (e) => {
+  document.getElementById('adminReconcilePotBtn').disabled = e.target.value.trim() !== 'RECONCILE';
 });
-document.getElementById('adminDupPotReverseBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('adminDupPotReverseBtn');
-  const status = document.getElementById('adminDupPotReverseStatus');
-  if(!adminDupPotScanResults || adminDupPotScanResults.length === 0){
+document.getElementById('adminReconcilePotBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminReconcilePotBtn');
+  const status = document.getElementById('adminReconcilePotStatus');
+  if(!adminReconcilePotResults || adminReconcilePotResults.length === 0){
     status.className = 'status-msg error';
-    status.textContent = 'Nothing to reverse — run a scan first.';
+    status.textContent = 'Nothing to apply — run a scan first.';
     return;
   }
-  if(!confirm(`Reverse ${adminDupPotScanResults.length} duplicate credit(s) totaling ${adminDupPotScanResults.reduce((s,f)=>s+f.excessTotal,0).toLocaleString()} XP? This directly adjusts real balances.`)) return;
+  const netTotal = adminReconcilePotResults.reduce((s, f) => s + f.adjustment, 0);
+  if(!confirm(`Apply ${adminReconcilePotResults.length} correction(s), net ${netTotal >= 0 ? '+' : ''}${netTotal.toLocaleString()} XP across all accounts? This directly adjusts real balances, up or down.`)) return;
   btn.disabled = true;
   status.className = 'status-msg';
-  status.textContent = 'Reversing…';
+  status.textContent = 'Applying corrections…';
   let done = 0, failed = 0;
-  for(const f of adminDupPotScanResults){
+  for(const f of adminReconcilePotResults){
     try{
       const balRes = await authedFetch(`/xp/${f.uid}/balance.json`);
       const bal = (await balRes.json()) || 0;
-      const next = bal - f.excessTotal;
+      const next = bal + f.adjustment;
       await authedFetch(`/xp/${f.uid}/balance.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
       });
       await authedFetch(`/xp/${f.uid}/log.json`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: -f.excessTotal, reason: `Casino Pot Duplicate Payout Reversal (correcting Casino Pot – ${f.category} (${f.label}))`, balanceAfter: next, ts: Date.now() })
+        body: JSON.stringify({ amount: f.adjustment, reason: `Casino Pot Reconciliation — Correction (${f.category} (${f.label}))`, balanceAfter: next, ts: Date.now() })
       });
       done++;
     }catch(e){
@@ -19748,153 +19723,12 @@ document.getElementById('adminDupPotReverseBtn').addEventListener('click', async
   }
   status.className = failed === 0 ? 'status-msg ok' : 'status-msg error';
   status.textContent = failed === 0
-    ? `Reversed ${done} duplicate credit(s).`
-    : `Reversed ${done}, but ${failed} failed — check those people manually.`;
-  adminDupPotScanResults = null;
-  document.getElementById('adminDupPotResults').style.display = 'none';
-  document.getElementById('adminDupPotConfirmWrap').style.display = 'none';
-  document.getElementById('adminDupPotConfirmInput').value = '';
-  btn.disabled = true;
-});
-
-// ================= Refund Incorrect Duplicate-Reversals =================
-// Fixes the specific mix-up: the Sep 1 triple-payout incident was already
-// corrected once via a separate, one-off script (casino-pot-emergency-fix.js)
-// BEFORE the "Fix Duplicate Casino Pot Payout" admin tool above existed —
-// so that emergency script's correction entries used different wording and
-// were never recognised by this tool's own "already reversed" check
-// (CASINO_POT_REVERSAL_PATTERN). Result: running the admin tool found those
-// same original duplicate credits, didn't see a reversal it recognised, and
-// reversed them a SECOND time — a genuine over-correction, not a real
-// duplicate. This tool finds every entry THIS admin tool itself logged
-// (reason starts "Casino Pot Duplicate Payout Reversal") and lets you
-// refund those exact amounts back, one review-then-confirm step, same
-// pattern as the tool it's correcting.
-//
-// Reuses CASINO_POT_REVERSAL_PATTERN, already declared above for the
-// duplicate-scan tool — not redeclared here.
-let adminRefundDupResults = null;
-// Marks a (uid, category, label) key as already refunded by THIS tool, so
-// a rescan after refunding doesn't offer to refund it again. Deliberately
-// key-level (not per-entry) — once a key's total has been refunded once,
-// treat that key as settled rather than trying to track partial-refund
-// states, since this tool is meant for a one-time cleanup, not ongoing use.
-const REFUND_DUP_CORRECTION_PATTERN = /^Duplicate Payout Reversal — Correction \(refunding Casino Pot Duplicate Payout Reversal \(correcting Casino Pot – (Even Split|Jackpot) \(([^)]+)\)\)\)$/;
-
-async function scanForIncorrectDuplicateReversals(){
-  const users = await getAdminApprovedUsersCache();
-  const reversalsByKey = {}; // "uid|||category|||label" -> entries[]
-  const alreadyRefundedKeys = new Set();
-  for(const u of users){
-    let log;
-    try{
-      const res = await authedFetch(`/xp/${u.uid}/log.json`);
-      log = (await res.json()) || {};
-    }catch(e){ continue; }
-    Object.values(log).forEach(e => {
-      if(!e || typeof e.reason !== 'string') return;
-      const revMatch = e.reason.match(CASINO_POT_REVERSAL_PATTERN);
-      if(revMatch){
-        const [, category, label] = revMatch;
-        const key = `${u.uid}|||${category}|||${label}`;
-        if(!reversalsByKey[key]) reversalsByKey[key] = [];
-        reversalsByKey[key].push({ uid: u.uid, name: u.name, entry: e });
-        return;
-      }
-      const fixMatch = e.reason.match(REFUND_DUP_CORRECTION_PATTERN);
-      if(fixMatch){
-        const [, category, label] = fixMatch;
-        alreadyRefundedKeys.add(`${u.uid}|||${category}|||${label}`);
-      }
-    });
-  }
-
-  const findings = [];
-  Object.entries(reversalsByKey).forEach(([key, entries]) => {
-    if(alreadyRefundedKeys.has(key)) return; // already fixed by a prior run of this tool
-    const [uid, category, label] = key.split('|||');
-    const total = entries.reduce((s, x) => s + Math.abs(Number(x.entry.amount) || 0), 0);
-    if(total <= 0) return;
-    const name = entries[0].name || uid;
-    findings.push({ uid, name, category, label, refundAmount: total, count: entries.length });
-  });
-  findings.sort((a, b) => b.refundAmount - a.refundAmount);
-  return findings;
-}
-
-document.getElementById('adminRefundDupScanBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('adminRefundDupScanBtn');
-  const status = document.getElementById('adminRefundDupScanStatus');
-  const resultsEl = document.getElementById('adminRefundDupResults');
-  const confirmWrap = document.getElementById('adminRefundDupConfirmWrap');
-  btn.disabled = true;
-  status.className = 'status-msg';
-  status.textContent = 'Scanning every approved user\'s XP log — this can take a moment…';
-  resultsEl.style.display = 'none';
-  confirmWrap.style.display = 'none';
-  try{
-    const findings = await scanForIncorrectDuplicateReversals();
-    adminRefundDupResults = findings;
-    if(findings.length === 0){
-      status.className = 'status-msg ok';
-      status.textContent = 'Nothing to refund — no unfixed duplicate-reversal entries found.';
-      return;
-    }
-    const totalRefund = findings.reduce((s, f) => s + f.refundAmount, 0);
-    resultsEl.innerHTML = `<div class="hint" style="margin-bottom:8px;">Found <b>${findings.length}</b> account${findings.length === 1 ? '' : 's'} to refund, totaling <b>${totalRefund.toLocaleString()} XP</b>:</div>` +
-      findings.map(f => `<div class="xp-log-row"><span class="xp-log-who">${escapeHtml(f.name)}</span><span class="xp-log-reason">${escapeHtml(f.category)} (${escapeHtml(f.label)}) — reversed ${f.count}× incorrectly</span><span class="xp-log-amt" style="color:var(--win);">+${f.refundAmount.toLocaleString()}</span></div>`).join('');
-    resultsEl.style.display = 'block';
-    confirmWrap.style.display = 'block';
-    status.className = 'status-msg';
-    status.textContent = 'Review the above before confirming — nothing has been changed yet.';
-  }catch(e){
-    status.className = 'status-msg error';
-    status.textContent = 'Scan failed: ' + e.message;
-  }finally{
-    btn.disabled = false;
-  }
-});
-document.getElementById('adminRefundDupConfirmInput').addEventListener('input', (e) => {
-  document.getElementById('adminRefundDupBtn').disabled = e.target.value.trim() !== 'REFUND';
-});
-document.getElementById('adminRefundDupBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('adminRefundDupBtn');
-  const status = document.getElementById('adminRefundDupStatus');
-  if(!adminRefundDupResults || adminRefundDupResults.length === 0){
-    status.className = 'status-msg error';
-    status.textContent = 'Nothing to refund — run a scan first.';
-    return;
-  }
-  if(!confirm(`Refund ${adminRefundDupResults.length} account(s) totaling ${adminRefundDupResults.reduce((s,f)=>s+f.refundAmount,0).toLocaleString()} XP? This directly adjusts real balances.`)) return;
-  btn.disabled = true;
-  status.className = 'status-msg';
-  status.textContent = 'Refunding…';
-  let done = 0, failed = 0;
-  for(const f of adminRefundDupResults){
-    try{
-      const balRes = await authedFetch(`/xp/${f.uid}/balance.json`);
-      const bal = (await balRes.json()) || 0;
-      const next = bal + f.refundAmount;
-      await authedFetch(`/xp/${f.uid}/balance.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
-      });
-      await authedFetch(`/xp/${f.uid}/log.json`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: f.refundAmount, reason: `Duplicate Payout Reversal — Correction (refunding Casino Pot Duplicate Payout Reversal (correcting Casino Pot – ${f.category} (${f.label})))`, balanceAfter: next, ts: Date.now() })
-      });
-      done++;
-    }catch(e){
-      failed++;
-    }
-  }
-  status.className = failed === 0 ? 'status-msg ok' : 'status-msg error';
-  status.textContent = failed === 0
-    ? `Refunded ${done} account(s).`
-    : `Refunded ${done}, but ${failed} failed — check those people manually.`;
-  adminRefundDupResults = null;
-  document.getElementById('adminRefundDupResults').style.display = 'none';
-  document.getElementById('adminRefundDupConfirmWrap').style.display = 'none';
-  document.getElementById('adminRefundDupConfirmInput').value = '';
+    ? `Applied ${done} correction(s).`
+    : `Applied ${done}, but ${failed} failed — check those people manually.`;
+  adminReconcilePotResults = null;
+  document.getElementById('adminReconcilePotResults').style.display = 'none';
+  document.getElementById('adminReconcilePotConfirmWrap').style.display = 'none';
+  document.getElementById('adminReconcilePotConfirmInput').value = '';
   btn.disabled = true;
 });
 
