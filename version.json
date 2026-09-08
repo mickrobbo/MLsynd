@@ -1,5 +1,7 @@
 {
-  "version": "2026-09-02.81",
-  "date": "2026-09-02",
-  "changes": []
+  "version": "2026-09-08.82",
+  "date": "2026-09-08",
+  "changes": [
+    "Added Refund Incorrect Duplicate-Reversals admin tool to correct an over-correction caused by the duplicate-scan tool not recognising the earlier one-off emergency fix's wording"
+  ]
 }

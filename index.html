@@ -566,6 +566,19 @@
       </div>
     </div>
     <div class="panel">
+      <h2>💸 Refund Incorrect Duplicate-Reversals</h2>
+      <div class="hint">For the specific mix-up where the Fix Duplicate Casino Pot Payout tool above re-reversed a credit that had already been manually corrected earlier (its own reversal record predates this tool and used different wording, so the tool didn't recognise it as already-fixed). Scans every approved user's XP log for entries logged by that tool ("Casino Pot Duplicate Payout Reversal…"), totals them per person, and lets you refund exactly those amounts back. Nothing is changed until you review the results and type REFUND.</div>
+      <button type="button" id="adminRefundDupScanBtn" class="small" style="margin-top:10px;">🔍 Scan for incorrect reversals</button>
+      <div class="status-msg" id="adminRefundDupScanStatus"></div>
+      <div id="adminRefundDupResults" style="display:none; margin-top:10px;"></div>
+      <div id="adminRefundDupConfirmWrap" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+        <div class="hint" style="color:var(--loss); font-weight:600;">This will credit each person the exact amount shown above and log a correction entry for each. Type REFUND below to enable the button.</div>
+        <input type="text" id="adminRefundDupConfirmInput" placeholder="Type REFUND to enable" style="width:100%; margin-top:10px;">
+        <button type="button" id="adminRefundDupBtn" class="small danger" style="margin-top:8px;" disabled>💸 Refund these accounts</button>
+        <div class="status-msg" id="adminRefundDupStatus"></div>
+      </div>
+    </div>
+    <div class="panel">
       <h2>💣 Reset Season</h2>
       <div class="hint">Zeroes every member's stats, dues, and group financials back to a clean slate, and clears saved-week history. Use this if you're going to re-enter the season from Week 1 so the graph and totals build up correctly. Names and bet slips are kept. Lifetime stats are archived first, so profile history isn't lost.</div>
       <div class="hint" style="margin-top:6px; color:var(--loss); font-weight:600;">This cannot be undone except by restoring a backup. Type RESET below to enable the button.</div>
@@ -3475,7 +3488,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-02.81"; // Fixed a real bug I hadn't caught until directly asked "will a rescan show 0" — reversing writes a compensating negative entry but never deletes the original duplicate credits (deliberately, for a clean audit trail), so a rescan would have found the exact same original entries still sitting in the log and flagged the same duplicate all over again — and confirming a second time would have deducted the excess TWICE, a genuine new bug rather than a harmless re-check. Fixed by having the scan also look for its own "Casino Pot Duplicate Payout Reversal (correcting ...)" entries and subtract however many have already been applied per person/category/label before deciding what's still outstanding. Verified both directions with concrete tests before shipping: the original three-duplicate scenario still detects correctly with no reversals present, and the exact same scenario with reversals already applied now correctly returns zero findings. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.82"; // Added "Refund Incorrect Duplicate-Reversals" admin tool: the duplicate-scan tool above didn't recognise the wording used by the earlier one-off casino-pot-emergency-fix.js cleanup (which predates this tool), so it re-reversed already-corrected Sep 1 triple-payout credits a second time — a genuine over-correction, not a real duplicate. New tool scans for every entry the duplicate-scan tool itself logged, totals the over-correction per person, and refunds it back after a review-then-type-REFUND step, same pattern as the tool it corrects. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -19741,6 +19754,147 @@ document.getElementById('adminDupPotReverseBtn').addEventListener('click', async
   document.getElementById('adminDupPotResults').style.display = 'none';
   document.getElementById('adminDupPotConfirmWrap').style.display = 'none';
   document.getElementById('adminDupPotConfirmInput').value = '';
+  btn.disabled = true;
+});
+
+// ================= Refund Incorrect Duplicate-Reversals =================
+// Fixes the specific mix-up: the Sep 1 triple-payout incident was already
+// corrected once via a separate, one-off script (casino-pot-emergency-fix.js)
+// BEFORE the "Fix Duplicate Casino Pot Payout" admin tool above existed —
+// so that emergency script's correction entries used different wording and
+// were never recognised by this tool's own "already reversed" check
+// (CASINO_POT_REVERSAL_PATTERN). Result: running the admin tool found those
+// same original duplicate credits, didn't see a reversal it recognised, and
+// reversed them a SECOND time — a genuine over-correction, not a real
+// duplicate. This tool finds every entry THIS admin tool itself logged
+// (reason starts "Casino Pot Duplicate Payout Reversal") and lets you
+// refund those exact amounts back, one review-then-confirm step, same
+// pattern as the tool it's correcting.
+//
+// Reuses CASINO_POT_REVERSAL_PATTERN, already declared above for the
+// duplicate-scan tool — not redeclared here.
+let adminRefundDupResults = null;
+// Marks a (uid, category, label) key as already refunded by THIS tool, so
+// a rescan after refunding doesn't offer to refund it again. Deliberately
+// key-level (not per-entry) — once a key's total has been refunded once,
+// treat that key as settled rather than trying to track partial-refund
+// states, since this tool is meant for a one-time cleanup, not ongoing use.
+const REFUND_DUP_CORRECTION_PATTERN = /^Duplicate Payout Reversal — Correction \(refunding Casino Pot Duplicate Payout Reversal \(correcting Casino Pot – (Even Split|Jackpot) \(([^)]+)\)\)\)$/;
+
+async function scanForIncorrectDuplicateReversals(){
+  const users = await getAdminApprovedUsersCache();
+  const reversalsByKey = {}; // "uid|||category|||label" -> entries[]
+  const alreadyRefundedKeys = new Set();
+  for(const u of users){
+    let log;
+    try{
+      const res = await authedFetch(`/xp/${u.uid}/log.json`);
+      log = (await res.json()) || {};
+    }catch(e){ continue; }
+    Object.values(log).forEach(e => {
+      if(!e || typeof e.reason !== 'string') return;
+      const revMatch = e.reason.match(CASINO_POT_REVERSAL_PATTERN);
+      if(revMatch){
+        const [, category, label] = revMatch;
+        const key = `${u.uid}|||${category}|||${label}`;
+        if(!reversalsByKey[key]) reversalsByKey[key] = [];
+        reversalsByKey[key].push({ uid: u.uid, name: u.name, entry: e });
+        return;
+      }
+      const fixMatch = e.reason.match(REFUND_DUP_CORRECTION_PATTERN);
+      if(fixMatch){
+        const [, category, label] = fixMatch;
+        alreadyRefundedKeys.add(`${u.uid}|||${category}|||${label}`);
+      }
+    });
+  }
+
+  const findings = [];
+  Object.entries(reversalsByKey).forEach(([key, entries]) => {
+    if(alreadyRefundedKeys.has(key)) return; // already fixed by a prior run of this tool
+    const [uid, category, label] = key.split('|||');
+    const total = entries.reduce((s, x) => s + Math.abs(Number(x.entry.amount) || 0), 0);
+    if(total <= 0) return;
+    const name = entries[0].name || uid;
+    findings.push({ uid, name, category, label, refundAmount: total, count: entries.length });
+  });
+  findings.sort((a, b) => b.refundAmount - a.refundAmount);
+  return findings;
+}
+
+document.getElementById('adminRefundDupScanBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminRefundDupScanBtn');
+  const status = document.getElementById('adminRefundDupScanStatus');
+  const resultsEl = document.getElementById('adminRefundDupResults');
+  const confirmWrap = document.getElementById('adminRefundDupConfirmWrap');
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Scanning every approved user\'s XP log — this can take a moment…';
+  resultsEl.style.display = 'none';
+  confirmWrap.style.display = 'none';
+  try{
+    const findings = await scanForIncorrectDuplicateReversals();
+    adminRefundDupResults = findings;
+    if(findings.length === 0){
+      status.className = 'status-msg ok';
+      status.textContent = 'Nothing to refund — no unfixed duplicate-reversal entries found.';
+      return;
+    }
+    const totalRefund = findings.reduce((s, f) => s + f.refundAmount, 0);
+    resultsEl.innerHTML = `<div class="hint" style="margin-bottom:8px;">Found <b>${findings.length}</b> account${findings.length === 1 ? '' : 's'} to refund, totaling <b>${totalRefund.toLocaleString()} XP</b>:</div>` +
+      findings.map(f => `<div class="xp-log-row"><span class="xp-log-who">${escapeHtml(f.name)}</span><span class="xp-log-reason">${escapeHtml(f.category)} (${escapeHtml(f.label)}) — reversed ${f.count}× incorrectly</span><span class="xp-log-amt" style="color:var(--win);">+${f.refundAmount.toLocaleString()}</span></div>`).join('');
+    resultsEl.style.display = 'block';
+    confirmWrap.style.display = 'block';
+    status.className = 'status-msg';
+    status.textContent = 'Review the above before confirming — nothing has been changed yet.';
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Scan failed: ' + e.message;
+  }finally{
+    btn.disabled = false;
+  }
+});
+document.getElementById('adminRefundDupConfirmInput').addEventListener('input', (e) => {
+  document.getElementById('adminRefundDupBtn').disabled = e.target.value.trim() !== 'REFUND';
+});
+document.getElementById('adminRefundDupBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminRefundDupBtn');
+  const status = document.getElementById('adminRefundDupStatus');
+  if(!adminRefundDupResults || adminRefundDupResults.length === 0){
+    status.className = 'status-msg error';
+    status.textContent = 'Nothing to refund — run a scan first.';
+    return;
+  }
+  if(!confirm(`Refund ${adminRefundDupResults.length} account(s) totaling ${adminRefundDupResults.reduce((s,f)=>s+f.refundAmount,0).toLocaleString()} XP? This directly adjusts real balances.`)) return;
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Refunding…';
+  let done = 0, failed = 0;
+  for(const f of adminRefundDupResults){
+    try{
+      const balRes = await authedFetch(`/xp/${f.uid}/balance.json`);
+      const bal = (await balRes.json()) || 0;
+      const next = bal + f.refundAmount;
+      await authedFetch(`/xp/${f.uid}/balance.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+      });
+      await authedFetch(`/xp/${f.uid}/log.json`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: f.refundAmount, reason: `Duplicate Payout Reversal — Correction (refunding Casino Pot Duplicate Payout Reversal (correcting Casino Pot – ${f.category} (${f.label})))`, balanceAfter: next, ts: Date.now() })
+      });
+      done++;
+    }catch(e){
+      failed++;
+    }
+  }
+  status.className = failed === 0 ? 'status-msg ok' : 'status-msg error';
+  status.textContent = failed === 0
+    ? `Refunded ${done} account(s).`
+    : `Refunded ${done}, but ${failed} failed — check those people manually.`;
+  adminRefundDupResults = null;
+  document.getElementById('adminRefundDupResults').style.display = 'none';
+  document.getElementById('adminRefundDupConfirmWrap').style.display = 'none';
+  document.getElementById('adminRefundDupConfirmInput').value = '';
   btn.disabled = true;
 });
 
