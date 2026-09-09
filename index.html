@@ -1659,6 +1659,12 @@
     <div class="casino-game-panel" id="casinoGameSlots" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="slots">📜 Rules</button></div>
     <div class="panel slots-panel" style="text-align:center;">
+      <div class="mines-status-row" style="margin-bottom:8px;">
+        <div class="mines-status-cell"><span class="lbl">Machine Balance</span><span class="val" id="slotsMachineBalanceVal">0</span></div>
+      </div>
+      <div style="text-align:center; margin-bottom:8px;">
+        <button type="button" id="slotsCashOutBtn" class="pill-btn pill-btn-action" disabled>💰 Cash Out to XP</button>
+      </div>
       <div class="slots-machine">
         <div class="slots-reel-window">
           <div class="slots-reel" id="slotsReel0"></div>
@@ -1708,8 +1714,15 @@
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
         <button type="button" class="chip-clear-btn" data-target="slotsBetInput">Clear Chips</button>
       </div>
+      <div class="craps-section-label">Auto Spin <small>— stops automatically the moment a Free Spins feature triggers, which then plays itself out</small></div>
+      <div class="craps-winmode-row" id="slotsAutoSpinCountRow">
+        <button type="button" class="craps-winmode-btn" data-auto="5">5</button>
+        <button type="button" class="craps-winmode-btn active" data-auto="10">10</button>
+        <button type="button" class="craps-winmode-btn" data-auto="20">20</button>
+      </div>
       <div class="deal-row">
         <button type="button" id="slotsSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+        <button type="button" id="slotsAutoSpinBtn" class="pill-btn pill-btn-action">🔄 Auto</button>
         <button type="button" id="slotsSpinBtn" class="pill-btn pill-btn-primary">Spin</button>
       </div>
       <div id="slotsBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
@@ -3484,7 +3497,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.85"; // Visual consistency pass on dashboard.css (real, evidence-based, checked against screenshots — not guessed): extended the "tap chip to type custom amount" pencil badge to all 12 games (it only existed on Roulette/Craps despite every game having the identical feature, so 10 games gave zero visual cue it was tappable); deleted one genuinely dead CSS rule (#casinoRulesHubList, confirmed zero references anywhere in HTML/JS). Also fixed a real Slots bug reported directly: the Gamble feature's Collect/Red/Black/suit buttons could get stuck permanently disabled — slotsGambleCollect's SUCCESS path disabled them then closed the panel without ever re-enabling (only its failure path did), so after your first successful Collect in a session every later gamble offer opened with all buttons stuck disabled. Fixed by unconditionally re-enabling on every fresh gamble offer in slotsOfferGamble. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.88"; // Slots: added a visible Machine Balance (credit meter, like a real slot machine's coin tray) shown above the reels. Every win — free-spin or gambled-and-collected — now banks into it instead of crediting real XP directly, and every bet draws from it first; real XP is only ever touched for whatever's left uncovered once it's empty. A dedicated Cash Out button moves it to real XP deliberately (only clears the visible balance after the real-XP credit actually succeeds, never before, so a network failure can't silently lose banked winnings). In-memory only, same as the rest of this game's session state — resets on reload, which is exactly why Cash Out exists. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

@@ -36,8 +36,22 @@ const SLOTS_SCATTER_SYMBOL = '👑';
 const SLOTS_FREE_SPINS_TRIGGER_COUNT = 3;
 const SLOTS_FREE_SPINS_AWARD = 8; // spins granted per trigger — a judgment call, not specified; easy to retune
 const SLOTS_FREE_SPINS_MULTIPLIER = 3;
+// MEGA tier — all 5 reels landing a crown at once (5-of-a-kind scatter,
+// the rarest possible board: weight 1 of 27 per reel, so roughly a
+// 1-in-14-million shot) awards a bigger bonus on top of the standard
+// 3-4 crown trigger, with its own richer celebration. The tier is
+// decided once, at the moment the bonus STARTS, and locked in for that
+// whole bonus (slotsFreeSpinsMultiplier) — a retrigger mid-bonus adds
+// more spins at whatever tier the retrigger itself qualifies for, but
+// doesn't change the multiplier already locked in, same "no gaming the
+// payout mid-bonus" convention as the bet-lock above.
+const SLOTS_MEGA_TRIGGER_COUNT = 5;
+const SLOTS_MEGA_FREE_SPINS_AWARD = 20;
+const SLOTS_MEGA_FREE_SPINS_MULTIPLIER = 6;
 let slotsFreeSpinsRemaining = 0;
 let slotsFreeSpinsBet = null; // { amountPerLine, lines } — locked in for the whole bonus
+let slotsFreeSpinsMultiplier = SLOTS_FREE_SPINS_MULTIPLIER; // set when a bonus starts, from whichever tier triggered it
+let slotsFreeSpinsIsMega = false; // for the celebration/banner styling on this bonus's own spins
 
 // Five classic pokie paylines — row index (0=top,1=middle,2=bottom) per
 // reel, left to right. Activated in this exact order: betting "1 Line"
@@ -54,7 +68,36 @@ const SLOTS_PAYLINES = [
 
 let slotsBuilt = false;
 let slotsLastBet = null; // { amountPerLine, lines }
+
+// ---- Machine Balance — a visible credit meter, same idea as a real
+// slot machine's coin tray. Every win (free-spin or gambled-and-
+// collected) banks straight in here instead of hitting real XP
+// directly; every bet draws from here first, and only reaches into
+// real XP once this is empty. Nothing is auto-cashed — the player has
+// to tap Cash Out deliberately to move it into real XP, same as they'd
+// have to physically collect coins from a tray. In-memory only (resets
+// on reload), same as every other piece of this game's session state
+// (slotsGamblePot, slotsFreeSpinsRemaining, etc.) — that's exactly why
+// Cash Out exists rather than forcing it to sit there indefinitely.
+let slotsMachineBalance = 0;
+function slotsUpdateMachineBalanceDisplay(){
+  const el = document.getElementById('slotsMachineBalanceVal');
+  if(el) el.textContent = slotsMachineBalance.toLocaleString();
+  const btn = document.getElementById('slotsCashOutBtn');
+  if(btn) btn.disabled = slotsMachineBalance <= 0;
+}
 let slotsActiveLineCount = 3;
+
+// ---- Auto Spin — fires slotsSpin() repeatedly up to a chosen count
+// (5/10/20), stopping early the moment a Free Spins feature triggers.
+// From there the bonus plays itself out independently (see the
+// self-continuing call at the end of slotsSpin) rather than resuming the
+// auto-spin count afterward — the feature is the payoff moment, so
+// control hands back to the player once it's done, same convention real
+// pokie autoplay uses.
+let slotsAutoSpinCount = 10;
+let slotsAutoSpinRemaining = 0;
+let slotsAutoSpinRunning = false;
 
 // ---- Gamble feature — offered after any real (non-free-spin) win.
 // Two fair sub-games (no house edge added on top of the win itself,
@@ -141,6 +184,9 @@ function slotsUpdateTotalBetHint(){
 // multiplier that's meant to apply to whatever they'd already committed to.
 function slotsSetControlsLockedForFreeSpins(locked){
   document.querySelectorAll('#slotsLinesRow .craps-winmode-btn').forEach(b => { b.disabled = locked; });
+  document.querySelectorAll('#slotsAutoSpinCountRow .craps-winmode-btn').forEach(b => { b.disabled = locked; });
+  const autoBtn = document.getElementById('slotsAutoSpinBtn');
+  if(autoBtn) autoBtn.disabled = locked;
   document.querySelectorAll('#slotsBetPanel .table-chip, #slotsBetPanel .chip-clear-btn').forEach(b => { b.disabled = locked; });
   const chip = document.getElementById('slotsChipDisplay');
   if(chip) chip.style.pointerEvents = locked ? 'none' : '';
@@ -215,9 +261,21 @@ async function slotsSpin(){
     if(perLine <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
     const totalBet = perLine * lineCount;
     if(totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per spin is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total across all lines (${perLine.toLocaleString()} × ${lineCount} lines = ${totalBet.toLocaleString()}).`; spinBtn.disabled = false; return; }
-    const balance = await getXPBalance();
-    if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
-    if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; spinBtn.disabled = false; return; }
+    // Machine Balance covers the bet first — only the shortfall beyond
+    // it is ever actually at risk from real XP. If it fully covers this
+    // bet's worst case, there's nothing to check against real XP at all
+    // (and no need to spend a balance read doing it).
+    const xpAtRisk = Math.max(0, totalBet - slotsMachineBalance);
+    if(xpAtRisk > 0){
+      const balance = await getXPBalance();
+      if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
+      if(xpAtRisk > balance){
+        errEl.textContent = slotsMachineBalance > 0
+          ? `Your Machine Balance covers ${slotsMachineBalance.toLocaleString()} of this ${totalBet.toLocaleString()} XP bet, but you only have ${balance.toLocaleString()} XP for the remaining ${xpAtRisk.toLocaleString()}.`
+          : `You only have ${balance} XP (total bet: ${totalBet}).`;
+        spinBtn.disabled = false; return;
+      }
+    }
   }
 
   if(sameBtn) sameBtn.disabled = true;
@@ -226,6 +284,7 @@ async function slotsSpin(){
   resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
   document.getElementById('slotsLinesOverlay').innerHTML = '';
   document.querySelectorAll('.slots-symbol.slots-win-cell').forEach(el => el.classList.remove('slots-win-cell'));
+  document.querySelectorAll('.slots-symbol.slots-scatter-tease').forEach(el => el.classList.remove('slots-scatter-tease'));
 
   // Everything from here on is wrapped so spinBtn/sameBtn ALWAYS get
   // re-enabled even if something throws mid-spin (a sound call, a DOM
@@ -245,12 +304,29 @@ async function slotsSpin(){
   }
   // Reels stop in sequence left to right (classic slot suspense) rather
   // than all at once — each one's own peg-tick-style sound reused from
-  // Spin the Wheel's synth marks the moment it lands.
+  // Spin the Wheel's synth marks the moment it lands. Once 2+ scatters
+  // have landed on already-revealed reels while a later reel is still
+  // spinning, every landed one pulses (slots-scatter-tease) — the
+  // classic "is this going to hit?" suspense beat real pokies use before
+  // the deciding reel lands, distinct from the confirmed-win gold glow.
   await Promise.all(grid.map((finals, i) => (async () => {
     await bjWait(i * 300);
     await slotsSpinReel('slotsReel' + i, finals, 1400 + i * 300);
     dailySpinPlayPegTick();
+    const landedScatterCount = grid.slice(0, i + 1).reduce((n, symbols) => n + symbols.filter(s => s === SLOTS_SCATTER_SYMBOL).length, 0);
+    if(landedScatterCount >= 2 && i < SLOTS_REEL_COUNT - 1){
+      for(let r = 0; r <= i; r++){
+        const reelEl2 = document.getElementById('slotsReel' + r);
+        grid[r].forEach((sym, row) => {
+          if(sym === SLOTS_SCATTER_SYMBOL){
+            const cell = reelEl2 && reelEl2.querySelectorAll('.slots-symbol')[row];
+            if(cell) cell.classList.add('slots-scatter-tease');
+          }
+        });
+      }
+    }
   })()));
+  document.querySelectorAll('.slots-symbol.slots-scatter-tease').forEach(el => el.classList.remove('slots-scatter-tease'));
 
   spinBtn.disabled = false;
   if(!isFreeSpin){
@@ -280,7 +356,7 @@ async function slotsSpin(){
     } else {
       delta = perLine; // 2 matching — 1:1 consolation, same as the original single-line machine
     }
-    if(isFreeSpin) delta *= SLOTS_FREE_SPINS_MULTIPLIER;
+    if(isFreeSpin) delta *= slotsFreeSpinsMultiplier;
     totalDelta += delta;
     winningLineIndexes.push(lineIdx);
     winParts.push(`${line.name} ${run}×${lineSymbols[0]} (+${delta})`);
@@ -299,33 +375,62 @@ async function slotsSpin(){
 
   // Scatter check — anywhere on the board, independent of paylines or
   // whether this spin even won anything on a line. Can retrigger during
-  // an existing bonus (adds more spins on top of whatever's left).
+  // an existing bonus (adds more spins on top of whatever's left) — and
+  // a retrigger that lands MEGA's 5-of-a-kind while a standard bonus is
+  // already running doesn't just add spins, it UPGRADES the running
+  // bonus to MEGA's multiplier for everything still left — a genuine
+  // "feature within a feature" moment, not just more of the same. Once
+  // a bonus is already at MEGA, a further retrigger (any tier) only
+  // ever adds spins — there's no higher tier to upgrade into.
   const scatterCount = grid.reduce((n, reelSymbols) => n + reelSymbols.filter(s => s === SLOTS_SCATTER_SYMBOL).length, 0);
   const triggeredFreeSpins = scatterCount >= SLOTS_FREE_SPINS_TRIGGER_COUNT;
+  const isMegaTrigger = scatterCount >= SLOTS_MEGA_TRIGGER_COUNT;
+  const thisTriggerAward = isMegaTrigger ? SLOTS_MEGA_FREE_SPINS_AWARD : SLOTS_FREE_SPINS_AWARD;
+  let isRetrigger = false;
+  let isTierUpgrade = false;
   if(triggeredFreeSpins){
     const wasAlreadyInBonus = slotsFreeSpinsRemaining > 0;
+    isRetrigger = wasAlreadyInBonus;
     if(!wasAlreadyInBonus){
       slotsFreeSpinsBet = { amountPerLine: perLine, lines: lineCount };
       slotsSetControlsLockedForFreeSpins(true);
+      slotsFreeSpinsMultiplier = isMegaTrigger ? SLOTS_MEGA_FREE_SPINS_MULTIPLIER : SLOTS_FREE_SPINS_MULTIPLIER;
+      slotsFreeSpinsIsMega = isMegaTrigger;
+    } else if(isMegaTrigger && !slotsFreeSpinsIsMega){
+      // The feature-within-a-feature moment: a standard bonus just got
+      // hit by a MEGA retrigger mid-run. Upgrade takes effect for every
+      // spin still remaining in the bonus, not retroactively.
+      isTierUpgrade = true;
+      slotsFreeSpinsMultiplier = SLOTS_MEGA_FREE_SPINS_MULTIPLIER;
+      slotsFreeSpinsIsMega = true;
     }
-    slotsFreeSpinsRemaining += SLOTS_FREE_SPINS_AWARD;
+    slotsFreeSpinsRemaining += thisTriggerAward;
   }
   if(isFreeSpin) slotsFreeSpinsRemaining--;
   const bonusJustEnded = isFreeSpin && slotsFreeSpinsRemaining <= 0;
   if(bonusJustEnded){
     slotsFreeSpinsRemaining = 0;
     slotsFreeSpinsBet = null;
+    slotsFreeSpinsIsMega = false;
     slotsSetControlsLockedForFreeSpins(false);
   }
 
   const resultPrefix = triggeredFreeSpins
-    ? `🎉 ${scatterCount}×${SLOTS_SCATTER_SYMBOL} — +${SLOTS_FREE_SPINS_AWARD} FREE SPINS at ${SLOTS_FREE_SPINS_MULTIPLIER}x!  `
+    ? (isTierUpgrade
+        ? `👑🔁 UPGRADED TO MEGA! +${SLOTS_MEGA_FREE_SPINS_AWARD} more spins, now paying ${SLOTS_MEGA_FREE_SPINS_MULTIPLIER}x for the rest of the bonus!!  `
+        : isRetrigger
+          ? (isMegaTrigger
+              ? `👑🔁 MEGA RETRIGGER! +${SLOTS_MEGA_FREE_SPINS_AWARD} more free spins!!  `
+              : `🔁 RETRIGGERED! +${SLOTS_FREE_SPINS_AWARD} more free spins!  `)
+          : (isMegaTrigger
+              ? `👑 MEGA! ${scatterCount}×${SLOTS_SCATTER_SYMBOL} — +${SLOTS_MEGA_FREE_SPINS_AWARD} FREE SPINS at ${SLOTS_MEGA_FREE_SPINS_MULTIPLIER}x!!  `
+              : `🎉 ${scatterCount}×${SLOTS_SCATTER_SYMBOL} — +${SLOTS_FREE_SPINS_AWARD} FREE SPINS at ${SLOTS_FREE_SPINS_MULTIPLIER}x!  `))
     : '';
   resultEl.textContent = resultPrefix + (winParts.length > 0
     ? `${winParts.join(' · ')} — Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`
     : (isFreeSpin ? `No line hit (0 XP — free spin, nothing lost)` : `No line hit (${totalDelta} XP)`));
   resultEl.style.color = isJackpot ? '' : (totalDelta > 0 ? 'var(--win)' : (totalDelta < 0 ? 'var(--loss)' : 'var(--muted)'));
-  resultEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+  resultEl.classList.add((isMegaTrigger || isTierUpgrade) ? 'slots-mega-outcome' : (isRetrigger ? 'slots-retrigger-outcome' : (isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop')));
 
   slotsDrawWinLines(winningLineIndexes);
   slotsRenderPaylinesKey(winningLineIndexes);
@@ -337,7 +442,21 @@ async function slotsSpin(){
   });
 
   const panelEl = document.getElementById('casinoGameSlots');
-  if(triggeredFreeSpins){
+  if(isMegaTrigger){
+    // The rarest possible result gets the biggest reaction in the game —
+    // a full flash, a double burst of confetti (immediate + a follow-up
+    // half a second later, reads as more sustained than one big dump),
+    // and a two-part fanfare instead of the usual single chime. Its own
+    // dedicated flash class (not pc-flash-gold — that one only works on
+    // elements with a .panel class, and this container is
+    // .casino-game-panel, so it would've silently done nothing here).
+    panelEl.classList.remove('slots-mega-flash'); void panelEl.offsetWidth; panelEl.classList.add('slots-mega-flash');
+    setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 800);
+    bjPlayChime(true);
+    bjLaunchConfetti(resultEl, 70);
+    slotsPlayCoinCascade(true); // was defined but never actually called anywhere — real audio flair, put to use here
+    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 60); }, 500);
+  } else if(triggeredFreeSpins){
     // Triggering the bonus is always a celebration moment, even if this
     // particular spin's own lines net-lost — same reasoning a real
     // machine uses (the scatter hit overrides the line outcome's mood).
@@ -352,16 +471,42 @@ async function slotsSpin(){
     setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
   // A real (non-free-spin) win gets offered the Gamble feature instead of
-  // being credited immediately — collecting there is what actually
-  // awards the XP, so it's the one case that skips the immediate award
-  // below. Losses always award immediately (the deduction), and a
-  // free-spin win always awards immediately too (no gamble on those).
+  // being credited immediately — the actual credit into Machine Balance
+  // happens on Collect (see slotsGambleCollect), not here, to avoid
+  // double-crediting. A free-spin win is pure profit (nothing was
+  // staked that spin) and banks straight into Machine Balance too — no
+  // win ever auto-credits real XP directly anymore; Cash Out is always
+  // the deliberate step for that. A loss draws down Machine Balance
+  // first, and only reaches into real XP for whatever it doesn't cover.
   const goesToGamble = totalDelta > 0 && !isFreeSpin;
-  if(totalDelta !== 0 && !goesToGamble) await awardXP(totalDelta, totalDelta > 0 ? 'Slots free spin win' : 'Slots loss', { silent: true });
+  if(totalDelta > 0 && !goesToGamble){
+    slotsMachineBalance += totalDelta;
+  } else if(totalDelta < 0){
+    const loss = -totalDelta;
+    const fromMachine = Math.min(slotsMachineBalance, loss);
+    slotsMachineBalance -= fromMachine;
+    const fromXP = loss - fromMachine;
+    if(fromXP > 0) await awardXP(-fromXP, 'Slots loss', { silent: true });
+  }
+  slotsUpdateMachineBalanceDisplay();
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
   slotsUpdateTotalBetHint();
   if(goesToGamble) slotsOfferGamble(totalDelta);
+  // Bonus self-play: once a Free Spins feature is active (just started
+  // or continuing) the whole thing plays itself out automatically —
+  // real pokies never make you keep tapping through a bonus you already
+  // won. Runs regardless of whether this spin was manual or from the
+  // Auto Spin loop (which stops itself the moment it sees this happen —
+  // see slotsRunAutoSpin). Skipped here specifically when this same spin
+  // ALSO triggered the Gamble offer (a line win plus 3+ scatters landing
+  // together): the bonus stays armed but waits for that decision to
+  // actually resolve first — slotsGambleClose picks it up from there —
+  // rather than auto-spinning reels underneath an unresolved Gamble
+  // choice, which would be a genuinely confusing collision.
+  if(!bonusJustEnded && slotsFreeSpinsRemaining > 0 && !goesToGamble){
+    setTimeout(() => { slotsSpin(); }, 900);
+  }
   }catch(e){
     console.error('Slots spin failed partway through:', e);
     const errEl2 = document.getElementById('slotsBetError');
@@ -524,8 +669,12 @@ async function slotsGambleCollect(){
   const statusEl = document.getElementById('slotsGambleStatus');
   if(statusEl) statusEl.textContent = '';
   try{
+    // Banks into Machine Balance, not real XP directly — consistent
+    // with every other win path now: nothing auto-credits real XP,
+    // Cash Out is always the deliberate step for that.
     if(slotsGamblePot > 0){
-      await awardXP(slotsGamblePot, 'Slots gamble collect', { silent: true });
+      slotsMachineBalance += slotsGamblePot;
+      slotsUpdateMachineBalanceDisplay();
     }
     await slotsGambleClose(); // clears slotsGambleBusy on success
   }catch(e){
@@ -543,6 +692,13 @@ async function slotsGambleClose(){
   slotsGambleBusy = false;
   const bal = await getXPBalance();
   updateXPBalanceDisplay(bal);
+  // Picks up the bonus self-play deferred by slotsSpin when this same
+  // win also triggered a Free Spins feature — now that the Gamble
+  // decision is actually settled, it's safe to start auto-spinning the
+  // bonus without stepping on an unresolved choice.
+  if(slotsFreeSpinsRemaining > 0){
+    setTimeout(() => { slotsSpin(); }, 900);
+  }
 }
 document.getElementById('slotsGambleRedBtn').addEventListener('click', () => slotsGambleGuess('color', 'red'));
 document.getElementById('slotsGambleBlackBtn').addEventListener('click', () => slotsGambleGuess('color', 'black'));
@@ -577,3 +733,81 @@ function slotsPlayCoinCascade(big){
     osc.start(t); osc.stop(t + 0.16);
   }
 }
+
+// ---- Auto Spin ----
+document.querySelectorAll('#slotsAutoSpinCountRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if(slotsAutoSpinRunning) return; // can't change the count mid-run
+    slotsAutoSpinCount = parseInt(btn.dataset.auto, 10) || 10;
+    document.querySelectorAll('#slotsAutoSpinCountRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+async function slotsRunAutoSpin(){
+  slotsAutoSpinRemaining = slotsAutoSpinCount;
+  const btn = document.getElementById('slotsAutoSpinBtn');
+  const errEl = document.getElementById('slotsBetError');
+  while(slotsAutoSpinRunning && slotsAutoSpinRemaining > 0){
+    // A bonus already running itself (see slotsSpin's self-continue)
+    // takes over completely — the base loop stops rather than firing a
+    // second, competing spin alongside it.
+    if(slotsFreeSpinsRemaining > 0) break;
+    const spinBtn = document.getElementById('slotsSpinBtn');
+    if(spinBtn.disabled){ await bjWait(150); continue; } // something else mid-spin — wait it out, don't skip a count
+    if(errEl) errEl.textContent = '';
+    btn.textContent = `⏹ Stop (${slotsAutoSpinRemaining} left)`;
+    await slotsSpin();
+    // A validation failure (no balance, bad bet, etc.) returns instantly
+    // with an error message rather than actually spinning — stop rather
+    // than silently burning through the whole count hitting the same
+    // wall over and over.
+    if(errEl && errEl.textContent){ break; }
+    // Let the win/lose message and any confetti actually be seen before
+    // firing the next spin — a rapid-fire blur would undercut the whole
+    // point of asking for more excitement, not add to it.
+    await bjWait(700);
+    if(slotsFreeSpinsRemaining > 0) break; // this exact spin was the one that triggered the feature
+    slotsAutoSpinRemaining--;
+  }
+  slotsAutoSpinRunning = false;
+  if(btn){ btn.textContent = '🔄 Auto'; btn.classList.remove('slots-auto-running'); }
+}
+document.getElementById('slotsAutoSpinBtn').addEventListener('click', () => {
+  const btn = document.getElementById('slotsAutoSpinBtn');
+  if(slotsAutoSpinRunning){
+    // Stops after the spin currently in flight finishes — same
+    // "let the current action land cleanly" pattern used everywhere
+    // else rather than yanking the reels mid-motion.
+    slotsAutoSpinRunning = false;
+    return;
+  }
+  slotsAutoSpinRunning = true;
+  btn.classList.add('slots-auto-running');
+  slotsRunAutoSpin();
+});
+
+// ---- Machine Balance Cash Out ----
+document.getElementById('slotsCashOutBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('slotsCashOutBtn');
+  if(slotsMachineBalance <= 0 || btn.disabled) return;
+  btn.disabled = true;
+  const amount = slotsMachineBalance;
+  const errEl = document.getElementById('slotsBetError');
+  try{
+    // Only zero the visible Machine Balance AFTER the real XP credit
+    // actually succeeds — never optimistically clear it first, or a
+    // failed request here would silently lose banked winnings with no
+    // trace (the exact class of bug this app's own build history
+    // flagged before: don't update local state before confirming the
+    // write landed).
+    await awardXP(amount, 'Slots cash out', { silent: true });
+    slotsMachineBalance = 0;
+    const bal = await getXPBalance();
+    updateXPBalanceDisplay(bal);
+    bjPlayChime(true);
+  }catch(e){
+    console.error('Slots cash out failed:', e);
+    if(errEl) errEl.textContent = 'Could not cash out — check your connection and try again.';
+  }finally{
+    slotsUpdateMachineBalanceDisplay();
+  }
+});
