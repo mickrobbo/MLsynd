@@ -1,8 +1,7 @@
 {
-  "version": "2026-09-08.88",
+  "version": "2026-09-08.89",
   "date": "2026-09-08",
   "changes": [
-    "Slots: added a visible Machine Balance credit meter — wins bank into it, bets draw from it first, real XP is only touched once it's empty",
-    "Slots: added a Cash Out button to deliberately move Machine Balance into real XP"
+    "Admin tab: migrated the \"Clear This Week's Multi display\" toggle from the Ledger app's Entry tab, so it's now available in the Dashboard's own Admin tab too"
   ]
 }

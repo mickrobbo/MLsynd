@@ -566,6 +566,12 @@
       </div>
     </div>
     <div class="panel">
+      <h2>🍳 Clear "This Week's Multi" Display</h2>
+      <div class="hint">The Home tab's "This Week's Multi — Who's Cooking It?" section keeps showing last week's saved results until this is cleared — previously this was only available from the Ledger app's Entry tab, now migrated in here too. Real activity next week automatically un-clears it on its own, so there's nothing to remember to toggle back.</div>
+      <button type="button" id="adminClearWhoCookingBtn" class="small" style="margin-top:10px;">🧹 Clear it now</button>
+      <div class="status-msg" id="adminClearWhoCookingStatus"></div>
+    </div>
+    <div class="panel">
       <h2>💣 Reset Season</h2>
       <div class="hint">Zeroes every member's stats, dues, and group financials back to a clean slate, and clears saved-week history. Use this if you're going to re-enter the season from Week 1 so the graph and totals build up correctly. Names and bet slips are kept. Lifetime stats are archived first, so profile history isn't lost.</div>
       <div class="hint" style="margin-top:6px; color:var(--loss); font-weight:600;">This cannot be undone except by restoring a backup. Type RESET below to enable the button.</div>
@@ -3497,7 +3503,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.88"; // Slots: added a visible Machine Balance (credit meter, like a real slot machine's coin tray) shown above the reels. Every win — free-spin or gambled-and-collected — now banks into it instead of crediting real XP directly, and every bet draws from it first; real XP is only ever touched for whatever's left uncovered once it's empty. A dedicated Cash Out button moves it to real XP deliberately (only clears the visible balance after the real-XP credit actually succeeds, never before, so a network failure can't silently lose banked winnings). In-memory only, same as the rest of this game's session state — resets on reload, which is exactly why Cash Out exists. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.89"; // Admin tab: migrated "Clear who's cooking it" (This Week's Multi display toggle) from the Ledger app's Entry tab, per direct request — it was only available there, not in the Dashboard's own Admin tab. Scoped write to /state/groupMultiCleared.json only, matching this whole migration's "never overwrite the full /state.json" convention. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -19794,6 +19800,34 @@ document.getElementById('adminReconcilePotBtn').addEventListener('click', async 
   document.getElementById('adminReconcilePotConfirmWrap').style.display = 'none';
   document.getElementById('adminReconcilePotConfirmInput').value = '';
   btn.disabled = true;
+});
+
+// Migrated from the Ledger app's Entry tab. Scoped write to just this
+// one field (/state/groupMultiCleared.json), never the whole
+// /state.json — same convention this entire migration follows
+// throughout, so this can't clobber any concurrent change happening
+// elsewhere in the shared state. No typed confirmation, matching the
+// original Ledger button's own risk level — a display toggle only,
+// touches no money or XP, and auto-un-clears itself once real activity
+// starts next week.
+document.getElementById('adminClearWhoCookingBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminClearWhoCookingBtn');
+  const status = document.getElementById('adminClearWhoCookingStatus');
+  btn.disabled = true;
+  status.className = 'status-msg';
+  status.textContent = 'Clearing…';
+  try{
+    await authedFetch('/state/groupMultiCleared.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
+    });
+    status.className = 'status-msg ok';
+    status.textContent = 'Cleared — the Home tab will show it empty until new real activity starts.';
+  }catch(e){
+    status.className = 'status-msg error';
+    status.textContent = 'Failed to clear: ' + e.message;
+  }finally{
+    btn.disabled = false;
+  }
 });
 
 // Reset Season — a typed confirmation on top of the two dialogs below,
