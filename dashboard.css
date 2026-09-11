@@ -3019,11 +3019,14 @@
   .pl-hero-val.pos{ color:var(--win); } .pl-hero-val.neg{ color:var(--loss); }
   .chart-tooltip{ min-height:16px; font-size:12px; color:var(--chalk); text-align:center; margin-top:4px; opacity:0; transition:opacity .15s; font-family:'IBM Plex Mono', monospace; }
   button.small{
-    background: transparent; border:1px solid var(--brass-dim); color: var(--brass);
+    background: linear-gradient(165deg, var(--felt-2), var(--felt-3));
+    border:1px solid var(--brass-dim); color: var(--brass-light);
     font-family:'IBM Plex Sans', sans-serif; font-size:13px; font-weight:600;
     padding:8px 14px; border-radius:8px; cursor:pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.05);
+    transition: transform .1s ease, box-shadow .15s ease;
   }
-  button.small:active{ background: rgba(199,162,72,0.12); }
+  button.small:active{ background: rgba(199,162,72,0.12); transform: scale(.97); box-shadow: 0 1px 3px rgba(0,0,0,.3); }
   /* Global fallback for any plain button/input/select/textarea with no
      specific class of its own — these were falling straight through to
      raw browser defaults (white background, black text, system font),

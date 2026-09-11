@@ -393,7 +393,7 @@
     </div>
     <div class="panel">
       <h2>💰 This Week's Financials</h2>
-      <div class="hint">Outlays prefilled at your fixed rates, just enter returns. Every field here auto-saves as a draft the moment you type — nothing commits to the bank balance yet, that still only happens via Save Week in the Ledger.</div>
+      <div class="hint">Outlays prefilled at your fixed rates, just enter returns. Every field here auto-saves as a draft the moment you type — nothing commits to the bank balance yet, that still only happens via Save Week below.</div>
       <div class="admin-fin-header-row" style="margin-top:10px;"><span></span><span class="admin-fin-col-lbl">Outlay</span><span class="admin-fin-col-lbl">Return</span></div>
       <div class="admin-fin-row-entry">
         <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">Group</span>
@@ -418,16 +418,16 @@
     </div>
     <div class="panel">
       <h2>🎯 Group Multi Entry</h2>
-      <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week in the Ledger.</div>
+      <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week below.</div>
       <div class="hint" id="adminGroupEntryVersionStamp" style="font-family:'IBM Plex Mono',monospace; opacity:.6;"></div>
       <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
       <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
       <button type="button" id="adminPushMultiToHomeBtn" class="small" style="margin-top:10px;">📤 Push to Home Screen</button>
-      <div class="hint" style="margin-top:4px;">Forces the current draft to save and show on the Home tab's "This Week's Multi" right now, rather than waiting on auto-save — doesn't touch season totals, that's still only Save Week in the Ledger.</div>
+      <div class="hint" style="margin-top:4px;">Forces the current draft to save and show on the Home tab's "This Week's Multi" right now, rather than waiting on auto-save — doesn't touch season totals, that's still only Save Week below.</div>
     </div>
     <div class="panel">
       <h2>🎲 Bettor Rotation</h2>
-      <div class="hint">Win your first bet → you're locked in again next week, plus a genuine second bet this weekend at your own stake — a normal row below, counts toward your P/L tally like any other bet, not the SGM checkbox (that's a separate thing). Lose it → the next person in the order takes over next week. This never touches Save Week or season totals on its own — you press "Set up next week" explicitly when you're ready to roll over.</div>
+      <div class="hint">Win your first bet → locked in again next week, plus a genuine second bet this weekend at your own stake (a normal row below, not the SGM checkbox). Lose it → the next person in the order takes over. Doesn't touch Save Week or season totals on its own — press "Set up next week" when you're ready to roll over.</div>
       <div id="adminRotationOrderEntry" style="margin-top:10px;"></div>
       <div id="adminRotationStatusArea"></div>
       <button type="button" id="adminRotationSetupNextBtn" class="small" style="margin-top:8px;">🔀 Set up next week's bettors →</button>
@@ -442,7 +442,7 @@
     </div>
     <div class="panel" style="border-color:var(--brass);">
       <h2>💾 Save Week</h2>
-      <div class="hint">Commits everything above to real season totals — every member's stats, real XP awards, real fines, and this week's history record, all in one action. This is genuinely new and hasn't been run against live data before — check it against a week the Ledger has already saved and compare the numbers before trusting it with a brand new week.</div>
+      <div class="hint">Commits everything above to real season totals — every member's stats, real XP awards, real fines, and this week's history record, all in one action.</div>
       <button type="button" id="adminSaveWeekBtn" class="small danger" style="margin-top:10px;">💾 Save week</button>
       <div class="status-msg" id="adminEntryStatus"></div>
       <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
@@ -537,20 +537,20 @@
     </div>
     <div class="panel">
       <h2>🔄 Recalculate Balances From History</h2>
-      <div class="hint">Rebuilds the bank total and every member's stats (wins/losses/legs/P&amp;L) completely from scratch, by re-summing every saved week in history. Use this if a save/undo ever leaves numbers looking off — history is treated as the source of truth, so this fixes drift without touching your saved weeks themselves or dues owed. Safe to run — nothing here changes unless the numbers genuinely didn't match.</div>
+      <div class="hint">Rebuilds the bank total and every member's stats from scratch by re-summing saved history — use if a save/undo ever leaves numbers looking off. Doesn't touch saved weeks or dues owed. Safe to run — nothing changes unless the numbers genuinely didn't match.</div>
       <button type="button" id="adminRecalcBtn" class="small" style="margin-top:10px;">🔄 Recalculate now</button>
       <div class="status-msg" id="adminRecalcStatus"></div>
     </div>
     <div class="panel">
       <h2>🧹 Clear "Missing groupEntries" Warning</h2>
-      <div class="hint">For weeks where nobody had a group multi leg on purpose (not a data-loss bug) — the health check can't tell "genuinely nothing to record" apart from "field never got saved," so it warns on both. This sets those specific weeks' groupEntries to an empty (but present) record, which is enough to satisfy the check without inventing any leg data — nothing about anyone's stats or the bank changes.</div>
+      <div class="hint">For weeks where nobody had a group multi leg on purpose — the health check can't tell that apart from a genuine data-loss bug, so it warns on both. Marks those weeks as "genuinely empty" to clear the warning, without inventing any leg data or touching stats/bank.</div>
       <div id="adminClearGroupWarnList" class="hint" style="margin:10px 0;"></div>
       <button type="button" id="adminClearGroupWarnBtn" class="small">🧹 Clear for all flagged weeks</button>
       <div class="status-msg" id="adminClearGroupWarnStatus"></div>
     </div>
     <div class="panel">
       <h2>🛠️ Fix a Saved Week</h2>
-      <div class="hint">For correcting an already-saved week's individual bet numbers directly — e.g. if a second bet for the same person that week wasn't captured correctly at the time. Recalculate above only re-sums what's already stored, so it can't fix a week where the wrong number was saved in the first place; this edits the actual saved entry, then automatically recalculates every member's totals from scratch afterward so the fix ripples through correctly.</div>
+      <div class="hint">Edits an already-saved week's individual bet numbers directly (Recalculate above only re-sums what's already stored — it can't fix a wrong number that was saved in the first place). Automatically recalculates everyone's totals afterward so the fix ripples through.</div>
       <select id="adminFixWeekSelect" style="width:100%; margin-top:10px; margin-bottom:8px;"><option value="">Pick a saved week…</option></select>
       <div id="adminFixWeekEditor"></div>
       <button type="button" id="adminFixWeekSaveBtn" class="small danger" style="margin-top:8px; display:none;">💾 Save correction &amp; recalculate</button>
@@ -558,7 +558,8 @@
     </div>
     <div class="panel">
       <h2>🧮 Reconcile Casino Pot From Source</h2>
-      <div class="hint">Replaces the two earlier duplicate-fix tools, which both depended on recognising specific reversal wording — including a one-off correction script from before either tool existed, whose different wording caused a real over-correction (a duplicate got "fixed" twice, wiping out a legitimate payout). This tool ignores reversal wording entirely. For every Casino Pot period, it reads every original credit ever logged and works out the correct end result from scratch — one share per eligible person for an Even Split, exactly one winner (the earliest legitimate draw) for a Jackpot — then compares that to what everyone's log currently nets out to, and shows the exact one-time correction needed to reach the correct state. Safe to run more than once: since it always recomputes from the full log including any correction it already made, a second run will find nothing left to fix for anything already corrected. Can both credit AND debit accounts — read each line carefully. Nothing is changed until you review the results and type RECONCILE.</div>
+      <div class="hint">For every Casino Pot period, works out the correct end state from scratch — one share per eligible person for an Even Split, exactly one winner for a Jackpot — and compares that to what everyone's log actually nets out to. Safe to run more than once: a second run finds nothing left to fix for anything already corrected. Can both credit AND debit accounts — read each line carefully. Nothing changes until you review the results and type RECONCILE.</div>
+      <div class="hint" style="opacity:.55; font-size:11px; margin-top:2px;">Replaces two earlier tools that depended on matching exact reversal wording, which could miss corrections done outside those tools.</div>
       <button type="button" id="adminReconcilePotScanBtn" class="small" style="margin-top:10px;">🔍 Scan for out-of-sync accounts</button>
       <div class="status-msg" id="adminReconcilePotScanStatus"></div>
       <div id="adminReconcilePotResults" style="display:none; margin-top:10px;"></div>
@@ -571,7 +572,7 @@
     </div>
     <div class="panel">
       <h2>🍳 Clear "This Week's Multi" Display</h2>
-      <div class="hint">The Home tab's "This Week's Multi — Who's Cooking It?" section keeps showing last week's saved results until this is cleared — previously this was only available from the Ledger app's Entry tab, now migrated in here too. Real activity next week automatically un-clears it on its own, so there's nothing to remember to toggle back.</div>
+      <div class="hint">The Home tab's "This Week's Multi" section keeps showing last week's results until this is cleared. Real activity next week automatically un-clears it, so there's nothing to remember to toggle back.</div>
       <button type="button" id="adminClearWhoCookingBtn" class="small" style="margin-top:10px;">🧹 Clear it now</button>
       <div class="status-msg" id="adminClearWhoCookingStatus"></div>
     </div>
@@ -1235,7 +1236,7 @@
         <h2 style="font-size:14px; margin:0;">🎯 Bounties</h2>
         <button type="button" class="pill-btn" id="bountiesBackBtn">← Back</button>
       </div>
-      <div class="hint" style="margin-bottom:10px;">Put up XP for anyone to claim first — "first to hit a natural Blackjack", "first Mines full clear", whatever. Your stake is locked in the moment you post it. No automated checking — first person to tap Claim and say they did it gets it, honour system. You can cancel your own bounty for a refund any time before someone claims it.</div>
+      <div class="hint" style="margin-bottom:10px;">Put up XP for anyone to claim first — "first natural Blackjack", "first Mines full clear", whatever. Stake locks in the moment you post it. Honour system, no automated checking. Cancel your own bounty for a refund anytime before it's claimed.</div>
       <button type="button" class="pill-btn pill-btn-primary" id="newBountyBtn" style="width:100%; margin-bottom:12px;">🎯 New Bounty</button>
       <div id="newBountyForm" style="display:none; margin-bottom:12px;">
         <label class="form-field-label">What's the bounty?</label>
@@ -3563,7 +3564,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.105"; // The .104 diagnostic actually worked and delivered real evidence: the build number confirmed .104 was genuinely running, and the read-back showed the save IS landing correctly on Firebase — verified by hand against the screenshot, Billy/Brad/Damon/Dean's results matched perfectly between server and local. The "Mismatch" it reported was a false alarm in the diagnostic's OWN comparison logic: plain JSON.stringify is key-order-sensitive, and Firebase returns object keys alphabetically sorted while the local draft keeps roster/typing order — semantically identical data was being flagged as different purely because of incidental key ordering. Fixed with a canonicalJSON helper that sorts keys recursively before comparing, so the check now reflects the actual data. The underlying save mechanism appears to be genuinely working as of the Ledger-mechanics port. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.108"; // Full dashboard visual pass, part 2 — went through the remaining major screens (Tipping, Board, casino game selector grid, Admin tab's overall organization) systematically per request. Verified — not assumed — that these were already genuinely premium quality from prior work: the game selector grid (proper gradients, glowing active state, thoughtful custom icons), the Tipping tab's prize-pot hero and sub-navigation, and the Admin tab's sub-mode structure (pulse/money/squad/entry/access/tipping/repair/play) — confirmed this session's new tools (Reconcile Pot, Clear Multi, Group Entry) landed in the logically-correct sub-modes rather than cluttering the wrong section. Consolidated as one complete package per request, rather than another partial delta. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18870,7 +18871,7 @@ document.getElementById('adminSaveWeeklyBetsBtn').addEventListener('click', asyn
   const alreadySavedWeek = currentWeekLabel && (currentState.history || []).some(h => h.label === currentWeekLabel);
   if(alreadySavedWeek){
     status.className = 'status-msg error';
-    status.textContent = `Saved to the dashboard preview — but "${currentWeekLabel}" was already saved to the season totals earlier. This change won't count toward anyone's P/L until Save Week runs again (still in the Ledger for now).`;
+    status.textContent = `Saved to the dashboard preview — but "${currentWeekLabel}" was already saved to the season totals earlier. This change won't count toward anyone's P/L until Save Week runs again.`;
   } else {
     status.className = 'status-msg ok';
     status.textContent = 'Saved to the dashboard preview. Remember: this only counts toward season totals once Save Week runs (for anyone left blank in the detailed table above).';

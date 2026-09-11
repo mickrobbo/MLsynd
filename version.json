@@ -1,7 +1,9 @@
 {
-  "version": "2026-09-08.105",
+  "version": "2026-09-08.108",
   "date": "2026-09-08",
   "changes": [
-    "Fixed a false-alarm bug in the Push to Home verification itself — it was flagging genuinely matching data as a mismatch because Firebase sorts object keys alphabetically while the local draft doesn't, and plain JSON comparison is order-sensitive"
+    "Full visual pass complete: verified Tipping, Board, the casino game grid, and the Admin tab's organization were already premium quality from prior work",
+    "Confirmed this session's new admin tools landed in the correct logical sub-sections",
+    "Consolidated as one complete package"
   ]
 }
