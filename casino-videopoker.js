@@ -24,7 +24,15 @@ let vpLastBet = null; // snapshot of the last hand's bet amount, for the Same Be
 // after the draw) while sharing the exact same held cards throughout.
 // Bet is per-hand — 3-hand mode costs 3x, 5-hand mode costs 5x.
 let vpHandCount = 1;
-let vpExtraHands = []; // [{ hand: [5 cards], deck: [...] }, ...] — length vpHandCount-1
+let vpExtraHands = []; // [{ hand: [5 cards] }, ...] — length vpHandCount-1, all drawing from the shared vpDeck
+let vpPlayDealer = false;
+document.getElementById('vpPlayDealerBtn').addEventListener('click', () => {
+  if(vpStage !== 'idle') return; // can't change mid-hand
+  vpPlayDealer = !vpPlayDealer;
+  const btn = document.getElementById('vpPlayDealerBtn');
+  btn.textContent = `🎩 Play the Dealer: ${vpPlayDealer ? 'On' : 'Off'}`;
+  btn.classList.toggle('slots-auto-running', vpPlayDealer);
+});
 document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     if(vpStage !== 'idle') return; // can't change mid-hand
@@ -39,14 +47,6 @@ function vpUpdateTotalBetHint(){
   const perHand = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
   el.textContent = vpHandCount > 1 ? `${perHand} XP/hand × ${vpHandCount} hands — total bet ${perHand * vpHandCount} XP` : '';
 }
-// Builds an independent deck for one additional hand — a fresh shuffle
-// with the currently-dealt 5 cards removed first, so its own
-// replacement pool for non-held positions can never duplicate a card
-// already showing in that same hand.
-function vpBuildExtraHandDeck(dealtHand){
-  const deck = bjFreshDeck();
-  return deck.filter(c => !dealtHand.some(d => d.rank === c.rank && d.suit === c.suit));
-}
 function vpBuildPaytable(){
   const table = document.getElementById('vpPaytable');
   table.innerHTML = VP_PAYTABLE.map(p => `<tr id="vpPayRow_${p.key}"><td>${p.label}</td><td style="text-align:right;">${p.mult}:1</td></tr>`).join('');
@@ -58,6 +58,55 @@ function vpRenderIdleHand(){
 }
 const VP_RANK_ORDER = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
 function vpRankValue(r){ return VP_RANK_ORDER.indexOf(r) + 2; }
+// ---- Play the Dealer: a full hand-strength comparator, distinct from
+// vpEvaluateHand above — that one only cares whether a hand qualifies
+// for a PAYTABLE line (Tens or Better and up, returns null otherwise),
+// which isn't enough to judge "did the player beat the dealer" when
+// either hand could be a low pair or nothing at all. This ranks any
+// 5-card hand from High Card through Royal Flush with proper
+// tiebreakers, for a genuine head-to-head comparison.
+const VP_HAND_CATEGORY_LABELS = ['High Card', 'Pair', 'Two Pair', 'Three of a Kind', 'Straight', 'Flush', 'Full House', 'Four of a Kind', 'Straight Flush', 'Royal Flush'];
+function vpRankHandForCompare(hand){
+  const ranks = hand.map(c => vpRankValue(c.rank)).sort((a, b) => b - a);
+  const suits = hand.map(c => c.suit);
+  const isFlush = suits.every(s => s === suits[0]);
+  const counts = {};
+  ranks.forEach(r => { counts[r] = (counts[r] || 0) + 1; });
+  const countVals = Object.entries(counts).map(([r, c]) => [Number(r), c]).sort((a, b) => b[1] - a[1] || b[0] - a[0]);
+  const uniqueRanksDesc = Object.keys(counts).map(Number).sort((a, b) => b - a);
+  let isStraight = false, straightHigh = ranks[0];
+  if(uniqueRanksDesc.length === 5){
+    isStraight = uniqueRanksDesc[0] - uniqueRanksDesc[4] === 4;
+    if(!isStraight && uniqueRanksDesc.join(',') === '14,5,4,3,2'){ isStraight = true; straightHigh = 5; } // wheel: A-2-3-4-5
+  }
+  const isRoyal = isFlush && isStraight && uniqueRanksDesc[0] === 14 && straightHigh === 14;
+  let category, tiebreak;
+  if(isRoyal){ category = 9; tiebreak = [14]; }
+  else if(isStraight && isFlush){ category = 8; tiebreak = [straightHigh]; }
+  else if(countVals[0][1] === 4){ category = 7; tiebreak = [countVals[0][0], countVals[1][0]]; }
+  else if(countVals[0][1] === 3 && countVals[1] && countVals[1][1] === 2){ category = 6; tiebreak = [countVals[0][0], countVals[1][0]]; }
+  else if(isFlush){ category = 5; tiebreak = ranks; }
+  else if(isStraight){ category = 4; tiebreak = [straightHigh]; }
+  else if(countVals[0][1] === 3){ category = 3; tiebreak = [countVals[0][0], ...uniqueRanksDesc.filter(r => r !== countVals[0][0])]; }
+  else if(countVals[0][1] === 2 && countVals[1] && countVals[1][1] === 2){
+    const pairRanks = [countVals[0][0], countVals[1][0]].sort((a, b) => b - a);
+    const kicker = uniqueRanksDesc.find(r => !pairRanks.includes(r));
+    category = 2; tiebreak = [...pairRanks, kicker];
+  }
+  else if(countVals[0][1] === 2){ category = 1; tiebreak = [countVals[0][0], ...uniqueRanksDesc.filter(r => r !== countVals[0][0])]; }
+  else { category = 0; tiebreak = ranks; }
+  return { category, tiebreak, label: VP_HAND_CATEGORY_LABELS[category] };
+}
+// >0 means a beats b, <0 means b beats a, 0 means an exact tie (push)
+function vpCompareHands(a, b){
+  if(a.category !== b.category) return a.category - b.category;
+  const len = Math.max(a.tiebreak.length, b.tiebreak.length);
+  for(let i = 0; i < len; i++){
+    const av = a.tiebreak[i] || 0, bv = b.tiebreak[i] || 0;
+    if(av !== bv) return av - bv;
+  }
+  return 0;
+}
 function vpEvaluateHand(hand){
   const ranks = hand.map(c => vpRankValue(c.rank)).sort((a,b) => a - b);
   const suits = hand.map(c => c.suit);
@@ -132,14 +181,13 @@ function vpRenderHand(animate, animateIdx){
     });
   });
 }
-// Each additional hand now has its own independent hold pills, not
-// shared with the base hand — a deliberate departure from how real
-// multi-hand video poker machines work (they always use one shared
-// hold across every hand, since the whole mechanic is "same decision,
-// parallel draws"), done per direct request. Each hand still gets its
-// own small result label once Draw resolves, so a win on hand 3 while
-// hands 1/2 miss is clearly visible per-hand, not just folded into one
-// combined total.
+// Additional hands render read-only, no Hold pills of their own — holds
+// are shared with the base hand (vpHeld), the actual point of multi-
+// hand poker: one decision, judged in parallel across every hand, all
+// drawing from the one shared deck (see vpDraw). Each hand still gets
+// its own small result label once Draw resolves, so a win on hand 3
+// while hands 1/2 miss is clearly visible per-hand, not just folded
+// into one combined total.
 function vpRenderExtraHands(animate){
   const area = document.getElementById('vpMultiHandsArea');
   if(!area) return;
@@ -149,28 +197,10 @@ function vpRenderExtraHands(animate){
       const isRed = c.suit === '♥' || c.suit === '♦';
       const delay = animate ? i * 450 : 0;
       if(animate) setTimeout(bjPlayCardSound, delay);
-      const heldGlow = eh.held[i] ? ' pc-held-glow' : '';
-      return `<div class="vp-card-col">
-        <div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''}${heldGlow} vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>
-        <button type="button" class="vp-hold-pill vp-extra-hold-pill${eh.held[i] ? ' held' : ''}" data-hand="${hi}" data-idx="${i}">${eh.held[i] ? 'Held' : 'Hold'}</button>
-      </div>`;
+      return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''} vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
     }).join('');
     return `<div class="vp-extra-hand-row"><div class="vp-extra-hand-cards">${cardsHtml}</div><span class="vp-extra-hand-result" id="vpExtraResult${hi}"></span></div>`;
   }).join('');
-  document.querySelectorAll('#vpMultiHandsArea .vp-extra-hold-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if(vpStage !== 'dealt') return;
-      const hi = parseInt(btn.dataset.hand, 10);
-      const idx = parseInt(btn.dataset.idx, 10);
-      const eh = vpExtraHands[hi];
-      if(!eh) return;
-      eh.held[idx] = !eh.held[idx];
-      vpPlayHoldClick(eh.held[idx]);
-      vpRenderExtraHands(false);
-      const cardEl = document.querySelectorAll('#vpMultiHandsArea .vp-extra-hand-row')[hi].querySelectorAll('.playing-card')[idx];
-      if(cardEl){ cardEl.classList.remove('pc-hold-pop'); void cardEl.offsetWidth; cardEl.classList.add('pc-hold-pop'); }
-    });
-  });
 }
 function vpHighlightPayout(key){
   VP_PAYTABLE.forEach(p => document.getElementById('vpPayRow_' + p.key).classList.remove('vp-hit'));
@@ -198,14 +228,21 @@ async function vpDeal(){
   document.getElementById('vpOutcomeMsg').classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
   document.getElementById('vpOutcomeMsg').style.color = '';
   vpHighlightPayout(null);
+  const dealerAreaReset = document.getElementById('vpDealerArea');
+  if(dealerAreaReset) dealerAreaReset.style.display = 'none';
   vpRenderHand(true);
   // Every extra hand starts as an exact copy of the base hand's 5 cards
-  // (same physical deal, parallel realities) with its own independent
-  // deck ready to supply new cards for whichever positions end up not
-  // held when Draw happens.
+  // (same physical deal, parallel realities). Holds are shared with the
+  // base hand (see vpHeld) — one decision, judged in parallel, the
+  // actual point of multi-hand poker. All replacement cards for every
+  // hand come from vpDeck, the ONE deck already dealing the base hand —
+  // each hand's replacements are drawn sequentially further into that
+  // same deck at Draw time, so no card can ever repeat across the whole
+  // table (guaranteed by a single depleting deck, not by artificially
+  // filtering separate ones).
   vpExtraHands = [];
   for(let i = 1; i < vpHandCount; i++){
-    vpExtraHands.push({ hand: vpHand.map(c => ({ ...c })), deck: vpBuildExtraHandDeck(vpHand), held: [false, false, false, false, false] });
+    vpExtraHands.push({ hand: vpHand.map(c => ({ ...c })) });
   }
   vpRenderExtraHands(true);
   document.getElementById('vpDealBtn').style.display = 'none';
@@ -222,11 +259,14 @@ async function vpDraw(){
   const drawnIdx = vpHeld.map((h, i) => h ? -1 : i).filter(i => i !== -1);
   vpHand = vpHand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
   vpRenderHand(true, drawnIdx);
-  // Every extra hand now replaces its own non-held positions using its
-  // OWN held selection (independent of the base hand's), from its own
-  // independently-built deck.
+  // Every extra hand replaces its non-held positions using the SAME
+  // shared hold decision as the base hand (vpHeld — holds are shared
+  // again, the actual point of multi-hand poker), drawing sequentially
+  // further into the same vpDeck the base hand already drew from. One
+  // real deck, continuously depleting across the whole table — no two
+  // hands can ever show a duplicate card.
   vpExtraHands.forEach(eh => {
-    eh.hand = eh.hand.map((c, i) => eh.held[i] ? c : eh.deck.shift());
+    eh.hand = eh.hand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
   });
   vpRenderExtraHands(true);
   await bjWait(drawnIdx.length * 450 + 500);
@@ -270,9 +310,50 @@ async function vpDraw(){
     }
   });
 
+  // Play the Dealer — dealt from the SAME vpDeck, further into it after
+  // every player hand has already drawn, so it can never repeat a card
+  // any player hand is holding or just drew. Compared against every
+  // player hand independently; beating the dealer adds a flat bonus
+  // (equal to that hand's own bet) on top of whatever the paytable
+  // already paid — a free bonus condition, not an extra stake, so
+  // there's no additional risk for turning this on.
+  const dealerArea = document.getElementById('vpDealerArea');
+  let dealerBonusParts = [];
+  if(vpPlayDealer){
+    const dealerHand = vpDeck.splice(0, 5);
+    const dealerRow = document.getElementById('vpDealerHandRow');
+    if(dealerRow){
+      dealerRow.innerHTML = dealerHand.map((c, i) => {
+        const isRed = c.suit === '♥' || c.suit === '♦';
+        const delay = i * 220;
+        setTimeout(bjPlayCardSound, delay);
+        return `<div class="vp-card-col"><div class="playing-card ${isRed ? 'pc-red' : 'pc-black'} pc-dealt vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div></div>`;
+      }).join('');
+    }
+    if(dealerArea) dealerArea.style.display = 'block';
+    const dealerRank = vpRankHandForCompare(dealerHand);
+    const dealerResultEl = document.getElementById('vpDealerResult');
+    if(dealerResultEl) dealerResultEl.textContent = `Dealer: ${dealerRank.label}`;
+
+    const baseRank = vpRankHandForCompare(vpHand);
+    if(vpCompareHands(baseRank, dealerRank) > 0){
+      totalDelta += amount;
+      dealerBonusParts.push(`Beat dealer (Hand 1) +${amount}`);
+    }
+    vpExtraHands.forEach((eh, hi) => {
+      const r = vpRankHandForCompare(eh.hand);
+      if(vpCompareHands(r, dealerRank) > 0){
+        totalDelta += amount;
+        dealerBonusParts.push(`Beat dealer (Hand ${hi + 2}) +${amount}`);
+      }
+    });
+  } else if(dealerArea){
+    dealerArea.style.display = 'none';
+  }
+
   const baseLabel = result ? `${result.label} +${amount * VP_PAYTABLE.find(p => p.key === result.key).mult}` : 'No win';
-  const allParts = [vpHandCount > 1 ? `Hand 1: ${baseLabel}` : baseLabel, ...extraLabels];
-  outcomeEl.textContent = (vpHandCount > 1 ? allParts.join(' · ') + ' — ' : '') + `Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`;
+  const allParts = [vpHandCount > 1 ? `Hand 1: ${baseLabel}` : baseLabel, ...extraLabels, ...dealerBonusParts];
+  outcomeEl.textContent = (vpHandCount > 1 || dealerBonusParts.length > 0 ? allParts.join(' · ') + ' — ' : '') + `Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`;
 
   // Big Win escalation — tiered by total win relative to the total bet
   // across every hand, same convention as Slots/Roulette. A Royal Flush

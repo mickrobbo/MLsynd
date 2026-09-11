@@ -421,6 +421,8 @@
       <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week in the Ledger.</div>
       <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
       <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <button type="button" id="adminPushMultiToHomeBtn" class="small" style="margin-top:10px;">📤 Push to Home Screen</button>
+      <div class="hint" style="margin-top:4px;">Forces the current draft to save and show on the Home tab's "This Week's Multi" right now, rather than waiting on auto-save — doesn't touch season totals, that's still only Save Week in the Ledger.</div>
     </div>
     <div class="panel">
       <h2>🎲 Bettor Rotation</h2>
@@ -1769,6 +1771,11 @@
         <div class="slots-bigwin-label" id="vpBigWinLabel">BIG WIN</div>
         <div class="slots-bigwin-value" id="vpBigWinValue">0 XP</div>
       </div>
+      <div id="vpDealerArea" style="display:none; margin-bottom:10px;">
+        <div class="hint" style="text-align:center; margin-bottom:4px;">Dealer</div>
+        <div class="vp-hand-row" id="vpDealerHandRow" style="justify-content:center;"></div>
+        <div id="vpDealerResult" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; margin-top:6px; min-height:18px; color:var(--muted);"></div>
+      </div>
       <div class="vp-hand-row" id="vpHandRow"></div>
       <div id="vpMultiHandsArea" class="vp-multi-hands-area"></div>
       <div id="vpOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
@@ -1782,6 +1789,10 @@
         <button type="button" class="craps-winmode-btn" data-hands="3">3</button>
         <button type="button" class="craps-winmode-btn" data-hands="5">5</button>
       </div>
+      <div style="text-align:center; margin-top:2px;">
+        <button type="button" id="vpPlayDealerBtn" class="small">🎩 Play the Dealer: Off</button>
+      </div>
+      <div class="hint" style="text-align:center; margin-top:2px;">When on, a Dealer hand is dealt from the same deck after your draw — beat it for a bonus equal to your bet, on top of the paytable.</div>
       <div style="display:flex; justify-content:center; margin-top:4px;">
         <div class="bj-chip" id="vpChipDisplay">50</div>
         <input type="number" id="vpBetInput" min="1" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
@@ -3551,7 +3562,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.100"; // Video Poker multi-hand: each additional hand now gets its own independent Hold pills instead of sharing the base hand's holds — a deliberate departure from real multi-hand machines (which always use one shared hold across every hand) done per direct request. Caught and fixed a bug this change would otherwise have had: the extra-hand redraw logic was still checking vpHeld (the base hand's array) instead of each hand's own held array, which would have silently ignored the new per-hand holds entirely. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.101"; // Found the actual remaining cause of Group Multi Entry "still not showing on Home," reported directly with fresh, verified draft data present: renderGroupMultiChart checks state.groupMultiCleared FIRST, before ever looking at the draft — and nothing anywhere ever reset that flag back to false once it was set true (e.g. via the "Clear it now" admin tool), so if it was left true, the Home page would show empty forever regardless of what was actually in the draft. Now auto-resets it whenever the draft has a real result, plus added an explicit "Push to Home Screen" button as a guaranteed manual action, per request — bypasses the debounce entirely and reuses the exact same save path. Video Poker, per direct request: reverted multi-hand back to ONE shared deck (previously each extra hand had its own independently-built deck) and shared holds via the base hand only (previously each hand had independent holds) — all replacement cards, across every hand, now draw sequentially from the same continuously-depleting vpDeck, which trivially guarantees no card ever repeats across the table. Added Play the Dealer: a toggleable free bonus round — a 5-card Dealer hand deals from the same deck after every player hand finishes, compared against each player hand with a full poker hand-rank comparator (vpRankHandForCompare/vpCompareHands, High Card through Royal Flush with proper tiebreakers — vpEvaluateHand alone wasn't enough since it only recognises paying hands), and beating the dealer adds a flat bonus equal to that hand's own bet on top of the normal paytable payout. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18348,6 +18359,22 @@ function scheduleAdminGroupDraftSave(){
 async function saveAdminGroupEntryDraft(){
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
   try{
+    // The real root cause behind "still not showing on Home," found
+    // directly from the display code: renderGroupMultiChart checks
+    // state.groupMultiCleared FIRST, before ever looking at the draft —
+    // if that flag is true (e.g. left over from the "Clear it now" admin
+    // tool), the Home page shows empty no matter what's actually in the
+    // draft. Nothing ever reset it back to false when new real data was
+    // entered. Now it does, whenever the draft has at least one actual
+    // result set.
+    const draft = currentState.groupEntryDraft || {};
+    const hasRealEntry = Object.values(draft).some(e => e && e.result);
+    if(hasRealEntry && currentState.groupMultiCleared){
+      currentState.groupMultiCleared = false;
+      authedFetch('/state/groupMultiCleared.json', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(false), keepalive: true
+      }).catch(() => {});
+    }
     // keepalive:true is the real gap the visibilitychange flush alone
     // didn't cover — becoming hidden isn't the same as being torn down:
     // a genuine tab/app CLOSE can cancel a plain in-flight fetch before
@@ -18391,6 +18418,20 @@ async function saveAdminGroupEntryDraft(){
     }
   }
 }
+document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('adminPushMultiToHomeBtn');
+  btn.disabled = true;
+  // Bypasses the debounce entirely — this button's whole point is a
+  // guaranteed, immediate push, not "wait 350ms and hope." Reuses the
+  // exact same save function everything else already goes through
+  // (including the groupMultiCleared reset above), just triggered
+  // directly instead of via the timer.
+  clearTimeout(adminGroupDraftSaveTimer);
+  adminGroupDraftSaveTimer = null;
+  adminGroupDraftSaveRetries = 0;
+  await saveAdminGroupEntryDraft();
+  btn.disabled = false;
+});
 function renderAdminGroupEntry(){
   const wrap = document.getElementById('adminGroupEntryRows');
   const members = currentState.members || [];

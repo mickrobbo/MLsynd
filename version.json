@@ -1,7 +1,10 @@
 {
-  "version": "2026-09-08.100",
+  "version": "2026-09-08.101",
   "date": "2026-09-08",
   "changes": [
-    "Video Poker: each hand in multi-hand mode now has its own independent Hold pills, no longer sharing the base hand's holds"
+    "Fixed the actual remaining cause of Group Multi Entry not showing on Home: a cleared flag was never being reset when new data was entered",
+    "Added an explicit Push to Home Screen button for Group Multi Entry",
+    "Video Poker: multi-hand mode now runs off one shared deck with shared holds via the base hand (reverted from independent per-hand decks/holds)",
+    "Video Poker: added Play the Dealer, a toggleable free bonus round"
   ]
 }
