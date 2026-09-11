@@ -1,7 +1,10 @@
 {
-  "version": "2026-09-08.94",
+  "version": "2026-09-08.95",
   "date": "2026-09-08",
   "changes": [
-    "Fixed the real cause of Win/Loss picks not showing on the Home page: the save was landing correctly, but nothing was telling the app to re-render with it. Added the render(currentState) call the Slips admin tool already uses for exactly this situation"
+    "Slots: added a Wild symbol that substitutes for other symbols to help complete lines, with its own strong native payout",
+    "Slots: added a Progressive Jackpot — grows from every real bet, paid out by landing 5 wilds on an active payline",
+    "Slots: added Big Win/Super Win/Epic Win escalating banners with an animated count-up, based on win size relative to your bet",
+    "Slots: richer sound design — ambient reel hum, an anticipation riser, and cha-ching count-up ticks"
   ]
 }

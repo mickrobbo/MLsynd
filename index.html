@@ -1668,11 +1668,16 @@
     <div class="panel slots-panel" style="text-align:center;">
       <div class="mines-status-row" style="margin-bottom:8px;">
         <div class="mines-status-cell"><span class="lbl">Machine Balance</span><span class="val" id="slotsMachineBalanceVal">0</span></div>
+        <div class="mines-status-cell"><span class="lbl">💰 Jackpot</span><span class="val" id="slotsJackpotVal">5,000</span></div>
       </div>
       <div style="text-align:center; margin-bottom:8px;">
         <button type="button" id="slotsCashOutBtn" class="pill-btn pill-btn-action" disabled>💰 Cash Out to XP</button>
       </div>
       <div class="slots-machine">
+        <div class="slots-bigwin-banner" id="slotsBigWinBanner" style="display:none;">
+          <div class="slots-bigwin-label" id="slotsBigWinLabel">BIG WIN</div>
+          <div class="slots-bigwin-value" id="slotsBigWinValue">0 XP</div>
+        </div>
         <div class="slots-reel-window">
           <div class="slots-reel" id="slotsReel0"></div>
           <div class="slots-reel" id="slotsReel1"></div>
@@ -3504,7 +3509,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.92"; // Fixed the actual remaining gap in Group Multi Entry's draft save, reported directly again after a reload still lost data: visibilitychange doesn't reliably fire on a page reload the way it does for backgrounding, and even when a flush WAS triggered, it went through an async authedFetch→getValidAuth→fetch chain — a reload can tear the page down before that chain even reaches its actual network call. Added a synchronous, direct-fetch flush (bypassing the async auth chain entirely, using whatever token's already cached) wired to pagehide, beforeunload, AND visibilitychange — covers reload, actual navigation, and backgrounding with one consistent mechanism instead of three different partial ones. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.95"; // Slots excitement pass, per request — 4 features: (1) Wild symbol (7️⃣) substitutes for any regular symbol to complete lines, own strong native payout between 💎 and 👑 in rarity, distinct shimmer on cells where it helped win. (2) Progressive Jackpot — separate Firebase node from the existing Casino Pot system on purpose, 2% of every real bet feeds it, landing 5 wilds on an active payline pays the whole pool and resets it to a 5,000 XP floor, gets the single biggest celebration in the game. (3) Big Win escalation — BIG/SUPER/EPIC banners with an animated count-up, tiered by win size relative to actual stake (10x/25x/50x), sits below jackpot/MEGA in celebration priority so they never clash. (4) Richer sound — ambient hum while reels spin, an anticipation riser synced to the existing near-miss tease, cha-ching count-up ticks. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18263,7 +18268,7 @@ function scheduleAdminGroupDraftSave(){
   clearTimeout(adminGroupDraftSaveTimer);
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
   if(statusEl){ statusEl.textContent = 'Saving…'; statusEl.className = 'status-msg'; }
-  adminGroupDraftSaveTimer = setTimeout(() => { adminGroupDraftSaveRetries = 0; saveAdminGroupEntryDraft(); }, 800);
+  adminGroupDraftSaveTimer = setTimeout(() => { adminGroupDraftSaveRetries = 0; saveAdminGroupEntryDraft(); }, 350);
 }
 async function saveAdminGroupEntryDraft(){
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
@@ -18280,6 +18285,15 @@ async function saveAdminGroupEntryDraft(){
       keepalive: true
     });
     adminGroupDraftSaveRetries = 0;
+    // This exact call was the real, concrete gap behind "doesn't
+    // display on the Home page" — currentState.groupEntryDraft was
+    // already being updated correctly in memory, but nothing ever told
+    // the rest of the app to re-render with it. The Slips admin tool
+    // already established this precise pattern (saveSlipsToFirebase:
+    // update currentState, then render(currentState) — "so the public
+    // Slips tab reflects this immediately without waiting for the next
+    // poll") — this was simply missing here.
+    render(currentState);
     if(statusEl){
       statusEl.textContent = '✓ Draft saved';
       statusEl.className = 'status-msg ok';
@@ -18339,14 +18353,45 @@ function renderAdminGroupEntry(){
     </div>`;
   }).join('');
   wrap.querySelectorAll('.adminWkOdds, .adminWkResult').forEach(el => {
-    el.addEventListener('input', () => {
+    const commitValue = () => {
       const name = el.dataset.name;
       if(!currentState.groupEntryDraft[name]) currentState.groupEntryDraft[name] = {};
       const oddsEl = wrap.querySelector(`.adminWkOdds[data-name="${CSS.escape(name)}"]`);
       const resultEl = wrap.querySelector(`.adminWkResult[data-name="${CSS.escape(name)}"]`);
       currentState.groupEntryDraft[name].odds = oddsEl.value !== '' ? parseFloat(oddsEl.value) : null;
       currentState.groupEntryDraft[name].result = resultEl.value || null;
+    };
+    el.addEventListener('input', () => {
+      commitValue();
       scheduleAdminGroupDraftSave();
+    });
+    if(el.tagName === 'SELECT'){
+      // A native mobile picker's blur timing after picking an option
+      // isn't consistent across browsers — change fires reliably the
+      // instant a result is picked, so save immediately right there
+      // too, not just on blur.
+      el.addEventListener('change', () => {
+        commitValue();
+        clearTimeout(adminGroupDraftSaveTimer);
+        adminGroupDraftSaveTimer = null;
+        adminGroupDraftSaveRetries = 0;
+        saveAdminGroupEntryDraft();
+      });
+    }
+    // Save immediately (not debounced) the moment focus leaves this
+    // field — the realistic "type a value, then tap the next row" flow
+    // happens naturally, well before any reload or close, so this
+    // covers the common case directly rather than depending on catching
+    // the exact moment the page disappears (unreliable here — Firebase
+    // writes are PUT requests, which always need a CORS preflight
+    // round-trip first, and that combination doesn't survive teardown
+    // consistently even with keepalive on every browser).
+    el.addEventListener('blur', () => {
+      commitValue();
+      clearTimeout(adminGroupDraftSaveTimer);
+      adminGroupDraftSaveTimer = null;
+      adminGroupDraftSaveRetries = 0;
+      saveAdminGroupEntryDraft();
     });
   });
 }

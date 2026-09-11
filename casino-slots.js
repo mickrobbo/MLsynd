@@ -17,8 +17,17 @@ const SLOTS_SYMBOLS = [
   { sym: '🔔', weight: 5, mult3: 10, mult4: 25, mult5: 75 },
   { sym: '⭐', weight: 4, mult3: 20, mult4: 50, mult5: 150 },
   { sym: '💎', weight: 2, mult3: 50, mult4: 150, mult5: 400 },
+  // Wild — substitutes for any regular symbol to help complete a line
+  // (see slotsEvaluateRun), classic slot convention for this exact
+  // emoji. Doesn't substitute for 👑's SCATTER role (that's checked
+  // globally across the board, not per-line, so substitution doesn't
+  // apply there anyway) — but it IS itself a normal payline symbol too,
+  // with its own strong native payout when it lands as a natural run,
+  // sitting between 💎 and 👑 in both rarity and payout.
+  { sym: '7️⃣', weight: 2, mult3: 60, mult4: 180, mult5: 500 },
   { sym: '👑', weight: 1, mult3: 100, mult4: 300, mult5: 1000 }
 ];
+const SLOTS_WILD_SYMBOL = '7️⃣';
 const SLOTS_WEIGHTED_POOL = [];
 SLOTS_SYMBOLS.forEach(s => { for(let i = 0; i < s.weight; i++) SLOTS_WEIGHTED_POOL.push(s.sym); });
 function slotsPickSymbol(){ return SLOTS_WEIGHTED_POOL[Math.floor(Math.random() * SLOTS_WEIGHTED_POOL.length)]; }
@@ -86,6 +95,65 @@ function slotsUpdateMachineBalanceDisplay(){
   const btn = document.getElementById('slotsCashOutBtn');
   if(btn) btn.disabled = slotsMachineBalance <= 0;
 }
+
+// ---- Progressive Jackpot — a shared pool across the whole syndicate,
+// separate from the existing Casino Pot system on purpose (that one
+// already has its own distribution schedule, fines, and history —
+// mixing this into it would just be confusing). 2% of every real
+// (non-free-spin) bet feeds it; landing 5 wilds on an active payline
+// pays out the whole thing and resets it to a floor, not zero, so it
+// never looks "broken/empty" right after a win. Uses a read-then-write
+// pattern rather than a true atomic increment (the REST API doesn't
+// expose Firebase's transaction primitive the way the SDK does) — a
+// real tradeoff if two people spin in the exact same instant, but
+// low-risk for an ~11-person friendly group, same reasoning already
+// accepted elsewhere in this app for similar simplifications.
+const SLOTS_JACKPOT_SEED = 5000;
+const SLOTS_JACKPOT_CONTRIBUTION_RATE = 0.02;
+let slotsJackpotAmount = SLOTS_JACKPOT_SEED;
+function slotsUpdateJackpotDisplay(){
+  const el = document.getElementById('slotsJackpotVal');
+  if(el) el.textContent = Math.round(slotsJackpotAmount).toLocaleString();
+}
+async function slotsFetchJackpot(){
+  try{
+    const res = await authedFetch('/casinoSlotsJackpot/amount.json');
+    const val = await res.json();
+    slotsJackpotAmount = (typeof val === 'number' && val > 0) ? val : SLOTS_JACKPOT_SEED;
+  }catch(e){
+    slotsJackpotAmount = SLOTS_JACKPOT_SEED;
+  }
+  slotsUpdateJackpotDisplay();
+}
+async function slotsContributeToJackpot(betAmount){
+  const contribution = Math.max(1, Math.round(betAmount * SLOTS_JACKPOT_CONTRIBUTION_RATE));
+  slotsJackpotAmount += contribution; // optimistic local update, shown immediately
+  slotsUpdateJackpotDisplay();
+  try{
+    const res = await authedFetch('/casinoSlotsJackpot/amount.json');
+    const current = await res.json();
+    const base = (typeof current === 'number' && current > 0) ? current : SLOTS_JACKPOT_SEED;
+    const next = base + contribution;
+    await authedFetch('/casinoSlotsJackpot/amount.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
+    });
+    slotsJackpotAmount = next; // reconcile to the real server value once confirmed
+    slotsUpdateJackpotDisplay();
+  }catch(e){}
+}
+async function slotsPayJackpot(){
+  const won = Math.round(slotsJackpotAmount);
+  slotsMachineBalance += won;
+  slotsUpdateMachineBalanceDisplay();
+  slotsJackpotAmount = SLOTS_JACKPOT_SEED;
+  slotsUpdateJackpotDisplay();
+  try{
+    await authedFetch('/casinoSlotsJackpot/amount.json', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(SLOTS_JACKPOT_SEED)
+    });
+  }catch(e){}
+  return won;
+}
 let slotsActiveLineCount = 3;
 
 // ---- Auto Spin — fires slotsSpin() repeatedly up to a chosen count
@@ -134,6 +202,7 @@ function slotsBuildInitial(){
   slotsBuilt = true;
   slotsUpdateTotalBetHint();
   slotsRenderPaylinesKey();
+  slotsFetchJackpot();
 }
 async function slotsSpinReel(reelId, finalSymbols, duration){
   const reelEl = document.getElementById(reelId);
@@ -158,14 +227,22 @@ function slotsBuildPaytable(){
 // Standard "left to right" payline rule, unchanged from the original
 // single-line machine — count how many reels, starting from reel 1,
 // match in an unbroken run along whichever row the line follows. Now
-// called once per active payline instead of just once per spin.
+// called once per active payline instead of just once per spin. Wild
+// substitution: the line's "anchor" symbol is the first NON-wild symbol
+// found scanning left to right (so a wild sitting on reel 1 doesn't
+// itself decide the payout — it takes on whatever real symbol appears
+// next, same convention every real slot uses), and every wild along the
+// run counts as a match for that anchor. A line that's wild the whole
+// way across counts as the single highest-paying symbol.
 function slotsEvaluateRun(lineSymbols){
-  let run = 1;
-  for(let i = 1; i < lineSymbols.length; i++){
-    if(lineSymbols[i] === lineSymbols[0]) run++;
+  let anchor = lineSymbols.find(s => s !== SLOTS_WILD_SYMBOL);
+  if(!anchor) anchor = SLOTS_SYMBOLS[SLOTS_SYMBOLS.length - 1].sym; // all-wild line
+  let run = 0;
+  for(let i = 0; i < lineSymbols.length; i++){
+    if(lineSymbols[i] === anchor || lineSymbols[i] === SLOTS_WILD_SYMBOL) run++;
     else break;
   }
-  return run;
+  return { run, anchor };
 }
 function slotsUpdateTotalBetHint(){
   const hintEl = document.getElementById('slotsTotalBetHint');
@@ -276,15 +353,20 @@ async function slotsSpin(){
         spinBtn.disabled = false; return;
       }
     }
+    // Fire-and-forget — doesn't hold up the spin animation waiting on
+    // this. Free spins don't contribute (nothing genuinely staked).
+    slotsContributeToJackpot(totalBet);
   }
 
   if(sameBtn) sameBtn.disabled = true;
   const resultEl = document.getElementById('slotsResultMsg');
   resultEl.textContent = '';
-  resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  resultEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot', 'slots-mega-outcome', 'slots-retrigger-outcome', 'slots-jackpot-outcome');
   document.getElementById('slotsLinesOverlay').innerHTML = '';
-  document.querySelectorAll('.slots-symbol.slots-win-cell').forEach(el => el.classList.remove('slots-win-cell'));
+  document.querySelectorAll('.slots-symbol.slots-win-cell').forEach(el => el.classList.remove('slots-win-cell', 'slots-wild-cell'));
   document.querySelectorAll('.slots-symbol.slots-scatter-tease').forEach(el => el.classList.remove('slots-scatter-tease'));
+  const prevBigWinBanner = document.getElementById('slotsBigWinBanner');
+  if(prevBigWinBanner) prevBigWinBanner.style.display = 'none';
 
   // Everything from here on is wrapped so spinBtn/sameBtn ALWAYS get
   // re-enabled even if something throws mid-spin (a sound call, a DOM
@@ -309,12 +391,14 @@ async function slotsSpin(){
   // spinning, every landed one pulses (slots-scatter-tease) — the
   // classic "is this going to hit?" suspense beat real pokies use before
   // the deciding reel lands, distinct from the confirmed-win gold glow.
+  slotsStartAmbientHum();
   await Promise.all(grid.map((finals, i) => (async () => {
     await bjWait(i * 300);
     await slotsSpinReel('slotsReel' + i, finals, 1400 + i * 300);
     dailySpinPlayPegTick();
     const landedScatterCount = grid.slice(0, i + 1).reduce((n, symbols) => n + symbols.filter(s => s === SLOTS_SCATTER_SYMBOL).length, 0);
     if(landedScatterCount >= 2 && i < SLOTS_REEL_COUNT - 1){
+      slotsPlayAnticipationRiser();
       for(let r = 0; r <= i; r++){
         const reelEl2 = document.getElementById('slotsReel' + r);
         grid[r].forEach((sym, row) => {
@@ -326,6 +410,7 @@ async function slotsSpin(){
       }
     }
   })()));
+  slotsStopAmbientHum();
   document.querySelectorAll('.slots-symbol.slots-scatter-tease').forEach(el => el.classList.remove('slots-scatter-tease'));
 
   spinBtn.disabled = false;
@@ -339,15 +424,17 @@ async function slotsSpin(){
   const activeLines = SLOTS_PAYLINES.slice(0, lineCount);
   let totalDelta = 0;
   let isJackpot = false;
+  let progressiveJackpotWon = false; // 5-of-a-kind wild on an active payline
   const winningLineIndexes = [];
   const winParts = [];
   const winningCellKeys = new Set();
 
   activeLines.forEach((line, lineIdx) => {
     const lineSymbols = line.rows.map((row, reelI) => grid[reelI][row]);
-    const run = slotsEvaluateRun(lineSymbols);
+    const { run, anchor } = slotsEvaluateRun(lineSymbols);
     if(run < 2) return; // this line didn't hit — no different from a real machine's dark line
-    const symData = SLOTS_SYMBOLS.find(s => s.sym === lineSymbols[0]);
+    if(run === 5 && anchor === SLOTS_WILD_SYMBOL) progressiveJackpotWon = true;
+    const symData = SLOTS_SYMBOLS.find(s => s.sym === anchor);
     let delta;
     if(run >= 3){
       const mult = run === 3 ? symData.mult3 : (run === 4 ? symData.mult4 : symData.mult5);
@@ -359,7 +446,8 @@ async function slotsSpin(){
     if(isFreeSpin) delta *= slotsFreeSpinsMultiplier;
     totalDelta += delta;
     winningLineIndexes.push(lineIdx);
-    winParts.push(`${line.name} ${run}×${lineSymbols[0]} (+${delta})`);
+    const hasWild = lineSymbols.slice(0, run).includes(SLOTS_WILD_SYMBOL) && anchor !== SLOTS_WILD_SYMBOL;
+    winParts.push(`${line.name} ${run}×${anchor}${hasWild ? ' (wild assist)' : ''} (+${delta})`);
     for(let reelI = 0; reelI < run; reelI++){
       winningCellKeys.add(`${reelI}-${line.rows[reelI]}`);
     }
@@ -371,6 +459,14 @@ async function slotsSpin(){
   } else {
     const losingLineCount = activeLines.length - winningLineIndexes.length;
     totalDelta -= losingLineCount * perLine;
+  }
+  // Kept entirely separate from totalDelta — slotsPayJackpot already
+  // credits the win straight into Machine Balance itself, so folding it
+  // into totalDelta too would double-count it once the normal win/loss
+  // settlement below runs.
+  let jackpotWonAmount = 0;
+  if(progressiveJackpotWon){
+    jackpotWonAmount = await slotsPayJackpot();
   }
 
   // Scatter check — anywhere on the board, independent of paylines or
@@ -415,7 +511,10 @@ async function slotsSpin(){
     slotsSetControlsLockedForFreeSpins(false);
   }
 
-  const resultPrefix = triggeredFreeSpins
+  const jackpotPrefix = progressiveJackpotWon
+    ? `💰🎰 PROGRESSIVE JACKPOT!!! +${jackpotWonAmount.toLocaleString()} XP  `
+    : '';
+  const resultPrefix = jackpotPrefix + (triggeredFreeSpins
     ? (isTierUpgrade
         ? `👑🔁 UPGRADED TO MEGA! +${SLOTS_MEGA_FREE_SPINS_AWARD} more spins, now paying ${SLOTS_MEGA_FREE_SPINS_MULTIPLIER}x for the rest of the bonus!!  `
         : isRetrigger
@@ -425,12 +524,12 @@ async function slotsSpin(){
           : (isMegaTrigger
               ? `👑 MEGA! ${scatterCount}×${SLOTS_SCATTER_SYMBOL} — +${SLOTS_MEGA_FREE_SPINS_AWARD} FREE SPINS at ${SLOTS_MEGA_FREE_SPINS_MULTIPLIER}x!!  `
               : `🎉 ${scatterCount}×${SLOTS_SCATTER_SYMBOL} — +${SLOTS_FREE_SPINS_AWARD} FREE SPINS at ${SLOTS_FREE_SPINS_MULTIPLIER}x!  `))
-    : '';
+    : '');
   resultEl.textContent = resultPrefix + (winParts.length > 0
     ? `${winParts.join(' · ')} — Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`
     : (isFreeSpin ? `No line hit (0 XP — free spin, nothing lost)` : `No line hit (${totalDelta} XP)`));
   resultEl.style.color = isJackpot ? '' : (totalDelta > 0 ? 'var(--win)' : (totalDelta < 0 ? 'var(--loss)' : 'var(--muted)'));
-  resultEl.classList.add((isMegaTrigger || isTierUpgrade) ? 'slots-mega-outcome' : (isRetrigger ? 'slots-retrigger-outcome' : (isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop')));
+  resultEl.classList.add(progressiveJackpotWon ? 'slots-jackpot-outcome' : ((isMegaTrigger || isTierUpgrade) ? 'slots-mega-outcome' : (isRetrigger ? 'slots-retrigger-outcome' : (isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop'))));
 
   slotsDrawWinLines(winningLineIndexes);
   slotsRenderPaylinesKey(winningLineIndexes);
@@ -438,11 +537,40 @@ async function slotsSpin(){
     const [reelI, row] = key.split('-').map(Number);
     const reelEl = document.getElementById('slotsReel' + reelI);
     const cell = reelEl && reelEl.querySelectorAll('.slots-symbol')[row];
-    if(cell) cell.classList.add('slots-win-cell');
+    if(cell){
+      cell.classList.add('slots-win-cell');
+      if(grid[reelI][row] === SLOTS_WILD_SYMBOL) cell.classList.add('slots-wild-cell');
+    }
   });
 
   const panelEl = document.getElementById('casinoGameSlots');
-  if(isMegaTrigger){
+  // Big Win escalation — based on how big THIS win was relative to what
+  // was actually staked (not a fixed XP amount, so it scales with
+  // anyone's bet size), separate from the scatter-feature and jackpot
+  // celebrations above it in priority. Doesn't fire on a scatter-trigger
+  // spin (that already has its own announcement) or the jackpot spin.
+  const stakeRef = (perLine * lineCount) || 1;
+  const winRatio = totalDelta / stakeRef;
+  let bigWinTier = null;
+  if(!progressiveJackpotWon && !triggeredFreeSpins && totalDelta > 0){
+    if(winRatio >= 50) bigWinTier = 'EPIC';
+    else if(winRatio >= 25) bigWinTier = 'SUPER';
+    else if(winRatio >= 10) bigWinTier = 'BIG';
+  }
+  if(progressiveJackpotWon){
+    // The single biggest possible moment in the game — bigger reaction
+    // than even MEGA: three confetti bursts, an escalating fanfare, and
+    // the coin cascade plus cha-ching ticks together.
+    panelEl.classList.remove('slots-mega-flash'); void panelEl.offsetWidth; panelEl.classList.add('slots-mega-flash');
+    setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 900);
+    setTimeout(() => { panelEl.classList.remove('slots-mega-flash'); void panelEl.offsetWidth; panelEl.classList.add('slots-mega-flash'); setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 900); }, 550);
+    bjPlayChime(true);
+    bjLaunchConfetti(resultEl, 90);
+    slotsPlayCoinCascade(true);
+    slotsPlayCountUpTicks();
+    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 70); }, 450);
+    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 60); }, 900);
+  } else if(isMegaTrigger){
     // The rarest possible result gets the biggest reaction in the game —
     // a full flash, a double burst of confetti (immediate + a follow-up
     // half a second later, reads as more sustained than one big dump),
@@ -462,6 +590,8 @@ async function slotsSpin(){
     // machine uses (the scatter hit overrides the line outcome's mood).
     bjPlayChime(true);
     bjLaunchConfetti(resultEl, 50);
+  } else if(bigWinTier){
+    slotsShowBigWinBanner(bigWinTier, totalDelta);
   } else if(totalDelta > 0){
     bjPlayChime(true);
     bjLaunchConfetti(resultEl, isJackpot ? 42 : 20);
@@ -811,3 +941,100 @@ document.getElementById('slotsCashOutBtn').addEventListener('click', async () =>
     slotsUpdateMachineBalanceDisplay();
   }
 });
+
+// ---- Richer sound design ----
+// Ambient reel hum: a soft continuous tone for as long as reels are
+// actually spinning, stopped the instant they've all landed — gives the
+// spin itself some presence instead of total silence until the result.
+let slotsAmbientHumNodes = null;
+function slotsStartAmbientHum(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  slotsStopAmbientHum();
+  const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 90;
+  const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 220;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.035, ctx.currentTime + 0.15);
+  osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  osc.start();
+  slotsAmbientHumNodes = { osc, gain };
+}
+function slotsStopAmbientHum(){
+  if(!slotsAmbientHumNodes) return;
+  const { osc, gain } = slotsAmbientHumNodes;
+  try{
+    const ctx = bjGetAudioCtx();
+    if(ctx){
+      gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+      setTimeout(() => { try{ osc.stop(); }catch(e){} }, 160);
+    } else { osc.stop(); }
+  }catch(e){}
+  slotsAmbientHumNodes = null;
+}
+// Anticipation riser: a rising pitch synced to the same moment the
+// scatter-tease visual pulse kicks in (2+ landed scatters, a later reel
+// still spinning) — the audio equivalent of the same suspense beat.
+function slotsPlayAnticipationRiser(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator(); osc.type = 'triangle';
+  osc.frequency.setValueAtTime(440, now);
+  osc.frequency.exponentialRampToValueAtTime(880, now + 0.5);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.05, now + 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.55);
+}
+// Cha-ching count-up ticks — timed to roughly match animateValue's fixed
+// 700ms count-up duration, one crisp percussive tick per step so the
+// climbing number actually sounds like it's climbing.
+function slotsPlayCountUpTicks(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const tickCount = 10;
+  for(let i = 0; i < tickCount; i++){
+    const t = now + i * 0.068;
+    const osc = ctx.createOscillator(); osc.type = 'square'; osc.frequency.value = 1600 + i * 55;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.07, t + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.06);
+  }
+}
+
+// ---- Big Win escalation — tiered banner + count-up, based on win size
+// relative to what was actually staked this spin, so it scales fairly
+// regardless of anyone's bet size. Sits below the jackpot and MEGA-
+// scatter celebrations in priority (see the celebration block above),
+// so a spin that's already getting the biggest possible reaction never
+// also gets this layered on top of it.
+const SLOTS_BIGWIN_TIERS = {
+  BIG:   { text: '🎉 BIG WIN',  cls: 'slots-bigwin-big',   confetti: 30, chimes: 1 },
+  SUPER: { text: '🔥 SUPER WIN', cls: 'slots-bigwin-super', confetti: 50, chimes: 2 },
+  EPIC:  { text: '💥 EPIC WIN',  cls: 'slots-bigwin-epic',  confetti: 75, chimes: 3 }
+};
+function slotsShowBigWinBanner(tier, amount){
+  const banner = document.getElementById('slotsBigWinBanner');
+  const label = document.getElementById('slotsBigWinLabel');
+  const valueEl = document.getElementById('slotsBigWinValue');
+  if(!banner || !label || !valueEl) return;
+  const config = SLOTS_BIGWIN_TIERS[tier];
+  label.textContent = config.text;
+  banner.className = 'slots-bigwin-banner ' + config.cls;
+  banner.style.display = 'flex';
+  // Reset the count-up's own starting point so it always climbs from
+  // zero, regardless of whatever value this element last animated to.
+  valueEl._rawVal = 0;
+  valueEl.textContent = '0 XP';
+  animateValue('slotsBigWinValue', amount, v => Math.round(v).toLocaleString() + ' XP');
+  slotsPlayCountUpTicks();
+  bjLaunchConfetti(banner, config.confetti);
+  for(let i = 0; i < config.chimes; i++){
+    setTimeout(() => bjPlayChime(true), i * 350);
+  }
+  setTimeout(() => { banner.style.display = 'none'; }, 2600);
+}
