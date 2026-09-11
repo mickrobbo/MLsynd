@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-08.89",
+  "version": "2026-09-08.90",
   "date": "2026-09-08",
   "changes": [
-    "Admin tab: migrated the \"Clear This Week's Multi display\" toggle from the Ledger app's Entry tab, so it's now available in the Dashboard's own Admin tab too"
+    "Fixed Group Multi Entry's draft auto-save silently swallowing failures with no feedback — now shows Saving/Saved/Couldn't-save status, retries automatically, and flushes immediately if the app is backgrounded mid-edit"
   ]
 }

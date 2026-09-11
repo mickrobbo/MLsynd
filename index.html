@@ -419,6 +419,7 @@
     <div class="panel">
       <h2>🎯 Group Multi Entry</h2>
       <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week in the Ledger.</div>
+      <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
       <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
     <div class="panel">
@@ -3503,7 +3504,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.89"; // Admin tab: migrated "Clear who's cooking it" (This Week's Multi display toggle) from the Ledger app's Entry tab, per direct request — it was only available there, not in the Dashboard's own Admin tab. Scoped write to /state/groupMultiCleared.json only, matching this whole migration's "never overwrite the full /state.json" convention. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.90"; // Fixed a real bug reported directly: Group Multi Entry's draft auto-save had a bare catch(e){} — a failed write was silently swallowed with zero indication anything was wrong, so a dropped save looked identical to a successful one until coming back later to find the entries gone. Added a visible Saving/Saved/Couldn't-save status, automatic retries with backoff on failure, and a flush-on-backgrounding safety net (visibilitychange) so a still-pending 800ms debounce can't get stranded when the app is switched away from or the phone locks. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14906,6 +14907,13 @@ function startSmartPolling(fn, intervalMs){
 document.addEventListener('visibilitychange', () => {
   if(!document.hidden){
     smartPollers.forEach(fn => fn()); // came back into view — refresh right away instead of waiting for the next tick
+  } else if(adminGroupDraftSaveTimer){
+    // Going into the background (app-switch, phone lock, browser tab
+    // hidden) is exactly the moment a still-pending 800ms debounce could
+    // get silently stranded — flush it immediately instead of trusting
+    // the timer to survive being backgrounded.
+    clearTimeout(adminGroupDraftSaveTimer);
+    saveAdminGroupEntryDraft();
   }
 });
 function isTabActive(tabId){
@@ -18222,17 +18230,42 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
 // scoping every other migrated write this session uses — never a
 // broader overwrite.
 let adminGroupDraftSaveTimer = null;
+let adminGroupDraftSaveRetries = 0;
 function scheduleAdminGroupDraftSave(){
   clearTimeout(adminGroupDraftSaveTimer);
-  adminGroupDraftSaveTimer = setTimeout(saveAdminGroupEntryDraft, 800);
+  const statusEl = document.getElementById('adminGroupDraftSaveStatus');
+  if(statusEl){ statusEl.textContent = 'Saving…'; statusEl.className = 'status-msg'; }
+  adminGroupDraftSaveTimer = setTimeout(() => { adminGroupDraftSaveRetries = 0; saveAdminGroupEntryDraft(); }, 800);
 }
 async function saveAdminGroupEntryDraft(){
+  const statusEl = document.getElementById('adminGroupDraftSaveStatus');
   try{
     await authedFetch('/state/groupEntryDraft.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(currentState.groupEntryDraft || {})
     });
-  }catch(e){}
+    adminGroupDraftSaveRetries = 0;
+    if(statusEl){
+      statusEl.textContent = '✓ Draft saved';
+      statusEl.className = 'status-msg ok';
+      setTimeout(() => { if(statusEl.textContent === '✓ Draft saved') statusEl.textContent = ''; }, 2000);
+    }
+  }catch(e){
+    // Previously silently swallowed — a failed save gave zero
+    // indication anything was wrong, so a dropped write looked
+    // identical to a successful one until coming back later and
+    // finding the entries gone with no explanation. Now retries a few
+    // times automatically with backoff, and if it genuinely can't
+    // save, says so plainly and keeps the message visible rather than
+    // letting it silently look fine.
+    adminGroupDraftSaveRetries++;
+    if(adminGroupDraftSaveRetries <= 3){
+      if(statusEl){ statusEl.textContent = `Couldn't save — retrying… (${adminGroupDraftSaveRetries}/3)`; statusEl.className = 'status-msg error'; }
+      setTimeout(saveAdminGroupEntryDraft, 1500 * adminGroupDraftSaveRetries);
+    } else {
+      if(statusEl){ statusEl.textContent = "⚠️ Couldn't save this draft — check your connection before navigating away."; statusEl.className = 'status-msg error'; }
+    }
+  }
 }
 function renderAdminGroupEntry(){
   const wrap = document.getElementById('adminGroupEntryRows');
