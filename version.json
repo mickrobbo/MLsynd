@@ -1,9 +1,10 @@
 {
-  "version": "2026-09-08.96",
+  "version": "2026-09-08.97",
   "date": "2026-09-08",
   "changes": [
-    "Baccarat: added Auto Play, a real Big Road scoreboard, an escalating win-streak banner, and richer sound (tension riser + distinct Natural sound)",
-    "Roulette: added a Hot & Cold numbers tracker and tiered Big Win banners",
-    "Video Poker: added Multi-hand mode (3/5 hands), a Double-or-nothing gamble after a win, and a Big Win banner with richer reveal sound"
+    "Fixed the real cause of Group Multi Entry not restoring on reload — a startup race where the Admin tab rendered before the actual saved data had finished loading",
+    "Removed the ambient reel hum from Slots",
+    "Gave Machine Balance/Jackpot a dedicated premium cashier-bar styling with Cash Out integrated in",
+    "Visual consistency pass across everything built today"
   ]
 }

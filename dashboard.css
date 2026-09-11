@@ -1046,6 +1046,35 @@
      (recovered from an earlier build), replacing a differently-designed
      cabinet — same premium bezel language as the other wheels, just
      applied to a rectangular reel window instead of a circle. ---- */
+  /* ---- Slots: Machine Balance / Jackpot cashier bar ---- */
+  .slots-econ-bar{
+    display:flex; align-items:stretch; margin:0 auto 8px; max-width:340px;
+    border-radius:12px; overflow:hidden;
+    background: linear-gradient(160deg, var(--felt), var(--ink) 60%);
+    border:1px solid var(--brass-dim);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.5), 0 3px 8px rgba(0,0,0,.4);
+  }
+  .slots-econ-cell{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:10px 8px; }
+  .slots-econ-divider{ width:1px; background: linear-gradient(180deg, transparent, var(--brass-dim) 20%, var(--brass-dim) 80%, transparent); }
+  .slots-econ-lbl{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:11px; letter-spacing:.3px; color:var(--muted); text-transform:uppercase; }
+  .slots-econ-val{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:18px; color:var(--chalk); }
+  /* Jackpot gets a warm glow and gentle pulse — the one number in this
+     bar that's meant to feel alive and worth watching climb, distinct
+     from Machine Balance's plainer, more utilitarian treatment. */
+  @keyframes slotsJackpotPulse{ 0%,100%{ text-shadow:0 0 6px rgba(255,214,120,.4); } 50%{ text-shadow:0 0 14px rgba(255,214,120,.85); } }
+  .slots-econ-jackpot-val{ color:var(--brass-light); animation: slotsJackpotPulse 2.2s ease-in-out infinite; }
+  .slots-econ-cashout{
+    display:block; width:100%; max-width:340px; margin:0 auto 10px; padding:9px 14px;
+    border-radius:10px; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13.5px; letter-spacing:.3px;
+    cursor:pointer; transition: opacity .2s ease, box-shadow .2s ease;
+  }
+  .slots-econ-cashout:disabled{
+    background:transparent; border:1px dashed var(--brass-dim); color:var(--muted); cursor:default;
+  }
+  .slots-econ-cashout:not(:disabled){
+    background: linear-gradient(160deg, var(--brass-light), var(--brass) 60%); border:1px solid var(--brass-light); color:#1a1206;
+    box-shadow: 0 3px 8px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.4);
+  }
   .slots-machine{
     display:inline-block; position:relative; padding:14px; border-radius:16px; margin:6px auto;
     background: linear-gradient(160deg, #d4af5a, #8a6620 40%, #6b4f1a 70%, #d4af5a);

@@ -391,7 +391,6 @@ async function slotsSpin(){
   // spinning, every landed one pulses (slots-scatter-tease) — the
   // classic "is this going to hit?" suspense beat real pokies use before
   // the deciding reel lands, distinct from the confirmed-win gold glow.
-  slotsStartAmbientHum();
   await Promise.all(grid.map((finals, i) => (async () => {
     await bjWait(i * 300);
     await slotsSpinReel('slotsReel' + i, finals, 1400 + i * 300);
@@ -410,7 +409,6 @@ async function slotsSpin(){
       }
     }
   })()));
-  slotsStopAmbientHum();
   document.querySelectorAll('.slots-symbol.slots-scatter-tease').forEach(el => el.classList.remove('slots-scatter-tease'));
 
   spinBtn.disabled = false;
@@ -943,34 +941,6 @@ document.getElementById('slotsCashOutBtn').addEventListener('click', async () =>
 });
 
 // ---- Richer sound design ----
-// Ambient reel hum: a soft continuous tone for as long as reels are
-// actually spinning, stopped the instant they've all landed — gives the
-// spin itself some presence instead of total silence until the result.
-let slotsAmbientHumNodes = null;
-function slotsStartAmbientHum(){
-  const ctx = bjGetAudioCtx(); if(!ctx) return;
-  slotsStopAmbientHum();
-  const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 90;
-  const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 220;
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.035, ctx.currentTime + 0.15);
-  osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-  osc.start();
-  slotsAmbientHumNodes = { osc, gain };
-}
-function slotsStopAmbientHum(){
-  if(!slotsAmbientHumNodes) return;
-  const { osc, gain } = slotsAmbientHumNodes;
-  try{
-    const ctx = bjGetAudioCtx();
-    if(ctx){
-      gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
-      setTimeout(() => { try{ osc.stop(); }catch(e){} }, 160);
-    } else { osc.stop(); }
-  }catch(e){}
-  slotsAmbientHumNodes = null;
-}
 // Anticipation riser: a rising pitch synced to the same moment the
 // scatter-tease visual pulse kicks in (2+ landed scatters, a later reel
 // still spinning) — the audio equivalent of the same suspense beat.

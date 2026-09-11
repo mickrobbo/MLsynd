@@ -1679,13 +1679,18 @@
     <div class="casino-game-panel" id="casinoGameSlots" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="slots">📜 Rules</button></div>
     <div class="panel slots-panel" style="text-align:center;">
-      <div class="mines-status-row" style="margin-bottom:8px;">
-        <div class="mines-status-cell"><span class="lbl">Machine Balance</span><span class="val" id="slotsMachineBalanceVal">0</span></div>
-        <div class="mines-status-cell"><span class="lbl">💰 Jackpot</span><span class="val" id="slotsJackpotVal">5,000</span></div>
+      <div class="slots-econ-bar">
+        <div class="slots-econ-cell">
+          <span class="slots-econ-lbl">🎰 Machine Balance</span>
+          <span class="slots-econ-val" id="slotsMachineBalanceVal">0</span>
+        </div>
+        <div class="slots-econ-divider"></div>
+        <div class="slots-econ-cell slots-econ-jackpot">
+          <span class="slots-econ-lbl">💰 Jackpot</span>
+          <span class="slots-econ-val slots-econ-jackpot-val" id="slotsJackpotVal">5,000</span>
+        </div>
       </div>
-      <div style="text-align:center; margin-bottom:8px;">
-        <button type="button" id="slotsCashOutBtn" class="pill-btn pill-btn-action" disabled>💰 Cash Out to XP</button>
-      </div>
+      <button type="button" id="slotsCashOutBtn" class="slots-econ-cashout" disabled>💰 Cash Out to XP</button>
       <div class="slots-machine">
         <div class="slots-bigwin-banner" id="slotsBigWinBanner" style="display:none;">
           <div class="slots-bigwin-label" id="slotsBigWinLabel">BIG WIN</div>
@@ -3242,13 +3247,13 @@ async function checkApprovalAndProceed(){
       if(!appStarted){
         appStarted = true;
         applyRoleTabRestrictions();
+        // renderDiagTab() for a tab-restored-to-diag reload now happens
+        // inside startApp()'s own refresh().then() chain instead of
+        // firing right here — this used to run immediately, before
+        // startApp()'s internal refresh() had actually completed, so it
+        // could render the Admin tab against stale/empty data. See the
+        // comment inside startApp() for the full explanation.
         startApp();
-        // If Diag was the tab open before a refresh, setActiveTab already
-        // switched to it (see the tab-restore block, script-load time) —
-        // but its data couldn't render yet since currentUserUid wasn't set
-        // until just now. Render it here instead, now that auth is
-        // actually ready and authedFetch calls will succeed.
-        if(sessionStorage.getItem('mlsynd-active-tab') === 'diag') renderDiagTab();
       }
       // Presence heartbeat — a plain "I was last active at this timestamp"
       // write, not true real-time presence (this app talks to Firebase over
@@ -3546,7 +3551,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.96"; // Baccarat/Roulette/Video Poker improvements pass, per request. Baccarat: Auto Play (repeats current bet, pauses between reveals, stops cleanly on insufficient balance); real Big Road scoreboard (bead-plate grid — same winner stacks a column, a change starts a new column, ties mark the cell — replaces the old simple chip strip); escalating win-streak banner (3/5/7+ tiers, only celebrates on tier-crossing, not every hand); richer sound (tension riser before the true moment-of-truth card, distinct Natural sound). Roulette: Hot & Cold numbers tracker (last 30 spins); tiered Big Win banners scaled to roulette's bigger payouts. Video Poker: Multi-hand mode (3/5 hands from one deal, held cards shared, each hand draws independently, own bet per hand); classic Double-or-nothing card gamble after a win (mirrors Slots' proven gamble structure); Big Win banner + richer reveal sound (anticipation riser before the result lands). Built a shared casinoShowBigWinBanner() function so Roulette/VP don't duplicate Slots' banner logic. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.97"; // Found the actual root cause of Group Multi Entry "doesn't restore on reload," reported persisting despite prior save-reliability fixes: startApp() fires refresh() without waiting for it, and the caller immediately rendered the Diag/Admin tab right after calling startApp() — a genuine race where a reload landing back on that tab could render against stale/empty currentState, BEFORE the real fetch had completed, with nothing ever re-rendering once it did arrive. This was a read-timing bug, not a write-reliability one — moved the render call inside refresh()'s own then-chain so it only fires once currentState is genuinely fresh. Also: removed the ambient reel hum from Slots (reported as annoying); gave Machine Balance/Jackpot their own dedicated premium "cashier bar" styling instead of the generic borrowed status-cell look, with Cash Out integrated into the same card; did a real consistency pass across everything built today — confirmed consistent font usage (Barlow Condensed/IBM Plex Mono) throughout, fixed one hardcoded-color inconsistency (cashier bar background now uses the actual --ink/--felt variables instead of a near-matching guess). Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -21547,6 +21552,17 @@ function startApp(){
     pollActsOfGod();
     checkGroupChatUnread();
     maybeShowOnboarding();
+    // Moved here from the caller, which fired this immediately after
+    // calling startApp() without waiting for it — since startApp()
+    // itself never awaited refresh(), that meant a reload landing back
+    // on the Diag/Admin tab could render it against whatever currentState
+    // held BEFORE the real fetch resolved (empty/default), and nothing
+    // ever re-rendered it once the actual data arrived a moment later.
+    // A genuine root cause for "doesn't restore on reload" — a read-
+    // timing race, not a save-reliability problem at all. Now only
+    // renders once currentState is actually the real, freshly-fetched
+    // data.
+    if(sessionStorage.getItem('mlsynd-active-tab') === 'diag') renderDiagTab();
   });
   // Admin-only, self-gated — checks once per session whether a past month's
   // casino pot never got closed out, and distributes it automatically if
