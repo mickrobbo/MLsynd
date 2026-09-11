@@ -1,8 +1,7 @@
 {
-  "version": "2026-09-08.104",
+  "version": "2026-09-08.105",
   "date": "2026-09-08",
   "changes": [
-    "Added a visible 'Running build' version stamp directly inside Group Multi Entry, to rule out stale cached code as the cause",
-    "Push to Home now reads straight back from Firebase after saving and states plainly whether it's genuinely confirmed server-side"
+    "Fixed a false-alarm bug in the Push to Home verification itself — it was flagging genuinely matching data as a mismatch because Firebase sorts object keys alphabetically while the local draft doesn't, and plain JSON comparison is order-sensitive"
   ]
 }

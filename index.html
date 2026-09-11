@@ -3563,7 +3563,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.104"; // Still reported failing after the Ledger-mechanics port, identically to before — added two hard diagnostics rather than a 6th blind theory. (1) A permanently visible "Running build: X" stamp directly inside the Group Multi Entry panel — every prior fix has required a fresh deploy AND a cache clear to take effect, and this exact symptom repeating unchanged after genuinely different, verified code fixes each time is the classic signature of testing against stale cached code rather than the code itself still being broken. (2) Push to Home now does a hard read-back verification straight from Firebase after saving (bypassing any local cache), comparing server data against what was just typed and stating plainly whether it's genuinely confirmed server-side or not — settles definitively whether the write landed, independent of whatever this device's build/cache situation is. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.105"; // The .104 diagnostic actually worked and delivered real evidence: the build number confirmed .104 was genuinely running, and the read-back showed the save IS landing correctly on Firebase — verified by hand against the screenshot, Billy/Brad/Damon/Dean's results matched perfectly between server and local. The "Mismatch" it reported was a false alarm in the diagnostic's OWN comparison logic: plain JSON.stringify is key-order-sensitive, and Firebase returns object keys alphabetically sorted while the local draft keeps roster/typing order — semantically identical data was being flagged as different purely because of incidental key ordering. Fixed with a canonicalJSON helper that sorts keys recursively before comparing, so the check now reflects the actual data. The underlying save mechanism appears to be genuinely working as of the Ledger-mechanics port. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18422,6 +18422,17 @@ async function saveAdminGroupEntryDraft(){
     }
   }
 }
+// Sorts object keys recursively before stringifying, so two
+// semantically-identical objects compare equal regardless of key
+// order — plain JSON.stringify is order-sensitive, and Firebase
+// returns object keys alphabetically sorted while the local draft
+// keeps roster/typing order, which was producing false "mismatch"
+// alarms on data that actually matched perfectly.
+function canonicalJSON(obj){
+  if(obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if(Array.isArray(obj)) return '[' + obj.map(canonicalJSON).join(',') + ']';
+  return '{' + Object.keys(obj).sort().map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k])).join(',') + '}';
+}
 document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', async () => {
   const btn = document.getElementById('adminPushMultiToHomeBtn');
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
@@ -18439,7 +18450,7 @@ document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', asy
     const verifyRes = await groupEntryUngatedFetch('/state/groupEntryDraft.json');
     const serverDraft = await verifyRes.json();
     const localDraft = currentState.groupEntryDraft || {};
-    const matches = JSON.stringify(serverDraft || {}) === JSON.stringify(localDraft);
+    const matches = canonicalJSON(serverDraft || {}) === canonicalJSON(localDraft);
     if(statusEl){
       statusEl.textContent = matches
         ? '✓ Confirmed on Firebase — this is genuinely saved server-side.'
