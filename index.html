@@ -419,6 +419,7 @@
     <div class="panel">
       <h2>🎯 Group Multi Entry</h2>
       <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week in the Ledger.</div>
+      <div class="hint" id="adminGroupEntryVersionStamp" style="font-family:'IBM Plex Mono',monospace; opacity:.6;"></div>
       <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
       <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
       <button type="button" id="adminPushMultiToHomeBtn" class="small" style="margin-top:10px;">📤 Push to Home Screen</button>
@@ -3562,7 +3563,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.103"; // Directly compared the real Ledger app's actual Group Multi Entry implementation (uploaded, not reconstructed from memory) against this one, per request, and ported its exact working mechanics rather than guessing further. Found one genuine, concrete difference: the Ledger's authedFetch has NO read-only-role gate at all, while this app's throws before ever reaching fetch() if currentUserRole reads 'readonly' for any non-GET request — a real, intentional choke point protecting guest sessions elsewhere in this app, but if that role ever mis-read for the actual admin even briefly, every write through the gated path would silently fail. Built a dedicated ungated write path (groupEntryUngatedFetch, mirroring the Ledger's authedFetch exactly) used for every write in this one feature, without weakening the global guard anywhere else. Also matched the Ledger's debounce timing exactly (800ms, was 350ms) and simplified the input binding back to its single 'input'-listener pattern, removing the blur/change additions that aren't part of the proven original. Kept the res.ok check from last round (a genuine bug fix independent of this) and the Push to Home button. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.104"; // Still reported failing after the Ledger-mechanics port, identically to before — added two hard diagnostics rather than a 6th blind theory. (1) A permanently visible "Running build: X" stamp directly inside the Group Multi Entry panel — every prior fix has required a fresh deploy AND a cache clear to take effect, and this exact symptom repeating unchanged after genuinely different, verified code fixes each time is the classic signature of testing against stale cached code rather than the code itself still being broken. (2) Push to Home now does a hard read-back verification straight from Firebase after saving (bypassing any local cache), comparing server data against what was just typed and stating plainly whether it's genuinely confirmed server-side or not — settles definitively whether the write landed, independent of whatever this device's build/cache situation is. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18423,14 +18424,36 @@ async function saveAdminGroupEntryDraft(){
 }
 document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', async () => {
   const btn = document.getElementById('adminPushMultiToHomeBtn');
+  const statusEl = document.getElementById('adminGroupDraftSaveStatus');
   btn.disabled = true;
   clearTimeout(adminGroupDraftSaveTimer);
   adminGroupDraftSaveTimer = null;
   adminGroupDraftSaveRetries = 0;
   await saveAdminGroupEntryDraft();
+  // Hard proof, not just a "saved" claim — reads straight back from
+  // Firebase (bypassing any local cache entirely) and compares it
+  // against what was actually just typed. This settles definitively
+  // whether the write genuinely landed server-side, independent of
+  // whatever this device's own build/cache situation is.
+  try{
+    const verifyRes = await groupEntryUngatedFetch('/state/groupEntryDraft.json');
+    const serverDraft = await verifyRes.json();
+    const localDraft = currentState.groupEntryDraft || {};
+    const matches = JSON.stringify(serverDraft || {}) === JSON.stringify(localDraft);
+    if(statusEl){
+      statusEl.textContent = matches
+        ? '✓ Confirmed on Firebase — this is genuinely saved server-side.'
+        : `⚠️ Mismatch — Firebase has different data than what's shown here. Server: ${JSON.stringify(serverDraft)}`;
+      statusEl.className = matches ? 'status-msg ok' : 'status-msg error';
+    }
+  }catch(e){
+    if(statusEl){ statusEl.textContent = `Could not verify: ${e.message}`; statusEl.className = 'status-msg error'; }
+  }
   btn.disabled = false;
 });
 function renderAdminGroupEntry(){
+  const versionStampEl = document.getElementById('adminGroupEntryVersionStamp');
+  if(versionStampEl) versionStampEl.textContent = `Running build: ${APP_VERSION}`;
   const wrap = document.getElementById('adminGroupEntryRows');
   const members = currentState.members || [];
   if(members.length === 0){
