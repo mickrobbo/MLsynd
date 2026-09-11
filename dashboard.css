@@ -1253,11 +1253,14 @@
   /* ---- Multi-hand mode: additional hands render smaller, below the
      main hand, read-only (no hold pills — holds only ever apply via the
      base hand above). ---- */
-  .vp-multi-hands-area{ display:flex; flex-direction:column; gap:6px; margin-top:10px; align-items:center; }
-  .vp-extra-hand-row{ display:flex; align-items:center; gap:10px; }
+  .vp-multi-hands-area{ display:flex; flex-direction:column; gap:8px; margin-top:14px; align-items:center; width:100%; }
+  .vp-extra-hand-row{
+    display:flex; align-items:center; justify-content:center; gap:12px; width:100%; max-width:320px;
+    padding:6px 10px; border-radius:10px; background:rgba(0,0,0,.18); border:1px solid rgba(255,214,120,.12);
+  }
   .vp-extra-hand-cards{ display:flex; gap:3px; }
-  .vp-extra-card{ width:30px !important; height:43px !important; border-radius:4px !important; }
-  .vp-extra-hand-result{ font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; color:var(--muted); min-width:90px; }
+  .vp-extra-card{ width:32px !important; height:46px !important; border-radius:5px !important; }
+  .vp-extra-hand-result{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; font-weight:700; color:var(--muted); min-width:110px; text-align:right; }
   .vp-hold-pill{
     padding:5px 12px; font-size:10.5px; border-radius:999px; cursor:pointer;
     background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--muted); font-weight:700;
@@ -1604,7 +1607,7 @@
      "press" (add the win straight onto the bet, growing it) instead of
      collecting. One shared mode applies to every Place/Hardway spot —
      switch it anytime, it only affects wins from here on. */
-  .craps-winmode-row{ display:flex; gap:6px; justify-content:center; margin-bottom:4px; }
+  .craps-winmode-row{ display:flex; gap:6px; justify-content:center; margin-top:10px; margin-bottom:10px; }
   /* Diagnostics' Pulse/Money/Play submodes — same show-one-hide-rest
      pattern as .tab-panel/.casino-game-panel, just scoped inside one tab
      instead of switching the whole screen. */

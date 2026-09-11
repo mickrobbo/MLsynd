@@ -112,7 +112,7 @@ function vpRenderHand(animate, animateIdx){
     const isRed = c.suit === '♥' || c.suit === '♦';
     const willAnimate = animate && animateSet.includes(i);
     const orderInAnim = animateSet.indexOf(i);
-    const delay = willAnimate ? Math.max(0, orderInAnim) * 130 : 0;
+    const delay = willAnimate ? Math.max(0, orderInAnim) * 240 : 0;
     if(willAnimate) setTimeout(bjPlayCardSound, delay);
     const heldGlow = vpHeld[i] ? ' pc-held-glow' : '';
     return `<div class="vp-card-col">
@@ -144,7 +144,7 @@ function vpRenderExtraHands(animate){
   area.innerHTML = vpExtraHands.map((eh, hi) => {
     const cardsHtml = eh.hand.map((c, i) => {
       const isRed = c.suit === '♥' || c.suit === '♦';
-      const delay = animate ? i * 90 : 0;
+      const delay = animate ? i * 180 : 0;
       if(animate) setTimeout(bjPlayCardSound, delay);
       return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''} vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
     }).join('');
@@ -194,6 +194,7 @@ async function vpDeal(){
   document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(b => { b.disabled = true; });
 }
 async function vpDraw(){
+  scrollIntoViewSmooth('vpTableRail');
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
   const totalBet = amount * vpHandCount;
   document.getElementById('vpDrawBtn').disabled = true;
@@ -207,7 +208,7 @@ async function vpDraw(){
     eh.hand = eh.hand.map((c, i) => vpHeld[i] ? c : eh.deck.shift());
   });
   vpRenderExtraHands(true);
-  await bjWait(drawnIdx.length * 130 + 250);
+  await bjWait(drawnIdx.length * 240 + 350);
   // A brief suspenseful pause before the result actually lands — the
   // reveal itself already happened, but announcing the result instantly
   // undercut the moment; this gives it a beat to breathe first.
@@ -243,6 +244,7 @@ async function vpDraw(){
       if(labelEl){ labelEl.textContent = `${r.label} +${delta}`; labelEl.style.color = 'var(--win)'; }
     } else {
       totalDelta -= amount;
+      extraLabels.push(`Hand ${hi + 2}: No win`);
       if(labelEl){ labelEl.textContent = 'No win'; labelEl.style.color = 'var(--muted)'; }
     }
   });

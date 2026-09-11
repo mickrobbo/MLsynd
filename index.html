@@ -1763,7 +1763,7 @@
 
     <div class="casino-game-panel" id="casinoGameVideoPoker" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="videopoker">📜 Rules</button></div>
-    <div class="pc-table-rail" style="text-align:center;">
+    <div class="pc-table-rail" id="vpTableRail" style="text-align:center;">
       <div class="bj-table">
       <div class="slots-bigwin-banner" id="vpBigWinBanner" style="display:none;">
         <div class="slots-bigwin-label" id="vpBigWinLabel">BIG WIN</div>
@@ -3551,7 +3551,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.97"; // Found the actual root cause of Group Multi Entry "doesn't restore on reload," reported persisting despite prior save-reliability fixes: startApp() fires refresh() without waiting for it, and the caller immediately rendered the Diag/Admin tab right after calling startApp() — a genuine race where a reload landing back on that tab could render against stale/empty currentState, BEFORE the real fetch had completed, with nothing ever re-rendering once it did arrive. This was a read-timing bug, not a write-reliability one — moved the render call inside refresh()'s own then-chain so it only fires once currentState is genuinely fresh. Also: removed the ambient reel hum from Slots (reported as annoying); gave Machine Balance/Jackpot their own dedicated premium "cashier bar" styling instead of the generic borrowed status-cell look, with Cash Out integrated into the same card; did a real consistency pass across everything built today — confirmed consistent font usage (Barlow Condensed/IBM Plex Mono) throughout, fixed one hardcoded-color inconsistency (cashier bar background now uses the actual --ink/--felt variables instead of a near-matching guess). Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.98"; // Fixed a real spacing bug reported directly: .craps-winmode-row (shared by Slots/Baccarat/Video Poker's pill pickers) never had its own top margin — it only looked right in Slots because a preceding label happened to provide the spacing; Baccarat's had no such label, so it sat cramped against the chip rail above it. Now has consistent margin on both sides regardless of context. Video Poker: fixed a real bug where a losing extra hand in multi-hand mode was silently dropped from the combined outcome summary (only winning hands were ever pushed into the message array); slowed the card-deal stagger from 130ms to 240ms per card (and extra hands' reveal to match) per request; added auto-scroll to the table when Draw is pressed, same pattern Roulette's Spin already uses; polished the multi-hand row display with its own subtle card-grouping background and better-aligned result labels. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
