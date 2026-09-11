@@ -170,7 +170,7 @@ function vpRenderHand(animate, animateIdx){
     const isRed = c.suit === '♥' || c.suit === '♦';
     const willAnimate = animate && animateSet.includes(i);
     const orderInAnim = animateSet.indexOf(i);
-    const delay = willAnimate ? Math.max(0, orderInAnim) * 450 : 0;
+    const delay = willAnimate ? Math.max(0, orderInAnim) * 400 : 0;
     if(willAnimate) setTimeout(bjPlayCardSound, delay);
     const heldGlow = vpHeld[i] ? ' pc-held-glow' : '';
     return `<div class="vp-card-col">
@@ -202,7 +202,7 @@ function vpRenderExtraHands(animate){
   area.innerHTML = vpExtraHands.map((eh, hi) => {
     const cardsHtml = eh.hand.map((c, i) => {
       const isRed = c.suit === '♥' || c.suit === '♦';
-      const delay = animate ? i * 450 : 0;
+      const delay = animate ? i * 400 : 0;
       if(animate) setTimeout(bjPlayCardSound, delay);
       const heldGlow = eh.held[i] ? ' pc-held-glow' : '';
       return `<div class="vp-card-col">
@@ -233,17 +233,19 @@ function vpHighlightPayout(key){
 }
 async function vpDeal(){
   const dealBtn = document.getElementById('vpDealBtn');
+  const dealBtnTop = document.getElementById('vpDealTopBtn');
   if(dealBtn.disabled) return;
   dealBtn.disabled = true;
+  if(dealBtnTop) dealBtnTop.disabled = true;
   const errEl = document.getElementById('vpBetError');
   errEl.textContent = '';
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
-  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; dealBtn.disabled = false; return; }
+  if(amount <= 0){ errEl.textContent = 'Add some chips first.'; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
   const totalBet = amount * vpHandCount;
-  if(totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total bet is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (${amount.toLocaleString()} × ${vpHandCount} hands = ${totalBet.toLocaleString()}).`; dealBtn.disabled = false; return; }
+  if(totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total bet is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (${amount.toLocaleString()} × ${vpHandCount} hands = ${totalBet.toLocaleString()}).`; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
   const balance = await getXPBalance();
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; dealBtn.disabled = false; return; }
-  if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; dealBtn.disabled = false; return; }
+  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
+  if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
 
   vpDeck = bjFreshDeck();
   vpHand = vpDeck.splice(0, 5);
@@ -268,6 +270,8 @@ async function vpDeal(){
   vpRenderExtraHands(true);
   document.getElementById('vpDealBtn').style.display = 'none';
   document.getElementById('vpDrawBtn').style.display = 'inline-block';
+  document.getElementById('vpDealTopBtn').style.display = 'none';
+  document.getElementById('vpDrawTopBtn').style.display = 'inline-block';
   document.getElementById('vpChipRail').style.pointerEvents = 'none';
   document.getElementById('vpChipRail').style.opacity = '.5';
   document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(b => { b.disabled = true; });
@@ -277,6 +281,8 @@ async function vpDraw(){
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
   const totalBet = amount * vpHandCount;
   document.getElementById('vpDrawBtn').disabled = true;
+  const drawBtnTop = document.getElementById('vpDrawTopBtn');
+  if(drawBtnTop) drawBtnTop.disabled = true;
   const drawnIdx = vpHeld.map((h, i) => h ? -1 : i).filter(i => i !== -1);
   vpHand = vpHand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
   vpRenderHand(true, drawnIdx);
@@ -287,7 +293,7 @@ async function vpDraw(){
     eh.hand = eh.hand.map((c, i) => eh.held[i] ? c : eh.deck.shift());
   });
   vpRenderExtraHands(true);
-  await bjWait(drawnIdx.length * 450 + 500);
+  await bjWait(drawnIdx.length * 400 + 400);
   // A brief suspenseful pause before the result actually lands — the
   // reveal itself already happened, but announcing the result instantly
   // undercut the moment; this gives it a beat to breathe first.
@@ -421,13 +427,19 @@ async function vpDraw(){
   document.getElementById('vpDrawBtn').style.display = 'none';
   document.getElementById('vpDealBtn').disabled = false;
   document.getElementById('vpDealBtn').style.display = 'inline-block';
+  document.getElementById('vpDrawTopBtn').disabled = false;
+  document.getElementById('vpDrawTopBtn').style.display = 'none';
+  document.getElementById('vpDealTopBtn').disabled = false;
+  document.getElementById('vpDealTopBtn').style.display = 'inline-block';
   document.getElementById('vpChipRail').style.pointerEvents = '';
   document.getElementById('vpChipRail').style.opacity = '';
   document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(b => { b.disabled = false; });
   vpLastBet = amount;
   document.getElementById('vpSameBetBtn').disabled = false;
+  document.getElementById('vpSameBetTopBtn').disabled = false;
 }
 document.getElementById('vpDealBtn').addEventListener('click', vpDeal);
+document.getElementById('vpDealTopBtn').addEventListener('click', vpDeal);
 document.getElementById('vpSameBetBtn').addEventListener('click', () => {
   if(!vpLastBet) return;
   const betInput = document.getElementById('vpBetInput');
@@ -435,7 +447,15 @@ document.getElementById('vpSameBetBtn').addEventListener('click', () => {
   betInput.dispatchEvent(new Event('input'));
   bjPlayChipSound();
 });
+document.getElementById('vpSameBetTopBtn').addEventListener('click', () => {
+  if(!vpLastBet) return;
+  const betInput = document.getElementById('vpBetInput');
+  betInput.value = vpLastBet;
+  betInput.dispatchEvent(new Event('input'));
+  bjPlayChipSound();
+});
 document.getElementById('vpDrawBtn').addEventListener('click', vpDraw);
+document.getElementById('vpDrawTopBtn').addEventListener('click', vpDraw);
 document.getElementById('vpBetInput').addEventListener('input', (e) => {
   const chip = document.getElementById('vpChipDisplay');
   if(!chip) return;

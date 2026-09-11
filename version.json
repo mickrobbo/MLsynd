@@ -1,9 +1,8 @@
 {
-  "version": "2026-09-08.108",
+  "version": "2026-09-08.110",
   "date": "2026-09-08",
   "changes": [
-    "Full visual pass complete: verified Tipping, Board, the casino game grid, and the Admin tab's organization were already premium quality from prior work",
-    "Confirmed this session's new admin tools landed in the correct logical sub-sections",
-    "Consolidated as one complete package"
+    "Video Poker: slightly sped up the draw animation as requested",
+    "Added Pong — the first arcade-style skill game, earning XP via best-score-of-the-day (no stake, no risk)"
   ]
 }

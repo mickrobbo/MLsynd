@@ -1303,6 +1303,7 @@
         <button type="button" class="game-bubble" data-game="plinko"><span class="game-bubble-icon">🔴</span><span class="game-bubble-label">Plinko</span></button>
         <button type="button" class="game-bubble" data-game="bigwheel"><span class="game-bubble-icon">🛞</span><span class="game-bubble-label">Big Wheel</span></button>
         <button type="button" class="game-bubble" data-game="mines"><span class="game-bubble-icon">💣</span><span class="game-bubble-label">Mines</span></button>
+        <button type="button" class="game-bubble" data-game="pong"><span class="game-bubble-icon">🏓</span><span class="game-bubble-label">Pong</span></button>
         <button type="button" class="game-bubble" data-game="crash"><span class="game-bubble-icon">🚀</span><span class="game-bubble-label">Crash</span></button>
         <button type="button" class="game-bubble" data-game="doubleornothing"><span class="game-bubble-icon">🪙</span><span class="game-bubble-label">Double or Nothing</span></button>
         <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
@@ -1695,7 +1696,7 @@
         </div>
       </div>
       <button type="button" id="slotsCashOutBtn" class="slots-econ-cashout" disabled>💰 Cash Out to XP</button>
-      <div class="slots-machine">
+      <div class="slots-machine" id="slotsTableRail">
         <div class="slots-bigwin-banner" id="slotsBigWinBanner" style="display:none;">
           <div class="slots-bigwin-label" id="slotsBigWinLabel">BIG WIN</div>
           <div class="slots-bigwin-value" id="slotsBigWinValue">0 XP</div>
@@ -1768,6 +1769,11 @@
     <div class="casino-game-panel" id="casinoGameVideoPoker" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="videopoker">📜 Rules</button></div>
     <div class="pc-table-rail" id="vpTableRail" style="text-align:center;">
+      <div class="deal-row" style="margin-bottom:10px;">
+        <button type="button" id="vpSameBetTopBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+        <button type="button" id="vpDealTopBtn" class="pill-btn pill-btn-primary">Deal</button>
+        <button type="button" id="vpDrawTopBtn" class="pill-btn pill-btn-primary" style="display:none;">Draw</button>
+      </div>
       <div class="bj-table">
       <div class="slots-bigwin-banner" id="vpBigWinBanner" style="display:none;">
         <div class="slots-bigwin-label" id="vpBigWinLabel">BIG WIN</div>
@@ -2005,7 +2011,35 @@
     </div>
     </div>
 
-    <div class="casino-game-panel" id="casinoGameCrash" style="display:none;">
+    <div class="casino-game-panel" id="casinoGamePong" style="display:none;">
+      <div class="panel" style="text-align:center;">
+        <h2>🏓 Pong</h2>
+        <div class="hint">Rally against the CPU for as long as you can — the ball speeds up with every return, and the CPU can only track it so fast. One miss ends the run. No stake, no risk — only your best score each day earns XP, so practice as much as you like.</div>
+        <div class="mines-status-row" style="margin-top:8px;">
+          <div class="mines-status-cell"><span class="lbl">Best Today</span><span class="val" id="pongBestTodayVal">0</span></div>
+          <div class="mines-status-cell"><span class="lbl">This Run</span><span class="val" id="pongCurrentScoreVal">0</span></div>
+        </div>
+      </div>
+      <div class="pc-table-rail" id="pongTableRail" style="text-align:center;">
+        <div class="pong-arena-wrap">
+          <canvas id="pongCanvas" width="320" height="200"></canvas>
+          <div id="pongGameOverOverlay" class="pong-overlay" style="display:none;">
+            <div class="pong-overlay-title">Run Over</div>
+            <div class="pong-overlay-score" id="pongOverlayScore">0</div>
+            <div class="hint" id="pongOverlayXpMsg" style="margin:4px 0 10px;"></div>
+            <button type="button" id="pongPlayAgainBtn" class="pill-btn pill-btn-primary">Play Again</button>
+          </div>
+        </div>
+        <div class="hint" style="margin-top:8px;" id="pongControlHint">Drag up/down anywhere on the table to move your paddle.</div>
+        <button type="button" id="pongStartBtn" class="pill-btn pill-btn-primary" style="margin-top:10px;">Start</button>
+      </div>
+      <div class="panel">
+        <h2>XP Tiers</h2>
+        <div class="hint">Only your best score of the day counts — crossing a new tier on a later run today pays just the difference, not the whole tier again.</div>
+        <table class="vp-paytable" id="pongTierTable"></table>
+      </div>
+    </div>
+
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="crash">📜 Rules</button></div>
     <div class="pc-table-rail" id="crashTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
       <div class="craps-table-felt">
@@ -3564,7 +3598,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.108"; // Full dashboard visual pass, part 2 — went through the remaining major screens (Tipping, Board, casino game selector grid, Admin tab's overall organization) systematically per request. Verified — not assumed — that these were already genuinely premium quality from prior work: the game selector grid (proper gradients, glowing active state, thoughtful custom icons), the Tipping tab's prize-pot hero and sub-navigation, and the Admin tab's sub-mode structure (pulse/money/squad/entry/access/tipping/repair/play) — confirmed this session's new tools (Reconcile Pot, Clear Multi, Group Entry) landed in the logically-correct sub-modes rather than cluttering the wrong section. Consolidated as one complete package per request, rather than another partial delta. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.110"; // Video Poker: trimmed the draw stagger from 450ms to 400ms per request ("slightly speed up") — matches the card's own deal-in animation duration exactly (still no overlap, just no extra buffer past it). Added Pong — the first of a planned "arcade zone" of skill-based games alongside the luck-based casino, chosen from a 3-way pick (Pong/Frogger/Flappy Bird). Rally endlessly against a CPU that tracks the ball with a capped speed + per-approach aim error (beatable, not a flawless wall), ball speeds up on every player return. No stake, since a freely-replayable skill game can't use the bet-and-payout model without being a wide-open farming exploit — instead, same convention as Daily Spin/Weekly Bonus: only the day's best score (AEST) ever converts to XP, and a later run only pays the newly-crossed tier(s), not the whole tier again. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9082,11 +9116,11 @@ const CASINO_GAME_PANEL_IDS = {
   blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
   war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin',
   craps: 'casinoGameCraps', plinko: 'casinoGamePlinko', bigwheel: 'casinoGameBigWheel', mines: 'casinoGameMines',
-  crash: 'casinoGameCrash', doubleornothing: 'casinoGameDoubleOrNothing'
+  crash: 'casinoGameCrash', doubleornothing: 'casinoGameDoubleOrNothing', pong: 'casinoGamePong'
 };
 const CASINO_GAME_LABELS = {
   blackjack: 'Blackjack', baccarat: 'Baccarat', roulette: 'Roulette', war: 'Casino War',
-  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', plinko: 'Plinko', bigwheel: 'Big Wheel', mines: 'Mines',
+  slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', plinko: 'Plinko', bigwheel: 'Big Wheel', mines: 'Mines', pong: 'Pong',
   crash: 'Crash', doubleornothing: 'Double or Nothing'
 };
 // Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
@@ -9627,6 +9661,7 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     if(btn.dataset.game === 'plinko' && !plinkoBuilt){ plinkoInit(); }
     if(btn.dataset.game === 'bigwheel' && !bigWheelBuilt){ bigWheelBuildWheel(); }
     if(btn.dataset.game === 'mines' && !minesBuilt){ minesInit(); }
+    if(btn.dataset.game === 'pong' && !pongBuilt){ pongInit(); }
     reconcileCasinoAmbience();
   });
 });
@@ -10352,6 +10387,7 @@ document.getElementById('crapsRollTopBtn').addEventListener('click', crapsRoll);
 
 </script>
 <script src="casino-mines.js"></script>
+<script src="casino-pong.js"></script>
 <script>
 
 </script>
