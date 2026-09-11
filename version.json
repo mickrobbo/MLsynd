@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-08.91",
+  "version": "2026-09-08.92",
   "date": "2026-09-08",
   "changes": [
-    "Fixed the remaining gap in Group Multi Entry's draft save: added keepalive so the save request can survive an actual app/tab close, not just being backgrounded"
+    "Fixed Group Multi Entry draft save not surviving a page reload — added a synchronous direct-fetch flush (bypassing the async auth chain that could get cut off mid-reload), now wired to pagehide, beforeunload, and visibilitychange consistently"
   ]
 }

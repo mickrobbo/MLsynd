@@ -3504,7 +3504,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.91"; // Fixed the real remaining gap in Group Multi Entry's draft save, reported directly ("when I closed the bets went away"): the previous fix flushed a pending save on visibilitychange, but becoming hidden isn't the same as being torn down — a genuine tab/app CLOSE can still cancel a plain in-flight fetch before it completes, even one triggered in time. Added keepalive:true to the save request, the browser API specifically built to let a small request like this survive past page unload. Confirmed the auth check it depends on (getValidAuth) is fast in the normal case (local check only, network round-trip only when the token is genuinely near-expiry), so this reliably covers the common close-while-editing scenario. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.92"; // Fixed the actual remaining gap in Group Multi Entry's draft save, reported directly again after a reload still lost data: visibilitychange doesn't reliably fire on a page reload the way it does for backgrounding, and even when a flush WAS triggered, it went through an async authedFetch→getValidAuth→fetch chain — a reload can tear the page down before that chain even reaches its actual network call. Added a synchronous, direct-fetch flush (bypassing the async auth chain entirely, using whatever token's already cached) wired to pagehide, beforeunload, AND visibilitychange — covers reload, actual navigation, and backgrounding with one consistent mechanism instead of three different partial ones. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14907,13 +14907,12 @@ function startSmartPolling(fn, intervalMs){
 document.addEventListener('visibilitychange', () => {
   if(!document.hidden){
     smartPollers.forEach(fn => fn()); // came back into view — refresh right away instead of waiting for the next tick
-  } else if(adminGroupDraftSaveTimer){
-    // Going into the background (app-switch, phone lock, browser tab
-    // hidden) is exactly the moment a still-pending 800ms debounce could
-    // get silently stranded — flush it immediately instead of trusting
-    // the timer to survive being backgrounded.
-    clearTimeout(adminGroupDraftSaveTimer);
-    saveAdminGroupEntryDraft();
+  } else {
+    // Going hidden (app-switch, phone lock, browser tab hidden) — same
+    // synchronous direct flush used for pagehide/beforeunload, not the
+    // async saveAdminGroupEntryDraft path, for the same reliability
+    // reason: no risk of the page disappearing mid-await.
+    flushAdminGroupEntryDraftSync();
   }
 });
 function isTabActive(tabId){
@@ -18231,6 +18230,35 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
 // broader overwrite.
 let adminGroupDraftSaveTimer = null;
 let adminGroupDraftSaveRetries = 0;
+// Fires the save SYNCHRONOUSLY and directly, bypassing the normal async
+// authedFetch → getValidAuth → fetch chain on purpose. A page reload,
+// close, or navigation can tear the JS context down within the same
+// tick an async function is still sitting at its first `await` — so
+// the actual network call might never even get dispatched in time
+// through the normal path. This fires fetch() immediately, using
+// whatever auth token is already cached (there's no reliable way to
+// refresh a near-expired one during teardown anyway), with
+// keepalive:true so the request itself can survive past the page
+// actually going away. Used for every "the page might be about to
+// disappear" moment — going into the background, a reload, an actual
+// close — not just the background case the visibilitychange-only
+// version previously handled.
+function flushAdminGroupEntryDraftSync(){
+  if(!adminGroupDraftSaveTimer) return; // nothing pending
+  clearTimeout(adminGroupDraftSaveTimer);
+  adminGroupDraftSaveTimer = null;
+  try{
+    const auth = authStorageGet();
+    if(!auth) return;
+    fetch(`${FIREBASE_URL}/state/groupEntryDraft.json?auth=${auth.idToken}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentState.groupEntryDraft || {}),
+      keepalive: true
+    });
+  }catch(e){}
+}
+window.addEventListener('pagehide', flushAdminGroupEntryDraftSync);
+window.addEventListener('beforeunload', flushAdminGroupEntryDraftSync);
 function scheduleAdminGroupDraftSave(){
   clearTimeout(adminGroupDraftSaveTimer);
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
