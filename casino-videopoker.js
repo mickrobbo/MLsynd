@@ -47,6 +47,15 @@ function vpUpdateTotalBetHint(){
   const perHand = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
   el.textContent = vpHandCount > 1 ? `${perHand} XP/hand × ${vpHandCount} hands — total bet ${perHand * vpHandCount} XP` : '';
 }
+// Builds an independent deck for one additional hand — a fresh shuffle
+// with the currently-dealt 5 cards removed first, so its own
+// replacement pool for non-held positions can never duplicate a card
+// already showing in that same hand. Restored per direct request: one
+// full deck per hand (5 hands = 5 decks), not a single shared deck.
+function vpBuildExtraHandDeck(dealtHand){
+  const deck = bjFreshDeck();
+  return deck.filter(c => !dealtHand.some(d => d.rank === c.rank && d.suit === c.suit));
+}
 function vpBuildPaytable(){
   const table = document.getElementById('vpPaytable');
   table.innerHTML = VP_PAYTABLE.map(p => `<tr id="vpPayRow_${p.key}"><td>${p.label}</td><td style="text-align:right;">${p.mult}:1</td></tr>`).join('');
@@ -181,12 +190,10 @@ function vpRenderHand(animate, animateIdx){
     });
   });
 }
-// Additional hands render read-only, no Hold pills of their own — holds
-// are shared with the base hand (vpHeld), the actual point of multi-
-// hand poker: one decision, judged in parallel across every hand, all
-// drawing from the one shared deck (see vpDraw). Each hand still gets
-// its own small result label once Draw resolves, so a win on hand 3
-// while hands 1/2 miss is clearly visible per-hand, not just folded
+// Each additional hand has its own independent Hold pills, not shared
+// with the base hand — restored per direct request. Each hand still
+// gets its own small result label once Draw resolves, so a win on hand
+// 3 while hands 1/2 miss is clearly visible per-hand, not just folded
 // into one combined total.
 function vpRenderExtraHands(animate){
   const area = document.getElementById('vpMultiHandsArea');
@@ -197,10 +204,28 @@ function vpRenderExtraHands(animate){
       const isRed = c.suit === '♥' || c.suit === '♦';
       const delay = animate ? i * 450 : 0;
       if(animate) setTimeout(bjPlayCardSound, delay);
-      return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''} vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
+      const heldGlow = eh.held[i] ? ' pc-held-glow' : '';
+      return `<div class="vp-card-col">
+        <div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''}${heldGlow} vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>
+        <button type="button" class="vp-hold-pill vp-extra-hold-pill${eh.held[i] ? ' held' : ''}" data-hand="${hi}" data-idx="${i}">${eh.held[i] ? 'Held' : 'Hold'}</button>
+      </div>`;
     }).join('');
     return `<div class="vp-extra-hand-row"><div class="vp-extra-hand-cards">${cardsHtml}</div><span class="vp-extra-hand-result" id="vpExtraResult${hi}"></span></div>`;
   }).join('');
+  document.querySelectorAll('#vpMultiHandsArea .vp-extra-hold-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(vpStage !== 'dealt') return;
+      const hi = parseInt(btn.dataset.hand, 10);
+      const idx = parseInt(btn.dataset.idx, 10);
+      const eh = vpExtraHands[hi];
+      if(!eh) return;
+      eh.held[idx] = !eh.held[idx];
+      vpPlayHoldClick(eh.held[idx]);
+      vpRenderExtraHands(false);
+      const cardEl = document.querySelectorAll('#vpMultiHandsArea .vp-extra-hand-row')[hi].querySelectorAll('.playing-card')[idx];
+      if(cardEl){ cardEl.classList.remove('pc-hold-pop'); void cardEl.offsetWidth; cardEl.classList.add('pc-hold-pop'); }
+    });
+  });
 }
 function vpHighlightPayout(key){
   VP_PAYTABLE.forEach(p => document.getElementById('vpPayRow_' + p.key).classList.remove('vp-hit'));
@@ -232,17 +257,13 @@ async function vpDeal(){
   if(dealerAreaReset) dealerAreaReset.style.display = 'none';
   vpRenderHand(true);
   // Every extra hand starts as an exact copy of the base hand's 5 cards
-  // (same physical deal, parallel realities). Holds are shared with the
-  // base hand (see vpHeld) — one decision, judged in parallel, the
-  // actual point of multi-hand poker. All replacement cards for every
-  // hand come from vpDeck, the ONE deck already dealing the base hand —
-  // each hand's replacements are drawn sequentially further into that
-  // same deck at Draw time, so no card can ever repeat across the whole
-  // table (guaranteed by a single depleting deck, not by artificially
-  // filtering separate ones).
+  // (same physical deal) but from here each hand is fully independent:
+  // its own hold pills, and its own separate deck (5 hands = 5 decks)
+  // supplying replacement cards for whichever positions that hand
+  // doesn't hold — restored per direct request.
   vpExtraHands = [];
   for(let i = 1; i < vpHandCount; i++){
-    vpExtraHands.push({ hand: vpHand.map(c => ({ ...c })) });
+    vpExtraHands.push({ hand: vpHand.map(c => ({ ...c })), deck: vpBuildExtraHandDeck(vpHand), held: [false, false, false, false, false] });
   }
   vpRenderExtraHands(true);
   document.getElementById('vpDealBtn').style.display = 'none';
@@ -259,14 +280,11 @@ async function vpDraw(){
   const drawnIdx = vpHeld.map((h, i) => h ? -1 : i).filter(i => i !== -1);
   vpHand = vpHand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
   vpRenderHand(true, drawnIdx);
-  // Every extra hand replaces its non-held positions using the SAME
-  // shared hold decision as the base hand (vpHeld — holds are shared
-  // again, the actual point of multi-hand poker), drawing sequentially
-  // further into the same vpDeck the base hand already drew from. One
-  // real deck, continuously depleting across the whole table — no two
-  // hands can ever show a duplicate card.
+  // Every extra hand replaces its own non-held positions using its OWN
+  // held selection, from its own independent deck — restored per direct
+  // request (5 hands = 5 decks).
   vpExtraHands.forEach(eh => {
-    eh.hand = eh.hand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
+    eh.hand = eh.hand.map((c, i) => eh.held[i] ? c : eh.deck.shift());
   });
   vpRenderExtraHands(true);
   await bjWait(drawnIdx.length * 450 + 500);

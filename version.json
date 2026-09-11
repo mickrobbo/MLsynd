@@ -1,10 +1,8 @@
 {
-  "version": "2026-09-08.101",
+  "version": "2026-09-08.102",
   "date": "2026-09-08",
   "changes": [
-    "Fixed the actual remaining cause of Group Multi Entry not showing on Home: a cleared flag was never being reset when new data was entered",
-    "Added an explicit Push to Home Screen button for Group Multi Entry",
-    "Video Poker: multi-hand mode now runs off one shared deck with shared holds via the base hand (reverted from independent per-hand decks/holds)",
-    "Video Poker: added Play the Dealer, a toggleable free bonus round"
+    "Found the real bug in Group Multi Entry's save: fetch() doesn't throw on HTTP error responses, only network failures — a write Firebase actually rejected could still show 'Draft saved'. Now checks and surfaces the real error",
+    "Video Poker: reverted to independent per-hand decks (5 hands = 5 decks) and independent per-hand Hold pills"
   ]
 }
