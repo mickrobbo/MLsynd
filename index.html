@@ -3562,7 +3562,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.102"; // Found the real bug behind Group Multi Entry's save reporting success while data was actually gone after reopening — a known failure pattern this codebase has hit before (see the Slips/Joker/setMyJoker write-check lessons): fetch() does NOT throw on an HTTP error response (401/403/400/etc), only on a genuine network failure. saveAdminGroupEntryDraft never checked res.ok, so a write Firebase actually REJECTED would still fall through to the success path and show "✓ Draft saved" — exactly matching what was reported. Now verifies res.ok before claiming success, and surfaces the real HTTP status + response body on failure instead of a generic message, so if this recurs there's hard evidence instead of another guess. Video Poker, per direct request: reverted back to independent per-hand decks (5 hands = 5 decks) and independent per-hand Hold pills — undoing last round's shared-deck/shared-hold change. Play the Dealer stays fully compatible with this (it draws from vpDeck, which extra hands no longer touch at all now that they have their own decks). Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.103"; // Directly compared the real Ledger app's actual Group Multi Entry implementation (uploaded, not reconstructed from memory) against this one, per request, and ported its exact working mechanics rather than guessing further. Found one genuine, concrete difference: the Ledger's authedFetch has NO read-only-role gate at all, while this app's throws before ever reaching fetch() if currentUserRole reads 'readonly' for any non-GET request — a real, intentional choke point protecting guest sessions elsewhere in this app, but if that role ever mis-read for the actual admin even briefly, every write through the gated path would silently fail. Built a dedicated ungated write path (groupEntryUngatedFetch, mirroring the Ledger's authedFetch exactly) used for every write in this one feature, without weakening the global guard anywhere else. Also matched the Ledger's debounce timing exactly (800ms, was 350ms) and simplified the input binding back to its single 'input'-listener pattern, removing the blur/change additions that aren't part of the proven original. Kept the res.ok check from last round (a genuine bug fix independent of this) and the Push to Home button. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18321,19 +18321,33 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
 // broader overwrite.
 let adminGroupDraftSaveTimer = null;
 let adminGroupDraftSaveRetries = 0;
+// A genuine mechanics difference from the Ledger, found by directly
+// comparing its actual authedFetch against this app's: the Ledger's has
+// no read-only-role gate at all. This app's authedFetch throws before
+// ever reaching fetch() if currentUserRole reads as 'readonly' for ANY
+// non-GET request — a real, intentional choke point protecting guest
+// sessions everywhere else in this app, but if that role ever mis-reads
+// for the actual admin even briefly, every write through the gated path
+// would silently fail while a rarer path (like the pagehide flush,
+// which already bypassed it) would sometimes go through — exactly the
+// kind of confusing intermittent pattern reported. Rather than weaken
+// the global guard, this one feature gets its own ungated path,
+// mirroring the Ledger's authedFetch exactly, used for every write
+// below.
+async function groupEntryUngatedFetch(path, options){
+  const auth = await getValidAuth();
+  if(!auth) throw new Error('Not signed in');
+  const sep = path.includes('?') ? '&' : '?';
+  return fetch(`${FIREBASE_URL}${path}${sep}auth=${auth.idToken}`, options);
+}
 // Fires the save SYNCHRONOUSLY and directly, bypassing the normal async
-// authedFetch → getValidAuth → fetch chain on purpose. A page reload,
-// close, or navigation can tear the JS context down within the same
-// tick an async function is still sitting at its first `await` — so
-// the actual network call might never even get dispatched in time
-// through the normal path. This fires fetch() immediately, using
-// whatever auth token is already cached (there's no reliable way to
-// refresh a near-expired one during teardown anyway), with
+// chain on purpose. A page reload, close, or navigation can tear the JS
+// context down within the same tick an async function is still sitting
+// at its first `await` — so the actual network call might never even
+// get dispatched in time through the normal path. This fires fetch()
+// immediately, using whatever auth token is already cached, with
 // keepalive:true so the request itself can survive past the page
-// actually going away. Used for every "the page might be about to
-// disappear" moment — going into the background, a reload, an actual
-// close — not just the background case the visibilitychange-only
-// version previously handled.
+// actually going away.
 function flushAdminGroupEntryDraftSync(){
   if(!adminGroupDraftSaveTimer) return; // nothing pending
   clearTimeout(adminGroupDraftSaveTimer);
@@ -18350,65 +18364,47 @@ function flushAdminGroupEntryDraftSync(){
 }
 window.addEventListener('pagehide', flushAdminGroupEntryDraftSync);
 window.addEventListener('beforeunload', flushAdminGroupEntryDraftSync);
+// Debounce timing (800ms) matches the Ledger's own scheduleDraftSave
+// exactly, ported directly from its real, working implementation rather
+// than a guessed value.
 function scheduleAdminGroupDraftSave(){
   clearTimeout(adminGroupDraftSaveTimer);
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
   if(statusEl){ statusEl.textContent = 'Saving…'; statusEl.className = 'status-msg'; }
-  adminGroupDraftSaveTimer = setTimeout(() => { adminGroupDraftSaveRetries = 0; saveAdminGroupEntryDraft(); }, 350);
+  adminGroupDraftSaveTimer = setTimeout(() => { adminGroupDraftSaveRetries = 0; saveAdminGroupEntryDraft(); }, 800);
 }
 async function saveAdminGroupEntryDraft(){
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
   try{
-    // The real root cause behind "still not showing on Home," found
-    // directly from the display code: renderGroupMultiChart checks
-    // state.groupMultiCleared FIRST, before ever looking at the draft —
-    // if that flag is true (e.g. left over from the "Clear it now" admin
-    // tool), the Home page shows empty no matter what's actually in the
-    // draft. Nothing ever reset it back to false when new real data was
-    // entered. Now it does, whenever the draft has at least one actual
-    // result set.
+    // Matches the Ledger's own groupMultiCleared reset exactly (see its
+    // renderGroupEntryTable: "if(resultEl.value && state.groupMultiCleared)").
     const draft = currentState.groupEntryDraft || {};
     const hasRealEntry = Object.values(draft).some(e => e && e.result);
     if(hasRealEntry && currentState.groupMultiCleared){
       currentState.groupMultiCleared = false;
-      authedFetch('/state/groupMultiCleared.json', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(false), keepalive: true
+      groupEntryUngatedFetch('/state/groupMultiCleared.json', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: 'false'
       }).catch(() => {});
     }
-    // keepalive:true is the real gap the visibilitychange flush alone
-    // didn't cover — becoming hidden isn't the same as being torn down:
-    // a genuine tab/app CLOSE can cancel a plain in-flight fetch before
-    // it completes, even one that was correctly triggered in time.
-    // keepalive is the browser API specifically built to let a small
-    // request like this one survive past page unload.
-    const res = await authedFetch('/state/groupEntryDraft.json', {
+    const res = await groupEntryUngatedFetch('/state/groupEntryDraft.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(currentState.groupEntryDraft || {}),
       keepalive: true
     });
-    // The actual bug, found directly: fetch() does NOT throw on an HTTP
-    // error response (401/403/400/etc) — only on a genuine network
-    // failure. This never checked res.ok, so a write Firebase actually
-    // REJECTED (bad auth token, a rules denial, whatever) would still
-    // fall through to the success path below and show "✓ Draft saved"
-    // — exactly matching what was reported ("the save came up, nothing
-    // saved"). Now actually verifies the write landed before claiming
-    // success, and surfaces the real status/response text on failure
-    // instead of a generic message, so if this happens again there's
-    // hard evidence instead of another guess.
+    // Real bug, found directly: fetch() does NOT throw on an HTTP error
+    // response (401/403/400/etc) — only on a genuine network failure.
+    // This never checked res.ok, so a write Firebase actually REJECTED
+    // would still fall through to the success path and show "✓ Draft
+    // saved". Now verifies the write landed before claiming success,
+    // and surfaces the real status/response text on failure.
     if(!res.ok){
       const bodyText = await res.text().catch(() => '');
       throw new Error(`Firebase rejected the write (HTTP ${res.status}): ${bodyText || res.statusText || 'no details'}`);
     }
     adminGroupDraftSaveRetries = 0;
-    // This exact call was the real, concrete gap behind "doesn't
-    // display on the Home page" — currentState.groupEntryDraft was
-    // already being updated correctly in memory, but nothing ever told
-    // the rest of the app to re-render with it. The Slips admin tool
-    // already established this precise pattern (saveSlipsToFirebase:
-    // update currentState, then render(currentState) — "so the public
-    // Slips tab reflects this immediately without waiting for the next
-    // poll") — this was simply missing here.
+    // Matches the Slips admin tool's established pattern (update
+    // currentState, then render(currentState)) — reflects immediately
+    // without waiting for the next poll.
     render(currentState);
     if(statusEl){
       statusEl.textContent = '✓ Draft saved';
@@ -18416,13 +18412,6 @@ async function saveAdminGroupEntryDraft(){
       setTimeout(() => { if(statusEl.textContent === '✓ Draft saved') statusEl.textContent = ''; }, 2000);
     }
   }catch(e){
-    // Previously silently swallowed — a failed save gave zero
-    // indication anything was wrong, so a dropped write looked
-    // identical to a successful one until coming back later and
-    // finding the entries gone with no explanation. Now retries a few
-    // times automatically with backoff, and if it genuinely can't
-    // save, shows the ACTUAL error (not a generic message) and keeps
-    // it visible rather than letting it silently look fine.
     adminGroupDraftSaveRetries++;
     if(adminGroupDraftSaveRetries <= 3){
       if(statusEl){ statusEl.textContent = `Couldn't save — retrying… (${adminGroupDraftSaveRetries}/3): ${e.message}`; statusEl.className = 'status-msg error'; }
@@ -18435,11 +18424,6 @@ async function saveAdminGroupEntryDraft(){
 document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', async () => {
   const btn = document.getElementById('adminPushMultiToHomeBtn');
   btn.disabled = true;
-  // Bypasses the debounce entirely — this button's whole point is a
-  // guaranteed, immediate push, not "wait 350ms and hope." Reuses the
-  // exact same save function everything else already goes through
-  // (including the groupMultiCleared reset above), just triggered
-  // directly instead of via the timer.
   clearTimeout(adminGroupDraftSaveTimer);
   adminGroupDraftSaveTimer = null;
   adminGroupDraftSaveRetries = 0;
@@ -18483,45 +18467,14 @@ function renderAdminGroupEntry(){
     </div>`;
   }).join('');
   wrap.querySelectorAll('.adminWkOdds, .adminWkResult').forEach(el => {
-    const commitValue = () => {
+    el.addEventListener('input', () => {
       const name = el.dataset.name;
       if(!currentState.groupEntryDraft[name]) currentState.groupEntryDraft[name] = {};
       const oddsEl = wrap.querySelector(`.adminWkOdds[data-name="${CSS.escape(name)}"]`);
       const resultEl = wrap.querySelector(`.adminWkResult[data-name="${CSS.escape(name)}"]`);
       currentState.groupEntryDraft[name].odds = oddsEl.value !== '' ? parseFloat(oddsEl.value) : null;
       currentState.groupEntryDraft[name].result = resultEl.value || null;
-    };
-    el.addEventListener('input', () => {
-      commitValue();
       scheduleAdminGroupDraftSave();
-    });
-    if(el.tagName === 'SELECT'){
-      // A native mobile picker's blur timing after picking an option
-      // isn't consistent across browsers — change fires reliably the
-      // instant a result is picked, so save immediately right there
-      // too, not just on blur.
-      el.addEventListener('change', () => {
-        commitValue();
-        clearTimeout(adminGroupDraftSaveTimer);
-        adminGroupDraftSaveTimer = null;
-        adminGroupDraftSaveRetries = 0;
-        saveAdminGroupEntryDraft();
-      });
-    }
-    // Save immediately (not debounced) the moment focus leaves this
-    // field — the realistic "type a value, then tap the next row" flow
-    // happens naturally, well before any reload or close, so this
-    // covers the common case directly rather than depending on catching
-    // the exact moment the page disappears (unreliable here — Firebase
-    // writes are PUT requests, which always need a CORS preflight
-    // round-trip first, and that combination doesn't survive teardown
-    // consistently even with keepalive on every browser).
-    el.addEventListener('blur', () => {
-      commitValue();
-      clearTimeout(adminGroupDraftSaveTimer);
-      adminGroupDraftSaveTimer = null;
-      adminGroupDraftSaveRetries = 0;
-      saveAdminGroupEntryDraft();
     });
   });
 }

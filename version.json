@@ -1,8 +1,8 @@
 {
-  "version": "2026-09-08.102",
+  "version": "2026-09-08.103",
   "date": "2026-09-08",
   "changes": [
-    "Found the real bug in Group Multi Entry's save: fetch() doesn't throw on HTTP error responses, only network failures — a write Firebase actually rejected could still show 'Draft saved'. Now checks and surfaces the real error",
-    "Video Poker: reverted to independent per-hand decks (5 hands = 5 decks) and independent per-hand Hold pills"
+    "Directly compared against the real Ledger app's Group Multi Entry code and ported its exact working mechanics — found the Ledger's write path has no read-only-role gate at all, while this app's did, which could silently block writes for the admin if that role ever mis-read even briefly",
+    "Added a dedicated ungated write path for this feature, matched the Ledger's exact debounce timing (800ms), and simplified back to its proven input-only save trigger"
   ]
 }
