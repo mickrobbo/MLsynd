@@ -1,7 +1,7 @@
 {
-  "version": "2026-09-08.90",
+  "version": "2026-09-08.91",
   "date": "2026-09-08",
   "changes": [
-    "Fixed Group Multi Entry's draft auto-save silently swallowing failures with no feedback — now shows Saving/Saved/Couldn't-save status, retries automatically, and flushes immediately if the app is backgrounded mid-edit"
+    "Fixed the remaining gap in Group Multi Entry's draft save: added keepalive so the save request can survive an actual app/tab close, not just being backgrounded"
   ]
 }

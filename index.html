@@ -3504,7 +3504,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.90"; // Fixed a real bug reported directly: Group Multi Entry's draft auto-save had a bare catch(e){} — a failed write was silently swallowed with zero indication anything was wrong, so a dropped save looked identical to a successful one until coming back later to find the entries gone. Added a visible Saving/Saved/Couldn't-save status, automatic retries with backoff on failure, and a flush-on-backgrounding safety net (visibilitychange) so a still-pending 800ms debounce can't get stranded when the app is switched away from or the phone locks. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.91"; // Fixed the real remaining gap in Group Multi Entry's draft save, reported directly ("when I closed the bets went away"): the previous fix flushed a pending save on visibilitychange, but becoming hidden isn't the same as being torn down — a genuine tab/app CLOSE can still cancel a plain in-flight fetch before it completes, even one triggered in time. Added keepalive:true to the save request, the browser API specifically built to let a small request like this survive past page unload. Confirmed the auth check it depends on (getValidAuth) is fast in the normal case (local check only, network round-trip only when the token is genuinely near-expiry), so this reliably covers the common close-while-editing scenario. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -18240,9 +18240,16 @@ function scheduleAdminGroupDraftSave(){
 async function saveAdminGroupEntryDraft(){
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
   try{
+    // keepalive:true is the real gap the visibilitychange flush alone
+    // didn't cover — becoming hidden isn't the same as being torn down:
+    // a genuine tab/app CLOSE can cancel a plain in-flight fetch before
+    // it completes, even one that was correctly triggered in time.
+    // keepalive is the browser API specifically built to let a small
+    // request like this one survive past page unload.
     await authedFetch('/state/groupEntryDraft.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentState.groupEntryDraft || {})
+      body: JSON.stringify(currentState.groupEntryDraft || {}),
+      keepalive: true
     });
     adminGroupDraftSaveRetries = 0;
     if(statusEl){
