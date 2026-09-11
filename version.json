@@ -1,10 +1,7 @@
 {
-  "version": "2026-09-08.98",
+  "version": "2026-09-08.100",
   "date": "2026-09-08",
   "changes": [
-    "Fixed the real spacing bug in the shared pill-picker row used by Slots/Baccarat/Video Poker (Clear Chips / Auto Play area)",
-    "Video Poker: fixed a bug where a losing hand in multi-hand mode was silently dropped from the outcome summary",
-    "Video Poker: slowed the card-deal animation and added auto-scroll to the table when Draw is pressed",
-    "Video Poker: polished the multi-hand row display"
+    "Video Poker: each hand in multi-hand mode now has its own independent Hold pills, no longer sharing the base hand's holds"
   ]
 }

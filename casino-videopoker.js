@@ -112,7 +112,7 @@ function vpRenderHand(animate, animateIdx){
     const isRed = c.suit === '♥' || c.suit === '♦';
     const willAnimate = animate && animateSet.includes(i);
     const orderInAnim = animateSet.indexOf(i);
-    const delay = willAnimate ? Math.max(0, orderInAnim) * 240 : 0;
+    const delay = willAnimate ? Math.max(0, orderInAnim) * 450 : 0;
     if(willAnimate) setTimeout(bjPlayCardSound, delay);
     const heldGlow = vpHeld[i] ? ' pc-held-glow' : '';
     return `<div class="vp-card-col">
@@ -132,11 +132,14 @@ function vpRenderHand(animate, animateIdx){
     });
   });
 }
-// Additional hands render smaller and read-only (no Hold pills — holds
-// only ever apply via the base hand above, propagated to every hand
-// identically). Each gets its own small result label once Draw
-// resolves, so a win on hand 3 while hands 1/2 miss is clearly visible
-// per-hand, not just folded into one combined total.
+// Each additional hand now has its own independent hold pills, not
+// shared with the base hand — a deliberate departure from how real
+// multi-hand video poker machines work (they always use one shared
+// hold across every hand, since the whole mechanic is "same decision,
+// parallel draws"), done per direct request. Each hand still gets its
+// own small result label once Draw resolves, so a win on hand 3 while
+// hands 1/2 miss is clearly visible per-hand, not just folded into one
+// combined total.
 function vpRenderExtraHands(animate){
   const area = document.getElementById('vpMultiHandsArea');
   if(!area) return;
@@ -144,12 +147,30 @@ function vpRenderExtraHands(animate){
   area.innerHTML = vpExtraHands.map((eh, hi) => {
     const cardsHtml = eh.hand.map((c, i) => {
       const isRed = c.suit === '♥' || c.suit === '♦';
-      const delay = animate ? i * 180 : 0;
+      const delay = animate ? i * 450 : 0;
       if(animate) setTimeout(bjPlayCardSound, delay);
-      return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''} vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
+      const heldGlow = eh.held[i] ? ' pc-held-glow' : '';
+      return `<div class="vp-card-col">
+        <div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''}${heldGlow} vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>
+        <button type="button" class="vp-hold-pill vp-extra-hold-pill${eh.held[i] ? ' held' : ''}" data-hand="${hi}" data-idx="${i}">${eh.held[i] ? 'Held' : 'Hold'}</button>
+      </div>`;
     }).join('');
     return `<div class="vp-extra-hand-row"><div class="vp-extra-hand-cards">${cardsHtml}</div><span class="vp-extra-hand-result" id="vpExtraResult${hi}"></span></div>`;
   }).join('');
+  document.querySelectorAll('#vpMultiHandsArea .vp-extra-hold-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(vpStage !== 'dealt') return;
+      const hi = parseInt(btn.dataset.hand, 10);
+      const idx = parseInt(btn.dataset.idx, 10);
+      const eh = vpExtraHands[hi];
+      if(!eh) return;
+      eh.held[idx] = !eh.held[idx];
+      vpPlayHoldClick(eh.held[idx]);
+      vpRenderExtraHands(false);
+      const cardEl = document.querySelectorAll('#vpMultiHandsArea .vp-extra-hand-row')[hi].querySelectorAll('.playing-card')[idx];
+      if(cardEl){ cardEl.classList.remove('pc-hold-pop'); void cardEl.offsetWidth; cardEl.classList.add('pc-hold-pop'); }
+    });
+  });
 }
 function vpHighlightPayout(key){
   VP_PAYTABLE.forEach(p => document.getElementById('vpPayRow_' + p.key).classList.remove('vp-hit'));
@@ -184,7 +205,7 @@ async function vpDeal(){
   // held when Draw happens.
   vpExtraHands = [];
   for(let i = 1; i < vpHandCount; i++){
-    vpExtraHands.push({ hand: vpHand.map(c => ({ ...c })), deck: vpBuildExtraHandDeck(vpHand) });
+    vpExtraHands.push({ hand: vpHand.map(c => ({ ...c })), deck: vpBuildExtraHandDeck(vpHand), held: [false, false, false, false, false] });
   }
   vpRenderExtraHands(true);
   document.getElementById('vpDealBtn').style.display = 'none';
@@ -201,14 +222,14 @@ async function vpDraw(){
   const drawnIdx = vpHeld.map((h, i) => h ? -1 : i).filter(i => i !== -1);
   vpHand = vpHand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
   vpRenderHand(true, drawnIdx);
-  // Every extra hand replaces its own non-held positions from its own
-  // independently-built deck — this is the actual moment hands can
-  // start showing different cards from each other.
+  // Every extra hand now replaces its own non-held positions using its
+  // OWN held selection (independent of the base hand's), from its own
+  // independently-built deck.
   vpExtraHands.forEach(eh => {
-    eh.hand = eh.hand.map((c, i) => vpHeld[i] ? c : eh.deck.shift());
+    eh.hand = eh.hand.map((c, i) => eh.held[i] ? c : eh.deck.shift());
   });
   vpRenderExtraHands(true);
-  await bjWait(drawnIdx.length * 240 + 350);
+  await bjWait(drawnIdx.length * 450 + 500);
   // A brief suspenseful pause before the result actually lands — the
   // reveal itself already happened, but announcing the result instantly
   // undercut the moment; this gives it a beat to breathe first.
