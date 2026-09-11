@@ -16,6 +16,37 @@ let vpHand = [];
 let vpHeld = [false, false, false, false, false];
 let vpStage = 'idle'; // idle | dealt
 let vpLastBet = null; // snapshot of the last hand's bet amount, for the Same Bet button
+
+// ---- Multi-hand mode — the signature real-video-poker feature: deal
+// ONE base hand, hold whichever cards you like, and every additional
+// hand draws its OWN independent replacement cards for the non-held
+// positions from its own separate deck (so hands can and do diverge
+// after the draw) while sharing the exact same held cards throughout.
+// Bet is per-hand — 3-hand mode costs 3x, 5-hand mode costs 5x.
+let vpHandCount = 1;
+let vpExtraHands = []; // [{ hand: [5 cards], deck: [...] }, ...] — length vpHandCount-1
+document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if(vpStage !== 'idle') return; // can't change mid-hand
+    vpHandCount = parseInt(btn.dataset.hands, 10) || 1;
+    document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+    vpUpdateTotalBetHint();
+  });
+});
+function vpUpdateTotalBetHint(){
+  const el = document.getElementById('vpTotalBetHint');
+  if(!el) return;
+  const perHand = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
+  el.textContent = vpHandCount > 1 ? `${perHand} XP/hand × ${vpHandCount} hands — total bet ${perHand * vpHandCount} XP` : '';
+}
+// Builds an independent deck for one additional hand — a fresh shuffle
+// with the currently-dealt 5 cards removed first, so its own
+// replacement pool for non-held positions can never duplicate a card
+// already showing in that same hand.
+function vpBuildExtraHandDeck(dealtHand){
+  const deck = bjFreshDeck();
+  return deck.filter(c => !dealtHand.some(d => d.rank === c.rank && d.suit === c.suit));
+}
 function vpBuildPaytable(){
   const table = document.getElementById('vpPaytable');
   table.innerHTML = VP_PAYTABLE.map(p => `<tr id="vpPayRow_${p.key}"><td>${p.label}</td><td style="text-align:right;">${p.mult}:1</td></tr>`).join('');
@@ -101,6 +132,25 @@ function vpRenderHand(animate, animateIdx){
     });
   });
 }
+// Additional hands render smaller and read-only (no Hold pills — holds
+// only ever apply via the base hand above, propagated to every hand
+// identically). Each gets its own small result label once Draw
+// resolves, so a win on hand 3 while hands 1/2 miss is clearly visible
+// per-hand, not just folded into one combined total.
+function vpRenderExtraHands(animate){
+  const area = document.getElementById('vpMultiHandsArea');
+  if(!area) return;
+  if(vpExtraHands.length === 0){ area.innerHTML = ''; return; }
+  area.innerHTML = vpExtraHands.map((eh, hi) => {
+    const cardsHtml = eh.hand.map((c, i) => {
+      const isRed = c.suit === '♥' || c.suit === '♦';
+      const delay = animate ? i * 90 : 0;
+      if(animate) setTimeout(bjPlayCardSound, delay);
+      return `<div class="playing-card ${isRed ? 'pc-red' : 'pc-black'}${animate ? ' pc-dealt' : ''} vp-extra-card" style="animation-delay:${delay}ms;">${bjPipHtml(c)}</div>`;
+    }).join('');
+    return `<div class="vp-extra-hand-row"><div class="vp-extra-hand-cards">${cardsHtml}</div><span class="vp-extra-hand-result" id="vpExtraResult${hi}"></span></div>`;
+  }).join('');
+}
 function vpHighlightPayout(key){
   VP_PAYTABLE.forEach(p => document.getElementById('vpPayRow_' + p.key).classList.remove('vp-hit'));
   if(key) document.getElementById('vpPayRow_' + key).classList.add('vp-hit');
@@ -113,59 +163,136 @@ async function vpDeal(){
   errEl.textContent = '';
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
   if(amount <= 0){ errEl.textContent = 'Add some chips first.'; dealBtn.disabled = false; return; }
-  if(amount > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`; dealBtn.disabled = false; return; }
+  const totalBet = amount * vpHandCount;
+  if(totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total bet is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (${amount.toLocaleString()} × ${vpHandCount} hands = ${totalBet.toLocaleString()}).`; dealBtn.disabled = false; return; }
   const balance = await getXPBalance();
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; dealBtn.disabled = false; return; }
-  if(amount > balance){ errEl.textContent = `You only have ${balance} XP.`; dealBtn.disabled = false; return; }
+  if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; dealBtn.disabled = false; return; }
 
   vpDeck = bjFreshDeck();
   vpHand = vpDeck.splice(0, 5);
   vpHeld = [false, false, false, false, false];
   vpStage = 'dealt';
   document.getElementById('vpOutcomeMsg').textContent = '';
+  document.getElementById('vpOutcomeMsg').classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  document.getElementById('vpOutcomeMsg').style.color = '';
   vpHighlightPayout(null);
   vpRenderHand(true);
+  // Every extra hand starts as an exact copy of the base hand's 5 cards
+  // (same physical deal, parallel realities) with its own independent
+  // deck ready to supply new cards for whichever positions end up not
+  // held when Draw happens.
+  vpExtraHands = [];
+  for(let i = 1; i < vpHandCount; i++){
+    vpExtraHands.push({ hand: vpHand.map(c => ({ ...c })), deck: vpBuildExtraHandDeck(vpHand) });
+  }
+  vpRenderExtraHands(true);
   document.getElementById('vpDealBtn').style.display = 'none';
   document.getElementById('vpDrawBtn').style.display = 'inline-block';
   document.getElementById('vpChipRail').style.pointerEvents = 'none';
   document.getElementById('vpChipRail').style.opacity = '.5';
+  document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(b => { b.disabled = true; });
 }
 async function vpDraw(){
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
+  const totalBet = amount * vpHandCount;
   document.getElementById('vpDrawBtn').disabled = true;
   const drawnIdx = vpHeld.map((h, i) => h ? -1 : i).filter(i => i !== -1);
   vpHand = vpHand.map((c, i) => vpHeld[i] ? c : vpDeck.shift());
   vpRenderHand(true, drawnIdx);
+  // Every extra hand replaces its own non-held positions from its own
+  // independently-built deck — this is the actual moment hands can
+  // start showing different cards from each other.
+  vpExtraHands.forEach(eh => {
+    eh.hand = eh.hand.map((c, i) => vpHeld[i] ? c : eh.deck.shift());
+  });
+  vpRenderExtraHands(true);
   await bjWait(drawnIdx.length * 130 + 250);
+  // A brief suspenseful pause before the result actually lands — the
+  // reveal itself already happened, but announcing the result instantly
+  // undercut the moment; this gives it a beat to breathe first.
+  if(typeof slotsPlayAnticipationRiser === 'function') slotsPlayAnticipationRiser();
+  await bjWait(350);
 
   const result = vpEvaluateHand(vpHand);
   const outcomeEl = document.getElementById('vpOutcomeMsg');
   const panelEl = document.getElementById('casinoGameVideoPoker');
-  let delta;
+  let totalDelta = 0;
+  let baseIsBigHand = false;
   if(result){
     const pay = VP_PAYTABLE.find(p => p.key === result.key);
-    delta = amount * pay.mult;
+    const delta = amount * pay.mult;
+    totalDelta += delta;
     vpHighlightPayout(result.key);
-    outcomeEl.textContent = `${result.label}!  +${delta} XP`;
+    baseIsBigHand = result.key === 'royal' || result.key === 'straightf';
+  } else {
+    totalDelta -= amount;
+  }
+  // Each extra hand evaluates and pays independently, its own small
+  // result label so a win on one hand among several is clearly visible,
+  // not just buried in the combined total.
+  const extraLabels = [];
+  vpExtraHands.forEach((eh, hi) => {
+    const r = vpEvaluateHand(eh.hand);
+    const labelEl = document.getElementById('vpExtraResult' + hi);
+    if(r){
+      const pay = VP_PAYTABLE.find(p => p.key === r.key);
+      const delta = amount * pay.mult;
+      totalDelta += delta;
+      extraLabels.push(`Hand ${hi + 2}: ${r.label} +${delta}`);
+      if(labelEl){ labelEl.textContent = `${r.label} +${delta}`; labelEl.style.color = 'var(--win)'; }
+    } else {
+      totalDelta -= amount;
+      if(labelEl){ labelEl.textContent = 'No win'; labelEl.style.color = 'var(--muted)'; }
+    }
+  });
+
+  const baseLabel = result ? `${result.label} +${amount * VP_PAYTABLE.find(p => p.key === result.key).mult}` : 'No win';
+  const allParts = [vpHandCount > 1 ? `Hand 1: ${baseLabel}` : baseLabel, ...extraLabels];
+  outcomeEl.textContent = (vpHandCount > 1 ? allParts.join(' · ') + ' — ' : '') + `Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`;
+
+  // Big Win escalation — tiered by total win relative to the total bet
+  // across every hand, same convention as Slots/Roulette. A Royal Flush
+  // trivially clears EPIC on its own (250x), so this naturally replaces
+  // the old flat "jackpot" treatment rather than needing a separate
+  // carve-out for it.
+  const winRatio = totalBet > 0 ? totalDelta / totalBet : 0;
+  let bigWinTier = null;
+  if(totalDelta > 0){
+    if(winRatio >= 40) bigWinTier = 'EPIC';
+    else if(winRatio >= 15) bigWinTier = 'SUPER';
+    else if(winRatio >= 5) bigWinTier = 'BIG';
+  }
+  if(bigWinTier){
     outcomeEl.style.color = '';
-    const isBigWin = result.key === 'royal' || result.key === 'straightf';
-    outcomeEl.classList.add(isBigWin ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
+    outcomeEl.classList.add('bj-outcome-jackpot');
+    casinoShowBigWinBanner('vp', bigWinTier, totalDelta);
+    if(baseIsBigHand && typeof slotsPlayCoinCascade === 'function') slotsPlayCoinCascade(true);
+  } else if(totalDelta > 0){
+    outcomeEl.style.color = '';
+    outcomeEl.classList.add('bj-outcome-pop');
     bjPlayChime(true);
-    slotsPlayCoinCascade(isBigWin || result.key === 'quads');
-    bjLaunchConfetti(outcomeEl, isBigWin ? 42 : 20);
+    if(typeof slotsPlayCoinCascade === 'function') slotsPlayCoinCascade(false);
+    bjLaunchConfetti(outcomeEl, 20);
     panelEl.classList.remove('pc-flash-gold'); void panelEl.offsetWidth; panelEl.classList.add('pc-flash-gold');
     setTimeout(() => panelEl.classList.remove('pc-flash-gold'), 700);
   } else {
-    delta = -amount;
-    outcomeEl.textContent = `No pair of Tens or better — ${delta} XP`;
     outcomeEl.style.color = 'var(--loss)';
     outcomeEl.classList.add('bj-outcome-pop');
     bjPlayChime(false);
     panelEl.classList.add('pc-shake'); setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
-  await awardXP(delta, delta > 0 ? `Video Poker — ${result.label}` : 'Video Poker loss', { silent: true });
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+
+  if(totalDelta > 0){
+    // Offered instead of immediately awarding the win — collecting (or
+    // busting) in the gamble screen is what actually credits it, same
+    // pattern Slots' own gamble feature already uses.
+    vpOfferGamble(totalDelta);
+  } else if(totalDelta < 0){
+    await awardXP(totalDelta, 'Video Poker loss', { silent: true });
+    const bal = await getXPBalance();
+    updateXPBalanceDisplay(bal);
+  }
 
   vpStage = 'idle';
   document.getElementById('vpDrawBtn').disabled = false;
@@ -174,6 +301,7 @@ async function vpDraw(){
   document.getElementById('vpDealBtn').style.display = 'inline-block';
   document.getElementById('vpChipRail').style.pointerEvents = '';
   document.getElementById('vpChipRail').style.opacity = '';
+  document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(b => { b.disabled = false; });
   vpLastBet = amount;
   document.getElementById('vpSameBetBtn').disabled = false;
 }
@@ -191,18 +319,17 @@ document.getElementById('vpBetInput').addEventListener('input', (e) => {
   if(!chip) return;
   chip.textContent = e.target.value || '0';
   chip.classList.remove('pc-chip-pulse'); void chip.offsetWidth; chip.classList.add('pc-chip-pulse');
+  vpUpdateTotalBetHint();
 });
 // Click the chip to type any custom amount — same pattern Mines already
 // uses (minesChipDisplay), added here per request. No round-active guard
 // needed: unlike Mines, this bet input was never locked/disabled mid-hand
 // in the first place, so this is exactly as free to edit as it already
 // was via the number input itself.
-document.getElementById('vpChipDisplay').addEventListener('click', () => {
+document.getElementById('vpChipDisplay').addEventListener('click', async () => {
   const input = document.getElementById('vpBetInput');
-  const entry = prompt('Bet amount (XP):', input.value || '50');
-  if(entry === null) return;
-  const amount = Math.floor(Number(entry));
-  if(!(amount > 0)) return;
+  const amount = await openChipAmountModal(input.value || '50', 'Bet amount (XP)');
+  if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
 });
@@ -264,3 +391,112 @@ function animateValue(id, newVal, formatFn){
   }
   el._animId = requestAnimationFrame(tick);
 }
+
+// ---- Double or Nothing — classic video poker feature, mirroring the
+// proven structure of Slots' own gamble feature closely (same card-face
+// element pattern, same round cap reasoning) rather than reinventing it,
+// but as its own dedicated implementation since mixing state between
+// two different games' gamble systems risks real bugs.
+let vpGamblePot = 0;
+let vpGambleRound = 0;
+let vpGambleBusy = false;
+const VP_GAMBLE_MAX_ROUNDS = 5;
+function vpOfferGamble(winAmount){
+  vpGamblePot = winAmount;
+  vpGambleRound = 0;
+  vpGambleBusy = false;
+  const betPanel = document.getElementById('vpBetPanel');
+  const gambleArea = document.getElementById('vpGambleArea');
+  if(betPanel) betPanel.style.display = 'none';
+  if(gambleArea) gambleArea.style.display = 'block';
+  document.getElementById('vpGambleCardFace').textContent = '';
+  vpGambleUpdateDisplay();
+  vpGambleSetButtonsDisabled(false);
+}
+function vpGambleUpdateDisplay(){
+  document.getElementById('vpGamblePotVal').textContent = vpGamblePot.toLocaleString();
+  const hintEl = document.getElementById('vpGambleRoundHint');
+  if(hintEl){
+    hintEl.textContent = vpGambleRound >= VP_GAMBLE_MAX_ROUNDS
+      ? 'Max streak reached — collect to bank it'
+      : `Round ${vpGambleRound + 1} of ${VP_GAMBLE_MAX_ROUNDS}`;
+  }
+}
+function vpGambleSetButtonsDisabled(disabled){
+  const redBtn = document.getElementById('vpGambleRedBtn');
+  const blackBtn = document.getElementById('vpGambleBlackBtn');
+  const collectBtn = document.getElementById('vpGambleCollectBtn');
+  if(redBtn) redBtn.disabled = disabled;
+  if(blackBtn) blackBtn.disabled = disabled;
+  if(collectBtn) collectBtn.disabled = disabled;
+  const atCap = vpGambleRound >= VP_GAMBLE_MAX_ROUNDS;
+  if(redBtn) redBtn.style.display = atCap ? 'none' : '';
+  if(blackBtn) blackBtn.style.display = atCap ? 'none' : '';
+}
+async function vpGambleGuess(color){
+  if(vpGambleBusy) return;
+  vpGambleBusy = true;
+  vpGambleSetButtonsDisabled(true);
+  const statusEl = document.getElementById('vpGambleStatus');
+  if(statusEl) statusEl.textContent = '';
+  const cardEl = document.getElementById('vpGambleCard');
+  const faceEl = document.getElementById('vpGambleCardFace');
+  const isRed = Math.random() < 0.5;
+  const actualColor = isRed ? 'red' : 'black';
+  const won = color === actualColor;
+  const suit = isRed ? (Math.random() < 0.5 ? '♥' : '♦') : (Math.random() < 0.5 ? '♠' : '♣');
+  cardEl.classList.remove('slots-gamble-flip'); void cardEl.offsetWidth; cardEl.classList.add('slots-gamble-flip');
+  bjPlayChipSound();
+  await bjWait(600);
+  faceEl.textContent = suit;
+  faceEl.style.color = isRed ? '#e05a4e' : 'var(--chalk)';
+  const panelEl = document.getElementById('casinoGameVideoPoker');
+  if(won){
+    vpGamblePot *= 2;
+    vpGambleRound++;
+    vpGambleUpdateDisplay();
+    bjPlayChime(true);
+    panelEl.classList.remove('pc-flash-gold'); void panelEl.offsetWidth; panelEl.classList.add('pc-flash-gold');
+    setTimeout(() => panelEl.classList.remove('pc-flash-gold'), 700);
+    if(statusEl) statusEl.textContent = `Correct! Doubled to ${vpGamblePot.toLocaleString()} XP.`;
+    vpGambleBusy = false;
+    vpGambleSetButtonsDisabled(false);
+  } else {
+    bjPlayChime(false);
+    panelEl.classList.add('pc-shake'); setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
+    if(statusEl) statusEl.textContent = `Wrong — lost the lot.`;
+    vpGamblePot = 0;
+    await bjWait(900);
+    await vpGambleClose();
+  }
+}
+async function vpGambleCollect(){
+  if(vpGambleBusy) return;
+  vpGambleBusy = true;
+  vpGambleSetButtonsDisabled(true);
+  const statusEl = document.getElementById('vpGambleStatus');
+  if(statusEl) statusEl.textContent = '';
+  try{
+    if(vpGamblePot > 0){
+      await awardXP(vpGamblePot, 'Video Poker gamble collect', { silent: true });
+    }
+    await vpGambleClose(); // clears vpGambleBusy on success
+  }catch(e){
+    console.error('Video Poker gamble collect failed:', e);
+    if(statusEl) statusEl.textContent = 'Could not collect — check your connection and try again.';
+    vpGambleBusy = false;
+    vpGambleSetButtonsDisabled(false);
+  }
+}
+async function vpGambleClose(){
+  const gambleArea = document.getElementById('vpGambleArea');
+  const betPanel = document.getElementById('vpBetPanel');
+  if(gambleArea) gambleArea.style.display = 'none';
+  if(betPanel) betPanel.style.display = 'block';
+  vpGambleBusy = false;
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
+}
+document.getElementById('vpGambleRedBtn').addEventListener('click', () => vpGambleGuess('red'));
+document.getElementById('vpGambleBlackBtn').addEventListener('click', () => vpGambleGuess('black'));
+document.getElementById('vpGambleCollectBtn').addEventListener('click', vpGambleCollect);

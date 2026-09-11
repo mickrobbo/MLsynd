@@ -1221,6 +1221,14 @@
   /* ---- Video Poker ---- */
   .vp-hand-row{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
   .vp-card-col{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+  /* ---- Multi-hand mode: additional hands render smaller, below the
+     main hand, read-only (no hold pills — holds only ever apply via the
+     base hand above). ---- */
+  .vp-multi-hands-area{ display:flex; flex-direction:column; gap:6px; margin-top:10px; align-items:center; }
+  .vp-extra-hand-row{ display:flex; align-items:center; gap:10px; }
+  .vp-extra-hand-cards{ display:flex; gap:3px; }
+  .vp-extra-card{ width:30px !important; height:43px !important; border-radius:4px !important; }
+  .vp-extra-hand-result{ font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; color:var(--muted); min-width:90px; }
   .vp-hold-pill{
     padding:5px 12px; font-size:10.5px; border-radius:999px; cursor:pointer;
     background:var(--felt-2); border:1px solid var(--brass-dim); color:var(--muted); font-weight:700;
@@ -1762,6 +1770,39 @@
   .roulette-total-staked{ text-align:center; font-size:11px; color:var(--muted); margin-top:6px; }
   .rt-cell.building{ background:var(--brass-dim) !important; color:#2a2005 !important; box-shadow:inset 0 0 0 2px rgba(255,255,255,.4); }
   .roulette-history{ display:flex; gap:5px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+  .roulette-hotcold-area{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+  .roulette-hotcold-row{ display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; }
+  .roulette-hotcold-lbl{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; color:var(--muted); margin-right:2px; }
+
+  /* ---- Baccarat: Big Road scoreboard ---- */
+  .bac-bigroad-scroll{ overflow-x:auto; margin-top:6px; padding-bottom:2px; }
+  .bac-bigroad{ display:flex; gap:3px; min-height:26px; }
+  .bac-bigroad-col{ display:flex; flex-direction:column; gap:3px; flex-shrink:0; }
+  .bac-bigroad-cell{
+    width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:11px; color:#fff; position:relative;
+    box-shadow: inset 0 2px 3px rgba(255,255,255,.25), inset 0 -2px 3px rgba(0,0,0,.35), 0 2px 4px rgba(0,0,0,.4);
+  }
+  .bac-bigroad-p{ background: rgb(91,141,190); }
+  .bac-bigroad-b{ background: #8c2a22; }
+  .bac-bigroad-t{ background: #1f7a4a; }
+  .bac-bigroad-tie{
+    position:absolute; bottom:-3px; right:-3px; min-width:12px; height:12px; padding:0 2px; border-radius:6px;
+    background:#1f7a4a; border:1px solid rgba(255,255,255,.4); font-size:8px; display:flex; align-items:center; justify-content:center;
+  }
+  /* ---- Baccarat: win streak banner ---- */
+  .bac-streak-banner{
+    text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px;
+    padding:6px 10px; border-radius:8px; margin-top:8px;
+    animation: outcomeGlow .5s cubic-bezier(.3,1.6,.4,1) both;
+  }
+  .bac-streak-warm{ background: rgba(255,138,92,.15); color:#ff8a5c; border:1px solid rgba(255,138,92,.4); }
+  .bac-streak-hot{ background: rgba(255,214,120,.18); color:var(--brass-light); border:1px solid rgba(255,214,120,.5); }
+  .bac-streak-epic{
+    background: linear-gradient(90deg, rgba(255,138,92,.2), rgba(217,179,255,.2), rgba(255,214,120,.2));
+    background-size:200% auto; animation: outcomeGlow .5s cubic-bezier(.3,1.6,.4,1) both, slotsRetriggerShimmer 1.2s linear infinite .5s;
+    color:var(--brass-light); border:1px solid rgba(255,214,120,.6); font-size:15px;
+  }
   .roulette-history-chip{
     width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center;
     font-size:9px; font-weight:700; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.5); flex-shrink:0;

@@ -1,10 +1,9 @@
 {
-  "version": "2026-09-08.95",
+  "version": "2026-09-08.96",
   "date": "2026-09-08",
   "changes": [
-    "Slots: added a Wild symbol that substitutes for other symbols to help complete lines, with its own strong native payout",
-    "Slots: added a Progressive Jackpot — grows from every real bet, paid out by landing 5 wilds on an active payline",
-    "Slots: added Big Win/Super Win/Epic Win escalating banners with an animated count-up, based on win size relative to your bet",
-    "Slots: richer sound design — ambient reel hum, an anticipation riser, and cha-ching count-up ticks"
+    "Baccarat: added Auto Play, a real Big Road scoreboard, an escalating win-streak banner, and richer sound (tension riser + distinct Natural sound)",
+    "Roulette: added a Hot & Cold numbers tracker and tiered Big Win banners",
+    "Video Poker: added Multi-hand mode (3/5 hands), a Double-or-nothing gamble after a win, and a Big Win banner with richer reveal sound"
   ]
 }

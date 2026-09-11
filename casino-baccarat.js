@@ -138,6 +138,12 @@ async function bacHit(){
     bacPulseChip(document.getElementById('bacPlayerChip'), bacHandTotal(bacPlayerHand));
     bacStep = 'needBankerCheck';
   } else if(bacStep === 'needBankerCheck'){
+    // The actual moment of truth — everything else in the hand was
+    // mechanical, but whether Banker draws here is what decides it. A
+    // brief pause + rising tone gives it real weight before the card
+    // (or lack of one) lands, instead of it resolving instantly.
+    if(typeof slotsPlayAnticipationRiser === 'function') slotsPlayAnticipationRiser();
+    await bjWait(450);
     const bt = bacHandTotal(bacBankerHand);
     if(bacBankerShouldDraw(bt, bacPlayerDrew, bacPlayerThirdVal)){
       const c = bacDeck.pop(); bacBankerHand.push(c);
@@ -156,16 +162,87 @@ async function bacHit(){
     hitBtn.disabled = false;
   }
 }
+// Big Road — the real baccarat scoreboard convention: consecutive same
+// winner stacks downward in one column; the moment the winner changes,
+// a new column starts at the top; a Tie doesn't move the position at
+// all, it just marks the most recent existing cell (shown as a small
+// green tie count badge). Rebuilt fresh from bacHistory every time
+// rather than maintained as separate parallel state, so it can never
+// drift out of sync with the actual hand results. Deliberately skips
+// the traditional "dragon tail" wrap-around rule for streaks longer
+// than 6 in a row (a real but fairly advanced Big Road refinement) —
+// a column just keeps growing downward instead, still fully readable.
+function bacBuildBigRoad(history){
+  const columns = [];
+  history.forEach(result => {
+    if(result === 'T'){
+      if(columns.length === 0){ columns.push({ winner: 'T', cells: [{ ties: 0 }] }); return; }
+      const lastCol = columns[columns.length - 1];
+      const lastCell = lastCol.cells[lastCol.cells.length - 1];
+      lastCell.ties = (lastCell.ties || 0) + 1;
+      return;
+    }
+    const lastCol = columns[columns.length - 1];
+    if(lastCol && lastCol.winner === result){
+      lastCol.cells.push({ ties: 0 });
+    } else {
+      columns.push({ winner: result, cells: [{ ties: 0 }] });
+    }
+  });
+  return columns;
+}
 function bacRenderHistory(){
   const el = document.getElementById('bacHistory');
   if(!el) return;
-  // Traditional baccarat scoreboard colours — blue Player, red Banker,
-  // green Tie — not this app's usual win/loss green/red, since this
-  // strip tracks who WON the hand, not whether the player personally won.
-  el.innerHTML = bacHistory.slice(-10).reverse().map(r => {
-    const bg = r === 'P' ? 'rgb(91,141,190)' : (r === 'B' ? '#8c2a22' : '#1f7a4a');
-    return `<div class="roulette-history-chip" style="background:${bg};">${r}</div>`;
+  const columns = bacBuildBigRoad(bacHistory);
+  el.innerHTML = columns.map(col => {
+    const cellsHtml = col.cells.map((cell, i) => {
+      const isLast = i === col.cells.length - 1;
+      const tieBadge = (cell.ties > 0) ? `<span class="bac-bigroad-tie">${cell.ties > 1 ? cell.ties : ''}</span>` : '';
+      const cls = col.winner === 'P' ? 'bac-bigroad-p' : (col.winner === 'B' ? 'bac-bigroad-b' : 'bac-bigroad-t');
+      return `<div class="bac-bigroad-cell ${cls}">${col.winner === 'T' ? 'T' : (col.winner === 'P' ? 'P' : 'B')}${tieBadge}</div>`;
+    }).join('');
+    return `<div class="bac-bigroad-col">${cellsHtml}</div>`;
   }).join('');
+  // Always scrolled to the most recent column, same as a real scoreboard
+  // reading left-to-right with "now" on the right edge.
+  el.scrollLeft = el.scrollWidth;
+  bacUpdateStreakBanner();
+}
+// Win streak — current run of the same winner from the tail of
+// bacHistory, ties skipped (a tie doesn't break a streak, same
+// convention Big Road itself uses for not moving position on a tie).
+// Escalates visually/audibly the longer it goes.
+function bacCurrentStreak(history){
+  let streak = 0, winner = null;
+  for(let i = history.length - 1; i >= 0; i--){
+    const r = history[i];
+    if(r === 'T') continue;
+    if(winner === null){ winner = r; streak = 1; }
+    else if(r === winner){ streak++; }
+    else break;
+  }
+  return { winner, streak };
+}
+let bacLastStreakTier = null;
+function bacUpdateStreakBanner(){
+  const banner = document.getElementById('bacStreakBanner');
+  if(!banner) return;
+  const { winner, streak } = bacCurrentStreak(bacHistory);
+  if(!winner || streak < 3){ banner.style.display = 'none'; bacLastStreakTier = null; return; }
+  const who = winner === 'P' ? 'PLAYER' : 'BANKER';
+  const tier = streak >= 7 ? 'epic' : (streak >= 5 ? 'hot' : 'warm');
+  banner.className = 'bac-streak-banner bac-streak-' + tier;
+  banner.textContent = (tier === 'epic' ? '🔥🔥🔥 ' : tier === 'hot' ? '🔥🔥 ' : '🔥 ') + `${who} on a ${streak}-streak!`;
+  banner.style.display = 'block';
+  if(tier !== bacLastStreakTier){
+    // Only fires on the hand that actually crosses into a new tier, not
+    // every hand the streak continues at the same level — otherwise a
+    // long streak would replay the same celebration over and over.
+    bjPlayChime(true);
+    if(tier === 'epic') bjLaunchConfetti(banner, 35);
+    bacLastStreakTier = tier;
+  }
 }
 async function bacResolve(){
   const playerTotal = bacHandTotal(bacPlayerHand);
@@ -199,6 +276,12 @@ async function bacResolve(){
   bacRenderHistory();
 
   const tableEl = document.getElementById('bacTableArea');
+  if(isNatural){
+    // A Natural is a genuinely special moment in baccarat regardless of
+    // which side it favoured — its own distinct layered sound, on top
+    // of whatever the win/loss chime below already plays.
+    if(typeof slotsPlayCoinCascade === 'function') slotsPlayCoinCascade(false);
+  }
   if(delta > 0){
     bjPlayChime(true);
     tableEl.classList.remove('pc-flash-gold'); void tableEl.offsetWidth; tableEl.classList.add('pc-flash-gold');
@@ -252,4 +335,54 @@ document.getElementById('bacChipDisplay').addEventListener('click', async () => 
   if(amount == null) return;
   input.value = amount;
   input.dispatchEvent(new Event('input'));
+});
+
+// ---- Auto Play — repeats whatever bet is currently active (type +
+// amount, exactly what's selected/entered right now, same as a manual
+// Deal would use) hand after hand, up to a chosen count. Baccarat has
+// no bonus feature to stop early for the way Slots does, so this simply
+// runs the count down, pausing between each reveal so a hand is
+// actually watchable rather than a blur, and stops early on a genuine
+// bet-validation failure (insufficient balance, etc.) instead of
+// hammering the same error repeatedly.
+let bacAutoPlayCount = 10;
+let bacAutoPlayRemaining = 0;
+let bacAutoPlayRunning = false;
+document.querySelectorAll('#bacAutoPlayCountRow .craps-winmode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if(bacAutoPlayRunning) return;
+    bacAutoPlayCount = parseInt(btn.dataset.auto, 10) || 10;
+    document.querySelectorAll('#bacAutoPlayCountRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+async function bacRunAutoPlay(){
+  bacAutoPlayRemaining = bacAutoPlayCount;
+  const btn = document.getElementById('bacAutoPlayBtn');
+  const errEl = document.getElementById('bacBetError');
+  while(bacAutoPlayRunning && bacAutoPlayRemaining > 0){
+    if(errEl) errEl.textContent = '';
+    btn.textContent = `⏹ Stop (${bacAutoPlayRemaining} left)`;
+    await bacDeal(); // starts the hand, reveals the first card
+    if(errEl && errEl.textContent) break; // bet validation failed — stop rather than repeat the same error
+    // Keep revealing cards, same as tapping Hit repeatedly, with a
+    // pause between each so it's actually watchable.
+    while(bacStep !== 'done'){
+      await bjWait(550);
+      await bacHit();
+    }
+    await bjWait(1000); // let the outcome/celebration actually be seen
+    bacAutoPlayRemaining--;
+  }
+  bacAutoPlayRunning = false;
+  if(btn){ btn.textContent = '🔄 Auto Play'; btn.classList.remove('slots-auto-running'); }
+}
+document.getElementById('bacAutoPlayBtn').addEventListener('click', () => {
+  const btn = document.getElementById('bacAutoPlayBtn');
+  if(bacAutoPlayRunning){
+    bacAutoPlayRunning = false; // stops after the hand currently in flight finishes
+    return;
+  }
+  bacAutoPlayRunning = true;
+  btn.classList.add('slots-auto-running');
+  bacRunAutoPlay();
 });

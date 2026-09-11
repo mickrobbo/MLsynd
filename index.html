@@ -1407,8 +1407,14 @@
         <button type="button" class="table-chip chip-250" data-val="250">250</button>
         <button type="button" class="chip-clear-btn" data-target="bacBetInput">Clear Chips</button>
       </div>
+      <div class="craps-winmode-row" id="bacAutoPlayCountRow">
+        <button type="button" class="craps-winmode-btn" data-auto="5">5</button>
+        <button type="button" class="craps-winmode-btn active" data-auto="10">10</button>
+        <button type="button" class="craps-winmode-btn" data-auto="20">20</button>
+      </div>
       <div class="deal-row" style="margin-top:10px;">
         <button type="button" id="bacSameBetBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
+        <button type="button" id="bacAutoPlayBtn" class="pill-btn pill-btn-action">🔄 Auto Play</button>
         <button type="button" id="bacDealBtn" class="pill-btn pill-btn-primary">Deal</button>
       </div>
       <div id="bacBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
@@ -1427,7 +1433,9 @@
         <div id="bacPlayerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
       </div>
       <div id="bacOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:14px; min-height:24px;"></div>
-      <div class="roulette-history" id="bacHistory"></div>
+      <div id="bacStreakBanner" class="bac-streak-banner" style="display:none;"></div>
+      <div class="hint" style="margin-top:8px; margin-bottom:2px; text-align:center;">Big Road</div>
+      <div class="bac-bigroad-scroll"><div id="bacHistory" class="bac-bigroad"></div></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
         <button type="button" id="bacHitBtn" class="pill-btn" style="padding:8px 18px; display:none;">Hit</button>
         <button type="button" id="bacNewHandBtn" class="pill-btn" style="padding:8px 18px; display:none;">New hand</button>
@@ -1440,6 +1448,10 @@
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="roulette">📜 Rules</button></div>
     <div class="panel" id="rouletteWheelPanel" style="text-align:center;">
       <div class="roulette-wheel-wrap">
+        <div class="slots-bigwin-banner" id="rouletteBigWinBanner" style="display:none;">
+          <div class="slots-bigwin-label" id="rouletteBigWinLabel">BIG WIN</div>
+          <div class="slots-bigwin-value" id="rouletteBigWinValue">0 XP</div>
+        </div>
         <div class="roulette-bezel-outer"></div>
         <div class="roulette-wheel" id="rouletteWheel"></div>
         <div class="roulette-pocket-dividers"></div>
@@ -1457,6 +1469,7 @@
       <div class="croupier-caption" id="rouletteCroupierMsg"></div>
       <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent spins</div>
       <div class="roulette-history" id="rouletteHistory"></div>
+      <div id="rouletteHotColdArea" class="roulette-hotcold-area" style="display:none;"></div>
     </div>
     <div class="panel" id="rouletteBetPanel">
       <div class="hint" style="margin-bottom:8px;">American table — pick a chip below (or tap the chip readout to type any amount — no limit), tap a number or outside bet to place it, then Spin. Tap adjacent numbers to build Split/Street/Corner/Double Street bets.</div>
@@ -1747,16 +1760,28 @@
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="videopoker">📜 Rules</button></div>
     <div class="pc-table-rail" style="text-align:center;">
       <div class="bj-table">
+      <div class="slots-bigwin-banner" id="vpBigWinBanner" style="display:none;">
+        <div class="slots-bigwin-label" id="vpBigWinLabel">BIG WIN</div>
+        <div class="slots-bigwin-value" id="vpBigWinValue">0 XP</div>
+      </div>
       <div class="vp-hand-row" id="vpHandRow"></div>
+      <div id="vpMultiHandsArea" class="vp-multi-hands-area"></div>
       <div id="vpOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
       <table class="vp-paytable" id="vpPaytable"></table>
       </div>
     </div>
     <div class="panel" id="vpBetPanel">
+      <div class="hint" style="margin-bottom:2px;">Hands</div>
+      <div class="craps-winmode-row" id="vpHandCountRow">
+        <button type="button" class="craps-winmode-btn active" data-hands="1">1</button>
+        <button type="button" class="craps-winmode-btn" data-hands="3">3</button>
+        <button type="button" class="craps-winmode-btn" data-hands="5">5</button>
+      </div>
       <div style="display:flex; justify-content:center; margin-top:4px;">
         <div class="bj-chip" id="vpChipDisplay">50</div>
         <input type="number" id="vpBetInput" min="1" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
       </div>
+      <div class="hint" id="vpTotalBetHint" style="margin-top:2px;"></div>
       <div class="chip-rail" data-target="vpBetInput" id="vpChipRail">
         <button type="button" class="table-chip chip-5" data-val="5">5</button>
         <button type="button" class="table-chip chip-10" data-val="10">10</button>
@@ -1772,6 +1797,18 @@
         <button type="button" id="vpDrawBtn" class="pill-btn pill-btn-primary" style="display:none;">Draw</button>
       </div>
       <div id="vpBetError" class="status-msg error" style="margin-top:8px; text-align:center;"></div>
+    </div>
+    <div class="panel" id="vpGambleArea" style="display:none; text-align:center;">
+      <div class="hint">Double or nothing — guess the colour of the next card. Right and your win doubles; wrong and you lose it. Collect anytime.</div>
+      <div class="don-coin-wrap"><div class="playing-card pc-back slots-gamble-card" id="vpGambleCard"><span class="slots-gamble-card-face" id="vpGambleCardFace"></span></div></div>
+      <div class="hint" style="margin-top:2px;">Current pot: <b id="vpGamblePotVal">0</b> XP</div>
+      <div class="hint" id="vpGambleRoundHint" style="margin-top:2px;"></div>
+      <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+        <button type="button" id="vpGambleRedBtn" class="pill-btn pill-btn-action slots-gamble-red">Red (2x)</button>
+        <button type="button" id="vpGambleBlackBtn" class="pill-btn pill-btn-action slots-gamble-black">Black (2x)</button>
+      </div>
+      <button type="button" id="vpGambleCollectBtn" class="pill-btn pill-btn-primary" style="width:100%; margin-top:10px;">💰 Collect</button>
+      <div id="vpGambleStatus" class="status-msg" style="margin-top:6px;"></div>
     </div>
     </div>
 
@@ -3509,7 +3546,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.95"; // Slots excitement pass, per request — 4 features: (1) Wild symbol (7️⃣) substitutes for any regular symbol to complete lines, own strong native payout between 💎 and 👑 in rarity, distinct shimmer on cells where it helped win. (2) Progressive Jackpot — separate Firebase node from the existing Casino Pot system on purpose, 2% of every real bet feeds it, landing 5 wilds on an active payline pays the whole pool and resets it to a 5,000 XP floor, gets the single biggest celebration in the game. (3) Big Win escalation — BIG/SUPER/EPIC banners with an animated count-up, tiered by win size relative to actual stake (10x/25x/50x), sits below jackpot/MEGA in celebration priority so they never clash. (4) Richer sound — ambient hum while reels spin, an anticipation riser synced to the existing near-miss tease, cha-ching count-up ticks. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.96"; // Baccarat/Roulette/Video Poker improvements pass, per request. Baccarat: Auto Play (repeats current bet, pauses between reveals, stops cleanly on insufficient balance); real Big Road scoreboard (bead-plate grid — same winner stacks a column, a change starts a new column, ties mark the cell — replaces the old simple chip strip); escalating win-streak banner (3/5/7+ tiers, only celebrates on tier-crossing, not every hand); richer sound (tension riser before the true moment-of-truth card, distinct Natural sound). Roulette: Hot & Cold numbers tracker (last 30 spins); tiered Big Win banners scaled to roulette's bigger payouts. Video Poker: Multi-hand mode (3/5 hands from one deal, held cards shared, each hand draws independently, own bet per hand); classic Double-or-nothing card gamble after a win (mirrors Slots' proven gamble structure); Big Win banner + richer reveal sound (anticipation riser before the result lands). Built a shared casinoShowBigWinBanner() function so Roulette/VP don't duplicate Slots' banner logic. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7799,6 +7836,39 @@ document.getElementById('chipAmountModalConfirmBtn').addEventListener('click', (
 document.getElementById('chipAmountModalInput').addEventListener('keydown', (e) => {
   if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('chipAmountModalConfirmBtn').click(); }
 });
+// Shared Big Win escalation — Slots has its own dedicated version
+// (slotsShowBigWinBanner, already shipped and working) with its own
+// tier thresholds tuned for line-multiplier payouts; this generic
+// version is for any OTHER game to reuse rather than duplicating the
+// same banner logic per game. Works off element IDs `${prefix}BigWinBanner`
+// / `${prefix}BigWinLabel` / `${prefix}BigWinValue` — each game just
+// needs those three elements with its own prefix, matching HTML
+// structure to Slots' banner (see .slots-bigwin-banner CSS, reused
+// as-is here rather than styled per-game).
+const CASINO_BIGWIN_TIERS = {
+  BIG:   { text: '🎉 BIG WIN',   cls: 'slots-bigwin-big',   confetti: 30, chimes: 1 },
+  SUPER: { text: '🔥 SUPER WIN', cls: 'slots-bigwin-super', confetti: 50, chimes: 2 },
+  EPIC:  { text: '💥 EPIC WIN',  cls: 'slots-bigwin-epic',  confetti: 75, chimes: 3 }
+};
+function casinoShowBigWinBanner(prefix, tier, amount){
+  const banner = document.getElementById(prefix + 'BigWinBanner');
+  const label = document.getElementById(prefix + 'BigWinLabel');
+  const valueEl = document.getElementById(prefix + 'BigWinValue');
+  if(!banner || !label || !valueEl) return;
+  const config = CASINO_BIGWIN_TIERS[tier];
+  label.textContent = config.text;
+  banner.className = 'slots-bigwin-banner ' + config.cls;
+  banner.style.display = 'flex';
+  valueEl._rawVal = 0;
+  valueEl.textContent = '0 XP';
+  animateValue(prefix + 'BigWinValue', amount, v => Math.round(v).toLocaleString() + ' XP');
+  if(typeof slotsPlayCountUpTicks === 'function') slotsPlayCountUpTicks();
+  bjLaunchConfetti(banner, config.confetti);
+  for(let i = 0; i < config.chimes; i++){
+    setTimeout(() => bjPlayChime(true), i * 350);
+  }
+  setTimeout(() => { banner.style.display = 'none'; }, 2600);
+}
 const CASINO_POT_ELIGIBLE_PLAYS = 20;
 const CASINO_POT_LAST_SEEN_KEY = 'mlsynd_last_seen_pot_month';
 // Soft, once-per-session nudge if losses stack up in one sitting — purely

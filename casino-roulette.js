@@ -447,6 +447,35 @@ function rouletteRenderHistory(){
     const bg = color === 'green' ? '#1f7a4a' : (color === 'red' ? '#8c2a22' : '#141414');
     return `<div class="roulette-history-chip" style="background:${bg};">${pocket}</div>`;
   }).join('');
+  rouletteUpdateHotCold();
+}
+// Hot & Cold — frequency across the last 30 spins (a rolling recent
+// window, same idea real roulette rooms display, not all-time history —
+// "hot/cold" is meant to reflect a recent trend). Hidden until there are
+// at least 15 spins in the sample; with fewer than that, "cold" is
+// trivially just "hasn't hit yet" for most of the wheel, not a
+// meaningful pattern.
+const ROULETTE_ALL_POCKETS = ['0', '00', ...Array.from({ length: 36 }, (_, i) => String(i + 1))];
+function rouletteUpdateHotCold(){
+  const area = document.getElementById('rouletteHotColdArea');
+  if(!area) return;
+  const sample = rouletteHistory.slice(-30);
+  if(sample.length < 15){ area.style.display = 'none'; return; }
+  const counts = {};
+  ROULETTE_ALL_POCKETS.forEach(p => { counts[p] = 0; });
+  sample.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
+  const sorted = ROULETTE_ALL_POCKETS.slice().sort((a, b) => counts[b] - counts[a]);
+  const hot = sorted.slice(0, 3);
+  const cold = sorted.slice(-3).reverse();
+  const chip = (p) => {
+    const color = rouletteColorOf(p);
+    const bg = color === 'green' ? '#1f7a4a' : (color === 'red' ? '#8c2a22' : '#141414');
+    return `<div class="roulette-history-chip" style="background:${bg};" title="${counts[p]} hit${counts[p] === 1 ? '' : 's'} in the last ${sample.length} spins">${p}</div>`;
+  };
+  area.innerHTML =
+    `<div class="roulette-hotcold-row"><span class="roulette-hotcold-lbl">🔥 Hot</span>${hot.map(chip).join('')}</div>` +
+    `<div class="roulette-hotcold-row"><span class="roulette-hotcold-lbl">🧊 Cold</span>${cold.map(chip).join('')}</div>`;
+  area.style.display = 'block';
 }
 // Scrolls the given element into view smoothly — used right as a Spin/Roll
 // starts so the animation is actually on-screen even if the person just
@@ -530,7 +559,21 @@ async function rouletteSpinInner(){
 
   const panelEl = document.getElementById('casinoGameRoulette');
   const wheelPanelEl = document.getElementById('rouletteWheelPanel');
+  // Big Win escalation — tiered by win size relative to what was
+  // actually staked this spin (not a fixed XP amount), same convention
+  // as Slots. A straight-up hit (35:1) will usually clear EPIC on its
+  // own; a modest outside-bet win stays a normal flash below BIG's
+  // threshold, same as it always has.
+  const winRatio = totalStaked > 0 ? totalDelta / totalStaked : 0;
+  let bigWinTier = null;
   if(totalDelta > 0){
+    if(winRatio >= 20) bigWinTier = 'EPIC';
+    else if(winRatio >= 10) bigWinTier = 'SUPER';
+    else if(winRatio >= 5) bigWinTier = 'BIG';
+  }
+  if(bigWinTier){
+    casinoShowBigWinBanner('roulette', bigWinTier, totalDelta);
+  } else if(totalDelta > 0){
     bjPlayChime(true);
     wheelPanelEl.classList.remove('pc-flash-gold'); void wheelPanelEl.offsetWidth; wheelPanelEl.classList.add('pc-flash-gold');
     bjLaunchConfetti(resultEl, isJackpot ? 42 : 22);
