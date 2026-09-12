@@ -1067,6 +1067,18 @@
       </div>
     </div>
 
+    <!-- Slots' own progressive jackpot, surfaced here too (per request)
+         so it's visible before ever opening the Slots game itself — a
+         lightweight read via slotsFetchJackpot(), independent of
+         whether the Slots panel has been built yet. -->
+    <div class="panel" id="slotsJackpotLobbyPanel">
+      <h2 class="casino-panel-h2">🎰 Slots Jackpot</h2>
+      <div class="casino-pot-glow">
+        <div class="casino-pot-total" id="slotsJackpotLobbyVal">5,000 XP</div>
+        <div class="casino-pot-sub">progressive — 3% of every slots bet feeds it</div>
+      </div>
+    </div>
+
     <!-- Merged Leaderboard + Floor — one panel, two tabs, instead of two
          separate panels doing overlapping jobs. -->
     <div class="panel" id="casinoMembersPanel">
@@ -2023,7 +2035,7 @@
       </div>
       <div class="pong-cabinet" id="pongTableRail">
         <div class="pong-arena-wrap">
-          <canvas id="pongCanvas" width="340" height="220"></canvas>
+          <canvas id="pongCanvas" width="480" height="310"></canvas>
           <div id="pongLevelUpFlash" class="pong-levelup-flash" style="display:none;"></div>
           <div id="pongGameOverOverlay" class="pong-overlay" style="display:none;">
             <div class="pong-overlay-title">Run Over</div>
@@ -2039,6 +2051,11 @@
         <h2>XP Tiers</h2>
         <div class="hint">Only your best score of the day counts — crossing a new tier on a later run today pays just the difference, not the whole tier again.</div>
         <table class="vp-paytable" id="pongTierTable"></table>
+      </div>
+      <div class="panel">
+        <h2>🏆 Best Rounds</h2>
+        <div class="hint">All-time top runs against the CPU, across the whole group.</div>
+        <table class="vp-paytable" id="pongLeaderboardTable"></table>
       </div>
     </div>
 
@@ -3601,7 +3618,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.111"; // Found and fixed a real bug reported directly: opening Pong showed Crash's UI at the same time. Root cause — the original Pong insertion accidentally dropped the opening <div id="casinoGameCrash"> wrapper tag entirely, leaving all of Crash's content unwrapped by any .casino-game-panel container, so the tab-switch logic's hide-all-panels step had nothing to hide it with — it was always visible regardless of which game was selected. Restored the missing wrapper; verified the whole file's div nesting balances again (1855 opens = 1855 closes). Also gave Pong the requested polish pass: bigger arena (320×200 → 340×220), moved out of the ornate gold conic-bezel .pc-table-rail (meant for a single compact table, not this game's whole layout) into a dedicated, much thinner-bordered .pong-cabinet, added a ball trail + paddle glow + radial background, and replaced the smooth per-hit speed multiplier with genuine stepped difficulty — a new "speed tier" every 5 returns, CPU max-speed and ball-speed both jump at once, with its own level-up flash + audio sweep so the step reads as a real moment. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.112"; // Pong: table bumped bigger again (340x220 → 480x310, all speed/aim constants scaled ~1.4x to match so difficulty feels identical, just larger — CSS max-width:100%/height:auto lets it still fit narrow phones), added a subtle "MLSYND CASINO" wordmark baked into the canvas draw (low-opacity ctx.fillText behind gameplay, since a DOM watermark can't show through an opaque canvas), XP tiers increased 10x (500/1500/4000/10000/20000 → 5000/15000/40000/100000/200000), and added a group-wide all-time "Best Rounds" leaderboard (/games/pongLeaderboard/{uid}, separate from the daily-reset XP-gating score) shown under the XP Tiers table. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9681,6 +9698,7 @@ document.querySelector('[data-tab="casino"]').addEventListener('click', async ()
   const balPromise = getXPBalance();
   refreshWeeklyBonusButton();
   renderCasinoPotPanel();
+  slotsFetchJackpot();
   maybeShowCasinoPotCelebration();
   updateXPBalanceDisplay(await balPromise);
   await hubPromise;

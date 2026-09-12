@@ -99,21 +99,31 @@ function slotsUpdateMachineBalanceDisplay(){
 // ---- Progressive Jackpot — a shared pool across the whole syndicate,
 // separate from the existing Casino Pot system on purpose (that one
 // already has its own distribution schedule, fines, and history —
-// mixing this into it would just be confusing). 2% of every real
-// (non-free-spin) bet feeds it; landing 5 wilds on an active payline
-// pays out the whole thing and resets it to a floor, not zero, so it
-// never looks "broken/empty" right after a win. Uses a read-then-write
-// pattern rather than a true atomic increment (the REST API doesn't
-// expose Firebase's transaction primitive the way the SDK does) — a
-// real tradeoff if two people spin in the exact same instant, but
-// low-risk for an ~11-person friendly group, same reasoning already
-// accepted elsewhere in this app for similar simplifications.
+// mixing this into it would just be confusing). 3% of every real
+// (non-free-spin) bet feeds it — win or lose, per request (previously
+// tried as 5% of losses only; reverted back to a bet-based cut). Landing
+// 5 wilds on an active payline pays out the whole thing and resets it to
+// a floor, not zero, so it never looks "broken/empty" right after a win
+// — already a genuinely rare outcome (needs a wild in the exact row on
+// all 5 reels of one active line; wild is one of the rarer weighted
+// symbols), so this stays "hard to win, not impossible" without needing
+// a separate random roll bolted on top. Uses a read-then-write pattern
+// rather than a true atomic increment (the REST API doesn't expose
+// Firebase's transaction primitive the way the SDK does) — a real
+// tradeoff if two people spin in the exact same instant, but low-risk
+// for an ~11-person friendly group, same reasoning already accepted
+// elsewhere in this app for similar simplifications.
 const SLOTS_JACKPOT_SEED = 5000;
-const SLOTS_JACKPOT_CONTRIBUTION_RATE = 0.02;
+const SLOTS_JACKPOT_CONTRIBUTION_RATE = 0.03;
 let slotsJackpotAmount = SLOTS_JACKPOT_SEED;
 function slotsUpdateJackpotDisplay(){
   const el = document.getElementById('slotsJackpotVal');
   if(el) el.textContent = Math.round(slotsJackpotAmount).toLocaleString();
+  // Lobby copy — lives on the Casino landing hub under the Casino Pot
+  // panel, not inside the Slots game panel itself, so it needs updating
+  // here too rather than assuming the Slots tab is even open.
+  const lobbyEl = document.getElementById('slotsJackpotLobbyVal');
+  if(lobbyEl) lobbyEl.textContent = Math.round(slotsJackpotAmount).toLocaleString() + ' XP';
 }
 async function slotsFetchJackpot(){
   try{
@@ -125,6 +135,8 @@ async function slotsFetchJackpot(){
   }
   slotsUpdateJackpotDisplay();
 }
+// Takes the BET amount (not the outcome) — 3% of every real spin feeds
+// the jackpot regardless of whether that spin wins or loses.
 async function slotsContributeToJackpot(betAmount){
   const contribution = Math.max(1, Math.round(betAmount * SLOTS_JACKPOT_CONTRIBUTION_RATE));
   slotsJackpotAmount += contribution; // optimistic local update, shown immediately

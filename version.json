@@ -1,8 +1,13 @@
 {
-  "version": "2026-09-08.111",
-  "date": "2026-09-08",
+  "version": "2026-09-12.112",
+  "date": "2026-09-12",
   "changes": [
-    "Fixed a real bug: opening Pong showed Crash's UI at the same time — the original Pong build had accidentally deleted Crash's own wrapper div",
-    "Pong: bigger table, moved out of the oversized gold border, added ball trail/glow and stepped difficulty every 5 returns"
+    "Pong: bumped bigger again (480x310), all speed/aim constants scaled to match so it plays the same, just larger",
+    "Pong: subtle 'MLSYND CASINO' wordmark baked into the table",
+    "Pong: CPU-challenge XP tiers increased 10x",
+    "Pong: new group-wide all-time 'Best Rounds' leaderboard",
+    "Slots: progressive jackpot now funded by 3% of every real bet, win or lose",
+    "Slots jackpot total now also shown in the Casino lobby, under the Casino Pot panel",
+    "Fixed missing Firebase rules for Pong's saved scores/leaderboard and the Slots jackpot — both were likely failing to save silently"
   ]
 }
