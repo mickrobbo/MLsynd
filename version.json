@@ -1,8 +1,8 @@
 {
-  "version": "2026-09-08.110",
+  "version": "2026-09-08.111",
   "date": "2026-09-08",
   "changes": [
-    "Video Poker: slightly sped up the draw animation as requested",
-    "Added Pong — the first arcade-style skill game, earning XP via best-score-of-the-day (no stake, no risk)"
+    "Fixed a real bug: opening Pong showed Crash's UI at the same time — the original Pong build had accidentally deleted Crash's own wrapper div",
+    "Pong: bigger table, moved out of the oversized gold border, added ball trail/glow and stepped difficulty every 5 returns"
   ]
 }

@@ -2014,15 +2014,17 @@
     <div class="casino-game-panel" id="casinoGamePong" style="display:none;">
       <div class="panel" style="text-align:center;">
         <h2>🏓 Pong</h2>
-        <div class="hint">Rally against the CPU for as long as you can — the ball speeds up with every return, and the CPU can only track it so fast. One miss ends the run. No stake, no risk — only your best score each day earns XP, so practice as much as you like.</div>
+        <div class="hint">Rally against the CPU for as long as you can — the ball speeds up in steps every 5 returns, and the CPU can only track it so fast. One miss ends the run. No stake, no risk — only your best score each day earns XP, so practice as much as you like.</div>
         <div class="mines-status-row" style="margin-top:8px;">
           <div class="mines-status-cell"><span class="lbl">Best Today</span><span class="val" id="pongBestTodayVal">0</span></div>
           <div class="mines-status-cell"><span class="lbl">This Run</span><span class="val" id="pongCurrentScoreVal">0</span></div>
+          <div class="mines-status-cell"><span class="lbl">Speed</span><span class="val" id="pongSpeedTierVal">1</span></div>
         </div>
       </div>
-      <div class="pc-table-rail" id="pongTableRail" style="text-align:center;">
+      <div class="pong-cabinet" id="pongTableRail">
         <div class="pong-arena-wrap">
-          <canvas id="pongCanvas" width="320" height="200"></canvas>
+          <canvas id="pongCanvas" width="340" height="220"></canvas>
+          <div id="pongLevelUpFlash" class="pong-levelup-flash" style="display:none;"></div>
           <div id="pongGameOverOverlay" class="pong-overlay" style="display:none;">
             <div class="pong-overlay-title">Run Over</div>
             <div class="pong-overlay-score" id="pongOverlayScore">0</div>
@@ -2040,6 +2042,7 @@
       </div>
     </div>
 
+    <div class="casino-game-panel" id="casinoGameCrash" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="crash">📜 Rules</button></div>
     <div class="pc-table-rail" id="crashTableRail" style="text-align:center; filter: drop-shadow(0 12px 22px rgba(0,0,0,.5));">
       <div class="craps-table-felt">
@@ -3598,7 +3601,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-08.110"; // Video Poker: trimmed the draw stagger from 450ms to 400ms per request ("slightly speed up") — matches the card's own deal-in animation duration exactly (still no overlap, just no extra buffer past it). Added Pong — the first of a planned "arcade zone" of skill-based games alongside the luck-based casino, chosen from a 3-way pick (Pong/Frogger/Flappy Bird). Rally endlessly against a CPU that tracks the ball with a capped speed + per-approach aim error (beatable, not a flawless wall), ball speeds up on every player return. No stake, since a freely-replayable skill game can't use the bet-and-payout model without being a wide-open farming exploit — instead, same convention as Daily Spin/Weekly Bonus: only the day's best score (AEST) ever converts to XP, and a later run only pays the newly-crossed tier(s), not the whole tier again. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-08.111"; // Found and fixed a real bug reported directly: opening Pong showed Crash's UI at the same time. Root cause — the original Pong insertion accidentally dropped the opening <div id="casinoGameCrash"> wrapper tag entirely, leaving all of Crash's content unwrapped by any .casino-game-panel container, so the tab-switch logic's hide-all-panels step had nothing to hide it with — it was always visible regardless of which game was selected. Restored the missing wrapper; verified the whole file's div nesting balances again (1855 opens = 1855 closes). Also gave Pong the requested polish pass: bigger arena (320×200 → 340×220), moved out of the ornate gold conic-bezel .pc-table-rail (meant for a single compact table, not this game's whole layout) into a dedicated, much thinner-bordered .pong-cabinet, added a ball trail + paddle glow + radial background, and replaced the smooth per-hit speed multiplier with genuine stepped difficulty — a new "speed tier" every 5 returns, CPU max-speed and ball-speed both jump at once, with its own level-up flash + audio sweep so the step reads as a real moment. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

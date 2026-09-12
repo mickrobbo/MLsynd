@@ -19,8 +19,21 @@ let pongBestToday = 0;
 let pongRunning = false;
 let pongScore = 0;
 let pongAnimId = null;
-let pongState = null; // { player:{y}, cpu:{y}, ball:{x,y,vx,vy}, speedMult }
-const PONG_W = 320, PONG_H = 200, PONG_PADDLE_H = 36, PONG_PADDLE_W = 6, PONG_BALL_R = 4;
+let pongState = null; // { player:{y}, cpu:{y,aimError}, ball:{x,y,vx,vy,trail}, speedTier }
+const PONG_W = 340, PONG_H = 220, PONG_PADDLE_H = 40, PONG_PADDLE_W = 7, PONG_BALL_R = 5;
+// Difficulty now steps up in distinct jumps every 5 returns, rather than
+// a smooth per-hit multiplier — a real "stage 2 starts now" moment
+// instead of something only noticeable in hindsight. Each tier bumps
+// both the ball's base speed and the CPU's own max tracking speed, so
+// the CPU staying capped (see pongStep) is what actually makes each new
+// tier a genuine step up in difficulty, not just a faster-looking ball.
+const PONG_RETURNS_PER_TIER = 5;
+const PONG_MAX_SPEED_TIER = 8; // caps the escalation so very long runs stay genuinely playable rather than becoming physically unbeatable
+function pongSpeedTierFor(score){
+  return Math.min(PONG_MAX_SPEED_TIER, 1 + Math.floor(score / PONG_RETURNS_PER_TIER));
+}
+function pongBallSpeedForTier(tier){ return 2.3 + (tier - 1) * 0.42; }
+function pongCpuMaxSpeedForTier(tier){ return 3.0 + (tier - 1) * 0.34; }
 
 function pongBuildTierTable(){
   const table = document.getElementById('pongTierTable');
@@ -49,9 +62,11 @@ function pongResetVisual(){
   const canvas = document.getElementById('pongCanvas');
   if(!canvas) return;
   const ctx = canvas.getContext('2d');
-  pongDrawFrame(ctx, { player: { y: PONG_H / 2 - PONG_PADDLE_H / 2 }, cpu: { y: PONG_H / 2 - PONG_PADDLE_H / 2 }, ball: { x: PONG_W / 2, y: PONG_H / 2 } });
+  pongDrawFrame(ctx, { player: { y: PONG_H / 2 - PONG_PADDLE_H / 2 }, cpu: { y: PONG_H / 2 - PONG_PADDLE_H / 2 }, ball: { x: PONG_W / 2, y: PONG_H / 2, trail: [] } });
   const scoreEl = document.getElementById('pongCurrentScoreVal');
   if(scoreEl) scoreEl.textContent = '0';
+  const tierEl = document.getElementById('pongSpeedTierVal');
+  if(tierEl) tierEl.textContent = '1';
 }
 function pongPlayHitBeep(freq){
   const ctx = bjGetAudioCtx(); if(!ctx) return;
@@ -64,20 +79,38 @@ function pongPlayHitBeep(freq){
   osc.connect(gain); gain.connect(ctx.destination);
   osc.start(now); osc.stop(now + 0.08);
 }
+// A brief rising sweep for the moment a new speed tier actually kicks
+// in — distinct from the flat hit-beep, so stepping up a difficulty
+// level is heard as well as seen (the level-up flash).
+function pongPlayLevelUpSweep(){
+  const ctx = bjGetAudioCtx(); if(!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator(); osc.type = 'triangle';
+  osc.frequency.setValueAtTime(320, now);
+  osc.frequency.exponentialRampToValueAtTime(720, now + 0.18);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.13, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.start(now); osc.stop(now + 0.24);
+}
 function pongStart(){
   if(pongRunning) return;
   pongRunning = true;
   pongScore = 0;
   document.getElementById('pongGameOverOverlay').style.display = 'none';
   document.getElementById('pongCurrentScoreVal').textContent = '0';
+  document.getElementById('pongSpeedTierVal').textContent = '1';
   document.getElementById('pongStartBtn').style.display = 'none';
   scrollIntoViewSmooth('pongTableRail');
   const angle = (Math.random() * 0.6 - 0.3);
+  const startSpeed = pongBallSpeedForTier(1);
   pongState = {
     player: { y: PONG_H / 2 - PONG_PADDLE_H / 2 },
     cpu: { y: PONG_H / 2 - PONG_PADDLE_H / 2, aimError: 0 },
-    ball: { x: PONG_W / 2, y: PONG_H / 2, vx: (Math.random() < 0.5 ? -1 : 1) * 2.1, vy: angle * 3 },
-    speedMult: 1
+    ball: { x: PONG_W / 2, y: PONG_H / 2, vx: (Math.random() < 0.5 ? -1 : 1) * startSpeed, vy: angle * 3, trail: [] },
+    speedTier: 1
   };
   const canvas = document.getElementById('pongCanvas');
   const ctx = canvas.getContext('2d');
@@ -93,20 +126,28 @@ function pongStep(){
   const s = pongState;
   const b = s.ball;
   b.x += b.vx; b.y += b.vy;
+  // Trail: a short fading history of recent ball positions, purely
+  // cosmetic — gives the ball a genuine sense of speed and motion
+  // instead of reading as a dot silently teleporting frame to frame.
+  b.trail.push({ x: b.x, y: b.y });
+  if(b.trail.length > 8) b.trail.shift();
+
   // Bounce off top/bottom walls
   if(b.y - PONG_BALL_R < 0){ b.y = PONG_BALL_R; b.vy = Math.abs(b.vy); }
   if(b.y + PONG_BALL_R > PONG_H){ b.y = PONG_H - PONG_BALL_R; b.vy = -Math.abs(b.vy); }
 
-  // CPU tracks the ball with a capped speed and a per-approach aim
-  // error — this, combined with the ball speeding up over time, is
-  // what makes it beatable rather than a flawless wall. Re-rolled each
-  // time the ball turns back toward the CPU, not every frame, so it
-  // reads as a genuine (if imperfect) read on the shot rather than
-  // jitter.
+  // CPU tracks the ball with a capped speed (tied to the current speed
+  // tier — see PONG_RETURNS_PER_TIER) and a per-approach aim error —
+  // this, combined with the tier escalation, is what makes each step up
+  // in difficulty genuine rather than cosmetic: the CPU's own max speed
+  // only rises a little each tier, while the ball's rises faster,
+  // widening the gap it has to cover. Re-rolled each time the ball turns
+  // back toward the CPU, not every frame, so it reads as a genuine (if
+  // imperfect) read on the shot rather than jitter.
   if(b.vx > 0){
     if(s.cpu.aimError === 0) s.cpu.aimError = (Math.random() * 26 - 13);
     const targetY = b.y + s.cpu.aimError - PONG_PADDLE_H / 2;
-    const cpuMaxSpeed = 3.1;
+    const cpuMaxSpeed = pongCpuMaxSpeedForTier(s.speedTier);
     const diff = targetY - s.cpu.y;
     s.cpu.y += Math.max(-cpuMaxSpeed, Math.min(cpuMaxSpeed, diff));
   } else {
@@ -118,14 +159,22 @@ function pongStep(){
   if(b.vx < 0 && b.x - PONG_BALL_R <= PONG_PADDLE_W + 2){
     if(b.y >= s.player.y && b.y <= s.player.y + PONG_PADDLE_H){
       const hitPos = (b.y - (s.player.y + PONG_PADDLE_H / 2)) / (PONG_PADDLE_H / 2); // -1..1
-      s.speedMult = Math.min(2.6, s.speedMult * 1.045);
-      const speed = 2.1 * s.speedMult;
-      b.vx = Math.abs(speed);
-      b.vy = hitPos * 3.2;
-      b.x = PONG_PADDLE_W + 2 + PONG_BALL_R;
       pongScore++;
+      const newTier = pongSpeedTierFor(pongScore);
+      const tierJustIncreased = newTier > s.speedTier;
+      s.speedTier = newTier;
+      const speed = pongBallSpeedForTier(s.speedTier);
+      b.vx = Math.abs(speed);
+      b.vy = hitPos * (2.6 + s.speedTier * 0.25);
+      b.x = PONG_PADDLE_W + 2 + PONG_BALL_R;
       document.getElementById('pongCurrentScoreVal').textContent = pongScore.toLocaleString();
+      document.getElementById('pongSpeedTierVal').textContent = s.speedTier.toLocaleString();
       pongPlayHitBeep(220);
+      if(tierJustIncreased){
+        pongPlayLevelUpSweep();
+        const flash = document.getElementById('pongLevelUpFlash');
+        if(flash){ flash.style.display = 'block'; flash.classList.remove('pong-levelup-flash'); void flash.offsetWidth; flash.classList.add('pong-levelup-flash'); setTimeout(() => { flash.style.display = 'none'; }, 500); }
+      }
     } else if(b.x - PONG_BALL_R < 0){
       pongGameOver();
       return;
@@ -137,32 +186,56 @@ function pongStep(){
   if(b.vx > 0 && b.x + PONG_BALL_R >= PONG_W - PONG_PADDLE_W - 2){
     if(b.y >= s.cpu.y && b.y <= s.cpu.y + PONG_PADDLE_H){
       const hitPos = (b.y - (s.cpu.y + PONG_PADDLE_H / 2)) / (PONG_PADDLE_H / 2);
-      b.vx = -Math.abs(2.1 * s.speedMult);
-      b.vy = hitPos * 3.2;
+      b.vx = -Math.abs(pongBallSpeedForTier(s.speedTier));
+      b.vy = hitPos * (2.6 + s.speedTier * 0.25);
       b.x = PONG_W - PONG_PADDLE_W - 2 - PONG_BALL_R;
       pongPlayHitBeep(330);
     } else if(b.x + PONG_BALL_R > PONG_W){
       pongScore += 3;
       document.getElementById('pongCurrentScoreVal').textContent = pongScore.toLocaleString();
       pongPlayHitBeep(440);
-      b.x = PONG_W / 2; b.y = PONG_H / 2;
-      b.vx = -Math.abs(2.1 * s.speedMult);
+      b.x = PONG_W / 2; b.y = PONG_H / 2; b.trail = [];
+      b.vx = -Math.abs(pongBallSpeedForTier(s.speedTier));
       b.vy = (Math.random() * 0.6 - 0.3) * 3;
     }
   }
 }
 function pongDrawFrame(ctx, s){
   ctx.clearRect(0, 0, PONG_W, PONG_H);
-  // Centre dashed line
-  ctx.strokeStyle = 'rgba(255,214,120,.25)'; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
+  // Subtle centre dashed line
+  ctx.strokeStyle = 'rgba(255,214,120,.22)'; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
   ctx.beginPath(); ctx.moveTo(PONG_W / 2, 0); ctx.lineTo(PONG_W / 2, PONG_H); ctx.stroke();
   ctx.setLineDash([]);
-  // Paddles
+  // Paddles — rounded ends + a soft glow instead of a flat rectangle
+  ctx.shadowColor = 'rgba(255,214,120,.65)'; ctx.shadowBlur = 8;
   ctx.fillStyle = '#FFE078';
-  ctx.fillRect(2, s.player.y, PONG_PADDLE_W, PONG_PADDLE_H);
-  ctx.fillRect(PONG_W - PONG_PADDLE_W - 2, s.cpu.y, PONG_PADDLE_W, PONG_PADDLE_H);
-  // Ball
+  pongRoundedRect(ctx, 2, s.player.y, PONG_PADDLE_W, PONG_PADDLE_H, 3);
+  pongRoundedRect(ctx, PONG_W - PONG_PADDLE_W - 2, s.cpu.y, PONG_PADDLE_W, PONG_PADDLE_H, 3);
+  ctx.shadowBlur = 0;
+  // Ball trail — fading, shrinking circles behind the ball's current
+  // position, purely cosmetic but gives real motion presence.
+  if(s.ball.trail){
+    s.ball.trail.forEach((p, i) => {
+      const t = (i + 1) / s.ball.trail.length;
+      ctx.globalAlpha = t * 0.35;
+      ctx.beginPath(); ctx.arc(p.x, p.y, PONG_BALL_R * t, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+  }
+  // Ball itself, with a soft glow matching the paddles'
+  ctx.shadowColor = 'rgba(255,255,255,.8)'; ctx.shadowBlur = 10;
   ctx.beginPath(); ctx.arc(s.ball.x, s.ball.y, PONG_BALL_R, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.shadowBlur = 0;
+}
+function pongRoundedRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fill();
 }
 async function pongGameOver(){
   pongRunning = false;

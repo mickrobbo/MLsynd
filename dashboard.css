@@ -1263,14 +1263,26 @@
   .vp-extra-hand-result{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:700; color:var(--muted); text-align:center; }
 
   /* ---- Pong ---- */
-  .pong-arena-wrap{
-    position:relative; display:inline-block; margin:6px auto; border-radius:12px; overflow:hidden;
-    border:1px solid var(--brass-dim); box-shadow: 0 8px 20px rgba(0,0,0,.5), inset 0 2px 4px rgba(0,0,0,.4);
+  /* A quiet, thin-bordered "cabinet" instead of the ornate gold conic
+     bezel (.pc-table-rail) — that bezel is designed for a single compact
+     table (Roulette's wheel, Craps' felt), and wrapping this game's
+     whole layout (buttons, hints, canvas) in it read as an oversized
+     gold frame around far more than just the table. */
+  .pong-cabinet{
+    text-align:center; padding:14px 10px; border-radius:16px; margin-bottom:14px;
+    background: linear-gradient(165deg, var(--felt-2), var(--felt-3));
+    border:1px solid var(--brass-dim);
+    box-shadow: 0 8px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.04);
   }
-  #pongCanvas{ display:block; background: linear-gradient(165deg, var(--felt-2), var(--ink)); touch-action:none; }
+  .pong-arena-wrap{
+    position:relative; display:inline-block; margin:6px auto; border-radius:14px; overflow:hidden;
+    border:1px solid rgba(255,214,120,.25);
+    box-shadow: 0 10px 24px rgba(0,0,0,.55), inset 0 2px 4px rgba(0,0,0,.4), inset 0 0 30px rgba(0,0,0,.3);
+  }
+  #pongCanvas{ display:block; background: radial-gradient(circle at 50% 50%, var(--felt-2) 0%, var(--ink) 85%); touch-action:none; }
   .pong-overlay{
     position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-    background: rgba(8,19,15,.9); backdrop-filter: blur(1px);
+    background: rgba(8,19,15,.92); backdrop-filter: blur(1px);
     animation: slotsBigWinIn .25s cubic-bezier(.3,1.6,.4,1) both;
   }
   .pong-overlay-title{
@@ -1280,6 +1292,18 @@
   .pong-overlay-score{
     font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:40px; color:var(--brass-light);
     text-shadow: 0 0 20px rgba(255,214,120,.5); line-height:1.1;
+  }
+  /* Level-up flash — a brief, bright pulse across the arena the instant
+     a new 5-return speed tier kicks in, so the difficulty step actually
+     reads as an event rather than something you only notice in
+     hindsight once the ball feels faster. */
+  .pong-levelup-flash{
+    position:absolute; inset:0; z-index:4; pointer-events:none; border-radius:inherit;
+    background: radial-gradient(circle, rgba(255,214,120,.35), transparent 70%);
+    animation: pongLevelUpPulse .5s ease-out;
+  }
+  @keyframes pongLevelUpPulse{
+    0%{ opacity:0; } 30%{ opacity:1; } 100%{ opacity:0; }
   }
   .vp-hold-pill{
     padding:5px 12px; font-size:10.5px; border-radius:999px; cursor:pointer;
