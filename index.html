@@ -2066,26 +2066,52 @@
       </div>
 
       <div id="pongMultiplayerWrap" style="display:none;">
-        <div class="panel">
+        <div class="panel" id="pongMpLobbyPanels">
           <h2>⚔️ Challenge a Member</h2>
-          <div class="hint">Pick an opponent and agree a stake — the loser's stake goes to the winner. <strong>Live head-to-head play is still being built</strong>; this locks in the challenge and stake now so it's ready the moment gameplay ships. No XP moves yet at this stage — that happens once a match actually starts.</div>
+          <div class="hint">Pick an opponent and agree a stake — the loser's stake goes to the winner. Your stake is only actually taken once you tap Start on an accepted match, not when you send or accept a challenge.</div>
           <select id="pongOpponentSelect" class="form-input" style="margin-top:8px;"></select>
           <input type="number" id="pongStakeInput" class="form-input" placeholder="Stake (XP)" min="1" style="margin-top:8px;">
           <button type="button" id="pongSendChallengeBtn" class="pill-btn pill-btn-primary" style="width:100%; margin-top:8px;">Send Challenge</button>
           <div class="status-msg error" id="pongChallengeError" style="margin-top:6px; text-align:center;"></div>
         </div>
-        <div class="panel">
+        <div class="panel" id="pongMpIncomingPanel">
           <h2>📨 Incoming Challenges</h2>
           <div id="pongIncomingChallenges"><div class="empty">No pending challenges.</div></div>
         </div>
-        <div class="panel">
+        <div class="panel" id="pongMpOutgoingPanel">
           <h2>📤 Sent Challenges</h2>
           <div id="pongOutgoingChallenges"><div class="empty">Nothing sent yet.</div></div>
         </div>
-        <div class="panel">
-          <h2>✅ Accepted — Stake Locked In</h2>
-          <div class="hint">Confirmed matches waiting on live gameplay to ship.</div>
+        <div class="panel" id="pongMpAcceptedPanel">
+          <h2>✅ Accepted — Ready to Start</h2>
+          <div class="hint">Tap Start when you're ready to play — your stake is taken the moment you do. The match begins once both players have started.</div>
           <div id="pongAcceptedMatches"><div class="empty">No accepted matches yet.</div></div>
+        </div>
+        <div class="panel" id="pongMpHistoryPanel" style="display:none;">
+          <h2>📜 Recent Results</h2>
+          <div id="pongMpHistoryList"></div>
+        </div>
+
+        <div class="panel" id="pongPvpLiveWrap" style="display:none; text-align:center;">
+          <h2>⚔️ Live Match</h2>
+          <div class="hint" id="pongPvpStatusHint">Waiting for opponent to start…</div>
+          <div class="mines-status-row" style="margin:8px 0;">
+            <div class="mines-status-cell"><span class="lbl" id="pongPvpMyNameLbl">You</span><span class="val" id="pongPvpMyScore">0</span></div>
+            <div class="mines-status-cell"><span class="lbl">Stake</span><span class="val" id="pongPvpStakeVal">0</span></div>
+            <div class="mines-status-cell"><span class="lbl" id="pongPvpOppNameLbl">Opponent</span><span class="val" id="pongPvpOppScore">0</span></div>
+          </div>
+          <div class="pong-cabinet">
+            <div class="pong-arena-wrap">
+              <canvas id="pongPvpCanvas" width="340" height="220"></canvas>
+              <div id="pongPvpResultOverlay" class="pong-overlay" style="display:none;">
+                <div class="pong-overlay-title" id="pongPvpResultTitle">Match Over</div>
+                <div class="hint" id="pongPvpResultMsg" style="margin:4px 0 10px;"></div>
+                <button type="button" id="pongPvpBackToLobbyBtn" class="pill-btn pill-btn-primary">Back to Lobby</button>
+              </div>
+            </div>
+            <div class="hint" style="margin-top:8px;">Drag up/down anywhere on the table to move your paddle.</div>
+          </div>
+          <button type="button" id="pongPvpForfeitBtn" class="pill-btn" style="margin-top:10px;">Forfeit Match</button>
         </div>
       </div>
     </div>
@@ -3649,7 +3675,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.115"; // Multiplayer Pong, Stages 2 & 3 of 4 (engine + networking — still not playable yet, no new UI this deploy). Stage 2: pong-mp-engine.js, a standalone deterministic physics core (fixed-tick simulation, seeded PRNG for serves, clamped paddle speed) — unit-tested in isolation (8 tests) to prove identical seed+inputs always produces byte-identical results, which is the entire trust model for staking XP on this. Stage 3: pong-mp-lockstep.js, a pure input-delay lockstep scheduler (also unit-tested, incl. simulated network jitter) that only ever simulates a tick once both players' real input for it is known — stalls rather than guesses on bad network, so it can never silently diverge — plus pong-mp-firebase-adapter.js, a thin (untestable-except-live) wire-up to Firebase reusing Hold'em's existing realtime auth bridge, batching input sends ~15/sec via update() rather than per-tick writes. New /pongLive Firebase node + rules added, cross-referencing /pongMatches so only the actual two players in a match can touch its live input feed. Still needed before this is playable: wiring an actual canvas/UI for accepted matches, and Stage 4's settlement function. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.116"; // Multiplayer Pong is now actually playable end to end (Stages 1-4 connected): accepted matches get a Start button that escrows your stake via pong-mp-dealer, auto-launches into a live canvas match once both sides have started, renders both paddles + ball from the shared deterministic engine (pong-mp-engine.js) driven by the lockstep scheduler (pong-mp-lockstep.js) over the real Firebase adapter, reports your result to the dealer on match end, and shows Won/Lost/Disputed once both sides have reported. Added a Forfeit button and a Recent Results history list. This is the first Pong PvP code that has never touched a live device — everything up to this point was proven via simulated-network unit tests only, so a real two-phone test is the next real verification step, not a formality. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

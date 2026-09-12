@@ -486,10 +486,13 @@ async function pongMpRefresh(){
     matches = {};
   }
   const entries = Object.keys(matches).map(id => ({ id, ...matches[id] }));
+  const mine = entries.filter(m => m.challengerUid === currentUserUid || m.opponentUid === currentUserUid);
 
-  const incoming = entries.filter(m => m.opponentUid === currentUserUid && m.status === 'pending');
-  const outgoing = entries.filter(m => m.challengerUid === currentUserUid && m.status === 'pending');
-  const accepted = entries.filter(m => m.status === 'accepted' && (m.challengerUid === currentUserUid || m.opponentUid === currentUserUid));
+  const incoming = mine.filter(m => m.opponentUid === currentUserUid && m.status === 'pending');
+  const outgoing = mine.filter(m => m.challengerUid === currentUserUid && m.status === 'pending');
+  const accepted = mine.filter(m => m.status === 'accepted');
+  const ongoing = mine.filter(m => m.status === 'in_progress');
+  const finished = mine.filter(m => ['completed', 'disputed', 'completed_by_forfeit', 'completed_by_admin'].includes(m.status));
 
   const incomingEl = document.getElementById('pongIncomingChallenges');
   if(incomingEl){
@@ -506,11 +509,52 @@ async function pongMpRefresh(){
   }
   const acceptedEl = document.getElementById('pongAcceptedMatches');
   if(acceptedEl){
-    acceptedEl.innerHTML = accepted.length ? accepted.map(m => {
+    const acceptedAndOngoing = accepted.concat(ongoing);
+    acceptedEl.innerHTML = acceptedAndOngoing.length ? acceptedAndOngoing.map(m => {
       const opponentField = m.challengerUid === currentUserUid ? 'opponentUid' : 'challengerUid';
-      return pongMpMatchRow(m.id, m, opponentField, `<div class="mines-status-cell"><span class="lbl">Status</span><span class="val" style="color:var(--win);">Locked in</span></div>`);
+      const mySide = m.challengerUid === currentUserUid ? 'p1' : 'p2';
+      const iStarted = !!(m.escrow && m.escrow[mySide]);
+      let statusHtml;
+      if(m.status === 'in_progress'){
+        statusHtml = `<button type="button" class="pill-btn pill-btn-primary" style="padding:6px 12px;" onclick="pongPvpRejoin('${m.id}')">Rejoin</button>`;
+      } else if(iStarted){
+        statusHtml = `<span class="lbl">Status</span><span class="val" style="color:var(--muted);">Waiting on opponent…</span>`;
+      } else {
+        statusHtml = `<button type="button" class="pill-btn pill-btn-primary" style="padding:6px 12px;" onclick="pongPvpStartMatch('${m.id}')">Start</button>`;
+      }
+      return pongMpMatchRow(m.id, m, opponentField, `<div class="mines-status-cell">${statusHtml}</div>`);
     }).join('') : '<div class="empty">No accepted matches yet.</div>';
   }
+  const historyPanel = document.getElementById('pongMpHistoryPanel');
+  const historyEl = document.getElementById('pongMpHistoryList');
+  if(historyEl && historyPanel){
+    historyPanel.style.display = finished.length ? '' : 'none';
+    historyEl.innerHTML = finished.slice(0, 10).map(m => {
+      const opponentField = m.challengerUid === currentUserUid ? 'opponentUid' : 'challengerUid';
+      const opponentUid = m[opponentField];
+      const mySide = m.challengerUid === currentUserUid ? 'p1' : 'p2';
+      let outcomeLabel, outcomeColor;
+      if(m.status === 'disputed'){ outcomeLabel = 'Disputed — awaiting admin'; outcomeColor = 'var(--loss)'; }
+      else if(!m.result){ outcomeLabel = 'Unresolved'; outcomeColor = 'var(--muted)'; }
+      else if(m.result.winnerUid === currentUserUid){ outcomeLabel = `Won +${(m.result.pot - m.stake).toLocaleString()} XP`; outcomeColor = 'var(--win)'; }
+      else { outcomeLabel = `Lost -${m.stake.toLocaleString()} XP`; outcomeColor = 'var(--loss)'; }
+      return `<div class="mines-status-row" style="margin-bottom:6px;">
+        <div class="mines-status-cell" style="flex:1; text-align:left;"><span class="lbl">vs</span><span class="val" style="font-size:14px;">${nameForUid(opponentUid)}</span></div>
+        <div class="mines-status-cell"><span class="val" style="color:${outcomeColor};">${outcomeLabel}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  // Auto-launch: if a match involving me just flipped to 'in_progress'
+  // (my opponent's Start call was the second one, completing escrow)
+  // and I don't already have a live session running for it, jump
+  // straight into the live view rather than making me notice and tap
+  // "Rejoin" myself.
+  ongoing.forEach(m => {
+    if(!pongPvpActiveMatchId || pongPvpActiveMatchId !== m.id){
+      pongPvpBeginLiveMatch(m.id, m);
+    }
+  });
 }
 
 function pongMpSetMode(mode){
@@ -545,3 +589,247 @@ function pongMpSetMode(mode){
 document.getElementById('pongModeCpuBtn').addEventListener('click', () => pongMpSetMode('cpu'));
 document.getElementById('pongModeMultiplayerBtn').addEventListener('click', () => pongMpSetMode('multiplayer'));
 document.getElementById('pongSendChallengeBtn').addEventListener('click', pongMpSendChallenge);
+
+// ==================================================================
+// ---- Multiplayer Pong — connecting Stages 2-4 into an actual match ----
+// This is the first code in the whole Pong PvP build that has never
+// touched a live device — pong-mp-engine.js and pong-mp-lockstep.js
+// were proven via simulated-network unit tests, but the real Firebase
+// adapter and this rendering/control loop can only really be verified
+// by two people actually playing a match. Kept as thin a layer as
+// possible on top of the already-tested engine/scheduler for exactly
+// that reason.
+// ==================================================================
+
+async function pongMpDealerCall(matchId, action, extraParams){
+  const auth = await getValidAuth();
+  if(!auth) throw new Error('Session expired — sign in again.');
+  const res = await fetch('/.netlify/functions/pong-mp-dealer', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: auth.idToken, matchId, action, ...extraParams })
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(data.error || 'Something went wrong.');
+  return data;
+}
+
+let pongPvpActiveMatchId = null;
+let pongPvpSession = null;
+let pongPvpAdapter = null;
+let pongPvpAnimId = null;
+let pongPvpLastFrameTime = null;
+let pongPvpMySide = null;
+let pongPvpOpponentUid = null;
+let pongPvpStake = 0;
+let pongPvpReported = false;
+let pongPvpControlsWired = false;
+let pongPvpLocalTargetY = PongMpEngine.H / 2 - PongMpEngine.PADDLE_H / 2;
+
+async function pongPvpStartMatch(matchId){
+  try{
+    await pongMpDealerCall(matchId, 'startMatch', {});
+    showToast('⚔️ Stake escrowed — waiting on your opponent.');
+  }catch(e){
+    alert(e.message);
+  }
+  await pongMpRefresh();
+}
+
+async function pongPvpRejoin(matchId){
+  try{
+    const res = await authedFetch(`/pongMatches/${matchId}.json`);
+    const match = await res.json();
+    if(match) pongPvpBeginLiveMatch(matchId, match);
+  }catch(e){}
+}
+
+function pongPvpWireControls(){
+  if(pongPvpControlsWired) return;
+  pongPvpControlsWired = true;
+  const canvas = document.getElementById('pongPvpCanvas');
+  function movePaddle(clientY){
+    const rect = canvas.getBoundingClientRect();
+    const scale = PongMpEngine.H / rect.height;
+    const y = (clientY - rect.top) * scale - PongMpEngine.PADDLE_H / 2;
+    pongPvpLocalTargetY = Math.max(0, Math.min(PongMpEngine.H - PongMpEngine.PADDLE_H, y));
+  }
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); movePaddle(e.touches[0].clientY); }, { passive: false });
+  canvas.addEventListener('touchstart', (e) => { movePaddle(e.touches[0].clientY); }, { passive: true });
+  canvas.addEventListener('mousemove', (e) => { movePaddle(e.clientY); });
+}
+
+function pongPvpDrawFrame(state){
+  const canvas = document.getElementById('pongPvpCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const E = PongMpEngine;
+  ctx.clearRect(0, 0, E.W, E.H);
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = '#FFE078';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(E.H * 0.26)}px 'Barlow Condensed', sans-serif`;
+  ctx.fillText('MLSYND', E.W / 2, E.H / 2 - E.H * 0.08);
+  ctx.font = `700 ${Math.round(E.H * 0.08)}px 'Barlow Condensed', sans-serif`;
+  ctx.fillText('C A S I N O', E.W / 2, E.H / 2 + E.H * 0.13);
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,214,120,.25)';
+  ctx.setLineDash([6, 8]);
+  ctx.beginPath(); ctx.moveTo(E.W / 2, 0); ctx.lineTo(E.W / 2, E.H); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#FFE078';
+  ctx.fillRect(2, state.p1.y, E.PADDLE_W, E.PADDLE_H);
+  ctx.fillRect(E.W - E.PADDLE_W - 2, state.p2.y, E.PADDLE_W, E.PADDLE_H);
+  if(state.ball){
+    ctx.beginPath();
+    ctx.arc(state.ball.x, state.ball.y, E.BALL_R, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+  }
+  const myScore = pongPvpMySide === 'p1' ? state.scoreP1 : state.scoreP2;
+  const oppScore = pongPvpMySide === 'p1' ? state.scoreP2 : state.scoreP1;
+  const myEl = document.getElementById('pongPvpMyScore'); if(myEl) myEl.textContent = myScore;
+  const oppEl = document.getElementById('pongPvpOppScore'); if(oppEl) oppEl.textContent = oppScore;
+}
+
+function pongPvpLoopStep(t){
+  if(!pongPvpActiveMatchId || !pongPvpSession) return; // stopped elsewhere (forfeit, match end, navigated away)
+  if(pongPvpLastFrameTime === null) pongPvpLastFrameTime = t;
+  // Clamped so a backgrounded tab (huge real dt on return) doesn't try
+  // to fast-forward through hundreds of buffered ticks at once — better
+  // to just resume from where the network actually is.
+  const dt = Math.min(t - pongPvpLastFrameTime, 250);
+  pongPvpLastFrameTime = t;
+  pongPvpSession.advance(dt, () => pongPvpLocalTargetY);
+  const state = pongPvpSession.getState();
+  pongPvpDrawFrame(state);
+  const hintEl = document.getElementById('pongPvpStatusHint');
+  if(hintEl) hintEl.textContent = pongPvpSession.isStalled() ? 'Reconnecting to opponent…' : 'Live';
+  if(state.winner && !pongPvpReported){
+    pongPvpReported = true;
+    pongPvpHandleMatchEnd();
+    return;
+  }
+  pongPvpAnimId = requestAnimationFrame(pongPvpLoopStep);
+}
+
+async function pongPvpBeginLiveMatch(matchId, match){
+  if(pongPvpActiveMatchId === matchId) return; // already live for this exact match
+  pongPvpActiveMatchId = matchId;
+  pongPvpMySide = match.challengerUid === currentUserUid ? 'p1' : 'p2';
+  pongPvpOpponentUid = pongPvpMySide === 'p1' ? match.opponentUid : match.challengerUid;
+  pongPvpStake = match.stake;
+  pongPvpReported = false;
+  pongPvpLastFrameTime = null;
+  pongPvpLocalTargetY = PongMpEngine.H / 2 - PongMpEngine.PADDLE_H / 2;
+
+  document.getElementById('pongPvpOppNameLbl').textContent = nameForUid(pongPvpOpponentUid);
+  document.getElementById('pongPvpStakeVal').textContent = pongPvpStake.toLocaleString();
+  document.getElementById('pongPvpResultOverlay').style.display = 'none';
+  ['pongMpLobbyPanels', 'pongMpIncomingPanel', 'pongMpOutgoingPanel', 'pongMpAcceptedPanel', 'pongMpHistoryPanel'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.style.display = 'none';
+  });
+  document.getElementById('pongPvpLiveWrap').style.display = '';
+  document.getElementById('pongPvpStatusHint').textContent = 'Connecting…';
+
+  pongPvpWireControls();
+  pongPvpSession = PongMpLockstep.createSession({ matchId, mySide: pongPvpMySide });
+  pongPvpAdapter = pongMpCreateFirebaseAdapter(pongPvpSession, matchId);
+  try{
+    await pongPvpAdapter.start();
+  }catch(e){
+    document.getElementById('pongPvpStatusHint').textContent = 'Could not connect — check your connection and reopen this match from Accepted.';
+    pongPvpActiveMatchId = null;
+    return;
+  }
+  pongPvpAnimId = requestAnimationFrame(pongPvpLoopStep);
+}
+
+async function pongPvpHandleMatchEnd(){
+  const snap = pongPvpSession.getSnapshot();
+  const matchId = pongPvpActiveMatchId;
+  const mySide = pongPvpMySide;
+  if(pongPvpAdapter) pongPvpAdapter.stop();
+  const hintEl = document.getElementById('pongPvpStatusHint');
+  if(hintEl) hintEl.textContent = 'Match over — reporting result…';
+
+  try{
+    await pongMpDealerCall(matchId, 'reportResult', {
+      report: { scoreP1: snap.scoreP1, scoreP2: snap.scoreP2, winner: snap.winner, tick: snap.tick }
+    });
+  }catch(e){
+    if(hintEl) hintEl.textContent = 'Could not report your result yet — reopen this match from Accepted to retry.';
+  }
+
+  // The opponent's own client has to report too before this settles —
+  // poll briefly for that rather than assuming a single report is
+  // enough (see reportResult in pong-mp-dealer.js: it deliberately
+  // waits for both).
+  let finalMatch = null;
+  for(let i = 0; i < 15; i++){
+    try{
+      const res = await authedFetch(`/pongMatches/${matchId}.json`);
+      finalMatch = await res.json();
+    }catch(e){}
+    if(finalMatch && finalMatch.status !== 'in_progress') break;
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  pongPvpShowResult(finalMatch, mySide);
+}
+
+function pongPvpShowResult(match, mySide){
+  const overlay = document.getElementById('pongPvpResultOverlay');
+  const titleEl = document.getElementById('pongPvpResultTitle');
+  const msgEl = document.getElementById('pongPvpResultMsg');
+  if(!match){
+    titleEl.textContent = 'Result Pending';
+    msgEl.textContent = "Couldn't confirm the outcome yet — check the Accepted list shortly.";
+  } else if(match.status === 'disputed'){
+    titleEl.textContent = 'Disputed';
+    msgEl.textContent = "Your report didn't match your opponent's — no XP has moved. An admin will review it.";
+  } else if(['completed', 'completed_by_forfeit', 'completed_by_admin'].includes(match.status)){
+    const won = match.result && match.result.winnerUid === currentUserUid;
+    titleEl.textContent = won ? 'You Won! 🎉' : 'You Lost';
+    msgEl.textContent = won ? `+${match.result.pot.toLocaleString()} XP` : `-${match.stake.toLocaleString()} XP`;
+  } else {
+    titleEl.textContent = 'Still In Progress';
+    msgEl.textContent = "Your opponent hasn't reported yet — check back shortly.";
+  }
+  overlay.style.display = 'flex';
+}
+
+function pongPvpBackToLobby(){
+  pongPvpActiveMatchId = null;
+  pongPvpSession = null;
+  pongPvpAdapter = null;
+  pongPvpLastFrameTime = null;
+  if(pongPvpAnimId) cancelAnimationFrame(pongPvpAnimId);
+  document.getElementById('pongPvpResultOverlay').style.display = 'none';
+  document.getElementById('pongPvpLiveWrap').style.display = 'none';
+  ['pongMpLobbyPanels', 'pongMpIncomingPanel', 'pongMpOutgoingPanel', 'pongMpAcceptedPanel'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.style.display = '';
+  });
+  pongMpRefresh();
+}
+
+async function pongPvpForfeit(){
+  if(!pongPvpActiveMatchId) return;
+  if(!confirm('Forfeit this match? Your opponent gets the full pot.')) return;
+  const matchId = pongPvpActiveMatchId;
+  if(pongPvpAnimId) cancelAnimationFrame(pongPvpAnimId);
+  if(pongPvpAdapter) pongPvpAdapter.stop();
+  try{
+    await pongMpDealerCall(matchId, 'forfeit', {});
+  }catch(e){}
+  let match = null;
+  try{
+    const res = await authedFetch(`/pongMatches/${matchId}.json`);
+    match = await res.json();
+  }catch(e){}
+  pongPvpShowResult(match, pongPvpMySide);
+}
+
+document.getElementById('pongPvpForfeitBtn').addEventListener('click', pongPvpForfeit);
+document.getElementById('pongPvpBackToLobbyBtn').addEventListener('click', pongPvpBackToLobby);

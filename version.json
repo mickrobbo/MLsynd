@@ -1,9 +1,10 @@
 {
-  "version": "2026-09-12.115",
+  "version": "2026-09-12.116",
   "date": "2026-09-12",
   "changes": [
-    "Multiplayer Pong Stages 2 & 3 (engine + networking) added — not yet playable, no visible UI change this deploy",
-    "Multiplayer Pong Stage 1: challenge a member, agree a stake, accept/decline — matchmaking only, live gameplay lands in later stages",
+    "Multiplayer Pong is now actually playable — challenge, accept, Start to escrow your stake, live match, automatic settlement, Forfeit option, and a results history",
+    "Multiplayer Pong Stages 2 & 3 (engine + networking) added earlier this session",
+    "Multiplayer Pong Stage 1: challenge a member, agree a stake, accept/decline",
     "Reverted Pong's table size back to 340x220 — the bigger version overflowed off-screen on phones (fixed the real CSS cause so this can't recur)",
     "Fixed the Pong table's MLSYND watermark being too faint to see",
     "Pong CPU-challenge XP tiers increased 10x",
