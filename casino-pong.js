@@ -381,3 +381,167 @@ document.getElementById('pongPlayAgainBtn').addEventListener('click', pongStart)
   canvas.addEventListener('touchstart', (e) => { movePaddle(e.touches[0].clientY); }, { passive: true });
   canvas.addEventListener('mousemove', (e) => { movePaddle(e.clientY); });
 })();
+
+// ==================================================================
+// ---- Multiplayer Pong — Stage 1: matchmaking & stake agreement ----
+// This stage deliberately does NOT move any real XP and does NOT play
+// any actual live rally — it only lets two members find each other,
+// agree a stake, and lock the match in as "accepted", ready for the
+// live-gameplay stages (deterministic lockstep physics + a settlement
+// function) to be built on top of. Keeping this stage free of real XP
+// movement means there's nothing at risk if the later stages take a
+// while, or if the design changes before gameplay actually ships.
+//
+// Data model: /pongMatches/{pushId} = {
+//   challengerUid, opponentUid, stake, status, createdAt
+// }
+// status: 'pending' -> 'accepted' | 'declined' | 'cancelled'
+// (a later stage will add 'in_progress' / 'completed' + a result block)
+// ==================================================================
+let pongMpPollInterval = null;
+let pongMpMode = 'cpu'; // 'cpu' | 'multiplayer' — which sub-view is showing
+
+function pongMpPopulateOpponentSelect(){
+  const sel = document.getElementById('pongOpponentSelect');
+  if(!sel || !currentState || !Array.isArray(currentState.members)) return;
+  const others = currentState.members.filter(m => m.linkedUid && m.linkedUid !== currentUserUid);
+  sel.innerHTML = others.length
+    ? others.map(m => `<option value="${m.linkedUid}">${m.name}</option>`).join('')
+    : '<option value="">No other linked members yet</option>';
+}
+
+async function pongMpSendChallenge(){
+  const btn = document.getElementById('pongSendChallengeBtn');
+  const errEl = document.getElementById('pongChallengeError');
+  errEl.textContent = '';
+  const opponentUid = document.getElementById('pongOpponentSelect').value;
+  const stake = parseInt(document.getElementById('pongStakeInput').value, 10) || 0;
+  if(!opponentUid){ errEl.textContent = 'Pick an opponent first.'; return; }
+  if(stake <= 0){ errEl.textContent = 'Enter a stake above 0 XP.'; return; }
+  if(stake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Max stake is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`; return; }
+  btn.disabled = true;
+  try{
+    // A courtesy check only — not an enforcement point. Nothing is
+    // actually escrowed at this stage, so this can't be relied on as a
+    // guarantee by the time a match is later accepted; it just avoids
+    // sending an obviously-doomed challenge.
+    const balance = await getXPBalance();
+    if(balance != null && stake > balance){
+      errEl.textContent = `You only have ${balance.toLocaleString()} XP.`;
+      return;
+    }
+    const res = await authedFetch('/pongMatches.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challengerUid: currentUserUid, opponentUid, stake, status: 'pending', createdAt: Date.now() })
+    });
+    if(!res.ok){ errEl.textContent = 'Could not send the challenge — try again.'; return; }
+    document.getElementById('pongStakeInput').value = '';
+    await pongMpRefresh();
+  }catch(e){
+    errEl.textContent = 'Could not send the challenge — check your connection.';
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function pongMpRespondToChallenge(matchId, accept){
+  try{
+    await authedFetch(`/pongMatches/${matchId}/status.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(accept ? 'accepted' : 'declined')
+    });
+  }catch(e){}
+  await pongMpRefresh();
+}
+
+async function pongMpCancelChallenge(matchId){
+  try{
+    await authedFetch(`/pongMatches/${matchId}/status.json`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify('cancelled')
+    });
+  }catch(e){}
+  await pongMpRefresh();
+}
+
+function pongMpMatchRow(matchId, m, opponentUidField, actionsHtml){
+  const opponentUid = m[opponentUidField];
+  const stakeStr = (m.stake || 0).toLocaleString();
+  return `<div class="mines-status-row" style="margin-bottom:6px;">
+    <div class="mines-status-cell" style="flex:1; text-align:left;">
+      <span class="lbl">${opponentUidField === 'opponentUid' ? 'From' : 'To'}</span>
+      <span class="val" style="font-size:14px;">${nameForUid(opponentUid)}</span>
+    </div>
+    <div class="mines-status-cell"><span class="lbl">Stake</span><span class="val">${stakeStr} XP</span></div>
+    ${actionsHtml}
+  </div>`;
+}
+
+async function pongMpRefresh(){
+  if(!currentUserUid) return;
+  let matches = {};
+  try{
+    const res = await authedFetch('/pongMatches.json');
+    matches = (await res.json()) || {};
+  }catch(e){
+    matches = {};
+  }
+  const entries = Object.keys(matches).map(id => ({ id, ...matches[id] }));
+
+  const incoming = entries.filter(m => m.opponentUid === currentUserUid && m.status === 'pending');
+  const outgoing = entries.filter(m => m.challengerUid === currentUserUid && m.status === 'pending');
+  const accepted = entries.filter(m => m.status === 'accepted' && (m.challengerUid === currentUserUid || m.opponentUid === currentUserUid));
+
+  const incomingEl = document.getElementById('pongIncomingChallenges');
+  if(incomingEl){
+    incomingEl.innerHTML = incoming.length ? incoming.map(m => pongMpMatchRow(m.id, m, 'challengerUid',
+      `<div class="mines-status-cell" style="gap:6px; display:flex;">
+        <button type="button" class="pill-btn pill-btn-action" style="padding:6px 12px;" onclick="pongMpRespondToChallenge('${m.id}', true)">Accept</button>
+        <button type="button" class="pill-btn" style="padding:6px 12px;" onclick="pongMpRespondToChallenge('${m.id}', false)">Decline</button>
+      </div>`)).join('') : '<div class="empty">No pending challenges.</div>';
+  }
+  const outgoingEl = document.getElementById('pongOutgoingChallenges');
+  if(outgoingEl){
+    outgoingEl.innerHTML = outgoing.length ? outgoing.map(m => pongMpMatchRow(m.id, m, 'opponentUid',
+      `<div class="mines-status-cell"><button type="button" class="pill-btn" style="padding:6px 12px;" onclick="pongMpCancelChallenge('${m.id}')">Cancel</button></div>`)).join('') : '<div class="empty">Nothing sent yet.</div>';
+  }
+  const acceptedEl = document.getElementById('pongAcceptedMatches');
+  if(acceptedEl){
+    acceptedEl.innerHTML = accepted.length ? accepted.map(m => {
+      const opponentField = m.challengerUid === currentUserUid ? 'opponentUid' : 'challengerUid';
+      return pongMpMatchRow(m.id, m, opponentField, `<div class="mines-status-cell"><span class="lbl">Status</span><span class="val" style="color:var(--win);">Locked in</span></div>`);
+    }).join('') : '<div class="empty">No accepted matches yet.</div>';
+  }
+}
+
+function pongMpSetMode(mode){
+  pongMpMode = mode;
+  const cpuBtn = document.getElementById('pongModeCpuBtn');
+  const mpBtn = document.getElementById('pongModeMultiplayerBtn');
+  const cpuWrap = document.getElementById('pongCpuModeWrap');
+  const mpWrap = document.getElementById('pongMultiplayerWrap');
+  const statusRow = document.getElementById('pongCpuStatusRow');
+  const modeHint = document.getElementById('pongModeHint');
+  if(cpuBtn) cpuBtn.classList.toggle('active', mode === 'cpu');
+  if(mpBtn) mpBtn.classList.toggle('active', mode === 'multiplayer');
+  if(cpuWrap) cpuWrap.style.display = mode === 'cpu' ? '' : 'none';
+  if(mpWrap) mpWrap.style.display = mode === 'multiplayer' ? '' : 'none';
+  if(statusRow) statusRow.style.display = mode === 'cpu' ? '' : 'none';
+  if(modeHint) modeHint.textContent = mode === 'cpu'
+    ? 'Rally against the CPU for as long as you can — the ball speeds up in steps every 5 returns, and the CPU can only track it so fast. One miss ends the run. No stake, no risk — only your best score each day earns XP, so practice as much as you like.'
+    : 'Challenge another member with a stake on the line. Matchmaking is live — head-to-head gameplay is still being built.';
+
+  // Only poll for challenges while this sub-view is actually visible —
+  // same "don't do work off-screen" convention as everywhere else in
+  // this app (e.g. Craps/Plinko only build on first open).
+  if(mode === 'multiplayer'){
+    pongMpPopulateOpponentSelect();
+    pongMpRefresh();
+    if(!pongMpPollInterval) pongMpPollInterval = setInterval(pongMpRefresh, 5000);
+  } else if(pongMpPollInterval){
+    clearInterval(pongMpPollInterval);
+    pongMpPollInterval = null;
+  }
+}
+document.getElementById('pongModeCpuBtn').addEventListener('click', () => pongMpSetMode('cpu'));
+document.getElementById('pongModeMultiplayerBtn').addEventListener('click', () => pongMpSetMode('multiplayer'));
+document.getElementById('pongSendChallengeBtn').addEventListener('click', pongMpSendChallenge);
