@@ -1316,6 +1316,7 @@
         <button type="button" class="game-bubble" data-game="bigwheel"><span class="game-bubble-icon">🛞</span><span class="game-bubble-label">Big Wheel</span></button>
         <button type="button" class="game-bubble" data-game="mines"><span class="game-bubble-icon">💣</span><span class="game-bubble-label">Mines</span></button>
         <button type="button" class="game-bubble" data-game="pong"><span class="game-bubble-icon">🏓</span><span class="game-bubble-label">Pong</span></button>
+        <button type="button" class="game-bubble" data-game="minigolf"><span class="game-bubble-icon">⛳</span><span class="game-bubble-label">Mini Golf</span></button>
         <button type="button" class="game-bubble" data-game="crash"><span class="game-bubble-icon">🚀</span><span class="game-bubble-label">Crash</span></button>
         <button type="button" class="game-bubble" data-game="doubleornothing"><span class="game-bubble-icon">🪙</span><span class="game-bubble-label">Double or Nothing</span></button>
         <button type="button" class="game-bubble" id="hubHoldemBtn" style="position:relative;"><span class="holdem-chip-icon"></span><span class="game-bubble-label">Hold'em</span><span class="casino-hub-badge" id="holdemHubBadge" style="display:none;"></span></button>
@@ -2113,6 +2114,58 @@
           </div>
           <button type="button" id="pongPvpForfeitBtn" class="pill-btn" style="margin-top:10px;">Forfeit Match</button>
         </div>
+      </div>
+    </div>
+
+    <div class="casino-game-panel" id="casinoGameMiniGolf" style="display:none;">
+      <div class="panel" style="text-align:center;">
+        <h2>⛳ Mini Golf</h2>
+        <div class="hint">18 holes, practice against par. No per-round XP here — instead, whoever posts the best 18-hole round each week wins the weekly prize below once the week ends.</div>
+      </div>
+
+      <div class="mg-scorebar mg-cabinet-look">
+        <div class="mg-cell"><span class="mg-lbl">Hole</span><span class="mg-val" id="mgHoleNumVal">1 / 18</span></div>
+        <div class="mg-divider"></div>
+        <div class="mg-cell"><span class="mg-lbl">Par</span><span class="mg-val" id="mgParVal">2</span></div>
+        <div class="mg-divider"></div>
+        <div class="mg-cell"><span class="mg-lbl">Strokes</span><span class="mg-val mg-accent" id="mgStrokesVal">0</span></div>
+        <div class="mg-divider"></div>
+        <div class="mg-cell"><span class="mg-lbl">Round</span><span class="mg-val" id="mgRoundVal">E</span></div>
+      </div>
+
+      <div class="mg-course-cabinet mg-cabinet-look">
+        <div class="mg-arena-wrap">
+          <canvas id="mgCanvas" width="480" height="300"></canvas>
+          <div class="mg-overlay" id="mgHoleOverlay">
+            <div class="mg-overlay-title" id="mgHoleOverlayTitle">Birdie!</div>
+            <div class="mg-score-badge" id="mgHoleOverlayScore">2 strokes on a Par 3</div>
+            <button type="button" class="pill-btn pill-btn-primary" id="mgNextHoleBtn" style="max-width:200px;">Next Hole</button>
+          </div>
+          <div class="mg-overlay" id="mgRoundOverlay">
+            <div class="mg-overlay-title">Round Complete</div>
+            <div class="mg-score-badge" id="mgRoundOverlayScore">61 strokes</div>
+            <div class="mg-detail" id="mgRoundOverlayDetail">4 under par across 18 holes.</div>
+            <button type="button" class="pill-btn pill-btn-primary" id="mgPlayAgainBtn" style="max-width:200px;">Play Again</button>
+          </div>
+        </div>
+        <div class="hint" style="margin-top:8px;">Drag back from the ball to aim, release to putt.</div>
+        <div class="hud-row" style="display:flex; gap:8px; margin-top:10px;">
+          <button type="button" class="pill-btn" id="mgRetryHoleBtn" style="flex:1;">Retry Hole</button>
+          <button type="button" class="pill-btn" id="mgSkipHoleBtn" style="flex:1;">Skip Hole</button>
+        </div>
+      </div>
+
+      <div class="mg-ladder-panel mg-cabinet-look">
+        <h2>🏆 This Week's Ladder</h2>
+        <div class="mg-weekly-prize">
+          <span style="font-size:24px;">👑</span>
+          <div>
+            <div class="mg-wp-label">This week's prize</div>
+            <div class="mg-wp-amount">100,000 XP</div>
+          </div>
+        </div>
+        <div class="hint" style="margin:8px 0;">Ranks every approved member's best 18-hole round this week — resets when the week ends, with the top spot winning the prize above.</div>
+        <table class="mg-ladder" id="mgLadderTable"></table>
       </div>
     </div>
 
@@ -3675,7 +3728,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.116"; // Multiplayer Pong is now actually playable end to end (Stages 1-4 connected): accepted matches get a Start button that escrows your stake via pong-mp-dealer, auto-launches into a live canvas match once both sides have started, renders both paddles + ball from the shared deterministic engine (pong-mp-engine.js) driven by the lockstep scheduler (pong-mp-lockstep.js) over the real Firebase adapter, reports your result to the dealer on match end, and shows Won/Lost/Disputed once both sides have reported. Added a Forfeit button and a Recent Results history list. This is the first Pong PvP code that has never touched a live device — everything up to this point was proven via simulated-network unit tests only, so a real two-phone test is the next real verification step, not a formality. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.117"; // Mini Golf shipped: an 18-hole single-player course (casino-minigolf.js), ported from a standalone preview iterated on directly across several rounds of hole-design fixes (three holes were genuinely unwinnable/pointless due to walls or a full-height water hazard that never actually engaged the direct path — fixed, not just rebalanced), physics additions (slopes that never let the ball rest, wood-plank bridges over water gaps), and two full visual polish passes (rough/fairway distinction, directional lighting, per-hole tee signs, custom vector iconography replacing generic emoji). No per-round XP — instead a live weekly leaderboard (/minigolf/weeklyScores, self-write enforced server-side to only accept an improvement on the existing score) where the best 18-hole round each week wins a flat 100,000 XP prize, paid out by a new lazily-triggered dealer function (netlify/functions/minigolf-dealer.js, same pattern as Hold'em's checkAutoStart/checkTimeout — whichever member opens Mini Golf first after a week ends is the one whose client triggers that week's payout, ETag-guarded against a double-payment race). Every top-level identifier in casino-minigolf.js is mg-prefixed, checked against casino-pong.js's own identifiers first — both files share one global scope and originally used equally-generic names (ball, moving, canvas, loop, W/H) that would have silently collided. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9193,12 +9246,12 @@ const CASINO_GAME_PANEL_IDS = {
   blackjack: 'casinoGameBlackjack', baccarat: 'casinoGameBaccarat', roulette: 'casinoGameRoulette',
   war: 'casinoGameWar', slots: 'casinoGameSlots', videopoker: 'casinoGameVideoPoker', dailyspin: 'casinoGameDailyspin',
   craps: 'casinoGameCraps', plinko: 'casinoGamePlinko', bigwheel: 'casinoGameBigWheel', mines: 'casinoGameMines',
-  crash: 'casinoGameCrash', doubleornothing: 'casinoGameDoubleOrNothing', pong: 'casinoGamePong'
+  crash: 'casinoGameCrash', doubleornothing: 'casinoGameDoubleOrNothing', pong: 'casinoGamePong', minigolf: 'casinoGameMiniGolf'
 };
 const CASINO_GAME_LABELS = {
   blackjack: 'Blackjack', baccarat: 'Baccarat', roulette: 'Roulette', war: 'Casino War',
   slots: 'Slots', videopoker: 'Video Poker', dailyspin: 'Daily Spin', craps: 'Craps', plinko: 'Plinko', bigwheel: 'Big Wheel', mines: 'Mines', pong: 'Pong',
-  crash: 'Crash', doubleornothing: 'Double or Nothing'
+  crash: 'Crash', doubleornothing: 'Double or Nothing', minigolf: 'Mini Golf'
 };
 // Set by renderXPLeaderboard, reused by refreshCasinoHeroExtras so
 // computing "my rank" doesn't re-fetch every linked member's balance a
@@ -9719,6 +9772,13 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     // for the one being opened now.
     casinoSessionShowRecapIfAny();
     casinoSessionGame = CASINO_GAME_LABELS[btn.dataset.game] || null;
+    // Mini Golf's render loop runs continuously (unlike Pong's, which
+    // only runs during an active run) — has to be explicitly paused
+    // whenever switching to any OTHER game, or it keeps drawing frames
+    // forever in the background. Unconditional here (a no-op if Mini
+    // Golf wasn't even active) and immediately re-set true below on its
+    // own branch if that's the one just opened.
+    if(typeof mgActive !== 'undefined') mgActive = false;
     // Prefixed so it lands in its own bucket separate from the top-level
     // "casino" tab time — lets the report break down not just "how long
     // in Casino overall" but which specific game ate that time.
@@ -9739,6 +9799,10 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     if(btn.dataset.game === 'bigwheel' && !bigWheelBuilt){ bigWheelBuildWheel(); }
     if(btn.dataset.game === 'mines' && !minesBuilt){ minesInit(); }
     if(btn.dataset.game === 'pong' && !pongBuilt){ pongInit(); }
+    if(btn.dataset.game === 'minigolf'){
+      if(!mgBuilt) mgInit();
+      mgResume();
+    }
     reconcileCasinoAmbience();
   });
 });
@@ -10469,6 +10533,7 @@ document.getElementById('crapsRollTopBtn').addEventListener('click', crapsRoll);
 <script src="pong-mp-lockstep.js"></script>
 <script src="pong-mp-firebase-adapter.js"></script>
 <script src="casino-pong.js"></script>
+<script src="casino-minigolf.js"></script>
 <script>
 
 </script>
