@@ -327,7 +327,7 @@ function mgMulberry32(seed){
 }
 let mgHoleTexture = null;
 function mgBuildHoleTexture(hole, idx){
-  const c = document.createElement('mgCanvas');
+  const c = document.createElement('canvas');
   c.width = MG_W; c.height = MG_H;
   const tctx = c.getContext('2d');
   const rng = mgMulberry32(idx * 7919 + 11);

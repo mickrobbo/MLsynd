@@ -2117,7 +2117,7 @@
       </div>
     </div>
 
-    <div class="casino-game-panel" id="casinoGameMiniGolf" style="display:none;">
+    <div class="casino-game-panel" id="casinoGameMiniGolf" style="display:none; max-width:100%; overflow-x:hidden;">
       <div class="panel" style="text-align:center;">
         <h2>⛳ Mini Golf</h2>
         <div class="hint">18 holes, practice against par. No per-round XP here — instead, whoever posts the best 18-hole round each week wins the weekly prize below once the week ends.</div>
@@ -2135,7 +2135,7 @@
 
       <div class="mg-course-cabinet mg-cabinet-look">
         <div class="mg-arena-wrap">
-          <canvas id="mgCanvas" width="480" height="300"></canvas>
+          <canvas id="mgCanvas" width="480" height="300" style="max-width:100%; width:100%; height:auto; display:block;"></canvas>
           <div class="mg-overlay" id="mgHoleOverlay">
             <div class="mg-overlay-title" id="mgHoleOverlayTitle">Birdie!</div>
             <div class="mg-score-badge" id="mgHoleOverlayScore">2 strokes on a Par 3</div>

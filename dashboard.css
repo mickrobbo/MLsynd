@@ -4683,13 +4683,20 @@
   .mg-scorebar .mg-val.mg-accent{ color:var(--brass-light); text-shadow:0 0 14px rgba(255,224,120,.35); }
   .mg-scorebar .mg-divider{ width:1px; align-self:stretch; background:linear-gradient(180deg, transparent, var(--brass-dim) 30%, var(--brass-dim) 70%, transparent); margin:0 4px; }
 
-  .mg-course-cabinet{ padding:12px; margin-bottom:12px; }
+  .mg-course-cabinet{ padding:12px; margin-bottom:12px; max-width:100%; overflow:hidden; box-sizing:border-box; }
   .mg-arena-wrap{
     position:relative; display:block; width:100%; max-width:480px; margin:0 auto;
     border-radius:10px; overflow:hidden; border:1px solid rgba(255,214,120,.22);
     box-shadow:0 12px 28px rgba(0,0,0,.6), inset 0 3px 8px rgba(0,0,0,.5);
+    box-sizing:border-box;
   }
-  #mgCanvas{ display:block; width:100%; height:auto; touch-action:none; background:var(--felt); }
+  /* !important here is deliberate, not sloppiness — this exact class of
+     bug (a canvas's native pixel width attribute winning out over an
+     external stylesheet's responsive override, blowing out the whole
+     page's width) already happened once this session with Pong's
+     table. Removing any possible doubt about specificity/cascade order
+     costs nothing on a narrowly-scoped ID selector like this one. */
+  #mgCanvas{ display:block !important; width:100% !important; max-width:100% !important; height:auto !important; touch-action:none; background:var(--felt); }
 
   .mg-overlay{
     position:absolute; inset:0;
