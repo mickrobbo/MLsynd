@@ -8,18 +8,25 @@
 // since an endlessly-replayable skill game would otherwise be a wide-
 // open XP-farming exploit if every run paid out.
 const PONG_TIERS = [
-  { threshold: 5,  xp: 500 },
-  { threshold: 15, xp: 1500 },
-  { threshold: 30, xp: 4000 },
-  { threshold: 50, xp: 10000 },
-  { threshold: 75, xp: 20000 }
+  { threshold: 5,  xp: 5000 },
+  { threshold: 15, xp: 15000 },
+  { threshold: 30, xp: 40000 },
+  { threshold: 50, xp: 100000 },
+  { threshold: 75, xp: 200000 }
 ];
 let pongBuilt = false;
 let pongBestToday = 0;
+let pongAllTimeBest = 0;
 let pongRunning = false;
 let pongScore = 0;
 let pongAnimId = null;
 let pongState = null; // { player:{y}, cpu:{y,aimError}, ball:{x,y,vx,vy,trail}, speedTier }
+// Bumped bigger once per request, but it didn't fit on-screen (canvas
+// overflowed past the phone viewport — a real CSS bug, see dashboard.css
+// notes on .pong-arena-wrap) — reverted back to the original size per
+// follow-up request rather than chase the responsive fix under time
+// pressure. Speed/aim constants below are back to their matching
+// originals too.
 const PONG_W = 340, PONG_H = 220, PONG_PADDLE_H = 40, PONG_PADDLE_W = 7, PONG_BALL_R = 5;
 // Difficulty now steps up in distinct jumps every 5 returns, rather than
 // a smooth per-hit multiplier — a real "stage 2 starts now" moment
@@ -44,6 +51,8 @@ async function pongInit(){
   pongBuilt = true;
   pongBuildTierTable();
   await pongFetchBestToday();
+  await pongFetchAllTimeBest();
+  await pongFetchLeaderboard();
   pongResetVisual();
 }
 async function pongFetchBestToday(){
@@ -57,6 +66,48 @@ async function pongFetchBestToday(){
   }
   const el = document.getElementById('pongBestTodayVal');
   if(el) el.textContent = pongBestToday.toLocaleString();
+}
+// All-time personal best — separate from pongBestToday (which resets
+// daily and only exists to gate XP payouts). Kept as its own node
+// rather than reusing /games/pong/{uid} so the daily-reset XP logic
+// above is never touched by this.
+async function pongFetchAllTimeBest(){
+  try{
+    const res = await authedFetch(`/games/pongAllTime/${currentUserUid}.json`);
+    const data = await res.json();
+    pongAllTimeBest = (data && data.bestScore) || 0;
+  }catch(e){
+    pongAllTimeBest = 0;
+  }
+}
+// Group-wide "best rounds" leaderboard for the CPU challenge — a flat
+// node keyed by uid so it's cheap to fetch as one object and sort
+// client-side; names resolved live via nameForUid() rather than stored,
+// so a rename always shows correctly without needing to touch old entries.
+async function pongFetchLeaderboard(){
+  let entries = [];
+  try{
+    const res = await authedFetch('/games/pongLeaderboard.json');
+    const data = await res.json();
+    if(data){
+      entries = Object.keys(data).map(uid => ({ uid, bestScore: (data[uid] && data[uid].bestScore) || 0 }));
+      entries.sort((a, b) => b.bestScore - a.bestScore);
+    }
+  }catch(e){}
+  pongRenderLeaderboard(entries);
+}
+function pongRenderLeaderboard(entries){
+  const table = document.getElementById('pongLeaderboardTable');
+  if(!table) return;
+  if(!entries.length){
+    table.innerHTML = '<tr><td style="text-align:center; color:var(--muted); padding:10px 0;">No runs on the board yet — be the first.</td></tr>';
+    return;
+  }
+  table.innerHTML = entries.slice(0, 10).map((e, i) => {
+    const mine = e.uid === currentUserUid;
+    const style = mine ? ' style="color:var(--brass-light); font-weight:700;"' : '';
+    return `<tr${style}><td>${i + 1}</td><td>${nameForUid(e.uid)}</td><td style="text-align:right;">${e.bestScore.toLocaleString()}</td></tr>`;
+  }).join('');
 }
 function pongResetVisual(){
   const canvas = document.getElementById('pongCanvas');
@@ -202,6 +253,21 @@ function pongStep(){
 }
 function pongDrawFrame(ctx, s){
   ctx.clearRect(0, 0, PONG_W, PONG_H);
+  // Subtle MLSYND wordmark, drawn first so it sits behind everything —
+  // same idea as the DOM .craps-table-wordmark treatment on the felt
+  // tables, but this has to be baked into the canvas draw itself since
+  // Pong's table is a <canvas>, not a DOM background a watermark div
+  // could show through.
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = '#FFE078';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(PONG_H * 0.26)}px 'Barlow Condensed', sans-serif`;
+  ctx.fillText('MLSYND', PONG_W / 2, PONG_H / 2 - PONG_H * 0.08);
+  ctx.font = `700 ${Math.round(PONG_H * 0.08)}px 'Barlow Condensed', sans-serif`;
+  ctx.fillText('C A S I N O', PONG_W / 2, PONG_H / 2 + PONG_H * 0.13);
+  ctx.restore();
   // Subtle centre dashed line
   ctx.strokeStyle = 'rgba(255,214,120,.22)'; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
   ctx.beginPath(); ctx.moveTo(PONG_W / 2, 0); ctx.lineTo(PONG_W / 2, PONG_H); ctx.stroke();
@@ -276,6 +342,26 @@ async function pongGameOver(){
   } else {
     msgEl.textContent = `Best today is still ${pongBestToday.toLocaleString()} — beat that to earn more XP.`;
     msgEl.style.color = 'var(--muted)';
+  }
+
+  // All-time leaderboard — separate from the XP/tier logic above, and
+  // deliberately not gated behind pongScore > pongBestToday: a player
+  // could already be behind their own today-best from an earlier run
+  // this session while still being nowhere near their real all-time
+  // best (freshly reset daily), so this checks independently.
+  if(pongScore > pongAllTimeBest){
+    pongAllTimeBest = pongScore;
+    try{
+      await authedFetch(`/games/pongAllTime/${currentUserUid}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bestScore: pongAllTimeBest, ts: Date.now() })
+      });
+      await authedFetch(`/games/pongLeaderboard/${currentUserUid}.json`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bestScore: pongAllTimeBest, ts: Date.now() })
+      });
+    }catch(e){}
+    await pongFetchLeaderboard();
   }
   overlay.style.display = 'flex';
 }

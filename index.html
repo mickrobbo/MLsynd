@@ -2035,7 +2035,7 @@
       </div>
       <div class="pong-cabinet" id="pongTableRail">
         <div class="pong-arena-wrap">
-          <canvas id="pongCanvas" width="480" height="310"></canvas>
+          <canvas id="pongCanvas" width="340" height="220"></canvas>
           <div id="pongLevelUpFlash" class="pong-levelup-flash" style="display:none;"></div>
           <div id="pongGameOverOverlay" class="pong-overlay" style="display:none;">
             <div class="pong-overlay-title">Run Over</div>
@@ -3618,7 +3618,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.112"; // Pong: table bumped bigger again (340x220 → 480x310, all speed/aim constants scaled ~1.4x to match so difficulty feels identical, just larger — CSS max-width:100%/height:auto lets it still fit narrow phones), added a subtle "MLSYND CASINO" wordmark baked into the canvas draw (low-opacity ctx.fillText behind gameplay, since a DOM watermark can't show through an opaque canvas), XP tiers increased 10x (500/1500/4000/10000/20000 → 5000/15000/40000/100000/200000), and added a group-wide all-time "Best Rounds" leaderboard (/games/pongLeaderboard/{uid}, separate from the daily-reset XP-gating score) shown under the XP Tiers table. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.113"; // Reverted Pong's table size back to 340x220 (the 480x310 bump overflowed off-screen on phones — real root cause: .pong-arena-wrap was display:inline-block with no explicit width, so the canvas's max-width:100% had nothing definite to resolve against and silently rendered at native size regardless of viewport; fixed properly by giving the wrap an explicit block width capped at 340px, so this can't recur even if the table's native size changes again later). Also fixed the MLSYND watermark being too faint to see (0.10 opacity → 0.16, matching the Craps/Crash wordmark convention) and re-tuned its size for the reverted table dimensions. XP tiers (10x) and the Best Rounds leaderboard are unaffected by this revert. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

@@ -1,10 +1,10 @@
 {
-  "version": "2026-09-12.112",
+  "version": "2026-09-12.113",
   "date": "2026-09-12",
   "changes": [
-    "Pong: bumped bigger again (480x310), all speed/aim constants scaled to match so it plays the same, just larger",
-    "Pong: subtle 'MLSYND CASINO' wordmark baked into the table",
-    "Pong: CPU-challenge XP tiers increased 10x",
+    "Reverted Pong's table size back to 340x220 — the bigger version overflowed off-screen on phones (fixed the real CSS cause so this can't recur)",
+    "Fixed the Pong table's MLSYND watermark being too faint to see",
+    "Pong CPU-challenge XP tiers increased 10x",
     "Pong: new group-wide all-time 'Best Rounds' leaderboard",
     "Slots: progressive jackpot now funded by 3% of every real bet, win or lose",
     "Slots jackpot total now also shown in the Casino lobby, under the Casino Pot panel",

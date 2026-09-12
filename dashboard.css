@@ -1274,12 +1274,27 @@
     border:1px solid var(--brass-dim);
     box-shadow: 0 8px 20px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.04);
   }
+  /* Was display:inline-block with no explicit width, which is the real
+     cause of the table overflowing off-screen: an inline-block parent
+     with no set width sizes itself to its content's INTRINSIC size for
+     layout purposes, so the canvas's own max-width:100% had nothing
+     resolvable to constrain against (percentage-vs-shrink-to-fit is
+     circular) and silently fell back to rendering at its native
+     width/height attributes regardless of viewport. Fixed by making
+     this a block with an explicit width capped at the canvas's own
+     native size — now there's a definite parent width for the canvas's
+     max-width:100% to actually resolve against, so it'll correctly
+     scale down on any narrower phone (and scale correctly again if the
+     table's native size is ever changed later). */
   .pong-arena-wrap{
-    position:relative; display:inline-block; margin:6px auto; border-radius:14px; overflow:hidden;
+    position:relative; display:block; width:100%; max-width:340px; margin:6px auto; border-radius:14px; overflow:hidden;
     border:1px solid rgba(255,214,120,.25);
     box-shadow: 0 10px 24px rgba(0,0,0,.55), inset 0 2px 4px rgba(0,0,0,.4), inset 0 0 30px rgba(0,0,0,.3);
   }
-  #pongCanvas{ display:block; background: radial-gradient(circle at 50% 50%, var(--felt-2) 0%, var(--ink) 85%); touch-action:none; }
+  /* max-width/height:auto is a defensive backstop — actual responsive
+     scaling now comes from .pong-arena-wrap's own explicit width above,
+     since that's what was actually broken (see its comment). */
+  #pongCanvas{ display:block; max-width:100%; height:auto; background: radial-gradient(circle at 50% 50%, var(--felt-2) 0%, var(--ink) 85%); touch-action:none; }
   .pong-overlay{
     position:absolute; inset:0; z-index:5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
     background: rgba(8,19,15,.92); backdrop-filter: blur(1px);
