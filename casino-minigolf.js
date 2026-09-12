@@ -988,12 +988,21 @@ async function mgSubmitWeeklyScore(totalStrokes){
     const res = await authedFetch(`/minigolf/weeklyScores/${weekKey}/${currentUserUid}.json`);
     const existing = res.ok ? await res.json() : null;
     if(existing && existing.strokes <= totalStrokes) return;
-    await authedFetch(`/minigolf/weeklyScores/${weekKey}/${currentUserUid}.json`, {
+    const writeRes = await authedFetch(`/minigolf/weeklyScores/${weekKey}/${currentUserUid}.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ strokes: totalStrokes, ts: Date.now() })
     });
+    // A rejected write (e.g. Firebase rules not actually deployed for
+    // this node yet) previously failed completely silently here — the
+    // ladder would just never update with no visible error at all.
+    if(!writeRes.ok){
+      showToast('⚠️ Could not save your round to the weekly ladder — try again shortly.');
+      return;
+    }
     await mgRenderWeeklyLadder();
-  }catch(e){}
+  }catch(e){
+    showToast('⚠️ Could not save your round to the weekly ladder — check your connection.');
+  }
 }
 
 async function mgRenderWeeklyLadder(){
