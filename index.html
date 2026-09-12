@@ -2026,36 +2026,67 @@
     <div class="casino-game-panel" id="casinoGamePong" style="display:none;">
       <div class="panel" style="text-align:center;">
         <h2>🏓 Pong</h2>
-        <div class="hint">Rally against the CPU for as long as you can — the ball speeds up in steps every 5 returns, and the CPU can only track it so fast. One miss ends the run. No stake, no risk — only your best score each day earns XP, so practice as much as you like.</div>
-        <div class="mines-status-row" style="margin-top:8px;">
+        <div class="hint" id="pongModeHint">Rally against the CPU for as long as you can — the ball speeds up in steps every 5 returns, and the CPU can only track it so fast. One miss ends the run. No stake, no risk — only your best score each day earns XP, so practice as much as you like.</div>
+        <div class="craps-winmode-row" style="margin-top:10px;">
+          <button type="button" class="craps-winmode-btn active" id="pongModeCpuBtn">🤖 CPU Challenge</button>
+          <button type="button" class="craps-winmode-btn" id="pongModeMultiplayerBtn">⚔️ Play a Member</button>
+        </div>
+        <div class="mines-status-row" style="margin-top:8px;" id="pongCpuStatusRow">
           <div class="mines-status-cell"><span class="lbl">Best Today</span><span class="val" id="pongBestTodayVal">0</span></div>
           <div class="mines-status-cell"><span class="lbl">This Run</span><span class="val" id="pongCurrentScoreVal">0</span></div>
           <div class="mines-status-cell"><span class="lbl">Speed</span><span class="val" id="pongSpeedTierVal">1</span></div>
         </div>
       </div>
-      <div class="pong-cabinet" id="pongTableRail">
-        <div class="pong-arena-wrap">
-          <canvas id="pongCanvas" width="340" height="220"></canvas>
-          <div id="pongLevelUpFlash" class="pong-levelup-flash" style="display:none;"></div>
-          <div id="pongGameOverOverlay" class="pong-overlay" style="display:none;">
-            <div class="pong-overlay-title">Run Over</div>
-            <div class="pong-overlay-score" id="pongOverlayScore">0</div>
-            <div class="hint" id="pongOverlayXpMsg" style="margin:4px 0 10px;"></div>
-            <button type="button" id="pongPlayAgainBtn" class="pill-btn pill-btn-primary">Play Again</button>
+
+      <div id="pongCpuModeWrap">
+        <div class="pong-cabinet" id="pongTableRail">
+          <div class="pong-arena-wrap">
+            <canvas id="pongCanvas" width="340" height="220"></canvas>
+            <div id="pongLevelUpFlash" class="pong-levelup-flash" style="display:none;"></div>
+            <div id="pongGameOverOverlay" class="pong-overlay" style="display:none;">
+              <div class="pong-overlay-title">Run Over</div>
+              <div class="pong-overlay-score" id="pongOverlayScore">0</div>
+              <div class="hint" id="pongOverlayXpMsg" style="margin:4px 0 10px;"></div>
+              <button type="button" id="pongPlayAgainBtn" class="pill-btn pill-btn-primary">Play Again</button>
+            </div>
           </div>
+          <div class="hint" style="margin-top:8px;" id="pongControlHint">Drag up/down anywhere on the table to move your paddle.</div>
+          <button type="button" id="pongStartBtn" class="pill-btn pill-btn-primary" style="margin-top:10px;">Start</button>
         </div>
-        <div class="hint" style="margin-top:8px;" id="pongControlHint">Drag up/down anywhere on the table to move your paddle.</div>
-        <button type="button" id="pongStartBtn" class="pill-btn pill-btn-primary" style="margin-top:10px;">Start</button>
+        <div class="panel">
+          <h2>XP Tiers</h2>
+          <div class="hint">Only your best score of the day counts — crossing a new tier on a later run today pays just the difference, not the whole tier again.</div>
+          <table class="vp-paytable" id="pongTierTable"></table>
+        </div>
+        <div class="panel">
+          <h2>🏆 Best Rounds</h2>
+          <div class="hint">All-time top runs against the CPU, across the whole group.</div>
+          <table class="vp-paytable" id="pongLeaderboardTable"></table>
+        </div>
       </div>
-      <div class="panel">
-        <h2>XP Tiers</h2>
-        <div class="hint">Only your best score of the day counts — crossing a new tier on a later run today pays just the difference, not the whole tier again.</div>
-        <table class="vp-paytable" id="pongTierTable"></table>
-      </div>
-      <div class="panel">
-        <h2>🏆 Best Rounds</h2>
-        <div class="hint">All-time top runs against the CPU, across the whole group.</div>
-        <table class="vp-paytable" id="pongLeaderboardTable"></table>
+
+      <div id="pongMultiplayerWrap" style="display:none;">
+        <div class="panel">
+          <h2>⚔️ Challenge a Member</h2>
+          <div class="hint">Pick an opponent and agree a stake — the loser's stake goes to the winner. <strong>Live head-to-head play is still being built</strong>; this locks in the challenge and stake now so it's ready the moment gameplay ships. No XP moves yet at this stage — that happens once a match actually starts.</div>
+          <select id="pongOpponentSelect" class="form-input" style="margin-top:8px;"></select>
+          <input type="number" id="pongStakeInput" class="form-input" placeholder="Stake (XP)" min="1" style="margin-top:8px;">
+          <button type="button" id="pongSendChallengeBtn" class="pill-btn pill-btn-primary" style="width:100%; margin-top:8px;">Send Challenge</button>
+          <div class="status-msg error" id="pongChallengeError" style="margin-top:6px; text-align:center;"></div>
+        </div>
+        <div class="panel">
+          <h2>📨 Incoming Challenges</h2>
+          <div id="pongIncomingChallenges"><div class="empty">No pending challenges.</div></div>
+        </div>
+        <div class="panel">
+          <h2>📤 Sent Challenges</h2>
+          <div id="pongOutgoingChallenges"><div class="empty">Nothing sent yet.</div></div>
+        </div>
+        <div class="panel">
+          <h2>✅ Accepted — Stake Locked In</h2>
+          <div class="hint">Confirmed matches waiting on live gameplay to ship.</div>
+          <div id="pongAcceptedMatches"><div class="empty">No accepted matches yet.</div></div>
+        </div>
       </div>
     </div>
 
@@ -3618,7 +3649,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.113"; // Reverted Pong's table size back to 340x220 (the 480x310 bump overflowed off-screen on phones — real root cause: .pong-arena-wrap was display:inline-block with no explicit width, so the canvas's max-width:100% had nothing definite to resolve against and silently rendered at native size regardless of viewport; fixed properly by giving the wrap an explicit block width capped at 340px, so this can't recur even if the table's native size changes again later). Also fixed the MLSYND watermark being too faint to see (0.10 opacity → 0.16, matching the Craps/Crash wordmark convention) and re-tuned its size for the reverted table dimensions. XP tiers (10x) and the Best Rounds leaderboard are unaffected by this revert. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.115"; // Multiplayer Pong, Stages 2 & 3 of 4 (engine + networking — still not playable yet, no new UI this deploy). Stage 2: pong-mp-engine.js, a standalone deterministic physics core (fixed-tick simulation, seeded PRNG for serves, clamped paddle speed) — unit-tested in isolation (8 tests) to prove identical seed+inputs always produces byte-identical results, which is the entire trust model for staking XP on this. Stage 3: pong-mp-lockstep.js, a pure input-delay lockstep scheduler (also unit-tested, incl. simulated network jitter) that only ever simulates a tick once both players' real input for it is known — stalls rather than guesses on bad network, so it can never silently diverge — plus pong-mp-firebase-adapter.js, a thin (untestable-except-live) wire-up to Firebase reusing Hold'em's existing realtime auth bridge, batching input sends ~15/sec via update() rather than per-tick writes. New /pongLive Firebase node + rules added, cross-referencing /pongMatches so only the actual two players in a match can touch its live input feed. Still needed before this is playable: wiring an actual canvas/UI for accepted matches, and Stage 4's settlement function. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10408,6 +10439,9 @@ document.getElementById('crapsRollTopBtn').addEventListener('click', crapsRoll);
 
 </script>
 <script src="casino-mines.js"></script>
+<script src="pong-mp-engine.js"></script>
+<script src="pong-mp-lockstep.js"></script>
+<script src="pong-mp-firebase-adapter.js"></script>
 <script src="casino-pong.js"></script>
 <script>
 
