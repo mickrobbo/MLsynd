@@ -4744,9 +4744,21 @@
   table.mg-ladder tr:last-child td{ border-bottom:none; }
   table.mg-ladder tr:nth-child(odd){ background:rgba(255,255,255,.02); }
   table.mg-ladder td.rank{ width:28px; font-weight:700; font-family:'Barlow Condensed',sans-serif; text-align:center; }
-  table.mg-ladder td.rank.gold{ color:#FFE078; text-shadow:0 0 10px rgba(255,224,120,.5); }
-  table.mg-ladder td.rank.silver{ color:#d8dde2; }
-  table.mg-ladder td.rank.bronze{ color:#cf9a63; }
+  /* Rank colour now lives on the whole row (previously only the tiny
+     number badge), so the actual leader's name and score read as gold
+     too, not just a small digit easy to miss. */
+  table.mg-ladder tr.mg-rank-gold td{ color:#FFE078; text-shadow:0 0 10px rgba(255,224,120,.35); }
+  table.mg-ladder tr.mg-rank-silver td{ color:#d8dde2; }
+  table.mg-ladder tr.mg-rank-bronze td{ color:#cf9a63; }
+  table.mg-ladder tr.mg-rank-other td{ color:var(--chalk); }
+  table.mg-ladder td.rank.gold{ text-shadow:0 0 10px rgba(255,224,120,.5); }
   table.mg-ladder td.rank.other{ color:var(--muted); font-weight:500; }
   table.mg-ladder td.score{ text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
-  table.mg-ladder tr.me td{ color:var(--brass-light); font-weight:700; }
+  /* "You" is now a left-border accent + bold weight, not a colour override
+     — a colour would either fight with or get lost against the rank
+     colour above when your own row IS the leader. This layers cleanly
+     with any rank instead of replacing it. Border applied to the first
+     TD, not the TR itself — border-collapse tables generally don't
+     render a border set directly on <tr> in most browsers. */
+  table.mg-ladder tr.me td{ font-weight:800; }
+  table.mg-ladder tr.me td:first-child{ border-left:3px solid var(--brass-light); padding-left:5px; }

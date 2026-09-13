@@ -1154,7 +1154,16 @@ async function mgRenderWeeklyLadder(){
   const rankMark = i => String(i+1);
   table.innerHTML = entries.slice(0, 12).map((e,i) => {
     const mine = e.uid === currentUserUid;
-    return `<tr${mine?' class="me"':''}><td class="rank ${rankClass(i)}">${rankMark(i)}</td><td>${nameForUid(e.uid)}</td><td class="score">${e.strokes}</td></tr>`;
+    // FIXED — the rank-based colour previously only applied to the tiny
+    // number badge, not the row, while "me" coloured the WHOLE row gold
+    // regardless of actual rank. That meant your own 2nd-place row could
+    // look more "gold" than the real leader's row — exactly backwards
+    // for a leaderboard. Now the rank colour lives on the row itself,
+    // and "you" gets its own distinct left-border accent instead of a
+    // colour that competes with — and can overpower — the real ranking.
+    const cls = ['mg-rank-' + rankClass(i)];
+    if(mine) cls.push('me');
+    return `<tr class="${cls.join(' ')}"><td class="rank ${rankClass(i)}">${rankMark(i)}</td><td>${nameForUid(e.uid)}</td><td class="score">${e.strokes}</td></tr>`;
   }).join('');
 }
 
