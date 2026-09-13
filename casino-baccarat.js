@@ -72,11 +72,15 @@ async function bacDealInner(){
   const errEl = document.getElementById('bacBetError');
   errEl.textContent = '';
   const bet = parseInt(betInput.value, 10);
+  const ppOn = document.getElementById('bacPerfectPairsCheck').checked;
+  const ppBet = parseInt(document.getElementById('bacPerfectPairsAmount').value, 10) || 0;
   const balance = await getXPBalance();
+  const totalStake = bet + (ppOn ? ppBet : 0);
   if(!bet || bet < 1){ errEl.textContent = 'Place a bet first.'; return; }
-  if(bet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP.`; return; }
+  if(ppOn && ppBet < 1){ errEl.textContent = 'Add a Perfect Pairs side bet amount first.'; return; }
+  if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
   if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(bet > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+  if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
 
   bacBetAmountLocked = bet;
   bacBetTypeLocked = betType;
@@ -93,6 +97,8 @@ async function bacDealInner(){
   document.getElementById('bacBankerTotal').textContent = '';
   const outcomeEl = document.getElementById('bacOutcomeMsg');
   outcomeEl.textContent = ''; outcomeEl.classList.remove('bj-outcome-pop', 'bj-outcome-jackpot');
+  const ppOutcomeEl = document.getElementById('bacPPOutcomeMsg');
+  if(ppOutcomeEl) ppOutcomeEl.textContent = '';
   document.getElementById('bacNewHandBtn').style.display = 'none';
   document.getElementById('bacHitBtn').style.display = 'inline-block';
   document.getElementById('bacHitBtn').disabled = false;
@@ -100,6 +106,40 @@ async function bacDealInner(){
   bacPulseChip(document.getElementById('bacPlayerChip'), 0);
 
   await bacHit(); // reveal the first card straight away so the table isn't empty
+}
+// Perfect Pairs side bet — pays if EITHER hand's first two cards
+// qualify (see the call site in bacHit's p2done branch for exactly
+// when this fires). Mirrors Blackjack's own side-bet handling pattern
+// (bjEvaluatePairOf, awardXP with a labelled reason, the same pop/ding
+// treatment) for consistency across all three games that now offer this.
+async function bacResolvePerfectPairs(){
+  const ppOn = document.getElementById('bacPerfectPairsCheck').checked;
+  if(!ppOn) return;
+  const ppBet = parseInt(document.getElementById('bacPerfectPairsAmount').value, 10) || 0;
+  const ppEl = document.getElementById('bacPPOutcomeMsg');
+  if(!ppEl) return;
+  ppEl.textContent = '';
+  if(ppBet < 1) return;
+  const playerPP = bjEvaluatePerfectPairs(bacPlayerHand);
+  const bankerPP = bjEvaluatePerfectPairs(bacBankerHand);
+  // Whichever hand qualifies for the higher tier wins if both pair —
+  // BJ_PERFECT_PAIRS_PAYTABLE is already ordered highest-tier-first.
+  const pp = [playerPP, bankerPP].filter(Boolean).sort((a, b) => b.mult - a.mult)[0] || null;
+  await bjWait(300);
+  if(pp){
+    const win = ppBet * pp.mult;
+    const which = pp === playerPP ? 'Player' : 'Banker';
+    ppEl.innerHTML = `<span style="color:var(--win); font-weight:700;">${which} ${pp.label}! +${win} XP</span>`;
+    ppEl.classList.remove('bj-outcome-pop'); void ppEl.offsetWidth; ppEl.classList.add('bj-outcome-pop');
+    bjPlaySideBetDing();
+    bjLaunchConfetti(ppEl, 14);
+    await awardXP(win, `Baccarat Perfect Pairs (${which} ${pp.label})`, { silent: true });
+  } else {
+    ppEl.innerHTML = `<span style="color:var(--loss);">Perfect Pairs: no pair (-${ppBet} XP)</span>`;
+    await awardXP(-ppBet, 'Baccarat Perfect Pairs (no pair)', { silent: true });
+  }
+  const bal = await getXPBalance();
+  updateXPBalanceDisplay(bal);
 }
 async function bacHit(){
   const hitBtn = document.getElementById('bacHitBtn');
@@ -127,6 +167,14 @@ async function bacHit(){
     document.getElementById('bacBankerTotal').textContent = `Total: ${bacHandTotal(bacBankerHand)}`;
     bacPulseChip(document.getElementById('bacBankerChip'), bacHandTotal(bacBankerHand));
     const pt = bacHandTotal(bacPlayerHand), bt = bacHandTotal(bacBankerHand);
+    // Perfect Pairs — both hands now have their first two cards, exactly
+    // the moment this side bet is meant to check, regardless of what
+    // happens afterward (a third card never affects Perfect Pairs).
+    // Pays out on whichever hand qualifies for the higher tier if both
+    // happen to pair, matching the "Either Pair" convention some real
+    // Baccarat tables offer as a single combined bet rather than two
+    // separate Player Pair / Banker Pair wagers.
+    await bacResolvePerfectPairs();
     if(pt >= 8 || bt >= 8) bacStep = 'done';
     else if(pt <= 5) bacStep = 'needPlayerThird';
     else bacStep = 'needBankerCheck';
@@ -269,7 +317,7 @@ async function bacResolve(){
   outcomeEl.style.color = isJackpot ? '' : (delta > 0 ? 'var(--win)' : (delta < 0 ? 'var(--loss)' : 'var(--muted)'));
   outcomeEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
   document.getElementById('bacNewHandBtn').style.display = 'inline-block';
-  bacLastBet = { betType, amount: bet };
+  bacLastBet = { betType, amount: bet, ppOn: document.getElementById('bacPerfectPairsCheck').checked, ppAmount: parseInt(document.getElementById('bacPerfectPairsAmount').value, 10) || 0 };
   document.getElementById('bacSameBetBtn').disabled = false;
 
   bacHistory.push(winner === 'player' ? 'P' : (winner === 'banker' ? 'B' : 'T'));
@@ -312,6 +360,13 @@ document.getElementById('bacSameBetBtn').addEventListener('click', () => {
   const betInput = document.getElementById('bacBetInput');
   betInput.value = bacLastBet.amount;
   betInput.dispatchEvent(new Event('input'));
+  const ppCheck = document.getElementById('bacPerfectPairsCheck');
+  if(ppCheck.checked !== bacLastBet.ppOn) document.getElementById('bacPerfectPairsToggle').click();
+  if(bacLastBet.ppOn){
+    const ppInput = document.getElementById('bacPerfectPairsAmount');
+    ppInput.value = bacLastBet.ppAmount;
+    ppInput.dispatchEvent(new Event('input'));
+  }
   bjPlayChipSound();
 });
 document.getElementById('bacHitBtn').addEventListener('click', bacHit);

@@ -63,15 +63,21 @@ async function warDealInner(){
   bjPlayCardSound();
 
   if(ppOn){
-    const isPair = warPlayerCard.rank === warDealerCard.rank;
+    // Now a genuine 3-tier evaluation (see bjEvaluatePairOf in
+    // casino-blackjack.js, shared across all three Perfect-Pairs-style
+    // games) instead of a flat rank-only match paying a fixed 10:1 —
+    // War compares the player's single card against the dealer's single
+    // card rather than two cards within one hand, since this game only
+    // ever deals one card each.
+    const pp = bjEvaluatePairOf(warPlayerCard, warDealerCard);
     await bjWait(300);
-    if(isPair){
-      const win = ppBet * 10;
-      ppEl.innerHTML = `<span style="color:var(--win); font-weight:700;">Pairs! +${win} XP</span>`;
+    if(pp){
+      const win = ppBet * pp.mult;
+      ppEl.innerHTML = `<span style="color:var(--win); font-weight:700;">${pp.label}! +${win} XP</span>`;
       ppEl.classList.remove('bj-outcome-pop'); void ppEl.offsetWidth; ppEl.classList.add('bj-outcome-pop');
       bjPlaySideBetDing();
       bjLaunchConfetti(ppEl, 14);
-      await awardXP(win, 'Casino War Pairs side bet', { silent: true });
+      await awardXP(win, `Casino War Pairs (${pp.label})`, { silent: true });
     } else {
       ppEl.innerHTML = `<span style="color:var(--loss);">Pairs: no match (-${ppBet} XP)</span>`;
       await awardXP(-ppBet, 'Casino War Pairs side bet', { silent: true });

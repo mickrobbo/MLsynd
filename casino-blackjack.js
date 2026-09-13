@@ -206,11 +206,21 @@ function bjLaunchConfetti(originEl, count){
   }
 }
 
+// Shared across Blackjack, Baccarat, and War (all three call this same
+// function — see bjDeck/bacDeck/warDeck assignments in their own files).
+// Multi-deck shoe (6 decks, standard casino convention) rather than a
+// single 52-card deck — needed so a true "same suit AND same rank" pair
+// (i.e. literally the same card twice) can ever actually occur for the
+// Perfect Pairs side bet's top tier. Impossible with one deck, since
+// only one of each card exists there.
+const BJ_DECK_COUNT = 6;
 function bjFreshDeck(){
   const suits = ['♠','♥','♦','♣'];
   const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
   const deck = [];
-  suits.forEach(s => ranks.forEach(r => deck.push({ rank: r, suit: s })));
+  for(let d = 0; d < BJ_DECK_COUNT; d++){
+    suits.forEach(s => ranks.forEach(r => deck.push({ rank: r, suit: s })));
+  }
   for(let i = deck.length - 1; i > 0; i--){
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -261,16 +271,40 @@ function bjRenderTable(animate){
   document.getElementById('bjDealerTotal').textContent = '';
 }
 function bjIsRedCard(c){ return c.suit === '♥' || c.suit === '♦'; }
-// Perfect Pairs paytable adjusted for a genuine single 52-card deck: a
-// same-rank+same-suit "perfect" pair is mathematically impossible here
-// (only one of each card exists), so that tier is deliberately left off
-// rather than offering a bet that can never pay out. Colored (same rank,
-// same colour, different suit) and Mixed (same rank, different colour)
-// are both real, achievable outcomes in a single deck.
+// Perfect Pairs paytable — shared across Blackjack/Baccarat/War (each
+// evaluates its own specific two cards through this same function, so
+// all three always agree on what counts as a pair and what it pays).
+// Genuinely 3-tier now that the shoe is multi-deck (see BJ_DECK_COUNT
+// above) — the old single-deck version only had Mixed/Colored Pair
+// (both rank-only) because a true same-suit-AND-same-rank pair could
+// never actually occur with one deck; that's exactly what the new top
+// tier requires. Checked most-specific-first since these are mutually
+// exclusive, not stacking — a Suit & Number Pair is not ALSO counted as
+// a Suit Pair. Multipliers are a judgment call scaled to each tier's
+// real rarity in a 6-deck shoe (roughly 25% / 7% / 1.6% respectively
+// for any two independently-drawn cards) — easy to retune, not derived
+// from a strict house-edge calculation given this is XP, not real money.
+const BJ_PERFECT_PAIRS_PAYTABLE = [
+  { key: 'suitNumber', label: 'Suit & Number Pair', mult: 25 },
+  { key: 'number', label: 'Number Pair', mult: 8 },
+  { key: 'suit', label: 'Suit Pair', mult: 3 }
+];
+// Lowest-level check — takes two individual cards directly, for games
+// like War that compare two cards from DIFFERENT hands (dealer's card
+// vs player's card) rather than the first two cards of one hand.
+function bjEvaluatePairOf(cardA, cardB){
+  if(!cardA || !cardB) return null;
+  const sameSuit = cardA.suit === cardB.suit;
+  const sameRank = cardA.rank === cardB.rank;
+  if(sameSuit && sameRank) return BJ_PERFECT_PAIRS_PAYTABLE[0];
+  if(sameRank) return BJ_PERFECT_PAIRS_PAYTABLE[1];
+  if(sameSuit) return BJ_PERFECT_PAIRS_PAYTABLE[2];
+  return null;
+}
+// Blackjack/Baccarat convenience — evaluates a hand's own first two cards.
 function bjEvaluatePerfectPairs(hand){
-  if(hand.length < 2 || hand[0].rank !== hand[1].rank) return null;
-  const sameColor = bjIsRedCard(hand[0]) === bjIsRedCard(hand[1]);
-  return sameColor ? { label: 'Colored Pair', mult: 12 } : { label: 'Mixed Pair', mult: 6 };
+  if(!hand || hand.length < 2) return null;
+  return bjEvaluatePairOf(hand[0], hand[1]);
 }
 
 // ---- Split Pairs state ----

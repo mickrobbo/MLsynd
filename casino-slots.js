@@ -234,7 +234,19 @@ function slotsBuildPaytable(){
     `<div class="slots-pt-row"><div class="slots-pt-sym">${s.sym}</div><div class="vp-pt-mult">${s.mult3}:1</div><div class="vp-pt-mult">${s.mult4}:1</div><div class="vp-pt-mult">${s.mult5}:1</div></div>`
   ).join('');
   const consolation = `<div class="slots-pt-consolation"><span class="vp-pt-name">Any 2 matching (left to right, per line)</span><span class="vp-pt-mult">1:1</span></div>`;
-  document.getElementById('slotsPaytable').innerHTML = header + rows + consolation;
+  // Feature callouts — reported as missing: the paytable showed line
+  // payouts but never what actually TRIGGERS Free Spins/MEGA/the
+  // jackpot, or what they're worth once triggered. Pulled directly from
+  // this file's own constants rather than hand-typed, so this can never
+  // silently drift out of sync with the real trigger counts/multipliers
+  // if those get retuned later.
+  const features = `<div class="slots-pt-features">
+    <div class="slots-pt-feature-row"><span class="slots-pt-feature-name">${SLOTS_SCATTER_SYMBOL} × ${SLOTS_FREE_SPINS_TRIGGER_COUNT}+ anywhere</span><span class="vp-pt-mult">${SLOTS_FREE_SPINS_AWARD} Free Spins @ ${SLOTS_FREE_SPINS_MULTIPLIER}x</span></div>
+    <div class="slots-pt-feature-row"><span class="slots-pt-feature-name">${SLOTS_SCATTER_SYMBOL} × ${SLOTS_MEGA_TRIGGER_COUNT} (all reels) — MEGA</span><span class="vp-pt-mult">${SLOTS_MEGA_FREE_SPINS_AWARD} Free Spins @ ${SLOTS_MEGA_FREE_SPINS_MULTIPLIER}x</span></div>
+    <div class="slots-pt-feature-row"><span class="slots-pt-feature-name">${SLOTS_WILD_SYMBOL} × 5 on one active payline</span><span class="vp-pt-mult">Wins the Jackpot</span></div>
+    <div class="slots-pt-feature-row"><span class="slots-pt-feature-name">Jackpot funding</span><span class="vp-pt-mult">${Math.round(SLOTS_JACKPOT_CONTRIBUTION_RATE*100)}% of every bet</span></div>
+  </div>`;
+  document.getElementById('slotsPaytable').innerHTML = header + rows + consolation + features;
 }
 // Standard "left to right" payline rule, unchanged from the original
 // single-line machine — count how many reels, starting from reel 1,
@@ -334,6 +346,14 @@ async function slotsSpin(){
   // second concurrent spin before the button visually locks.
   if(spinBtn.disabled) return;
   spinBtn.disabled = true;
+  // FIXED — reported live: hitting Spin or Auto didn't scroll the actual
+  // reels into view, so on a phone where the page had scrolled down to
+  // the bet controls/paytable, the spin itself could happen off-screen.
+  // Placed here (not just on the Spin button's own click) so it fires
+  // identically for auto-spin's internal calls and the free-spins bonus
+  // self-continuation too — every real spin, not just a manually-clicked one.
+  const machineEl = document.getElementById('slotsTableRail');
+  if(machineEl) machineEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const errEl = document.getElementById('slotsBetError');
   errEl.textContent = '';
 
@@ -570,16 +590,18 @@ async function slotsSpin(){
   if(progressiveJackpotWon){
     // The single biggest possible moment in the game — bigger reaction
     // than even MEGA: three confetti bursts, an escalating fanfare, and
-    // the coin cascade plus cha-ching ticks together.
+    // the coin cascade plus cha-ching ticks together. Slowed down overall
+    // per feedback that this — and the other celebrations below — were
+    // flashing past too fast to actually enjoy.
     panelEl.classList.remove('slots-mega-flash'); void panelEl.offsetWidth; panelEl.classList.add('slots-mega-flash');
-    setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 900);
-    setTimeout(() => { panelEl.classList.remove('slots-mega-flash'); void panelEl.offsetWidth; panelEl.classList.add('slots-mega-flash'); setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 900); }, 550);
+    setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 1300);
+    setTimeout(() => { panelEl.classList.remove('slots-mega-flash'); void panelEl.offsetWidth; panelEl.classList.add('slots-mega-flash'); setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 1300); }, 850);
     bjPlayChime(true);
     bjLaunchConfetti(resultEl, 90);
     slotsPlayCoinCascade(true);
     slotsPlayCountUpTicks();
-    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 70); }, 450);
-    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 60); }, 900);
+    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 70); }, 700);
+    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 60); }, 1400);
   } else if(isMegaTrigger){
     // The rarest possible result gets the biggest reaction in the game —
     // a full flash, a double burst of confetti (immediate + a follow-up
@@ -589,11 +611,11 @@ async function slotsSpin(){
     // elements with a .panel class, and this container is
     // .casino-game-panel, so it would've silently done nothing here).
     panelEl.classList.remove('slots-mega-flash'); void panelEl.offsetWidth; panelEl.classList.add('slots-mega-flash');
-    setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 800);
+    setTimeout(() => panelEl.classList.remove('slots-mega-flash'), 1200);
     bjPlayChime(true);
     bjLaunchConfetti(resultEl, 70);
     slotsPlayCoinCascade(true); // was defined but never actually called anywhere — real audio flair, put to use here
-    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 60); }, 500);
+    setTimeout(() => { bjPlayChime(true); bjLaunchConfetti(resultEl, 60); }, 750);
   } else if(triggeredFreeSpins){
     // Triggering the bonus is always a celebration moment, even if this
     // particular spin's own lines net-lost — same reasoning a real
@@ -886,6 +908,7 @@ async function slotsRunAutoSpin(){
   slotsAutoSpinRemaining = slotsAutoSpinCount;
   const btn = document.getElementById('slotsAutoSpinBtn');
   const errEl = document.getElementById('slotsBetError');
+  const gambleArea = document.getElementById('slotsGambleArea');
   while(slotsAutoSpinRunning && slotsAutoSpinRemaining > 0){
     // A bonus already running itself (see slotsSpin's self-continue)
     // takes over completely — the base loop stops rather than firing a
@@ -901,6 +924,16 @@ async function slotsRunAutoSpin(){
     // than silently burning through the whole count hitting the same
     // wall over and over.
     if(errEl && errEl.textContent){ break; }
+    // FIXED — real bug, reported live: slotsOfferGamble() only shows the
+    // Gamble screen and returns immediately, it never actually waits for
+    // a Collect/Gamble decision. That meant this loop had no idea a
+    // decision was pending and just kept firing the next spin straight
+    // over the top of it — the win sat uncollected (nothing auto-credits
+    // it; only Collect does) while a brand new spin's own result could
+    // ALSO go unseen the same way, repeatedly. Auto-spin must stop dead
+    // the instant a win offers Gamble, and only resume once the player
+    // explicitly collects or gambles it — never silently blow through it.
+    if(gambleArea && gambleArea.style.display !== 'none'){ break; }
     // Let the win/lose message and any confetti actually be seen before
     // firing the next spin — a rapid-fire blur would undercut the whole
     // point of asking for more excitement, not add to it.
@@ -1016,7 +1049,11 @@ function slotsShowBigWinBanner(tier, amount){
   slotsPlayCountUpTicks();
   bjLaunchConfetti(banner, config.confetti);
   for(let i = 0; i < config.chimes; i++){
-    setTimeout(() => bjPlayChime(true), i * 350);
+    setTimeout(() => bjPlayChime(true), i * 500);
   }
-  setTimeout(() => { banner.style.display = 'none'; }, 2600);
+  // Slowed from 2600ms — reported as flashing past too fast to actually
+  // watch/enjoy, especially with animateValue's own count-up (defined
+  // elsewhere — not in this file, see the flagged gap) needing real time
+  // to climb rather than being cut off by this banner disappearing under it.
+  setTimeout(() => { banner.style.display = 'none'; }, 4200);
 }
