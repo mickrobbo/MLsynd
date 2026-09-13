@@ -655,25 +655,36 @@ function mgBuildHoleTexture(hole, idx){
   });
   tctx.restore();
 
-  // Tee sign — a small numbered plaque at the start position, the way
-  // an actual mini-golf course marks each hole. Placed above the tee
-  // by default, but below it on any hole whose start sits too close
-  // to the top edge to fit a sign above without clipping.
-  const teeAbove = hole.start.y > 50;
-  const signY = teeAbove ? hole.start.y - 30 : hole.start.y + 30;
+  // Tee sign — redesigned as a compact 3-line scorecard-style plaque
+  // (Hole / Par / Round) rather than just Hole+Par — narrower and
+  // taller than the old 2-line version, both to fit the extra line and
+  // to stop two-digit hole numbers (10-18) risking overflow against a
+  // fixed-width box sized for one digit. "Round" is your cumulative
+  // strokes-vs-par standing entering this hole (E / +N / -N), the same
+  // convention and colour coding as the scorebar's own Round figure.
+  const teeAbove = hole.start.y > 55;
+  const signY = teeAbove ? hole.start.y - 34 : hole.start.y + 34;
+  const roundSoFar = mgScoreHistory.reduce((s, e) => s + (e.strokes - e.par), 0);
+  const roundLabel = roundSoFar === 0 ? 'E' : (roundSoFar > 0 ? `+${roundSoFar}` : `${roundSoFar}`);
+  const roundColor = roundSoFar === 0 ? 'rgba(239,234,216,.85)' : (roundSoFar > 0 ? '#e08a72' : '#8fd4ac');
   tctx.save();
-  mgRoundRectPath(tctx, hole.start.x-22, signY-13, 44, 26, 5);
-  const signGrad = tctx.createLinearGradient(hole.start.x-22, signY-13, hole.start.x-22, signY+13);
+  mgRoundRectPath(tctx, hole.start.x-19, signY-20, 38, 40, 5);
+  const signGrad = tctx.createLinearGradient(hole.start.x-19, signY-20, hole.start.x-19, signY+20);
   signGrad.addColorStop(0, '#3f331a'); signGrad.addColorStop(1, '#241c0c');
   tctx.fillStyle = signGrad; tctx.fill();
   tctx.strokeStyle = '#c9a24b'; tctx.lineWidth = 1.2; tctx.stroke();
-  tctx.fillStyle = '#FFE078';
   tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
-  tctx.font = "700 14px 'Barlow Condensed', sans-serif";
-  tctx.fillText(String(idx+1), hole.start.x, signY-4);
-  tctx.font = "600 8px 'Barlow Condensed', sans-serif";
+  tctx.fillStyle = '#FFE078';
+  tctx.font = "700 13px 'Barlow Condensed', sans-serif";
+  tctx.fillText(String(idx+1), hole.start.x, signY-12);
+  tctx.font = "600 7.5px 'Barlow Condensed', sans-serif";
   tctx.fillStyle = 'rgba(255,224,120,.8)';
-  tctx.fillText(`PAR ${hole.par}`, hole.start.x, signY+8);
+  tctx.fillText(`PAR ${hole.par}`, hole.start.x, signY);
+  tctx.strokeStyle = 'rgba(255,224,120,.25)'; tctx.lineWidth = 1;
+  tctx.beginPath(); tctx.moveTo(hole.start.x-14, signY+7); tctx.lineTo(hole.start.x+14, signY+7); tctx.stroke();
+  tctx.font = "700 9px 'Barlow Condensed', sans-serif";
+  tctx.fillStyle = roundColor;
+  tctx.fillText(`RD ${roundLabel}`, hole.start.x, signY+14);
   tctx.restore();
 
   return c;
