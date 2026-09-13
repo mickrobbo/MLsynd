@@ -160,7 +160,7 @@ function mgSeg(x1,y1,x2,y2){ return {x1,y1,x2,y2}; }
 // within it. Par distribution is deliberately front-loaded easy,
 // building in variety (doglegs, sand, water, bumpers, a mgMoving
 // obstacle) rather than just "longer = harder every time."
-const MG_HOLES = [
+const MG_HOLES_A = [
   // 1 — straight tutorial shot
   { par:2, start:{x:60,y:150}, cup:{x:420,y:150}, cupRadius:11,
     walls:[...mgBorderWalls()] },
@@ -288,6 +288,136 @@ const MG_HOLES = [
     water:[{type:'circle',x:340,y:80,r:38}],
     slopes:[{type:'circle', x:390,y:220,r:45, fx:0.02, fy:0.025}] }
 ];
+
+// Course B — a horizontal mirror of Course A, generated programmatically
+// (mirroring x'=480-x preserves every wall-blocks-the-path relationship
+// exactly, so this carries zero risk of the "wall doesn't actually engage
+// the direct line" bug class found and fixed in Course A earlier) with
+// hazard positions varied further where it was safe to do so without
+// re-verifying geometry from scratch. Same par per slot as Course A, so
+// swapping a slot between A/B never changes the course's overall par.
+const MG_HOLES_B = [
+  // B1 — straight tutorial shot, reversed direction from Course A
+  { par:2, start:{x:420,y:150}, cup:{x:60,y:150}, cupRadius:11,
+    walls:[...mgBorderWalls()] },
+
+  // B2 — gentle bend with an uphill patch (mirrored)
+  { par:2, start:{x:420,y:230}, cup:{x:60,y:70}, cupRadius:11,
+    walls:[...mgBorderWalls(), mgSeg(240,300,240,120)],
+    slopes:[{type:'rect', x:260,y:140,w:130,h:150, fx:0.045, fy:0.02}] },
+
+  // B3 — L-shaped dogleg (mirrored)
+  { par:3, start:{x:420,y:240}, cup:{x:60,y:60}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(280,8,280,220)] },
+
+  // B4 — narrow chute (mirrored)
+  { par:3, start:{x:440,y:150}, cup:{x:40,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(300,8,300,120), mgSeg(300,180,300,292), mgSeg(180,8,180,120), mgSeg(180,180,180,292)] },
+
+  // B5 — mid-course bumper with a downhill patch (mirrored)
+  { par:3, start:{x:430,y:270}, cup:{x:50,y:30}, cupRadius:10,
+    walls:[...mgBorderWalls()],
+    bumpers:[{x:240,y:150,r:20}],
+    slopes:[{type:'circle', x:290,y:200,r:55, fx:-0.035, fy:-0.03}] },
+
+  // B6 — Bridge Crossing (mirrored)
+  { par:3, start:{x:430,y:150}, cup:{x:50,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls()],
+    water:[{type:'rect',x:170,y:8,w:120,h:107}, {type:'rect',x:170,y:185,w:120,h:107}],
+    bridges:[{x:170,y:115,w:120,h:70}] },
+
+  // B7 — S-turn zigzag (mirrored)
+  { par:4, start:{x:440,y:270}, cup:{x:40,y:60}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(300,8,300,210), mgSeg(140,110,140,292)] },
+
+  // B8 — arc around a water hazard (mirrored)
+  { par:3, start:{x:430,y:150}, cup:{x:50,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls()],
+    water:[{type:'circle',x:240,y:150,r:55}] },
+
+  // B9 — S-curve corridor with an uphill patch (mirrored)
+  { par:4, start:{x:440,y:40}, cup:{x:40,y:260}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(320,8,320,190), mgSeg(160,110,160,292)],
+    slopes:[{type:'rect', x:180,y:90,w:90,h:110, fx:0.03, fy:-0.03}] },
+
+  // B10 — island green, two bridges (mirrored)
+  { par:3, start:{x:430,y:150}, cup:{x:50,y:150}, cupRadius:11,
+    walls:[...mgBorderWalls()],
+    water:[{type:'rect',x:284,y:8,w:26,h:107}, {type:'rect',x:284,y:185,w:26,h:107}, {type:'rect',x:114,y:8,w:26,h:107}, {type:'rect',x:114,y:185,w:26,h:107}],
+    bridges:[{x:284,y:115,w:26,h:70}, {x:114,y:115,w:26,h:70}] },
+
+  // B11 — pinball bumper cluster (mirrored)
+  { par:4, start:{x:440,y:150}, cup:{x:40,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls()],
+    bumpers:[{x:300,y:110,r:16}, {x:300,y:190,r:16}, {x:180,y:150,r:18}] },
+
+  // B12 — narrow gate before the cup (mirrored)
+  { par:3, start:{x:430,y:150}, cup:{x:50,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(120,8,120,130), mgSeg(120,170,120,292)] },
+
+  // B13 — big sand trap with a downhill run-up (mirrored)
+  { par:4, start:{x:440,y:150}, cup:{x:40,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls()],
+    sand:[{type:'rect',x:80,y:8,w:180,h:284}],
+    slopes:[{type:'rect', x:260,y:40,w:70,h:220, fx:-0.05, fy:0}] },
+
+  // B14 — Windmill Alley (mirrored — pivot sits dead-center so this one plays very similarly to Course A's version, just reversed direction)
+  { par:3, start:{x:430,y:150}, cup:{x:50,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(240,8,240,110), mgSeg(240,190,240,292)],
+    movingWalls:[{
+      resolve: (t) => {
+        const angle = (t/650) % (Math.PI*2);
+        const cx=240, cy=150, len=68;
+        return mgSeg(cx+Math.cos(angle)*len, cy+Math.sin(angle)*len, cx-Math.cos(angle)*len, cy-Math.sin(angle)*len);
+      }
+    }] },
+
+  // B15 — split path around a central block (mirrored)
+  { par:4, start:{x:440,y:150}, cup:{x:40,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(260,90,220,90), mgSeg(220,90,220,210), mgSeg(220,210,260,210), mgSeg(260,210,260,90)],
+    slopes:[{type:'rect', x:220,y:8,w:40,h:82, fx:0, fy:0.04}, {type:'rect', x:220,y:218,w:40,h:74, fx:0, fy:-0.04}] },
+
+  // B16 — the marathon hole (mirrored)
+  { par:5, start:{x:440,y:30}, cup:{x:40,y:270}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(350,8,350,190), mgSeg(230,292,230,90), mgSeg(110,8,110,190)] },
+
+  // B17 — risk/reward bumper near the cup (mirrored)
+  { par:3, start:{x:430,y:150}, cup:{x:50,y:150}, cupRadius:10,
+    walls:[...mgBorderWalls(), mgSeg(140,8,140,105), mgSeg(140,195,140,292)],
+    bumpers:[{x:140,y:180,r:12}] },
+
+  // B18 — grand finale (mirrored)
+  { par:5, start:{x:440,y:40}, cup:{x:40,y:270}, cupRadius:11,
+    walls:[...mgBorderWalls(), mgSeg(280,8,280,150)],
+    sand:[{type:'rect',x:50,y:170,w:150,h:60}],
+    water:[{type:'circle',x:140,y:80,r:38}],
+    slopes:[{type:'circle', x:90,y:220,r:45, fx:-0.02, fy:0.025}] },
+
+];
+
+// ================= WEEKLY COURSE ROTATION =================
+// Which 18 holes are actually "in play" varies week to week — after
+// each week's prize pays out, the dealer function (minigolf-dealer.js)
+// randomly flips 9 of the 18 slots between their A/B version, so the
+// course composition genuinely changes over time without ever
+// disturbing the par-per-slot progression (both variants share the
+// same par at every slot, by construction — see the mirror generator).
+// MG_HOLES starts as a plain copy of Course A so the game is always
+// immediately playable even before the real variant has loaded; once
+// mgFetchActiveCourse() resolves, it's replaced with whatever mix of
+// A/B is actually active this week.
+let MG_HOLES = MG_HOLES_A.slice();
+async function mgFetchActiveCourse(){
+  let variant = null;
+  try{
+    const res = await authedFetch('/minigolf/activeVariant.json');
+    variant = res.ok ? await res.json() : null;
+  }catch(e){}
+  if(!Array.isArray(variant) || variant.length !== 18){
+    variant = new Array(18).fill('A'); // first-ever run, or the server hasn't initialized this yet
+  }
+  MG_HOLES = variant.map((v, i) => v === 'B' ? MG_HOLES_B[i] : MG_HOLES_A[i]);
+}
 
 // ================= GAME STATE =================
 let mgHoleIndex = 0;
@@ -1048,15 +1178,27 @@ async function mgDealerCall(action, extraParams){
 // via a conditional write (see minigolf-dealer.js).
 async function mgCheckWeeklyPrize(){
   const result = await mgDealerCall('checkWeeklyPrize', {});
-  if(result && result.paid){
+  if(!result) return;
+  if(result.paid){
     showToast(`⛳ ${nameForUid(result.winnerUid)} won last week's Mini Golf prize — ${MG_WEEKLY_PRIZE_XP.toLocaleString()} XP!`);
     mgRenderWeeklyLadder();
+  }
+  // A rotation just happened server-side — apply it immediately rather
+  // than waiting for a future page reload, but only if it's actually
+  // safe to swap the course out from under the player: mid-round (any
+  // hole other than a fresh start) skips this, since changing MG_HOLES
+  // partway through could mismatch the hole they're currently on. It'll
+  // simply apply next time they open Mini Golf fresh instead.
+  if(result.rotatedVariant && mgHoleIndex === 0 && mgScoreHistory.length === 0){
+    MG_HOLES = result.rotatedVariant.map((v, i) => v === 'B' ? MG_HOLES_B[i] : MG_HOLES_A[i]);
+    mgLoadHole(0);
   }
 }
 
 let mgBuilt = false;
 async function mgInit(){
   mgBuilt = true;
+  await mgFetchActiveCourse();
   mgLoadHole(0);
 }
 function mgResume(){

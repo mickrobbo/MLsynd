@@ -1367,6 +1367,7 @@
 
     <div class="pc-table-rail" id="bjTableArea" style="display:none;">
       <div class="bj-table">
+      <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
       <div class="table-box" data-label="Dealer">
         <div id="bjDealerCards" class="bj-hand-row"></div>
         <div id="bjDealerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
@@ -1440,6 +1441,7 @@
 
     <div class="pc-table-rail" id="bacTableArea" style="display:none;">
       <div class="bj-table">
+      <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
       <div class="table-box" data-label="Banker">
         <span class="hand-total-chip table-box-chip" id="bacBankerChip">0</span>
         <div id="bacBankerCards" class="bj-hand-row"></div>
@@ -1465,6 +1467,7 @@
     <div class="casino-game-panel" id="casinoGameRoulette" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="roulette">📜 Rules</button></div>
     <div class="panel" id="rouletteWheelPanel" style="text-align:center;">
+      <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
       <div class="roulette-wheel-wrap">
         <div class="slots-bigwin-banner" id="rouletteBigWinBanner" style="display:none;">
           <div class="slots-bigwin-label" id="rouletteBigWinLabel">BIG WIN</div>
@@ -1554,6 +1557,7 @@
 
     <div class="pc-table-rail" id="warTableArea" style="display:none;">
       <div class="bj-table">
+      <div class="craps-table-wordmark"><span>MLSYND</span><small>CASINO</small></div>
       <div class="table-box" data-label="Dealer">
         <div id="warDealerCards" class="bj-hand-row"></div>
       </div>
@@ -3728,7 +3732,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.117"; // Mini Golf shipped: an 18-hole single-player course (casino-minigolf.js), ported from a standalone preview iterated on directly across several rounds of hole-design fixes (three holes were genuinely unwinnable/pointless due to walls or a full-height water hazard that never actually engaged the direct path — fixed, not just rebalanced), physics additions (slopes that never let the ball rest, wood-plank bridges over water gaps), and two full visual polish passes (rough/fairway distinction, directional lighting, per-hole tee signs, custom vector iconography replacing generic emoji). No per-round XP — instead a live weekly leaderboard (/minigolf/weeklyScores, self-write enforced server-side to only accept an improvement on the existing score) where the best 18-hole round each week wins a flat 100,000 XP prize, paid out by a new lazily-triggered dealer function (netlify/functions/minigolf-dealer.js, same pattern as Hold'em's checkAutoStart/checkTimeout — whichever member opens Mini Golf first after a week ends is the one whose client triggers that week's payout, ETag-guarded against a double-payment race). Every top-level identifier in casino-minigolf.js is mg-prefixed, checked against casino-pong.js's own identifiers first — both files share one global scope and originally used equally-generic names (ball, moving, canvas, loop, W/H) that would have silently collided. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.118"; // MLSYND CASINO wordmark extended to Blackjack/Baccarat/War (all three share one .bj-table felt class, so one CSS addition covers all three) and Roulette's wheel panel (smaller visual win there — the wheel itself is large/opaque and covers most of it). Mini Golf got a second 18-hole set (MG_HOLES_B, generated as a verified horizontal mirror of Course A rather than hand-designed under time pressure — mirroring provably preserves every wall-blocks-the-path relationship, eliminating the exact bug class the first course shipped with) plus a weekly rotation system: minigolf-dealer.js now flips 9 of the 18 slots between their A/B version every time a week transitions (ETag-guarded, same conditional-write safety as the prize payout), and the client applies a detected rotation immediately if it's safe to (not mid-round) rather than waiting for a page reload. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9760,7 +9764,7 @@ document.getElementById('legBetStakeSubmitBtn').addEventListener('click', async 
 
 // ---- Casino game selector ----
 document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     // hubHoldemBtn/hubChallengesBtn live in this same bubble row now (moved
     // in from the old hub tiles) but navigate to their own full-page views
     // via their own dedicated listeners below, not a casino-game-panel —
@@ -9800,7 +9804,7 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     if(btn.dataset.game === 'mines' && !minesBuilt){ minesInit(); }
     if(btn.dataset.game === 'pong' && !pongBuilt){ pongInit(); }
     if(btn.dataset.game === 'minigolf'){
-      if(!mgBuilt) mgInit();
+      if(!mgBuilt) await mgInit();
       mgResume();
     }
     reconcileCasinoAmbience();

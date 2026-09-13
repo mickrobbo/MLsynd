@@ -1482,6 +1482,14 @@
     margin-bottom:14px; filter: drop-shadow(0 10px 18px rgba(0,0,0,.45));
   }
   .pc-table-rail .bj-table{ margin:0; border-radius:16px; }
+  /* Extends the same wordmark treatment Craps/Plinko/Big Wheel/Mines/Crash/
+     Double or Nothing already had (.craps-table-wordmark, reused as-is —
+     no new CSS class needed) to Blackjack/Baccarat/War, all three of which
+     share this one .bj-table felt class. Same z-index-lift pattern as
+     .craps-table-felt > * — every other direct child needs to render above
+     the wordmark, not just sit next to it. */
+  .bj-table{ position:relative; }
+  .bj-table > *{ position:relative; z-index:1; }
   /* Own ::after (not a .panel, so the generic .panel.pc-flash-gold rule
      doesn't reach it) — same purpose as Craps' identical rule. */
   .pc-table-rail::after{ content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; z-index:2; }
@@ -1509,7 +1517,7 @@
      the Hold'em table — this table gets the same high-roller identity. */
   .craps-table-wordmark{
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    text-align:center; pointer-events:none; z-index:0; opacity:.14; mix-blend-mode:soft-light; width:80%;
+    text-align:center; pointer-events:none; z-index:0; opacity:.16; mix-blend-mode:soft-light; width:80%;
   }
   .craps-table-wordmark span{
     display:block; font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:13vw;
@@ -2271,6 +2279,12 @@
      its own ::after since .bj-table::after (used for the flash above) is
      scoped to that class and wouldn't otherwise fire here. */
   #rouletteWheelPanel::after{ content:''; position:absolute; inset:0; pointer-events:none; z-index:2; border-radius:inherit; }
+  /* Same wordmark treatment as every other table, extended here too. The
+     wheel itself is large/opaque and will cover most of it — genuinely a
+     smaller visual win than on the flat felt games, but still visible in
+     the open space around the wheel and above the betting grid. */
+  #rouletteWheelPanel{ position:relative; }
+  #rouletteWheelPanel > *{ position:relative; z-index:1; }
 
   /* Confetti burst — lightweight DOM particles (not canvas), positioned and
      angled from JS, each just a small rotated rect flying outward and

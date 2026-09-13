@@ -264,9 +264,16 @@ function pongDrawFrame(ctx, s){
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = `700 ${Math.round(PONG_H * 0.26)}px 'Barlow Condensed', sans-serif`;
-  ctx.fillText('MLSYND', PONG_W / 2, PONG_H / 2 - PONG_H * 0.08);
+  // True centering of the two-line block as a unit (treating each line's
+  // font-size as its approximate line-height, with a small gap between
+  // them) rather than the previous eyeballed -0.08/+0.13 split, which
+  // wasn't actually symmetric — the block sat measurably low. Matches
+  // how the DOM wordmark (.craps-table-wordmark) centers itself as a
+  // whole block via transform:translate(-50%,-50%), independent of its
+  // two lines' individual heights.
+  ctx.fillText('MLSYND', PONG_W / 2, PONG_H / 2 - PONG_H * 0.05);
   ctx.font = `700 ${Math.round(PONG_H * 0.08)}px 'Barlow Condensed', sans-serif`;
-  ctx.fillText('C A S I N O', PONG_W / 2, PONG_H / 2 + PONG_H * 0.13);
+  ctx.fillText('C A S I N O', PONG_W / 2, PONG_H / 2 + PONG_H * 0.14);
   ctx.restore();
   // Subtle centre dashed line
   ctx.strokeStyle = 'rgba(255,214,120,.22)'; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
@@ -670,9 +677,11 @@ function pongPvpDrawFrame(state){
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.font = `700 ${Math.round(E.H * 0.26)}px 'Barlow Condensed', sans-serif`;
-  ctx.fillText('MLSYND', E.W / 2, E.H / 2 - E.H * 0.08);
+  // Same true-centering correction as the CPU-mode table's watermark —
+  // see that comment for the reasoning.
+  ctx.fillText('MLSYND', E.W / 2, E.H / 2 - E.H * 0.05);
   ctx.font = `700 ${Math.round(E.H * 0.08)}px 'Barlow Condensed', sans-serif`;
-  ctx.fillText('C A S I N O', E.W / 2, E.H / 2 + E.H * 0.13);
+  ctx.fillText('C A S I N O', E.W / 2, E.H / 2 + E.H * 0.14);
   ctx.restore();
   ctx.save();
   ctx.strokeStyle = 'rgba(255,214,120,.25)';
