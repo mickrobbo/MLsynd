@@ -157,6 +157,24 @@ async function creditXP(uid, amount, reason, accessToken){
   }
 }
 
+// Fisher-Yates shuffle, take the first 9 indices to flip. Plain
+// Math.random() is fine here — unlike the client-side Pong engine,
+// nothing needs to reproduce this exact sequence anywhere else, and
+// this only ever runs once per week, server-side, behind the same
+// ETag claim that already prevents a double-run.
+function pickNineToFlip(){
+  const indices = [...Array(18).keys()];
+  for(let i = indices.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  return new Set(indices.slice(0, 9));
+}
+function rotateVariant(currentVariant){
+  const flip = pickNineToFlip();
+  return currentVariant.map((v, i) => flip.has(i) ? (v === 'A' ? 'B' : 'A') : v);
+}
+
 // ---- Ported from index.html's own xpWeekKey() (used for the Weekly
 // Bonus feature) so this shares the exact same week-boundary
 // convention as the rest of the app, rather than inventing a separate
@@ -207,6 +225,13 @@ export default async (req) => {
     // either way (there was nothing to pay on a first run regardless).
     if(!activeWeekKey){
       await dbSetIfUnchanged('/minigolf/activeWeekKey', currentWeekKey, etag, accessToken);
+      // Explicitly seed the course to all-A rather than leaving it
+      // missing — the client already defaults to all-A if this node
+      // doesn't exist, but writing it here means it genuinely exists
+      // in Firebase from day one instead of relying on that fallback
+      // forever.
+      const { etag: variantEtag } = await dbGetWithETag('/minigolf/activeVariant', accessToken);
+      await dbSetIfUnchanged('/minigolf/activeVariant', new Array(18).fill('A'), variantEtag, accessToken);
       return json({ ok: true, paid: false, initialized: true });
     }
 
@@ -225,10 +250,29 @@ export default async (req) => {
       return json({ ok: true, paid: false });
     }
 
+    // Course rotation happens on every week transition, independent of
+    // whether anyone actually played or won — a real course changes
+    // week to week regardless. Reads its own ETag separately from the
+    // activeWeekKey one above (different node) and applies the same
+    // conditional-write safety, though by this point `claimed` already
+    // means this specific request is the one and only one processing
+    // this transition, so a second racing rotation shouldn't occur in
+    // practice — the extra guard costs nothing and errs safe anyway.
+    let rotationResult = null;
+    try{
+      const { value: currentVariant, etag: variantEtag } = await dbGetWithETag('/minigolf/activeVariant', accessToken);
+      const baseVariant = (Array.isArray(currentVariant) && currentVariant.length === 18) ? currentVariant : new Array(18).fill('A');
+      const nextVariant = rotateVariant(baseVariant);
+      const variantSet = await dbSetIfUnchanged('/minigolf/activeVariant', nextVariant, variantEtag, accessToken);
+      if(variantSet) rotationResult = nextVariant;
+    }catch(e){
+      console.error('Mini Golf course rotation failed (non-fatal — prize payout below still proceeds):', e);
+    }
+
     const endedWeekKey = activeWeekKey;
     const scores = await dbGet(`/minigolf/weeklyScores/${endedWeekKey}`, accessToken);
     if(!scores){
-      return json({ ok: true, paid: false, weekAdvanced: true, endedWeekKey });
+      return json({ ok: true, paid: false, weekAdvanced: true, endedWeekKey, rotatedVariant: rotationResult });
     }
 
     let winnerUid = null, winnerStrokes = Infinity;
@@ -237,13 +281,13 @@ export default async (req) => {
       if(typeof s === 'number' && s < winnerStrokes){ winnerStrokes = s; winnerUid = uid; }
     }
     if(!winnerUid){
-      return json({ ok: true, paid: false, weekAdvanced: true, endedWeekKey });
+      return json({ ok: true, paid: false, weekAdvanced: true, endedWeekKey, rotatedVariant: rotationResult });
     }
 
     await creditXP(winnerUid, MINIGOLF_WEEKLY_PRIZE_XP, `Mini Golf weekly prize (${endedWeekKey})`, accessToken);
     await dbSet(`/minigolf/weeklyWinners/${endedWeekKey}`, { uid: winnerUid, strokes: winnerStrokes, paidAt: Date.now() }, accessToken);
 
-    return json({ ok: true, paid: true, winnerUid, strokes: winnerStrokes, weekKey: endedWeekKey, amount: MINIGOLF_WEEKLY_PRIZE_XP });
+    return json({ ok: true, paid: true, winnerUid, strokes: winnerStrokes, weekKey: endedWeekKey, amount: MINIGOLF_WEEKLY_PRIZE_XP, rotatedVariant: rotationResult });
   }catch(e){
     console.error('Mini Golf dealer error:', e);
     return json({ error: `Something went wrong. (${e.message})` }, 500);
