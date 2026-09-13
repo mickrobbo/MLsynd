@@ -1,7 +1,8 @@
 {
-  "version": "2026-09-12.121",
+  "version": "2026-09-12.122",
   "date": "2026-09-12",
   "changes": [
+    "Mini Golf: fixed a ladder entry showing a name with no score at all — now handles more data shapes defensively and logs a warning for anything it still can't parse, instead of rendering it silently blank",
     "Mini Golf: redesigned the on-course tee sign into a 3-line scorecard style (Hole / Par / Round), narrower and taller than before, fixing a potential overflow on two-digit hole numbers",
     "Casino Pot: the jackpot-winner reveal (the slot-reel 'random generator') no longer spoils itself instantly — now opens with a Spin to Reveal button, and the winner's name is hidden until the reel actually lands",
     "Casino Pot: slowed the reveal reel from 3.2s to 6s so the names cycling past are actually readable",

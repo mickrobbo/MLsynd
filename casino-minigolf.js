@@ -1154,7 +1154,24 @@ async function mgRenderWeeklyLadder(){
   try{
     const res = await authedFetch(`/minigolf/weeklyScores/${weekKey}.json`);
     const data = res.ok ? await res.json() : null;
-    if(data) entries = Object.keys(data).map(uid => ({ uid, strokes: data[uid].strokes }));
+    if(data){
+      entries = Object.keys(data).map(uid => {
+        const val = data[uid];
+        // Defensive — reported live: a name showed in the ladder with no
+        // visible score at all, meaning e.strokes came back undefined for
+        // that entry (shape mismatch, a stale/legacy write, or something
+        // else) and rendered as a blank cell with zero indication
+        // anything was wrong. Handles a raw-number shape too in case
+        // that's what's actually stored, and logs a warning for whatever
+        // shape it can't make sense of, so a repeat of this is at least
+        // traceable in the console instead of a silent gap.
+        let strokes = null;
+        if(val && typeof val === 'object' && typeof val.strokes === 'number') strokes = val.strokes;
+        else if(typeof val === 'number') strokes = val;
+        else console.warn(`Mini Golf ladder: unexpected entry shape for ${uid}`, val);
+        return { uid, strokes };
+      }).filter(e => e.strokes != null);
+    }
   }catch(e){}
   entries.sort((a,b) => a.strokes - b.strokes);
   if(!entries.length){
