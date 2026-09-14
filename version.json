@@ -1,7 +1,9 @@
 {
-  "version": "2026-09-12.123",
+  "version": "2026-09-12.124",
   "date": "2026-09-12",
   "changes": [
+    "Mini Golf: actually fixed the blank ladder score — it was a layout bug (no fixed column widths, score column could get squeezed to invisible), not a data bug as first thought",
+    "Mini Golf: made the tee sign bigger and bolder — the previous pass prioritized narrowness over being readable on a real phone screen",
     "Mini Golf: the weekly ladder now polls every 15s while you're on the panel — previously only refreshed on entry/submission, same gap the Floor feed had before",
     "Mini Golf: fixed a ladder entry showing a name with no score at all — now handles more data shapes defensively and logs a warning for anything it still can't parse, instead of rendering it silently blank",
     "Mini Golf: redesigned the on-course tee sign into a 3-line scorecard style (Hole / Par / Round), narrower and taller than before, fixing a potential overflow on two-digit hole numbers",

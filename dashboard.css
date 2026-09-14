@@ -4758,11 +4758,20 @@
   }
   .mg-wp-label{ font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.09em; }
   .mg-wp-amount{ font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:21px; color:var(--brass-light); text-shadow:0 0 14px rgba(255,224,120,.4); line-height:1.15; }
-  table.mg-ladder{ width:100%; border-collapse:collapse; font-size:14px; }
-  table.mg-ladder td{ padding:8px 4px; border-bottom:1px solid rgba(255,255,255,.05); }
+  /* FIXED — real bug, not the data-shape issue I originally (wrongly)
+     diagnosed: with no table-layout:fixed and no explicit width on
+     either the name or score column, the browser's auto-layout could
+     squeeze the score column unpredictably in a narrow panel, and with
+     no white-space:nowrap a squeezed 2-3 digit number could wrap or
+     shrink to the point of being effectively invisible — while the row
+     itself, and the name in it, still rendered completely normally.
+     Explicit fixed percentage widths make this predictable regardless
+     of container width or name length. */
+  table.mg-ladder{ width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed; }
+  table.mg-ladder td{ padding:8px 4px; border-bottom:1px solid rgba(255,255,255,.05); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   table.mg-ladder tr:last-child td{ border-bottom:none; }
   table.mg-ladder tr:nth-child(odd){ background:rgba(255,255,255,.02); }
-  table.mg-ladder td.rank{ width:28px; font-weight:700; font-family:'Barlow Condensed',sans-serif; text-align:center; }
+  table.mg-ladder td.rank{ width:15%; font-weight:700; font-family:'Barlow Condensed',sans-serif; text-align:center; }
   /* Rank colour now lives on the whole row (previously only the tiny
      number badge), so the actual leader's name and score read as gold
      too, not just a small digit easy to miss. */
@@ -4772,7 +4781,7 @@
   table.mg-ladder tr.mg-rank-other td{ color:var(--chalk); }
   table.mg-ladder td.rank.gold{ text-shadow:0 0 10px rgba(255,224,120,.5); }
   table.mg-ladder td.rank.other{ color:var(--muted); font-weight:500; }
-  table.mg-ladder td.score{ text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
+  table.mg-ladder td.score{ width:30%; text-align:right; font-weight:600; font-variant-numeric:tabular-nums; }
   /* "You" is now a left-border accent + bold weight, not a colour override
      — a colour would either fight with or get lost against the rank
      colour above when your own row IS the leader. This layers cleanly
