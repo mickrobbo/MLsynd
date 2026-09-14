@@ -1,7 +1,8 @@
 {
-  "version": "2026-09-12.124",
+  "version": "2026-09-12.125",
   "date": "2026-09-12",
   "changes": [
+    "Slots: fixed autospin not resuming after hitting Collect on a Gamble win — it correctly paused, but nothing ever resumed it, and restarting reset the count instead of continuing it",
     "Mini Golf: actually fixed the blank ladder score — it was a layout bug (no fixed column widths, score column could get squeezed to invisible), not a data bug as first thought",
     "Mini Golf: made the tee sign bigger and bolder — the previous pass prioritized narrowness over being readable on a real phone screen",
     "Mini Golf: the weekly ladder now polls every 15s while you're on the panel — previously only refreshed on entry/submission, same gap the Floor feed had before",

@@ -860,6 +860,18 @@ async function slotsGambleClose(){
   // bonus without stepping on an unresolved choice.
   if(slotsFreeSpinsRemaining > 0){
     setTimeout(() => { slotsSpin(); }, 900);
+  } else if(slotsAutoSpinPausedForGamble && slotsAutoSpinRunning){
+    // FIXED — real bug, reported live: autospin correctly paused for an
+    // unresolved Gamble decision (see slotsRunAutoSpin's own comment),
+    // but nothing ever resumed it afterward — hitting Collect just left
+    // it stopped, and manually clicking Auto again restarted the WHOLE
+    // count from scratch rather than continuing where it left off ("it
+    // resets"). Now resumes automatically the moment the decision is
+    // actually settled (Collect, or a busted gamble guess — both funnel
+    // through this same function), continuing the exact remaining count
+    // rather than restarting it.
+    slotsAutoSpinPausedForGamble = false;
+    setTimeout(() => { slotsRunAutoSpin(true); }, 500);
   }
 }
 document.getElementById('slotsGambleRedBtn').addEventListener('click', () => slotsGambleGuess('color', 'red'));
@@ -904,8 +916,13 @@ document.querySelectorAll('#slotsAutoSpinCountRow .craps-winmode-btn').forEach(b
     document.querySelectorAll('#slotsAutoSpinCountRow .craps-winmode-btn').forEach(b => b.classList.toggle('active', b === btn));
   });
 });
-async function slotsRunAutoSpin(){
-  slotsAutoSpinRemaining = slotsAutoSpinCount;
+let slotsAutoSpinPausedForGamble = false;
+async function slotsRunAutoSpin(isResume){
+  // isResume skips the count reset below — a fresh Auto click always
+  // starts from the selected count, but resuming after a Gamble
+  // decision continues the exact count that was left, not a new run.
+  if(!isResume) slotsAutoSpinRemaining = slotsAutoSpinCount;
+  slotsAutoSpinPausedForGamble = false;
   const btn = document.getElementById('slotsAutoSpinBtn');
   const errEl = document.getElementById('slotsBetError');
   const gambleArea = document.getElementById('slotsGambleArea');
@@ -924,16 +941,17 @@ async function slotsRunAutoSpin(){
     // than silently burning through the whole count hitting the same
     // wall over and over.
     if(errEl && errEl.textContent){ break; }
-    // FIXED — real bug, reported live: slotsOfferGamble() only shows the
-    // Gamble screen and returns immediately, it never actually waits for
-    // a Collect/Gamble decision. That meant this loop had no idea a
-    // decision was pending and just kept firing the next spin straight
-    // over the top of it — the win sat uncollected (nothing auto-credits
-    // it; only Collect does) while a brand new spin's own result could
-    // ALSO go unseen the same way, repeatedly. Auto-spin must stop dead
-    // the instant a win offers Gamble, and only resume once the player
-    // explicitly collects or gambles it — never silently blow through it.
-    if(gambleArea && gambleArea.style.display !== 'none'){ break; }
+    // A win triggered the Gamble screen — pause here rather than fully
+    // stopping. slotsAutoSpinRunning stays true (this is a pause, not a
+    // stop) and slotsGambleClose() resumes this exact loop, with this
+    // exact remaining count, the moment the decision is actually
+    // settled (Collect or a busted guess). Returning here (not
+    // breaking) skips the "stopped" reset below on purpose.
+    if(gambleArea && gambleArea.style.display !== 'none'){
+      slotsAutoSpinPausedForGamble = true;
+      if(btn) btn.textContent = `⏸ Paused (${slotsAutoSpinRemaining} left) — resolve Gamble`;
+      return;
+    }
     // Let the win/lose message and any confetti actually be seen before
     // firing the next spin — a rapid-fire blur would undercut the whole
     // point of asking for more excitement, not add to it.
@@ -951,6 +969,14 @@ document.getElementById('slotsAutoSpinBtn').addEventListener('click', () => {
     // "let the current action land cleanly" pattern used everywhere
     // else rather than yanking the reels mid-motion.
     slotsAutoSpinRunning = false;
+    if(slotsAutoSpinPausedForGamble){
+      // Stopped while paused on an unresolved Gamble decision — that
+      // path returns out of slotsRunAutoSpin early and never reaches
+      // its own button-reset code, so it has to happen here instead.
+      slotsAutoSpinPausedForGamble = false;
+      btn.textContent = '🔄 Auto';
+      btn.classList.remove('slots-auto-running');
+    }
     return;
   }
   slotsAutoSpinRunning = true;
