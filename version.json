@@ -1,7 +1,9 @@
 {
-  "version": "2026-09-12.125",
+  "version": "2026-09-12.126",
   "date": "2026-09-12",
   "changes": [
+    "Fixed a real gap in awardXP (the core XP-credit function every game uses) — the balance update had zero protection against two writes landing close together and silently overwriting each other; now ETag-guarded with a retry loop",
+    "Clarified: the Floor feed intentionally never shows 'cash out' entries — it's a balance transfer, not a game outcome, same treatment as buy-ins and refunds. Not a bug.",
     "Slots: fixed autospin not resuming after hitting Collect on a Gamble win — it correctly paused, but nothing ever resumed it, and restarting reset the count instead of continuing it",
     "Mini Golf: actually fixed the blank ladder score — it was a layout bug (no fixed column widths, score column could get squeezed to invisible), not a data bug as first thought",
     "Mini Golf: made the tee sign bigger and bolder — the previous pass prioritized narrowness over being readable on a real phone screen",

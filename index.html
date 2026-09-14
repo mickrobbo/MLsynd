@@ -3762,7 +3762,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.125"; // Slots: fixed autospin not resuming after Collect — it correctly paused when a win triggered the Gamble screen (deliberate, from an earlier fix), but nothing ever resumed it afterward, and manually restarting reset the remaining count from scratch instead of continuing it ("it resets"). Now resumes automatically the moment the decision is actually settled (Collect, or a busted gamble guess), continuing the exact remaining count. Also fixed the Stop button leaving stale "Paused" text if clicked while paused on an unresolved Gamble decision, since that exit path skips the loop's own button-reset code. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.126"; // Investigated a "+40M Slots cash out never reflected" report — two separate findings. First, the Floor feed genuinely never shows "cash out" entries by design (FLOOR_FEED_EXCLUDE_PATTERN deliberately filters them, same as buy-ins/refunds — it's a balance transfer, not a game outcome), not a bug. Second, found a real gap while checking whether the balance itself actually landed: awardXP's balance update was a plain GET-then-PUT with zero protection — the single choke point every XP change in the whole app funnels through, yet unlike Casino Pot distribution and Mini Golf's weekly rotation (both already ETag-guarded), this had no defense against two writes landing close together silently overwriting each other's contribution. Hardened with an ETag-guarded conditional write + bounded 5-attempt retry loop, matching the pattern already proven elsewhere in this codebase. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -7852,12 +7852,40 @@ async function awardXP(amount, reason, opts){
     syndySpeakBigWin(amount);
   }
   try{
-    const res = await authedFetch(`/xp/${currentUserUid}/balance.json`);
-    const current = (await res.json()) || 0;
-    const next = current + amount;
-    await authedFetch(`/xp/${currentUserUid}/balance.json`, {
-      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(next)
-    });
+    // FIXED — real gap found while investigating a "+40M cash out never
+    // reflected" report: this was a plain GET-then-PUT with zero
+    // protection. If two awardXP calls landed close together for the
+    // same user, the second write's "current" value would be stale —
+    // read before the first write's balance update actually landed —
+    // so its PUT would silently overwrite the first credit entirely,
+    // with no error on either side. This function is the single choke
+    // point every XP change in the whole app funnels through, and it
+    // never had this protection, unlike the Casino Pot distribution and
+    // Mini Golf's weekly rotation, both already ETag-guarded elsewhere
+    // in this codebase. Bounded retry (5 attempts): a 412 means someone
+    // else wrote in between, so it re-reads the now-current value and
+    // tries again rather than blindly overwriting or silently dropping
+    // this credit.
+    let next;
+    let landed = false;
+    for(let attempt = 0; attempt < 5; attempt++){
+      const res = await authedFetch(`/xp/${currentUserUid}/balance.json`, {
+        headers: { 'X-Firebase-ETag': 'true' }
+      });
+      const etag = res.headers.get('ETag');
+      const current = (await res.json()) || 0;
+      next = current + amount;
+      const putRes = await authedFetch(`/xp/${currentUserUid}/balance.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type':'application/json', 'if-match': etag },
+        body: JSON.stringify(next)
+      });
+      if(putRes.ok){ landed = true; break; }
+      if(putRes.status !== 412) throw new Error(`Balance write failed: ${putRes.status}`);
+      // 412 = ETag mismatch, someone else wrote in between — loop and
+      // retry against the now-current value.
+    }
+    if(!landed) throw new Error('Balance write conflict — too many retries, XP NOT credited');
     // opts.detail is an optional small visual payload for the Big Win
     // modal/ticker — e.g. { type:'cards', cards:[...] } or
     // { type:'roulette', number, color } — set by the specific game that
