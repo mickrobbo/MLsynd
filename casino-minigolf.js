@@ -1238,9 +1238,26 @@ async function mgInit(){
   await mgFetchActiveCourse();
   mgLoadHole(0);
 }
+// Ladder polling — was previously "refresh on entry/submission only",
+// same gap the Floor feed had before it was fixed earlier this session:
+// if you're just sitting on the Mini Golf panel watching for the board
+// to update (e.g. right after reporting a blank-score bug and expecting
+// to see it resolve), nothing would ever refresh it without leaving and
+// re-entering. Self-terminates via the mgActive check rather than
+// needing an external stop call from index.html's game-switch handler —
+// same self-cancelling pattern already used by mgLoop.
+let mgLadderPollHandle = null;
+function mgStartLadderPolling(){
+  if(mgLadderPollHandle) return;
+  mgLadderPollHandle = setInterval(() => {
+    if(!mgActive){ clearInterval(mgLadderPollHandle); mgLadderPollHandle = null; return; }
+    mgRenderWeeklyLadder();
+  }, 15000);
+}
 function mgResume(){
   mgActive = true;
   mgRenderWeeklyLadder();
   mgCheckWeeklyPrize();
+  mgStartLadderPolling();
   mgAnimId = requestAnimationFrame(mgLoop);
 }

@@ -1,7 +1,8 @@
 {
-  "version": "2026-09-12.122",
+  "version": "2026-09-12.123",
   "date": "2026-09-12",
   "changes": [
+    "Mini Golf: the weekly ladder now polls every 15s while you're on the panel — previously only refreshed on entry/submission, same gap the Floor feed had before",
     "Mini Golf: fixed a ladder entry showing a name with no score at all — now handles more data shapes defensively and logs a warning for anything it still can't parse, instead of rendering it silently blank",
     "Mini Golf: redesigned the on-course tee sign into a 3-line scorecard style (Hole / Par / Round), narrower and taller than before, fixing a potential overflow on two-digit hole numbers",
     "Casino Pot: the jackpot-winner reveal (the slot-reel 'random generator') no longer spoils itself instantly — now opens with a Spin to Reveal button, and the winner's name is hidden until the reel actually lands",
