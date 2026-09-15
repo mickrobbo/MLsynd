@@ -3819,7 +3819,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.131"; // Maxine's: fixed a real bug reported live as "[object Object] chips" — getHighRollerBalance() never checked res.ok before treating the response as the real balance, so a failed read (most likely a permissions error — if firebase-rules.json's /highRollers/ node was updated in the repo but never actually pasted into the Firebase Console, every read there would 403) silently returned the raw JSON error body as if it were the balance, and Object.prototype.toLocaleString() exists on every object so it never even threw — it just produced literal "[object Object]" text. Also moved the room's entry banner — it lived one tap deep inside the Games sub-page, easy to miss if you never opened Games specifically; now it's a full-width button on the Casino hub itself, right below the Games/XP Ecosystem/Badges/Syndy's Book row. Note: the completely unstyled look reported alongside these (no gold theme, no corners, no shimmer) doesn't match anything in the actual CSS — that's the same "file not actually deployed" pattern that's come up several times this session; worth confirming dashboard.css itself made it live, not just index.html. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.132"; // Maxine's: found the same missing res.ok check in awardHighRollerXP that getHighRollerBalance had — but worse here, since a failed initial read left `current` as the raw error object, and `current + amount` on a non-number does JS string coercion rather than throwing (`{} + 50000000` becomes the literal STRING "[object Object]50000000"), meaning that garbage could actually get written to Firebase as the new "balance" instead of a real number. Now aborts the whole attempt if the read didn't succeed. Also made the welcome-grant flow honest: it used to mark the grant claimed and show a "Welcome, 50,000,000 chips staked" toast unconditionally, even when the underlying write silently failed (reported live as "the welcome bonus didn't appear") — it only marks/announces success now if the write actually landed, and leaves welcomeGrantClaimed unset on failure so it retries next visit instead of being permanently skipped. Both bugs are consistent with (though not confirmed as solely caused by) the /highRollers/ Firebase rules still not actually being pasted into the Firebase Console — worth checking that specifically, since it would explain the reported "games don't work" too (a failed balance read means every bet attempt fails). Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8048,9 +8048,18 @@ async function awardHighRollerXP(amount, reason){
       const res = await authedFetch(`/highRollers/${currentUserUid}/balance.json`, {
         headers: { 'X-Firebase-ETag': 'true' }
       });
+      // FIXED — same missing check as getHighRollerBalance had, but
+      // worse here: a failed read used to leave `current` as the raw
+      // error object, and `current + amount` on a non-number silently
+      // does JS string coercion ("[object Object]" + 50000000 becomes
+      // the STRING "[object Object]50000000") rather than throwing —
+      // that garbage string would then actually get written to Firebase
+      // as the new "balance". Abort the whole attempt instead if the
+      // read itself didn't succeed.
+      if(!res.ok) throw new Error(`Maxine's balance read failed: ${res.status}`);
       const etag = res.headers.get('ETag');
       const current = (await res.json()) || 0;
-      const next = current + amount;
+      const next = (typeof current === 'number' ? current : 0) + amount;
       const putRes = await authedFetch(`/highRollers/${currentUserUid}/balance.json`, {
         method: 'PUT',
         headers: { 'Content-Type':'application/json', 'if-match': etag },
@@ -8060,7 +8069,8 @@ async function awardHighRollerXP(amount, reason){
       if(putRes.status !== 412) throw new Error(`Maxine's balance write failed: ${putRes.status}`);
     }
     if(!landed) throw new Error("Maxine's balance write conflict — too many retries, chips NOT credited");
-  }catch(e){ console.error('awardHighRollerXP failed:', e); }
+    return true;
+  }catch(e){ console.error('awardHighRollerXP failed:', e); return false; }
 }
 // Reach-Sovereign-or-above gate. Mirrors the exact computation the Tier
 // status card already uses (computePrestigeScore + casinoTierFor) rather
@@ -8116,11 +8126,23 @@ async function enterHighRollersRoom(){
     const claimedRes = await authedFetch(`/highRollers/${currentUserUid}/welcomeGrantClaimed.json`);
     const claimed = claimedRes.ok ? await claimedRes.json() : null;
     if(!claimed){
-      await awardHighRollerXP(50000000, "Maxine's welcome grant");
-      await authedFetch(`/highRollers/${currentUserUid}/welcomeGrantClaimed.json`, {
-        method: 'PUT', headers: {'Content-Type':'application/json'}, body: 'true'
-      });
-      showToast('💎 Welcome to Maxine\'s — 50,000,000 chips have been staked for you.');
+      // FIXED — this used to mark the grant as claimed and show a
+      // "Welcome, 50,000,000 chips staked" success toast unconditionally,
+      // even if the award write actually failed underneath (reported
+      // live as the welcome bonus just not appearing). Now only marks
+      // it claimed, and only tells you it worked, if the write actually
+      // landed — a genuine failure surfaces honestly instead, and
+      // leaves welcomeGrantClaimed unset so it's retried next visit
+      // rather than being permanently skipped over a transient failure.
+      const granted = await awardHighRollerXP(50000000, "Maxine's welcome grant");
+      if(granted){
+        await authedFetch(`/highRollers/${currentUserUid}/welcomeGrantClaimed.json`, {
+          method: 'PUT', headers: {'Content-Type':'application/json'}, body: 'true'
+        });
+        showToast('💎 Welcome to Maxine\'s — 50,000,000 chips have been staked for you.');
+      } else {
+        showToast('⚠️ Could not stake your welcome chips — check the console, or try leaving and re-entering.');
+      }
     }
   }catch(e){}
   // A distinct entry cue — reuses the same shared chime every other
