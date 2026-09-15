@@ -2,6 +2,59 @@
 let bjDeck = [], bjPlayerHand = [], bjDealerHand = [], bjCurrentBet = 0, bjHandActive = false;
 let bjLastBet = null; // snapshot of the last hand's bet (+ Perfect Pairs), for the Same Bet button
 let bjHistory = []; // 'W'/'L'/'P' per completed hand — net result, not per-split-hand
+
+// ---- High Rollers Room mode ----
+// A flag, not a separate file — this table's own logic (deal/hit/stand/
+// split/double/Perfect Pairs, the dealer AI, everything) is identical in
+// both modes; only where XP is read from/written to, and whether the
+// bet cap applies, actually differ. Set via window.bjSetHighRollerMode,
+// called by index.html right before it programmatically clicks this
+// game's own bubble to enter — see that file's enterHighRollerGame().
+let bjHighRollerMode = false;
+window.bjSetHighRollerMode = function(active){
+  bjHighRollerMode = !!active;
+  const panel = document.getElementById('casinoGameBlackjack');
+  if(panel) panel.classList.toggle('hr-mode-active', bjHighRollerMode);
+  const badge = document.getElementById('bjHrModeBadge');
+  if(badge) badge.style.display = bjHighRollerMode ? 'block' : 'none';
+  const capNote = document.getElementById('bjCapNote');
+  if(capNote){
+    capNote.style.display = bjHighRollerMode ? 'none' : '';
+    // Populated from the real constant rather than hardcoded in the
+    // HTML, so this can never silently go stale if that cap ever changes.
+    capNote.textContent = `Max bet: ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP per hand`;
+  }
+  if(bjHighRollerMode) bjRefreshHrBalanceDisplay();
+};
+// The only two functions every balance read/write in this file actually
+// calls — everything else routes through these rather than branching on
+// bjHighRollerMode at every individual call site. In High Roller mode
+// this deliberately never touches getXPBalance/awardXP/
+// updateXPBalanceDisplay at all — those are the real XP economy, and
+// this room's whole point is staying fully separate from it, not just
+// visually different.
+async function bjGetBalance(){
+  return bjHighRollerMode ? await getHighRollerBalance() : await getXPBalance();
+}
+async function bjAwardXP(amount, reason, opts){
+  if(bjHighRollerMode) return await awardHighRollerXP(amount, `[Maxine's] ${reason}`);
+  return await awardXP(amount, reason, opts);
+}
+async function bjUpdateBalanceDisplay(bal){
+  if(bal == null) return;
+  if(bjHighRollerMode){
+    const el = document.getElementById('bjHrModeBalanceVal');
+    if(el) el.textContent = `${bal.toLocaleString()} chips`;
+    const hubEl = document.getElementById('hrHubBalanceVal'); // keep the hub panel in sync too, in case they go back to it without a full reload
+    if(hubEl) hubEl.textContent = `${bal.toLocaleString()} chips`;
+    return;
+  }
+  updateXPBalanceDisplay(bal);
+}
+async function bjRefreshHrBalanceDisplay(){
+  const bal = await bjGetBalance();
+  bjUpdateBalanceDisplay(bal);
+}
 // Haptic feedback — feature-detected, silently does nothing on a device/
 // browser that doesn't support the Vibration API (most desktop browsers,
 // iOS Safari). Hooked directly into the two shared sound functions below
@@ -342,13 +395,15 @@ async function bjStartHandInner(){
   const bet = parseInt(betInput.value, 10);
   const ppOn = document.getElementById('bjPerfectPairsCheck').checked;
   const ppBet = parseInt(document.getElementById('bjPerfectPairsAmount').value, 10) || 0;
-  const balance = await getXPBalance();
+  const balance = await bjGetBalance();
   const totalStake = bet + (ppOn ? ppBet : 0);
   if(!bet || bet < 1){ errEl.textContent = 'Place a bet first.'; return; }
   if(ppOn && ppBet < 1){ errEl.textContent = 'Add a Perfect Pairs side bet amount first.'; return; }
-  if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+  // No limits in the High Rollers Room — the whole point of the room —
+  // the regular per-hand cap only applies outside it.
+  if(!bjHighRollerMode && totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
+  if(balance == null){ errEl.textContent = bjHighRollerMode ? 'Could not check your chip balance — try again.' : 'Could not check your XP balance — try again.'; return; }
+  if(totalStake > balance){ errEl.textContent = bjHighRollerMode ? `You only have ${balance.toLocaleString()} chips.` : `You only have ${balance} XP.`; return; }
 
   bjPlayChipSound();
   croupierSay('bjCroupierMsg', CROUPIER_LINES.bjShuffle);
@@ -382,13 +437,13 @@ async function bjStartHandInner(){
       ppOutcomeEl.classList.remove('bj-outcome-pop'); void ppOutcomeEl.offsetWidth; ppOutcomeEl.classList.add('bj-outcome-pop');
       bjPlaySideBetDing();
       bjLaunchConfetti(ppOutcomeEl, 14);
-      await awardXP(win, `Blackjack Perfect Pairs (${pp.label})`, { silent: true });
+      await bjAwardXP(win, `Blackjack Perfect Pairs (${pp.label})`, { silent: true });
     } else {
       ppOutcomeEl.innerHTML = `<span style="color:var(--loss);">Perfect Pairs: no pair (-${ppBet} XP)</span>`;
-      await awardXP(-ppBet, 'Blackjack Perfect Pairs (no pair)', { silent: true });
+      await bjAwardXP(-ppBet, 'Blackjack Perfect Pairs (no pair)', { silent: true });
     }
-    const bal = await getXPBalance();
-    updateXPBalanceDisplay(bal);
+    const bal = await bjGetBalance();
+    bjUpdateBalanceDisplay(bal);
   }
 
   // Insurance is offered before the player's first real decision, and only
@@ -436,7 +491,7 @@ function bjOfferInsurance(){
     };
     const onYes = async () => {
       cleanup();
-      const balance = await getXPBalance();
+      const balance = await bjGetBalance();
       // Checked against balance minus the main bet, not raw balance — the
       // main bet is still fully at risk in this same hand (nothing gets
       // deducted until resolution), so validating Insurance against the
@@ -476,14 +531,14 @@ async function bjResolveInsuranceOutcome(taken, insuranceCost){
       const win = insuranceCost * 2;
       insEl.textContent = `Dealer has Blackjack — Insurance pays 2:1 (+${win} XP)`;
       insEl.style.color = 'var(--win)';
-      await awardXP(win, 'Blackjack Insurance win', { silent: true });
+      await bjAwardXP(win, 'Blackjack Insurance win', { silent: true });
     } else {
       insEl.textContent = `No dealer Blackjack — Insurance lost (-${insuranceCost} XP)`;
       insEl.style.color = 'var(--loss)';
-      await awardXP(-insuranceCost, 'Blackjack Insurance lost', { silent: true });
+      await bjAwardXP(-insuranceCost, 'Blackjack Insurance lost', { silent: true });
     }
-    const bal = await getXPBalance();
-    updateXPBalanceDisplay(bal);
+    const bal = await bjGetBalance();
+    bjUpdateBalanceDisplay(bal);
   }
   if(dealerBJ){
     await bjWait(400);
@@ -567,7 +622,7 @@ async function bjDoubleDown(){
   if(!bjHandActive || bjIsSplit || bjPlayerHand.length !== 2 || bjActionBusy) return;
   bjActionBusy = true;
   try{
-    const balance = await getXPBalance();
+    const balance = await bjGetBalance();
     // Checked against double the current bet, not just the extra half —
     // the original bet is still fully at risk in this same hand, so
     // doubling needs balance for BOTH the amount already at risk and the
@@ -605,7 +660,7 @@ async function bjSplit(){
   if(!bjHandActive || bjIsSplit || bjPlayerHand.length !== 2 || bjCardValue(bjPlayerHand[0]) !== bjCardValue(bjPlayerHand[1]) || bjActionBusy) return;
   bjActionBusy = true;
   try{
-    const balance = await getXPBalance();
+    const balance = await bjGetBalance();
     // Same reasoning as Double Down — the original bet is still fully at
     // risk, and the second hand needs a matching bet of its own, so this
     // needs balance for both, not just one more bjCurrentBet on top of an
@@ -765,9 +820,9 @@ async function bjResolveHand(){
     setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700);
   }
 
-  if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? 'Blackjack win' : 'Blackjack loss', { silent: true });
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  if(totalDelta !== 0) await bjAwardXP(totalDelta, totalDelta > 0 ? 'Blackjack win' : 'Blackjack loss', { silent: true });
+  const bal = await bjGetBalance();
+  bjUpdateBalanceDisplay(bal);
 }
 function bjNewHand(){
   document.getElementById('bjBetPanel').style.display = 'block';

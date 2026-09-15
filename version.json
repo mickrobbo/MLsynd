@@ -1,35 +1,5 @@
 {
-  "version": "2026-09-12.126",
+  "version": "2026-09-12.130",
   "date": "2026-09-12",
-  "changes": [
-    "Fixed a real gap in awardXP (the core XP-credit function every game uses) — the balance update had zero protection against two writes landing close together and silently overwriting each other; now ETag-guarded with a retry loop",
-    "Clarified: the Floor feed intentionally never shows 'cash out' entries — it's a balance transfer, not a game outcome, same treatment as buy-ins and refunds. Not a bug.",
-    "Slots: fixed autospin not resuming after hitting Collect on a Gamble win — it correctly paused, but nothing ever resumed it, and restarting reset the count instead of continuing it",
-    "Mini Golf: actually fixed the blank ladder score — it was a layout bug (no fixed column widths, score column could get squeezed to invisible), not a data bug as first thought",
-    "Mini Golf: made the tee sign bigger and bolder — the previous pass prioritized narrowness over being readable on a real phone screen",
-    "Mini Golf: the weekly ladder now polls every 15s while you're on the panel — previously only refreshed on entry/submission, same gap the Floor feed had before",
-    "Mini Golf: fixed a ladder entry showing a name with no score at all — now handles more data shapes defensively and logs a warning for anything it still can't parse, instead of rendering it silently blank",
-    "Mini Golf: redesigned the on-course tee sign into a 3-line scorecard style (Hole / Par / Round), narrower and taller than before, fixing a potential overflow on two-digit hole numbers",
-    "Casino Pot: the jackpot-winner reveal (the slot-reel 'random generator') no longer spoils itself instantly — now opens with a Spin to Reveal button, and the winner's name is hidden until the reel actually lands",
-    "Casino Pot: slowed the reveal reel from 3.2s to 6s so the names cycling past are actually readable",
-    "Slots: fixed autospin blowing through an unresolved Gamble prompt — a win could sit uncollected while the next spin fired over it; autospin now stops until you Collect or Gamble",
-    "Slots: added auto-scroll to the reels on Spin/Auto, slowed down win celebrations, paytable now shows Free Spins/MEGA/Jackpot triggers and payouts",
-    "Blackjack, War, and Baccarat all moved to a 6-deck shoe",
-    "Perfect Pairs is now a real 3-tier bet on all three (Suit & Number Pair 25:1, Number Pair 8:1, Suit Pair 3:1) — replaces Blackjack's old Colored/Mixed tiers and War's flat 10:1; Baccarat's is a brand new feature",
-    "Payout boards and updated rules text added across Blackjack, War, and Baccarat",
-    "MLSYND CASINO watermark added to Blackjack, Baccarat, War, and Roulette (Craps, Plinko, Big Wheel, Mines, Crash, and Double or Nothing already had it)",
-    "Mini Golf: added a second 18-hole course that rotates in — 9 of the 18 holes swap to their alternate version every week",
-    "New game: Mini Golf — 18 holes, real physics (slopes, wood-plank bridges over water), practice against par",
-    "Mini Golf: no per-round XP — instead a live weekly leaderboard where the best 18-hole round each week wins 100,000 XP",
-    "Multiplayer Pong is now actually playable — challenge, accept, Start to escrow your stake, live match, automatic settlement, Forfeit option, and a results history",
-    "Multiplayer Pong Stages 2 & 3 (engine + networking) added earlier this session",
-    "Multiplayer Pong Stage 1: challenge a member, agree a stake, accept/decline",
-    "Reverted Pong's table size back to 340x220 — the bigger version overflowed off-screen on phones (fixed the real CSS cause so this can't recur)",
-    "Fixed the Pong table's MLSYND watermark being too faint to see",
-    "Pong CPU-challenge XP tiers increased 10x",
-    "Pong: new group-wide all-time 'Best Rounds' leaderboard",
-    "Slots: progressive jackpot now funded by 3% of every real bet, win or lose",
-    "Slots jackpot total now also shown in the Casino lobby, under the Casino Pot panel",
-    "Fixed missing Firebase rules for Pong's saved scores/leaderboard and the Slots jackpot — both were likely failing to save silently"
-  ]
+  "changes": []
 }

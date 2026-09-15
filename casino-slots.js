@@ -96,6 +96,55 @@ function slotsUpdateMachineBalanceDisplay(){
   if(btn) btn.disabled = slotsMachineBalance <= 0;
 }
 
+// ---- High Rollers Room mode — same pattern as Blackjack/War, but with
+// one extra concern neither of those games has: the progressive jackpot
+// is a SHARED communal pool (see below), and it can be won purely from
+// which symbols land, independent of anything about the bet itself. In
+// High Roller mode this game must neither feed that shared pot (an HR
+// bet, potentially far larger than any regular one with no cap, could
+// wildly inflate it) NOR be able to drain it into an HR player's
+// isolated balance (the same leak this whole room exists to prevent,
+// just running the other direction). Both are gated at their own call
+// sites below, not just here — this flag is what those checks read.
+let slotsHighRollerMode = false;
+window.slotsSetHighRollerMode = function(active){
+  slotsHighRollerMode = !!active;
+  const panel = document.getElementById('casinoGameSlots');
+  if(panel) panel.classList.toggle('hr-mode-active', slotsHighRollerMode);
+  const badge = document.getElementById('slotsHrModeBadge');
+  if(badge) badge.style.display = slotsHighRollerMode ? 'block' : 'none';
+  const capNote = document.getElementById('slotsCapNote');
+  if(capNote){
+    capNote.style.display = slotsHighRollerMode ? 'none' : '';
+    capNote.textContent = `Max bet: ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total per spin`;
+  }
+  const jackpotNote = document.getElementById('slotsHrJackpotNote');
+  if(jackpotNote) jackpotNote.style.display = slotsHighRollerMode ? 'block' : 'none';
+  if(slotsHighRollerMode) slotsRefreshHrBalanceDisplay();
+};
+async function slotsGetBalance(){
+  return slotsHighRollerMode ? await getHighRollerBalance() : await getXPBalance();
+}
+async function slotsAwardXP(amount, reason, opts){
+  if(slotsHighRollerMode) return await awardHighRollerXP(amount, `[Maxine's] ${reason}`);
+  return await awardXP(amount, reason, opts);
+}
+async function slotsUpdateBalanceDisplay(bal){
+  if(bal == null) return;
+  if(slotsHighRollerMode){
+    const el = document.getElementById('slotsHrModeBalanceVal');
+    if(el) el.textContent = `${bal.toLocaleString()} chips`;
+    const hubEl = document.getElementById('hrHubBalanceVal');
+    if(hubEl) hubEl.textContent = `${bal.toLocaleString()} chips`;
+    return;
+  }
+  updateXPBalanceDisplay(bal);
+}
+async function slotsRefreshHrBalanceDisplay(){
+  const bal = await slotsGetBalance();
+  slotsUpdateBalanceDisplay(bal);
+}
+
 // ---- Progressive Jackpot — a shared pool across the whole syndicate,
 // separate from the existing Casino Pot system on purpose (that one
 // already has its own distribution schedule, fines, and history —
@@ -369,25 +418,31 @@ async function slotsSpin(){
     lineCount = slotsActiveLineCount;
     if(perLine <= 0){ errEl.textContent = 'Add some chips first.'; spinBtn.disabled = false; return; }
     const totalBet = perLine * lineCount;
-    if(totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per spin is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total across all lines (${perLine.toLocaleString()} × ${lineCount} lines = ${totalBet.toLocaleString()}).`; spinBtn.disabled = false; return; }
+    // No limits in the High Rollers Room.
+    if(!slotsHighRollerMode && totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per spin is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total across all lines (${perLine.toLocaleString()} × ${lineCount} lines = ${totalBet.toLocaleString()}).`; spinBtn.disabled = false; return; }
     // Machine Balance covers the bet first — only the shortfall beyond
     // it is ever actually at risk from real XP. If it fully covers this
     // bet's worst case, there's nothing to check against real XP at all
     // (and no need to spend a balance read doing it).
     const xpAtRisk = Math.max(0, totalBet - slotsMachineBalance);
     if(xpAtRisk > 0){
-      const balance = await getXPBalance();
-      if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
+      const balance = await slotsGetBalance();
+      if(balance == null){ errEl.textContent = slotsHighRollerMode ? 'Could not check your chip balance — try again.' : 'Could not check your XP balance — try again.'; spinBtn.disabled = false; return; }
       if(xpAtRisk > balance){
+        const unit = slotsHighRollerMode ? 'chips' : 'XP';
         errEl.textContent = slotsMachineBalance > 0
-          ? `Your Machine Balance covers ${slotsMachineBalance.toLocaleString()} of this ${totalBet.toLocaleString()} XP bet, but you only have ${balance.toLocaleString()} XP for the remaining ${xpAtRisk.toLocaleString()}.`
-          : `You only have ${balance} XP (total bet: ${totalBet}).`;
+          ? `Your Machine Balance covers ${slotsMachineBalance.toLocaleString()} of this ${totalBet.toLocaleString()} bet, but you only have ${balance.toLocaleString()} ${unit} for the remaining ${xpAtRisk.toLocaleString()}.`
+          : `You only have ${balance.toLocaleString()} ${unit} (total bet: ${totalBet.toLocaleString()}).`;
         spinBtn.disabled = false; return;
       }
     }
     // Fire-and-forget — doesn't hold up the spin animation waiting on
     // this. Free spins don't contribute (nothing genuinely staked).
-    slotsContributeToJackpot(totalBet);
+    // Never contributes in High Roller mode — this pot is shared/visible
+    // across the whole regular Casino, and an HR bet (potentially far
+    // larger, with no cap) inflating it would be exactly the kind of
+    // cross-economy leak this room exists to prevent.
+    if(!slotsHighRollerMode) slotsContributeToJackpot(totalBet);
   }
 
   if(sameBtn) sameBtn.disabled = true;
@@ -495,7 +550,13 @@ async function slotsSpin(){
   // into totalDelta too would double-count it once the normal win/loss
   // settlement below runs.
   let jackpotWonAmount = 0;
-  if(progressiveJackpotWon){
+  // Never actually paid out (or drained from the shared pot) in High
+  // Roller mode — progressiveJackpotWon can still be true and still
+  // triggers the full celebration below (5 wilds landing is genuinely
+  // exciting regardless of mode), but the communal jackpot itself stays
+  // untouched, exactly the leak the contribution-skip above prevents
+  // from the other direction.
+  if(progressiveJackpotWon && !slotsHighRollerMode){
     jackpotWonAmount = await slotsPayJackpot();
   }
 
@@ -648,11 +709,11 @@ async function slotsSpin(){
     const fromMachine = Math.min(slotsMachineBalance, loss);
     slotsMachineBalance -= fromMachine;
     const fromXP = loss - fromMachine;
-    if(fromXP > 0) await awardXP(-fromXP, 'Slots loss', { silent: true });
+    if(fromXP > 0) await slotsAwardXP(-fromXP, 'Slots loss', { silent: true });
   }
   slotsUpdateMachineBalanceDisplay();
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  const bal = await slotsGetBalance();
+  slotsUpdateBalanceDisplay(bal);
   slotsUpdateTotalBetHint();
   if(goesToGamble) slotsOfferGamble(totalDelta);
   // Bonus self-play: once a Free Spins feature is active (just started
@@ -852,8 +913,8 @@ async function slotsGambleClose(){
   if(gambleArea) gambleArea.style.display = 'none';
   if(betPanel) betPanel.style.display = 'block';
   slotsGambleBusy = false;
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  const bal = await slotsGetBalance();
+  slotsUpdateBalanceDisplay(bal);
   // Picks up the bonus self-play deferred by slotsSpin when this same
   // win also triggered a Free Spins feature — now that the Gamble
   // decision is actually settled, it's safe to start auto-spinning the
@@ -998,10 +1059,10 @@ document.getElementById('slotsCashOutBtn').addEventListener('click', async () =>
     // trace (the exact class of bug this app's own build history
     // flagged before: don't update local state before confirming the
     // write landed).
-    await awardXP(amount, 'Slots cash out', { silent: true });
+    await slotsAwardXP(amount, 'Slots cash out', { silent: true });
     slotsMachineBalance = 0;
-    const bal = await getXPBalance();
-    updateXPBalanceDisplay(bal);
+    const bal = await slotsGetBalance();
+    slotsUpdateBalanceDisplay(bal);
     bjPlayChime(true);
   }catch(e){
     console.error('Slots cash out failed:', e);

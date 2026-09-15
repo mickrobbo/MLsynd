@@ -11,6 +11,46 @@ let warOriginalBet = 0;
 let warLastBet = null; // snapshot of the last hand's bet + Pairs side bet, for the Same Bet button
 let warPlayerCard = null, warDealerCard = null;
 let warHistory = []; // 'W'/'L'/'T' — T only ever appears if the same tie repeats through a full war exchange to a push
+
+// ---- High Rollers Room mode — identical pattern to Blackjack's own,
+// see that file for the full rationale. Same game logic in both modes;
+// only the balance source and the bet cap differ. ----
+let warHighRollerMode = false;
+window.warSetHighRollerMode = function(active){
+  warHighRollerMode = !!active;
+  const panel = document.getElementById('casinoGameWar');
+  if(panel) panel.classList.toggle('hr-mode-active', warHighRollerMode);
+  const badge = document.getElementById('warHrModeBadge');
+  if(badge) badge.style.display = warHighRollerMode ? 'block' : 'none';
+  const capNote = document.getElementById('warCapNote');
+  if(capNote){
+    capNote.style.display = warHighRollerMode ? 'none' : '';
+    capNote.textContent = `Max bet: ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP per hand`;
+  }
+  if(warHighRollerMode) warRefreshHrBalanceDisplay();
+};
+async function warGetBalance(){
+  return warHighRollerMode ? await getHighRollerBalance() : await getXPBalance();
+}
+async function warAwardXP(amount, reason, opts){
+  if(warHighRollerMode) return await awardHighRollerXP(amount, `[Maxine's] ${reason}`);
+  return await awardXP(amount, reason, opts);
+}
+async function warUpdateBalanceDisplay(bal){
+  if(bal == null) return;
+  if(warHighRollerMode){
+    const el = document.getElementById('warHrModeBalanceVal');
+    if(el) el.textContent = `${bal.toLocaleString()} chips`;
+    const hubEl = document.getElementById('hrHubBalanceVal');
+    if(hubEl) hubEl.textContent = `${bal.toLocaleString()} chips`;
+    return;
+  }
+  updateXPBalanceDisplay(bal);
+}
+async function warRefreshHrBalanceDisplay(){
+  const bal = await warGetBalance();
+  warUpdateBalanceDisplay(bal);
+}
 function warCardValue(c){ if(c.rank === 'A') return 14; if(c.rank === 'K') return 13; if(c.rank === 'Q') return 12; if(c.rank === 'J') return 11; return Number(c.rank); }
 function warRenderSingle(containerId, card){
   const el = document.getElementById(containerId);
@@ -35,13 +75,14 @@ async function warDealInner(){
   const bet = parseInt(document.getElementById('warBetInput').value, 10);
   const ppOn = document.getElementById('warPerfectPairsCheck').checked;
   const ppBet = parseInt(document.getElementById('warPerfectPairsAmount').value, 10) || 0;
-  const balance = await getXPBalance();
+  const balance = await warGetBalance();
   const totalStake = bet + (ppOn ? ppBet : 0);
   if(!bet || bet < 1){ errEl.textContent = 'Place a bet first.'; return; }
   if(ppOn && ppBet < 1){ errEl.textContent = 'Add a Pairs side bet amount first.'; return; }
-  if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+  // No limits in the High Rollers Room.
+  if(!warHighRollerMode && totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
+  if(balance == null){ errEl.textContent = warHighRollerMode ? 'Could not check your chip balance — try again.' : 'Could not check your XP balance — try again.'; return; }
+  if(totalStake > balance){ errEl.textContent = warHighRollerMode ? `You only have ${balance.toLocaleString()} chips.` : `You only have ${balance} XP.`; return; }
 
   warOriginalBet = bet;
   warDeck = bjFreshDeck();
@@ -77,13 +118,13 @@ async function warDealInner(){
       ppEl.classList.remove('bj-outcome-pop'); void ppEl.offsetWidth; ppEl.classList.add('bj-outcome-pop');
       bjPlaySideBetDing();
       bjLaunchConfetti(ppEl, 14);
-      await awardXP(win, `Casino War Pairs (${pp.label})`, { silent: true });
+      await warAwardXP(win, `Casino War Pairs (${pp.label})`, { silent: true });
     } else {
       ppEl.innerHTML = `<span style="color:var(--loss);">Pairs: no match (-${ppBet} XP)</span>`;
-      await awardXP(-ppBet, 'Casino War Pairs side bet', { silent: true });
+      await warAwardXP(-ppBet, 'Casino War Pairs side bet', { silent: true });
     }
-    const bal = await getXPBalance();
-    updateXPBalanceDisplay(bal);
+    const bal = await warGetBalance();
+    warUpdateBalanceDisplay(bal);
   }
 
   await bjWait(400);
@@ -132,12 +173,12 @@ async function warResolve(delta, label, wasWar){
     setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700);
   }
 
-  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Casino War win' : 'Casino War loss', { silent: true, detail: { type: 'cards', playerCards: [warPlayerCard], bankerCards: [warDealerCard] } });
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  if(delta !== 0) await warAwardXP(delta, delta > 0 ? 'Casino War win' : 'Casino War loss', { silent: true, detail: { type: 'cards', playerCards: [warPlayerCard], bankerCards: [warDealerCard] } });
+  const bal = await warGetBalance();
+  warUpdateBalanceDisplay(bal);
 }
 async function warGoToWar(){
-  const balance = await getXPBalance();
+  const balance = await warGetBalance();
   // Same principle as Blackjack's Double Down/Split — going to war doubles
   // the total at risk (the original bet stays live, plus a matching
   // raise), so this needs balance for both, or a loss could take someone
