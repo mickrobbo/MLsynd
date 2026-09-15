@@ -811,6 +811,13 @@
           <span class="casino-hub-sub">Stake XP on group predictions</span>
         </div>
       </div>
+      <button type="button" class="hr-room-banner hr-room-locked" id="hrRoomBannerBtn" style="width:100%; margin-top:10px;">
+        <span class="hr-room-banner-icon">🔒</span>
+        <span class="hr-room-banner-text">
+          <span class="hr-room-banner-title">Maxine's</span>
+          <span class="hr-room-banner-sub" id="hrRoomBannerSub">Sovereign tier and above only</span>
+        </span>
+      </button>
     </div>
 
     <!-- Hold'em table browser -->
@@ -1304,13 +1311,6 @@
     <!-- Game selector + tables view -->
     <div class="casino-view" id="casinoGamesView">
     <div class="panel" style="padding:10px; text-align:center;">
-      <button type="button" class="hr-room-banner hr-room-locked" id="hrRoomBannerBtn">
-        <span class="hr-room-banner-icon">🔒</span>
-        <span class="hr-room-banner-text">
-          <span class="hr-room-banner-title">Maxine's</span>
-          <span class="hr-room-banner-sub" id="hrRoomBannerSub">Sovereign tier and above only</span>
-        </span>
-      </button>
       <div class="game-bubble-row">
         <button type="button" class="game-bubble" data-game="blackjack"><span class="game-bubble-icon">🃏</span><span class="game-bubble-label">Blackjack</span></button>
         <button type="button" class="game-bubble" data-game="baccarat"><span class="game-bubble-icon">🎴</span><span class="game-bubble-label">Baccarat</span></button>
@@ -3819,7 +3819,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.130"; // Renamed the High Rollers Room to Maxine's — every visible instance (banner, badges, hub title, leaderboard title, toasts, House Rules modal, the inline gem badge's tooltip) updated. Left the internal plumbing alone on purpose (Firebase path /highRollers/, function names like awardHighRollerXP, CSS classes like hr-mode-active) — renaming those would've been pure risk across four interconnected files for zero user-visible benefit. Also caught and updated the [High Roller] prefix baked into each game's award-XP wrapper, even though it's actually inert — awardHighRollerXP never uses its reason parameter for anything, so that string is never displayed or stored anywhere; left it consistent anyway rather than have stale naming sitting in the code. Confirmed two unrelated hits genuinely aren't this feature: a pre-existing "High Roller" achievement badge (biggest single win ≥1,000,000 XP) and its board-betting counterpart (highest average leg price) — both untouched. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.131"; // Maxine's: fixed a real bug reported live as "[object Object] chips" — getHighRollerBalance() never checked res.ok before treating the response as the real balance, so a failed read (most likely a permissions error — if firebase-rules.json's /highRollers/ node was updated in the repo but never actually pasted into the Firebase Console, every read there would 403) silently returned the raw JSON error body as if it were the balance, and Object.prototype.toLocaleString() exists on every object so it never even threw — it just produced literal "[object Object]" text. Also moved the room's entry banner — it lived one tap deep inside the Games sub-page, easy to miss if you never opened Games specifically; now it's a full-width button on the Casino hub itself, right below the Games/XP Ecosystem/Badges/Syndy's Book row. Note: the completely unstyled look reported alongside these (no gold theme, no corners, no shimmer) doesn't match anything in the actual CSS — that's the same "file not actually deployed" pattern that's come up several times this session; worth confirming dashboard.css itself made it live, not just index.html. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8025,8 +8025,19 @@ async function getHighRollerBalance(){
   if(!currentUserUid) return null;
   try{
     const res = await authedFetch(`/highRollers/${currentUserUid}/balance.json`);
+    // FIXED — real bug, reported live as "[object Object] chips": this
+    // never checked res.ok before treating the response as the real
+    // balance. A failed read (most likely a permissions error — if
+    // firebase-rules.json's /highRollers/ node was updated in the repo
+    // but never actually pasted into the Firebase Console, every read
+    // here would 403) returns a JSON error BODY like {"error":"..."},
+    // which isn't null, so the old code returned that whole object as
+    // if it were the balance — and Object.prototype.toLocaleString()
+    // exists on every object, so it never even threw, it just silently
+    // produced the literal text "[object Object]".
+    if(!res.ok) return null;
     const bal = await res.json();
-    return bal == null ? 0 : bal;
+    return (bal == null || typeof bal !== 'number') ? 0 : bal;
   }catch(e){ return null; }
 }
 async function awardHighRollerXP(amount, reason){
@@ -9620,10 +9631,13 @@ async function showCasinoView(viewId){
     if(document.getElementById('membersTabFloor').classList.contains('active')){
       startCasinoFloorPolling();
     }
+    // Moved here from the Games sub-page — the banner now lives on the
+    // top-level hub itself (reported: it was one tap too deep, easy to
+    // miss entirely if you never opened Games specifically).
+    updateHrRoomBannerState();
   } else {
     stopCasinoFloorPolling();
   }
-  if(viewId === 'casinoGamesView') updateHrRoomBannerState();
   reconcileCasinoAmbience();
 }
 document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));

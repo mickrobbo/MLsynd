@@ -400,6 +400,168 @@
     color:#2a2005; box-shadow:0 4px 12px rgba(0,0,0,.3); transition: transform .1s ease;
   }
   .game-bubble-wide:active{ transform:scale(.98); }
+
+  /* ---- High Rollers Room — deliberately distinct from the regular
+     green-felt/brass casino theme. Black lacquer + gold + deep crimson,
+     the "exclusive VIP room" look, not just another game tile. ---- */
+  .hr-room-banner{
+    display:flex; align-items:center; gap:12px; width:100%; margin-bottom:14px; padding:14px 16px;
+    border-radius:14px; cursor:pointer; text-align:left;
+    background: linear-gradient(165deg, #1a1108, #0a0603);
+    border:1px solid #c9a24b;
+    box-shadow: 0 6px 18px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,224,150,.15), 0 0 22px rgba(201,162,75,.25);
+    position:relative; overflow:hidden;
+  }
+  .hr-room-banner::before{
+    content:''; position:absolute; inset:0; opacity:.5;
+    background: radial-gradient(ellipse at 15% 0%, rgba(201,162,75,.3), transparent 55%);
+  }
+  .hr-room-banner-icon{ font-size:28px; filter: drop-shadow(0 0 8px rgba(255,224,150,.5)); position:relative; z-index:1; }
+  .hr-room-banner-text{ display:flex; flex-direction:column; gap:1px; position:relative; z-index:1; }
+  .hr-room-banner-title{
+    font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:16px; letter-spacing:1.5px;
+    background: linear-gradient(180deg, #fff3d2, #d4af5a);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .hr-room-banner-sub{ font-size:11px; color:rgba(230,210,160,.65); }
+  .hr-room-banner.hr-room-locked{ filter:grayscale(.6); opacity:.72; }
+  .hr-room-banner.hr-room-locked .hr-room-banner-title{
+    background:none; -webkit-text-fill-color:unset; color:rgba(230,210,160,.75);
+  }
+
+  .hr-hub-panel{
+    background: linear-gradient(165deg, #1a1108, #0a0603);
+    border:1px solid #c9a24b; border-radius:18px; padding:22px 16px 20px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,224,150,.12), 0 0 30px rgba(201,162,75,.18);
+    text-align:center; position:relative; overflow:hidden;
+  }
+  .hr-hub-panel::before{
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(ellipse at 50% -10%, rgba(201,162,75,.22), transparent 55%);
+  }
+  .hr-hub-header{ position:relative; z-index:1; margin-bottom:18px; }
+  .hr-hub-crest{
+    display:inline-block; font-size:26px; color:#0a0603; width:52px; height:52px; line-height:52px;
+    border-radius:50%; background: radial-gradient(circle at 35% 30%, #fff3d2, #d4af5a 55%, #8a6620);
+    box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6); margin-bottom:10px;
+  }
+  .hr-hub-title{
+    font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:22px; letter-spacing:3px;
+    background: linear-gradient(180deg, #fff3d2, #d4af5a);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow: 0 0 20px rgba(201,162,75,.3);
+  }
+  .hr-hub-sub{ font-size:12px; color:rgba(230,210,160,.6); margin-top:4px; font-style:italic; }
+  .hr-hub-balance-row{
+    display:flex; justify-content:space-between; align-items:baseline; position:relative; z-index:1;
+    padding:12px 16px; border-radius:12px; margin-bottom:4px;
+    background:rgba(201,162,75,.08); border:1px solid rgba(201,162,75,.3);
+  }
+  .hr-hub-balance-label{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:rgba(230,210,160,.65); }
+  .hr-hub-balance-val{ font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:22px; color:#fdf0c8; }
+  .hr-game-row{ display:flex; gap:10px; position:relative; z-index:1; margin-top:6px; }
+  .hr-game-tile{
+    flex:1; padding:18px 8px; border-radius:14px; cursor:pointer;
+    background: linear-gradient(165deg, rgba(201,162,75,.14), rgba(201,162,75,.04));
+    border:1px solid #8a6620; color:#fdf0c8;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    transition: transform .1s ease, box-shadow .15s ease;
+  }
+  .hr-game-tile:active{ transform:scale(.96); }
+  .hr-game-tile-icon{ font-size:28px; filter: drop-shadow(0 0 6px rgba(255,224,150,.35)); }
+  .hr-game-tile-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:.3px; }
+
+  /* Applied to a game panel's root when entered via the High Rollers
+     Room (see HR_MODE in each game's own file) — reskins the SAME
+     table to the black/gold VIP look instead of the regular green felt,
+     rather than duplicating the whole game for a visual difference. */
+  .hr-mode-active{
+    background: linear-gradient(165deg, #1a1108, #0a0603) !important;
+    border-color:#c9a24b !important;
+  }
+  .hr-mode-badge{
+    display:inline-block; margin:0 auto 8px; padding:4px 14px; border-radius:999px;
+    background: linear-gradient(180deg, #fff3d2, #d4af5a); color:#2a2005;
+    font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:11px; letter-spacing:1.5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  }
+
+  /* ---- Further polish pass — shimmer, corner flourishes, suit
+     watermarks, a real chip-edge crest, and the High Rollers
+     leaderboard + inline badge. ---- */
+  @keyframes hrShimmerSweep{
+    0%{ background-position: -60% -60%; }
+    60%, 100%{ background-position: 160% 160%; }
+  }
+  .hr-room-banner, .hr-hub-panel{
+    background-size: 100% 100%, 100% 100%, 300% 300%;
+  }
+  .hr-room-banner::after, .hr-hub-panel::after{
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.09) 50%, transparent 58%);
+    background-size:300% 300%;
+    animation: hrShimmerSweep 6s ease-in-out infinite;
+  }
+  /* Corner flourishes — small HTML marks, not a pseudo-element (::before
+     and ::after are both already spoken for on these elements), the
+     kind of detail a real embossed VIP card/invitation carries. */
+  .hr-corner{ position:absolute; width:16px; height:16px; z-index:1; pointer-events:none; opacity:.55; }
+  .hr-corner-tl{ top:8px; left:8px; border-top:1.5px solid #d4af5a; border-left:1.5px solid #d4af5a; }
+  .hr-corner-tr{ top:8px; right:8px; border-top:1.5px solid #d4af5a; border-right:1.5px solid #d4af5a; }
+  .hr-corner-bl{ bottom:8px; left:8px; border-bottom:1.5px solid #d4af5a; border-left:1.5px solid #d4af5a; }
+  .hr-corner-br{ bottom:8px; right:8px; border-bottom:1.5px solid #d4af5a; border-right:1.5px solid #d4af5a; }
+  /* Faint oversized suit watermarks — real casino-card texture rather
+     than a flat black panel */
+  .hr-suit-watermark{
+    position:absolute; font-size:120px; color:rgba(201,162,75,.05); z-index:0; pointer-events:none;
+    font-family: Georgia, serif; line-height:1;
+  }
+  .hr-suit-watermark.wm-1{ top:-20px; left:-24px; transform:rotate(-12deg); }
+  .hr-suit-watermark.wm-2{ bottom:-30px; right:-20px; transform:rotate(8deg); font-size:100px; }
+  /* Everything inside these panels needs to sit above the shimmer/
+     watermark layers now that those are on ::after/::before at z-index:0 */
+  .hr-hub-header, .hr-hub-balance-row, .hr-game-row, .hr-lb-panel{ position:relative; z-index:1; }
+  .hr-room-banner-icon, .hr-room-banner-text{ z-index:2; }
+
+  /* Crest — a real chip-edge ring instead of a flat circle, the
+     alternating notch pattern a genuine casino chip has around its rim */
+  .hr-hub-crest{
+    position:relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6),
+      0 0 0 3px #0a0603, 0 0 0 4.5px #8a6620;
+  }
+  .hr-hub-crest::before{
+    content:''; position:absolute; inset:-8px; border-radius:50%;
+    background: repeating-conic-gradient(#8a6620 0deg 9deg, transparent 9deg 18deg);
+    z-index:-1; opacity:.8;
+  }
+
+  .hr-lb-panel{ margin-top:18px; text-align:left; }
+  .hr-lb-title{
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:1px;
+    text-transform:uppercase; color:rgba(230,210,160,.7); margin-bottom:8px; text-align:center;
+  }
+  .hr-lb-row{
+    display:flex; align-items:center; gap:10px; padding:9px 6px;
+    border-bottom:1px solid rgba(201,162,75,.15);
+  }
+  .hr-lb-row:last-child{ border-bottom:none; }
+  .hr-lb-row.hr-lb-me{ background:rgba(201,162,75,.1); border-radius:8px; }
+  .hr-lb-rank{ width:22px; text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:14px; color:#d4af5a; }
+  .hr-lb-name{ flex:1; font-size:13px; color:#fdf0c8; }
+  .hr-lb-val{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; color:#d4af5a; }
+
+  /* Inline badge shown next to a High Roller's name on the regular
+     Casino leaderboard too, not just inside the room itself */
+  .hr-lb-badge{
+    display:inline-block; font-size:12px; margin-left:3px;
+    filter: drop-shadow(0 0 4px rgba(255,224,150,.6));
+    animation: hrBadgePulse 2.4s ease-in-out infinite;
+  }
+  @keyframes hrBadgePulse{
+    0%,100%{ opacity:.85; transform:scale(1); }
+    50%{ opacity:1; transform:scale(1.12); }
+  }
   .dailyspin-wheel-wrap{ position:relative; width:250px; height:250px; margin:14px auto 10px; filter: drop-shadow(0 14px 26px rgba(0,0,0,.7)); }
   .dailyspin-bezel-outer{
     position:absolute; inset:-11px; border-radius:50%;
