@@ -17,6 +17,49 @@ let vpHeld = [false, false, false, false, false];
 let vpStage = 'idle'; // idle | dealt
 let vpLastBet = null; // snapshot of the last hand's bet amount, for the Same Bet button
 
+// ---- High Rollers Room mode — identical pattern to Blackjack/War/Slots/
+// Roulette, see casino-blackjack.js for the full rationale. Same game
+// logic in both modes; only the balance source and the bet cap differ.
+// vpGamblePot (the double-or-nothing feature) is purely a local,
+// per-round in-memory variable — not tied to any shared pool the way
+// Slots' jackpot was, so it needs no special gating beyond this. ----
+let vpHighRollerMode = false;
+window.vpSetHighRollerMode = function(active){
+  vpHighRollerMode = !!active;
+  const panel = document.getElementById('casinoGameVideoPoker');
+  if(panel) panel.classList.toggle('hr-mode-active', vpHighRollerMode);
+  const badge = document.getElementById('vpHrModeBadge');
+  if(badge) badge.style.display = vpHighRollerMode ? 'block' : 'none';
+  const capNote = document.getElementById('vpCapNote');
+  if(capNote){
+    capNote.style.display = vpHighRollerMode ? 'none' : '';
+    capNote.textContent = `Max bet: ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total per deal`;
+  }
+  if(vpHighRollerMode) vpRefreshHrBalanceDisplay();
+};
+async function vpGetBalance(){
+  return vpHighRollerMode ? await getHighRollerBalance() : await getXPBalance();
+}
+async function vpAwardXP(amount, reason, opts){
+  if(vpHighRollerMode) return await awardHighRollerXP(amount, `[Maxine's] ${reason}`);
+  return await awardXP(amount, reason, opts);
+}
+async function vpUpdateBalanceDisplay(bal){
+  if(bal == null) return;
+  if(vpHighRollerMode){
+    const el = document.getElementById('vpHrModeBalanceVal');
+    if(el) el.textContent = `${bal.toLocaleString()} chips`;
+    const hubEl = document.getElementById('hrHubBalanceVal');
+    if(hubEl) hubEl.textContent = `${bal.toLocaleString()} chips`;
+    return;
+  }
+  updateXPBalanceDisplay(bal);
+}
+async function vpRefreshHrBalanceDisplay(){
+  const bal = await vpGetBalance();
+  vpUpdateBalanceDisplay(bal);
+}
+
 // ---- Multi-hand mode — the signature real-video-poker feature: deal
 // ONE base hand, hold whichever cards you like, and every additional
 // hand draws its OWN independent replacement cards for the non-held
@@ -242,10 +285,11 @@ async function vpDeal(){
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
   if(amount <= 0){ errEl.textContent = 'Add some chips first.'; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
   const totalBet = amount * vpHandCount;
-  if(totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total bet is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (${amount.toLocaleString()} × ${vpHandCount} hands = ${totalBet.toLocaleString()}).`; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
-  const balance = await getXPBalance();
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
-  if(totalBet > balance){ errEl.textContent = `You only have ${balance} XP (total bet: ${totalBet}).`; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
+  // No limits in the High Rollers Room.
+  if(!vpHighRollerMode && totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total bet is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (${amount.toLocaleString()} × ${vpHandCount} hands = ${totalBet.toLocaleString()}).`; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
+  const balance = await vpGetBalance();
+  if(balance == null){ errEl.textContent = vpHighRollerMode ? 'Could not check your chip balance — try again.' : 'Could not check your XP balance — try again.'; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
+  if(totalBet > balance){ errEl.textContent = vpHighRollerMode ? `You only have ${balance.toLocaleString()} chips (total bet: ${totalBet.toLocaleString()}).` : `You only have ${balance} XP (total bet: ${totalBet}).`; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
 
   vpDeck = bjFreshDeck();
   vpHand = vpDeck.splice(0, 5);
@@ -417,9 +461,9 @@ async function vpDraw(){
     // pattern Slots' own gamble feature already uses.
     vpOfferGamble(totalDelta);
   } else if(totalDelta < 0){
-    await awardXP(totalDelta, 'Video Poker loss', { silent: true });
-    const bal = await getXPBalance();
-    updateXPBalanceDisplay(bal);
+    await vpAwardXP(totalDelta, 'Video Poker loss', { silent: true });
+    const bal = await vpGetBalance();
+    vpUpdateBalanceDisplay(bal);
   }
 
   vpStage = 'idle';
@@ -620,7 +664,7 @@ async function vpGambleCollect(){
   if(statusEl) statusEl.textContent = '';
   try{
     if(vpGamblePot > 0){
-      await awardXP(vpGamblePot, 'Video Poker gamble collect', { silent: true });
+      await vpAwardXP(vpGamblePot, 'Video Poker gamble collect', { silent: true });
     }
     await vpGambleClose(); // clears vpGambleBusy on success
   }catch(e){
@@ -636,8 +680,8 @@ async function vpGambleClose(){
   if(gambleArea) gambleArea.style.display = 'none';
   if(betPanel) betPanel.style.display = 'block';
   vpGambleBusy = false;
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  const bal = await vpGetBalance();
+  vpUpdateBalanceDisplay(bal);
 }
 document.getElementById('vpGambleRedBtn').addEventListener('click', () => vpGambleGuess('red'));
 document.getElementById('vpGambleBlackBtn').addEventListener('click', () => vpGambleGuess('black'));

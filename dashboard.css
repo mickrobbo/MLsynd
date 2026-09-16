@@ -459,9 +459,9 @@
   }
   .hr-hub-balance-label{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:rgba(230,210,160,.65); }
   .hr-hub-balance-val{ font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:22px; color:#fdf0c8; }
-  .hr-game-row{ display:flex; gap:10px; position:relative; z-index:1; margin-top:6px; }
+  .hr-game-row{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; position:relative; z-index:1; margin-top:6px; }
   .hr-game-tile{
-    flex:1; padding:18px 8px; border-radius:14px; cursor:pointer;
+    flex:0 1 calc(33.333% - 7px); padding:18px 8px; border-radius:14px; cursor:pointer;
     background: linear-gradient(165deg, rgba(201,162,75,.14), rgba(201,162,75,.04));
     border:1px solid #8a6620; color:#fdf0c8;
     display:flex; flex-direction:column; align-items:center; gap:8px;

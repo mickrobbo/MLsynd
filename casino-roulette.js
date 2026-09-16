@@ -14,6 +14,47 @@ function rouletteColorOf(pocket){ if(pocket === '0' || pocket === '00') return '
 let rouletteWheelBuilt = false;
 let rouletteBallRotation = 0;
 let rouletteHistory = [];
+
+// ---- High Rollers Room mode — identical pattern to Blackjack/War/Slots,
+// see casino-blackjack.js for the full rationale. Same wheel/game logic
+// in both modes; only the balance source and the bet cap differ. ----
+let rouletteHighRollerMode = false;
+window.rouletteSetHighRollerMode = function(active){
+  rouletteHighRollerMode = !!active;
+  const panel = document.getElementById('casinoGameRoulette');
+  if(panel) panel.classList.toggle('hr-mode-active', rouletteHighRollerMode);
+  const badge = document.getElementById('rouletteHrModeBadge');
+  if(badge) badge.style.display = rouletteHighRollerMode ? 'block' : 'none';
+  const capNote = document.getElementById('rouletteCapNote');
+  if(capNote){
+    capNote.style.display = rouletteHighRollerMode ? 'none' : '';
+    capNote.textContent = `Max bet: ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total across all placed bets`;
+  }
+  if(rouletteHighRollerMode) rouletteRefreshHrBalanceDisplay();
+};
+async function rouletteGetBalance(){
+  return rouletteHighRollerMode ? await getHighRollerBalance() : await getXPBalance();
+}
+async function rouletteAwardXP(amount, reason, opts){
+  if(rouletteHighRollerMode) return await awardHighRollerXP(amount, `[Maxine's] ${reason}`);
+  return await awardXP(amount, reason, opts);
+}
+async function rouletteUpdateBalanceDisplay(bal){
+  if(bal == null) return;
+  if(rouletteHighRollerMode){
+    const el = document.getElementById('rouletteHrModeBalanceVal');
+    if(el) el.textContent = `${bal.toLocaleString()} chips`;
+    const hubEl = document.getElementById('hrHubBalanceVal');
+    if(hubEl) hubEl.textContent = `${bal.toLocaleString()} chips`;
+    return;
+  }
+  updateXPBalanceDisplay(bal);
+}
+async function rouletteRefreshHrBalanceDisplay(){
+  const bal = await rouletteGetBalance();
+  rouletteUpdateBalanceDisplay(bal);
+}
+
 // Multiple simultaneous bets, exactly like a real table — every confirmed
 // bet is its own entry here: { id, type, value/nums, label, amount,
 // cellEls }. cellEls is kept so tapping an already-placed bet's own
@@ -506,10 +547,11 @@ async function rouletteSpinInner(){
   errEl.textContent = '';
   if(rouletteActiveBets.length === 0){ errEl.textContent = 'Place at least one bet on the table first.'; return; }
   const totalStaked = rouletteActiveBets.reduce((s, b) => s + b.amount, 0);
-  if(totalStaked > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per spin is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total across all placed bets (staked: ${totalStaked.toLocaleString()}).`; return; }
-  const balance = await getXPBalance();
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(totalStaked > balance){ errEl.textContent = `You only have ${balance} XP (staked: ${totalStaked}).`; return; }
+  // No limits in the High Rollers Room.
+  if(!rouletteHighRollerMode && totalStaked > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per spin is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP total across all placed bets (staked: ${totalStaked.toLocaleString()}).`; return; }
+  const balance = await rouletteGetBalance();
+  if(balance == null){ errEl.textContent = rouletteHighRollerMode ? 'Could not check your chip balance — try again.' : 'Could not check your XP balance — try again.'; return; }
+  if(totalStaked > balance){ errEl.textContent = rouletteHighRollerMode ? `You only have ${balance.toLocaleString()} chips (staked: ${totalStaked.toLocaleString()}).` : `You only have ${balance} XP (staked: ${totalStaked}).`; return; }
 
   scrollIntoViewSmooth('rouletteWheelPanel');
   const resultEl = document.getElementById('rouletteResultMsg');
@@ -584,9 +626,9 @@ async function rouletteSpinInner(){
     setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
 
-  if(totalDelta !== 0) await awardXP(totalDelta, totalDelta > 0 ? 'Roulette win' : 'Roulette loss', { silent: true, detail: { type: 'roulette', number: winningPocket, color } });
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  if(totalDelta !== 0) await rouletteAwardXP(totalDelta, totalDelta > 0 ? 'Roulette win' : 'Roulette loss', { silent: true, detail: { type: 'roulette', number: winningPocket, color } });
+  const bal = await rouletteGetBalance();
+  rouletteUpdateBalanceDisplay(bal);
 
   // Bets are consumed by the spin, same as chips being swept off a real
   // table — clear everything ready for the next round. Snapshot them first

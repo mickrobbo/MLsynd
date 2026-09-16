@@ -1529,6 +1529,11 @@
       <div id="rouletteHotColdArea" class="roulette-hotcold-area" style="display:none;"></div>
     </div>
     <div class="panel" id="rouletteBetPanel">
+      <div id="rouletteHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
+        <span class="hr-mode-badge">💎 MAXINE'S</span>
+        <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="rouletteHrModeBalanceVal">–</span> · No limits</div>
+      </div>
+      <div id="rouletteCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
       <div class="hint" style="margin-bottom:8px;">American table — pick a chip below (or tap the chip readout to type any amount — no limit), tap a number or outside bet to place it, then Spin. Tap adjacent numbers to build Split/Street/Corner/Double Street bets.</div>
       <div class="roulette-table-grid" id="rouletteTableGrid"></div>
       <div id="rouletteActiveBetsArea" class="roulette-active-bets"></div>
@@ -1861,6 +1866,11 @@
       </div>
     </div>
     <div class="panel" id="vpBetPanel">
+      <div id="vpHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
+        <span class="hr-mode-badge">💎 MAXINE'S</span>
+        <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="vpHrModeBalanceVal">–</span> · No limits</div>
+      </div>
+      <div id="vpCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
       <div class="hint" style="margin-bottom:2px;">Hands</div>
       <div class="craps-winmode-row" id="vpHandCountRow">
         <button type="button" class="craps-winmode-btn active" data-hands="1">1</button>
@@ -2359,6 +2369,8 @@
           <button type="button" class="hr-game-tile" data-hrgame="blackjack"><span class="hr-game-tile-icon">🃏</span><span class="hr-game-tile-label">Blackjack</span></button>
           <button type="button" class="hr-game-tile" data-hrgame="war"><span class="hr-game-tile-icon">⚔️</span><span class="hr-game-tile-label">Casino War</span></button>
           <button type="button" class="hr-game-tile" data-hrgame="slots"><span class="hr-game-tile-icon">🎰</span><span class="hr-game-tile-label">Slots</span></button>
+          <button type="button" class="hr-game-tile" data-hrgame="roulette"><span class="hr-game-tile-icon">🎡</span><span class="hr-game-tile-label">Roulette</span></button>
+          <button type="button" class="hr-game-tile" data-hrgame="videopoker"><span class="hr-game-tile-icon">🂡</span><span class="hr-game-tile-label">Video Poker</span></button>
         </div>
         <div class="hr-lb-panel">
           <div class="hr-lb-title">🏆 Maxine's Leaderboard</div>
@@ -3819,7 +3831,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.132"; // Maxine's: found the same missing res.ok check in awardHighRollerXP that getHighRollerBalance had — but worse here, since a failed initial read left `current` as the raw error object, and `current + amount` on a non-number does JS string coercion rather than throwing (`{} + 50000000` becomes the literal STRING "[object Object]50000000"), meaning that garbage could actually get written to Firebase as the new "balance" instead of a real number. Now aborts the whole attempt if the read didn't succeed. Also made the welcome-grant flow honest: it used to mark the grant claimed and show a "Welcome, 50,000,000 chips staked" toast unconditionally, even when the underlying write silently failed (reported live as "the welcome bonus didn't appear") — it only marks/announces success now if the write actually landed, and leaves welcomeGrantClaimed unset on failure so it retries next visit instead of being permanently skipped. Both bugs are consistent with (though not confirmed as solely caused by) the /highRollers/ Firebase rules still not actually being pasted into the Firebase Console — worth checking that specifically, since it would explain the reported "games don't work" too (a failed balance read means every bet attempt fails). Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.133"; // Maxine's: fixed a real double-payment bug reported live — the welcome grant's read-then-grant-then-write flow had a genuine race (two rapid taps could both read "not claimed" before either write landed, both would grant chips). Now the claim itself is an ETag-guarded conditional write attempted BEFORE any chips are granted, so only one concurrent call can ever win it. Added Roulette and Video Poker, same proven wrapper-function pattern as the other three (mode flag, every balance call routed through per-game wrappers, bet cap removed) — checked against their real uploaded source rather than guessed. Fixed the game-tile row for 5 tiles: was a straight grid, which left the last row's 2 tiles stuck to the left with an awkward gap — switched to a wrapping flexbox that centers a partial row properly. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8123,26 +8135,43 @@ async function enterHighRollersRoom(){
   // whole "doesn't co-mingle" point. One-time only, tracked server-side
   // so re-entering the room (or reloading) never re-grants it.
   try{
-    const claimedRes = await authedFetch(`/highRollers/${currentUserUid}/welcomeGrantClaimed.json`);
+    // FIXED — real bug reported live as a double payment. The old flow
+    // read welcomeGrantClaimed, THEN granted chips, THEN wrote claimed=
+    // true — a genuine race: two rapid taps (double-tap, or a slow
+    // response and a retry) could both read "not claimed" before either
+    // write landed, and both would grant chips. Now the claim itself is
+    // an ETag-guarded conditional write, attempted BEFORE any chips are
+    // granted — only one concurrent call can ever win that race (the
+    // other's write is rejected with a 412 since the ETag no longer
+    // matches), so at most one grant can ever happen per welcome.
+    const claimedRes = await authedFetch(`/highRollers/${currentUserUid}/welcomeGrantClaimed.json`, {
+      headers: { 'X-Firebase-ETag': 'true' }
+    });
+    const etag = claimedRes.headers.get('ETag');
     const claimed = claimedRes.ok ? await claimedRes.json() : null;
-    if(!claimed){
-      // FIXED — this used to mark the grant as claimed and show a
-      // "Welcome, 50,000,000 chips staked" success toast unconditionally,
-      // even if the award write actually failed underneath (reported
-      // live as the welcome bonus just not appearing). Now only marks
-      // it claimed, and only tells you it worked, if the write actually
-      // landed — a genuine failure surfaces honestly instead, and
-      // leaves welcomeGrantClaimed unset so it's retried next visit
-      // rather than being permanently skipped over a transient failure.
-      const granted = await awardHighRollerXP(50000000, "Maxine's welcome grant");
-      if(granted){
-        await authedFetch(`/highRollers/${currentUserUid}/welcomeGrantClaimed.json`, {
-          method: 'PUT', headers: {'Content-Type':'application/json'}, body: 'true'
-        });
-        showToast('💎 Welcome to Maxine\'s — 50,000,000 chips have been staked for you.');
-      } else {
-        showToast('⚠️ Could not stake your welcome chips — check the console, or try leaving and re-entering.');
+    if(!claimed && etag){
+      const claimPutRes = await authedFetch(`/highRollers/${currentUserUid}/welcomeGrantClaimed.json`, {
+        method: 'PUT', headers: {'Content-Type':'application/json', 'if-match': etag}, body: 'true'
+      });
+      if(claimPutRes.ok){
+        // Won the claim race — safe to grant now, exactly once.
+        const granted = await awardHighRollerXP(50000000, "Maxine's welcome grant");
+        if(granted){
+          showToast('💎 Welcome to Maxine\'s — 50,000,000 chips have been staked for you.');
+        } else {
+          // Claimed successfully but the chips themselves failed to land
+          // — reset the claim so a retry (leaving and re-entering) can
+          // actually try again, rather than being locked out of the
+          // welcome grant forever over a transient failure.
+          await authedFetch(`/highRollers/${currentUserUid}/welcomeGrantClaimed.json`, {
+            method: 'PUT', headers: {'Content-Type':'application/json'}, body: 'false'
+          });
+          showToast('⚠️ Could not stake your welcome chips — check the console, or try leaving and re-entering.');
+        }
       }
+      // else: claimPutRes failed (412 = a concurrent call already won
+      // the claim first, or some other transient error) — correctly do
+      // nothing here rather than granting a duplicate.
     }
   }catch(e){}
   // A distinct entry cue — reuses the same shared chime every other
@@ -10158,7 +10187,9 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     const HR_MODE_SETTERS = {
       blackjack: 'bjSetHighRollerMode',
       war: 'warSetHighRollerMode',
-      slots: 'slotsSetHighRollerMode'
+      slots: 'slotsSetHighRollerMode',
+      roulette: 'rouletteSetHighRollerMode',
+      videopoker: 'vpSetHighRollerMode'
     };
     const hrSetterName = HR_MODE_SETTERS[btn.dataset.game];
     if(hrSetterName && typeof window[hrSetterName] === 'function'){
