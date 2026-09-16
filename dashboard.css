@@ -534,6 +534,24 @@
   .hr-mode-active .table-chip, .hr-mode-active .bj-chip{
     box-shadow: 0 3px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,243,210,.35);
   }
+  /* Body-level version of the same override — reported live: even the
+     header banner, the "Your XP" card, and the Slots Jackpot card
+     (everything ABOVE the room panel itself, shared page furniture
+     rather than anything Maxine's-specific) were still plain green,
+     which meant green was visible the instant you scrolled up even one
+     screen while inside the room. Toggled on document.body itself
+     while anywhere in Maxine's (the room or any of its games) precisely
+     because body's own background is var(--ink) — overriding these
+     variables at that scope recolours the page underneath everything,
+     not just the panels sitting on top of it, so there's no gap left
+     for green to show through. Removed the instant you leave. */
+  body.maxines-lounge-active{
+    --ink: #0a0603;
+    --felt: #1a1108; --felt-2: #241a0c; --felt-3: #2e2210;
+    --line: rgba(212,175,90,.18);
+    --brass: #d4af5a; --brass-dim: #8a6620; --brass-light: #fff3d2;
+    --chalk: #fdf0c8; --muted: #b89968; --win: #8fd4ac; --loss: #e08a72;
+  }
   .hr-mode-badge{
     display:inline-block; margin:0 auto 8px; padding:4px 14px; border-radius:999px;
     background: linear-gradient(180deg, #fff3d2, #d4af5a); color:#2a2005;
