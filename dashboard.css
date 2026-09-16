@@ -468,7 +468,28 @@
     transition: transform .1s ease, box-shadow .15s ease;
   }
   .hr-game-tile:active{ transform:scale(.96); }
-  .hr-game-tile-icon{ font-size:28px; filter: drop-shadow(0 0 6px rgba(255,224,150,.35)); }
+  .hr-game-tile-icon{ font-size:28px; filter: drop-shadow(0 0 6px rgba(255,224,150,.35)); display:flex; }
+  .hr-game-tile-icon svg{ display:block; }
+  .hr-header-btn{
+    background: linear-gradient(165deg, #241a0c, #150e05); border:1px solid #8a6620; color:#fdf0c8;
+    box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  }
+  .hr-header-btn:active{ transform:scale(.97); }
+  /* "Now playing" equalizer bars — a small, honest indicator that music
+     is actually going, not just a static note icon */
+  .hr-eq-bars{ display:none; align-items:flex-end; gap:2px; height:11px; margin-left:5px; vertical-align:middle; }
+  .hr-eq-bars.playing{ display:inline-flex; }
+  .hr-eq-bars span{
+    width:2.5px; background:#d4af5a; border-radius:1px;
+    animation: hrEqBounce .9s ease-in-out infinite;
+  }
+  .hr-eq-bars span:nth-child(1){ height:5px; animation-delay:-.6s; }
+  .hr-eq-bars span:nth-child(2){ height:9px; animation-delay:-.3s; }
+  .hr-eq-bars span:nth-child(3){ height:6px; animation-delay:0s; }
+  @keyframes hrEqBounce{
+    0%,100%{ transform:scaleY(.4); }
+    50%{ transform:scaleY(1); }
+  }
   .hr-game-tile-label{ font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:.3px; }
 
   /* Applied to a game panel's root when entered via the High Rollers
@@ -478,6 +499,23 @@
   .hr-mode-active{
     background: linear-gradient(165deg, #1a1108, #0a0603) !important;
     border-color:#c9a24b !important;
+    /* This is the actual "own feel and tone" fix — reported live as
+       every game just being the regular table with a badge stuck on
+       top. Every game's felt, cards, chips, and text pull their colours
+       from these SAME shared variables (461 uses across the stylesheet),
+       so overriding them once here — rather than hand-reskinning five
+       different tables' worth of individual rules — cascades the
+       black-and-gold theme through everything inside this panel
+       automatically: Blackjack's felt, Roulette's wheel surround,
+       Slots' reel frame, every chip and card back, all of it. */
+    --ink: #0a0603;
+    --felt: #1a1108; --felt-2: #241a0c; --felt-3: #2e2210;
+    --line: rgba(212,175,90,.18);
+    --brass: #d4af5a; --brass-dim: #8a6620; --brass-light: #fff3d2;
+    --chalk: #fdf0c8; --muted: #b89968; --win: #8fd4ac; --loss: #e08a72;
+  }
+  .hr-mode-active .table-chip, .hr-mode-active .bj-chip{
+    box-shadow: 0 3px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,243,210,.35);
   }
   .hr-mode-badge{
     display:inline-block; margin:0 auto 8px; padding:4px 14px; border-radius:999px;

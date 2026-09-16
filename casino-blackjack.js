@@ -102,6 +102,12 @@ function bjPlayChipSound(){
 }
 function bjPlayChime(ascending){
   hapticPulse(ascending ? [15, 40, 15] : 35); // a little double-tap for a win, one firmer buzz for a loss — audibly and physically distinct
+  // Duck Maxine's background piano under this — shared across every
+  // game's win/loss sound, so hooking it once here covers all five
+  // rather than needing a separate call at each game's own chime site.
+  // Harmless no-op outside the room (maxinesAmbienceDuck checks its own
+  // audio element's state before doing anything).
+  if(typeof maxinesAmbienceDuck === 'function') maxinesAmbienceDuck();
   const ctx = bjGetAudioCtx(); if(!ctx) return;
   const now = ctx.currentTime;
   const notes = ascending ? [523.25, 659.25, 783.99] : [440, 349.23, 293.66];

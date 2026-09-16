@@ -2346,9 +2346,9 @@
     <div class="casino-view" id="casinoHighRollersView">
       <audio id="maxinesAmbienceAudio" src="sounds/maxines-ambience.mp3" loop preload="none"></audio>
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
-        <button type="button" class="pill-btn casino-rules-btn" data-rules="highrollers">📜 House Rules</button>
-        <button type="button" class="pill-btn" id="maxinesMuteBtn" title="Mute the piano">🎵</button>
-        <button type="button" class="pill-btn" id="hrRoomBackBtn">← Back</button>
+        <button type="button" class="pill-btn hr-header-btn casino-rules-btn" data-rules="highrollers">📜 House Rules</button>
+        <button type="button" class="pill-btn hr-header-btn" id="maxinesMuteBtn" title="Mute the piano"><span id="maxinesMuteIcon">🎵</span><span class="hr-eq-bars" id="maxinesEqBars"><span></span><span></span><span></span></span></button>
+        <button type="button" class="pill-btn hr-header-btn" id="hrRoomBackBtn">← Back</button>
       </div>
       <div class="hr-hub-panel">
         <span class="hr-corner hr-corner-tl"></span>
@@ -2368,11 +2368,11 @@
         </div>
         <div class="hint" style="color:rgba(230,210,160,.6); margin:2px 0 14px; position:relative; z-index:1;">This balance is entirely separate from your main XP — it never touches the leaderboard, lifetime totals, or Casino Pot.</div>
         <div class="hr-game-row">
-          <button type="button" class="hr-game-tile" data-hrgame="blackjack"><span class="hr-game-tile-icon">🃏</span><span class="hr-game-tile-label">Blackjack</span></button>
-          <button type="button" class="hr-game-tile" data-hrgame="war"><span class="hr-game-tile-icon">⚔️</span><span class="hr-game-tile-label">Casino War</span></button>
-          <button type="button" class="hr-game-tile" data-hrgame="slots"><span class="hr-game-tile-icon">🎰</span><span class="hr-game-tile-label">Slots</span></button>
-          <button type="button" class="hr-game-tile" data-hrgame="roulette"><span class="hr-game-tile-icon">🎡</span><span class="hr-game-tile-label">Roulette</span></button>
-          <button type="button" class="hr-game-tile" data-hrgame="videopoker"><span class="hr-game-tile-icon">🂡</span><span class="hr-game-tile-label">Video Poker</span></button>
+          <button type="button" class="hr-game-tile" data-hrgame="blackjack"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><rect x="6" y="4" width="20" height="26" rx="3" fill="none" stroke="#d4af5a" stroke-width="1.6"/><text x="10" y="14" fill="#d4af5a" font-size="8" font-family="Georgia,serif">A</text><path d="M16 17 L19 22 L13 22 Z M13.5 21 Q16 25 18.5 21" fill="none" stroke="#d4af5a" stroke-width="1.3"/></svg></span><span class="hr-game-tile-label">Blackjack</span></button>
+          <button type="button" class="hr-game-tile" data-hrgame="war"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><g fill="none" stroke="#d4af5a" stroke-width="1.6" stroke-linecap="round"><path d="M7 7 L23 23 M20 23 L23 23 L23 20"/><path d="M25 7 L9 23 M12 23 L9 23 L9 20"/></g><circle cx="16" cy="15" r="2.4" fill="none" stroke="#d4af5a" stroke-width="1.3"/></svg></span><span class="hr-game-tile-label">Casino War</span></button>
+          <button type="button" class="hr-game-tile" data-hrgame="slots"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><rect x="6" y="6" width="20" height="20" rx="2.5" fill="none" stroke="#d4af5a" stroke-width="1.6"/><line x1="6" y1="12" x2="26" y2="12" stroke="#d4af5a" stroke-width="1.3"/><line x1="12.6" y1="12" x2="12.6" y2="26" stroke="#d4af5a" stroke-width="1"/><line x1="19.3" y1="12" x2="19.3" y2="26" stroke="#d4af5a" stroke-width="1"/><circle cx="16" cy="19" r="2" fill="#d4af5a"/><rect x="27" y="10" width="2.4" height="8" rx="1.2" fill="#d4af5a"/></svg></span><span class="hr-game-tile-label">Slots</span></button>
+          <button type="button" class="hr-game-tile" data-hrgame="roulette"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><circle cx="16" cy="16" r="11" fill="none" stroke="#d4af5a" stroke-width="1.6"/><circle cx="16" cy="16" r="2.2" fill="#d4af5a"/><g stroke="#d4af5a" stroke-width="1"><line x1="16" y1="5" x2="16" y2="12"/><line x1="16" y1="20" x2="16" y2="27"/><line x1="5" y1="16" x2="12" y2="16"/><line x1="20" y1="16" x2="27" y2="16"/><line x1="8.3" y1="8.3" x2="12.8" y2="12.8"/><line x1="19.2" y1="19.2" x2="23.7" y2="23.7"/><line x1="23.7" y1="8.3" x2="19.2" y2="12.8"/><line x1="12.8" y1="19.2" x2="8.3" y2="23.7"/></g></svg></span><span class="hr-game-tile-label">Roulette</span></button>
+          <button type="button" class="hr-game-tile" data-hrgame="videopoker"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><g fill="none" stroke="#d4af5a" stroke-width="1.4"><rect x="5" y="10" width="10" height="15" rx="1.6" transform="rotate(-14 10 17)"/><rect x="11" y="8" width="10" height="15" rx="1.6"/><rect x="17" y="10" width="10" height="15" rx="1.6" transform="rotate(14 22 17)"/></g><path d="M15.2 13.2 L16.8 13.2 L16.8 15.5 L19 15.5 L16 19.5 L13 15.5 L15.2 15.5 Z" fill="#d4af5a"/></svg></span><span class="hr-game-tile-label">Video Poker</span></button>
         </div>
         <div class="hr-lb-panel">
           <div class="hr-lb-title">🏆 Maxine's Leaderboard</div>
@@ -3833,7 +3833,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.135"; // Maxine's: added the background ambience track (jazz piano loop, a real royalty-free Freesound download — clean local path is sounds/maxines-ambience.mp3, needs adding to the repo at that path). Plain HTML5 <audio> with a gentle fade in both directions rather than a hard start/stop, kept quiet (0.14 volume target) per the brief, plays across the whole room including whichever game you open from it, correctly stops on a genuine exit. Built as a fully separate, self-contained system rather than touching reconcileCasinoAmbience — still haven't located that function's actual definition anywhere in this file, only its call sites, so didn't want to build on top of something unverified. Added a mute toggle (persisted via localStorage) and pause-on-backgrounded-tab handling. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.136"; // Maxine's: the "own feel and tone" request, reported live as "it takes me to the existing game" — the games weren't feeling distinct because .hr-mode-active only ever overrode the outer panel's own background. Fixed at the actual leverage point: every game's felt, cards, chips, and text all pull colour from the SAME shared CSS variables (461 uses across dashboard.css), so overriding --felt/--brass/--chalk/etc. once inside .hr-mode-active cascades the black-and-gold theme through everything inside the room automatically, no per-game reskinning needed. Replaced the five game-tile emoji with original gold line-art SVG icons (a card, crossed swords, slot reels, a roulette wheel, a card fan) and gave the House Rules/mute/Back buttons real premium button styling instead of the plain default. Added the two suggested improvements from last time: ducking (hooked once into the shared bjPlayChime, covers every game's win/loss sound rather than five separate call sites) and a "now playing" equalizer-bars indicator next to the mute icon — caught and fixed a real bug while wiring the latter, where the existing mute-toggle code did btn.textContent = ... on the button itself, which would have silently wiped out the new equalizer-bars child element every time it ran. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8229,6 +8229,7 @@ function maxinesAmbienceFadeTo(target, ms){
 function maxinesAmbienceStart(){
   const audio = document.getElementById('maxinesAmbienceAudio');
   if(!audio || maxinesAmbienceMuted) return;
+  maxinesUpdateEqBars(true);
   if(!audio.paused && audio.volume >= MAXINES_AMBIENCE_TARGET_VOLUME * 0.9) return; // already playing at (near) full — a re-entry into an already-scored room shouldn't restart the fade
   audio.volume = audio.paused ? 0 : audio.volume;
   audio.play().catch(() => {}); // browsers can block autoplay before any tap on the page at all — harmless no-op if so, the next real interaction (e.g. the entry chime) clears it
@@ -8236,19 +8237,40 @@ function maxinesAmbienceStart(){
 }
 function maxinesAmbienceStop(){
   const audio = document.getElementById('maxinesAmbienceAudio');
+  maxinesUpdateEqBars(false);
   if(!audio || audio.paused) return;
   maxinesAmbienceFadeTo(0, 1400);
+}
+function maxinesUpdateEqBars(playing){
+  const eq = document.getElementById('maxinesEqBars');
+  if(eq) eq.classList.toggle('playing', playing);
+}
+// Fast dip, slow recovery — standard ducking shape, so a win chime cuts
+// through cleanly instead of getting muddied under the piano. Rapid wins
+// in a row correctly just keep re-triggering the dip rather than
+// stacking recoveries on top of each other.
+let maxinesDuckRestoreHandle = null;
+function maxinesAmbienceDuck(){
+  const audio = document.getElementById('maxinesAmbienceAudio');
+  if(!audio || audio.paused || maxinesAmbienceMuted) return;
+  if(maxinesFadeHandle) clearInterval(maxinesFadeHandle);
+  audio.volume = MAXINES_AMBIENCE_TARGET_VOLUME * 0.35;
+  clearTimeout(maxinesDuckRestoreHandle);
+  maxinesDuckRestoreHandle = setTimeout(() => {
+    maxinesAmbienceFadeTo(MAXINES_AMBIENCE_TARGET_VOLUME, 500);
+  }, 650);
 }
 function maxinesAmbienceSetMuted(muted){
   maxinesAmbienceMuted = muted;
   localStorage.setItem('maxinesAmbienceMuted', muted ? '1' : '0');
   const btn = document.getElementById('maxinesMuteBtn');
-  if(btn) btn.textContent = muted ? '🔇' : '🎵';
+  const icon = document.getElementById('maxinesMuteIcon');
+  if(icon) icon.textContent = muted ? '🔇' : '🎵';
   if(muted) maxinesAmbienceStop();
   else maxinesAmbienceStart();
 }
 document.getElementById('maxinesMuteBtn').addEventListener('click', () => maxinesAmbienceSetMuted(!maxinesAmbienceMuted));
-document.getElementById('maxinesMuteBtn').textContent = maxinesAmbienceMuted ? '🔇' : '🎵';
+document.getElementById('maxinesMuteIcon').textContent = maxinesAmbienceMuted ? '🔇' : '🎵';
 // Pause (not the fade — a hard pause is correct here) whenever the tab
 // itself goes into the background, and only resume if we're still
 // actually sitting in Maxine's when it comes back — no point spending
