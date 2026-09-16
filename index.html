@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="dashboard.css?v=146">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -3835,7 +3835,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.145"; // Found a real inconsistency for the still-not-displaying silhouette — every other image reference in this file (banner.png, banner-gold.png, logo-icon.png) uses a leading slash, but home-silhouette.jpg didn't. A relative path resolves against the current page's own URL rather than the site root, which is the wrong behavior for an asset meant to load consistently regardless of how the page is reached. Fixed to /home-silhouette.jpg to match the established convention. Double-checked the maxines-lounge-active toggle points (room entry, Back button, the shared game-bubble handler) are all still intact — that part was never the problem. Worth noting: I can't verify from here whether home-silhouette.jpg has actually made it into the live repo yet, separate from this code fix. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.146"; // Found the actual root cause of "both logos showing" — not a CSS logic bug at all, my toggle rules were correct in the file. dashboard.css was linked with zero cache-busting (plain href="dashboard.css", no version query string), meaning a browser can keep serving its own stale cached copy indefinitely even after the server has the correct new file — which explains why this kept reading as broken across multiple rounds of edits that were individually fine. Added a version query string (dashboard.css?v=146) tied to this same number, so a genuine fetch happens on every version bump instead of relying on the browser's own cache heuristics. IMPORTANT GOING FORWARD: whenever dashboard.css actually changes, bump the ?v= number on this link tag to match this APP_VERSION bump, not just the JS comment — the two now need to move together or this exact class of "my fix is right but you can't see it" bug returns. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;

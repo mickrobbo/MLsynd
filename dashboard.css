@@ -62,6 +62,14 @@
 
   header{
     text-align:center; margin-bottom:16px; position:relative;
+  }
+  /* The brown/gold header frame only belongs to Maxine's — per direct
+     correction, the main app (including the Home tab in the reported
+     screenshot) should keep its plain original header with the green
+     logo, not inherit the room's theme. Scoped the same way as every
+     other Maxine's-only element: off by default, on only under
+     body.maxines-lounge-active. */
+  body.maxines-lounge-active header{
     padding:14px 10px; border-radius:16px;
     background: linear-gradient(165deg, #1a1108, #0a0603);
     border:1px solid #8a6620;
@@ -86,6 +94,11 @@
     border-radius:8px;
     filter: drop-shadow(0 0 22px rgba(199,162,72,.28));
   }
+  /* Two logo files, one shown at a time — green by default everywhere,
+     gold only inside Maxine's, same switch as everything else here. */
+  .header-banner-maxines{ display:none; }
+  body.maxines-lounge-active .header-banner-default{ display:none; }
+  body.maxines-lounge-active .header-banner-maxines{ display:inline-block; }
   .account-bar{
     display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
     margin-top:20px; padding-top:16px; border-top:1px solid var(--line);
