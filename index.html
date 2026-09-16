@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=146">
+<link rel="stylesheet" href="dashboard.css?v=151">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -1343,6 +1343,7 @@
       <div id="bjHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
         <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="bjHrModeBalanceVal">–</span> · No limits</div>
+        <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="bjCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
       <div style="display:flex; gap:14px; align-items:center; justify-content:center; flex-wrap:wrap;">
@@ -1534,6 +1535,7 @@
       <div id="rouletteHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
         <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="rouletteHrModeBalanceVal">–</span> · No limits</div>
+        <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="rouletteCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
       <div class="hint" style="margin-bottom:8px;">American table — pick a chip below (or tap the chip readout to type any amount — no limit), tap a number or outside bet to place it, then Spin. Tap adjacent numbers to build Split/Street/Corner/Double Street bets.</div>
@@ -1569,6 +1571,7 @@
       <div id="warHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
         <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="warHrModeBalanceVal">–</span> · No limits</div>
+        <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="warCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
       <div class="hint">One card each — higher card wins. Tie? Go to war (double the bet) or surrender half.</div>
@@ -1804,6 +1807,7 @@
         <span class="hr-mode-badge">💎 MAXINE'S</span>
         <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="slotsHrModeBalanceVal">–</span> · No limits</div>
         <div id="slotsHrJackpotNote" style="display:none; font-size:10.5px; color:rgba(230,210,160,.55); margin-top:3px; font-style:italic;">The communal jackpot is shared with the regular Casino, so it's neither fed by nor payable to Maxine's spins.</div>
+        <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="slotsCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
       <div class="craps-section-label">Paylines <small>— activated in order, top to bottom of the list below</small></div>
@@ -1871,6 +1875,7 @@
       <div id="vpHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
         <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="vpHrModeBalanceVal">–</span> · No limits</div>
+        <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="vpCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
       <div class="hint" style="margin-bottom:2px;">Hands</div>
@@ -2346,6 +2351,33 @@
     </div><!-- /#casinoGamesView -->
 
     <div class="casino-view" id="casinoHighRollersView">
+      <div class="hr-vault-door" id="maxinesVaultDoor">
+        <div class="hr-vault-beam"></div>
+        <div class="hr-vault-panel hr-vault-left">
+          <span class="hr-vault-rivet" style="top:14px; left:14px;"></span>
+          <span class="hr-vault-rivet" style="top:14px; right:14px;"></span>
+          <span class="hr-vault-rivet" style="bottom:14px; left:14px;"></span>
+          <span class="hr-vault-rivet" style="bottom:14px; right:14px;"></span>
+          <span class="hr-vault-rivet" style="top:50%; left:14px;"></span>
+        </div>
+        <div class="hr-vault-panel hr-vault-right">
+          <span class="hr-vault-rivet" style="top:14px; left:14px;"></span>
+          <span class="hr-vault-rivet" style="top:14px; right:14px;"></span>
+          <span class="hr-vault-rivet" style="bottom:14px; left:14px;"></span>
+          <span class="hr-vault-rivet" style="bottom:14px; right:14px;"></span>
+          <span class="hr-vault-rivet" style="top:50%; right:14px;"></span>
+        </div>
+        <div class="hr-vault-wheel">
+          <div class="hr-vault-wheel-inner">
+            <span class="hr-vault-spoke" style="transform:rotate(0deg);"></span>
+            <span class="hr-vault-spoke" style="transform:rotate(45deg);"></span>
+            <span class="hr-vault-spoke" style="transform:rotate(90deg);"></span>
+            <span class="hr-vault-spoke" style="transform:rotate(135deg);"></span>
+            <span class="hr-vault-crest">♠</span>
+          </div>
+        </div>
+        <div class="hr-vault-sparkle" id="maxinesVaultSparkle"></div>
+      </div>
       <audio id="maxinesAmbienceAudio" src="sounds/maxines-ambience.mp3" loop preload="none"></audio>
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
         <button type="button" class="pill-btn hr-header-btn casino-rules-btn" data-rules="highrollers">📜 House Rules</button>
@@ -2365,16 +2397,33 @@
           <div class="hr-hub-sub">No limits. What happens here stays here.</div>
         </div>
         <div class="hr-hub-balance-row">
-          <span class="hr-hub-balance-label">Your Chips</span>
-          <span class="hr-hub-balance-val" id="hrHubBalanceVal">–</span>
+          <div class="hr-chip-stack" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="hr-hub-balance-text">
+            <span class="hr-hub-balance-label">Your Chips</span>
+            <span class="hr-hub-balance-val" id="hrHubBalanceVal">–</span>
+          </div>
         </div>
         <div class="hint" style="color:rgba(230,210,160,.6); margin:2px 0 14px; position:relative; z-index:1;">This balance is entirely separate from your main XP — it never touches the leaderboard, lifetime totals, or Casino Pot.</div>
+        <div class="hr-comp-card" id="maxinesCompArea" style="display:none;">
+          <div class="hr-comp-title">🎁 The House Comp</div>
+          <div class="hr-comp-note" id="maxinesCompNote">Checking eligibility…</div>
+          <button type="button" class="pill-btn hr-header-btn" id="maxinesCompBtn" onclick="maxinesRequestComp()" style="margin-top:8px;">Request Comp</button>
+        </div>
         <div class="hr-game-row">
           <button type="button" class="hr-game-tile" data-hrgame="blackjack"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><rect x="6" y="4" width="20" height="26" rx="3" fill="none" stroke="#d4af5a" stroke-width="1.6"/><text x="10" y="14" fill="#d4af5a" font-size="8" font-family="Georgia,serif">A</text><path d="M16 17 L19 22 L13 22 Z M13.5 21 Q16 25 18.5 21" fill="none" stroke="#d4af5a" stroke-width="1.3"/></svg></span><span class="hr-game-tile-label">Blackjack</span></button>
           <button type="button" class="hr-game-tile" data-hrgame="war"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><g fill="none" stroke="#d4af5a" stroke-width="1.6" stroke-linecap="round"><path d="M7 7 L23 23 M20 23 L23 23 L23 20"/><path d="M25 7 L9 23 M12 23 L9 23 L9 20"/></g><circle cx="16" cy="15" r="2.4" fill="none" stroke="#d4af5a" stroke-width="1.3"/></svg></span><span class="hr-game-tile-label">Casino War</span></button>
           <button type="button" class="hr-game-tile" data-hrgame="slots"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><rect x="6" y="6" width="20" height="20" rx="2.5" fill="none" stroke="#d4af5a" stroke-width="1.6"/><line x1="6" y1="12" x2="26" y2="12" stroke="#d4af5a" stroke-width="1.3"/><line x1="12.6" y1="12" x2="12.6" y2="26" stroke="#d4af5a" stroke-width="1"/><line x1="19.3" y1="12" x2="19.3" y2="26" stroke="#d4af5a" stroke-width="1"/><circle cx="16" cy="19" r="2" fill="#d4af5a"/><rect x="27" y="10" width="2.4" height="8" rx="1.2" fill="#d4af5a"/></svg></span><span class="hr-game-tile-label">Slots</span></button>
           <button type="button" class="hr-game-tile" data-hrgame="roulette"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><circle cx="16" cy="16" r="11" fill="none" stroke="#d4af5a" stroke-width="1.6"/><circle cx="16" cy="16" r="2.2" fill="#d4af5a"/><g stroke="#d4af5a" stroke-width="1"><line x1="16" y1="5" x2="16" y2="12"/><line x1="16" y1="20" x2="16" y2="27"/><line x1="5" y1="16" x2="12" y2="16"/><line x1="20" y1="16" x2="27" y2="16"/><line x1="8.3" y1="8.3" x2="12.8" y2="12.8"/><line x1="19.2" y1="19.2" x2="23.7" y2="23.7"/><line x1="23.7" y1="8.3" x2="19.2" y2="12.8"/><line x1="12.8" y1="19.2" x2="8.3" y2="23.7"/></g></svg></span><span class="hr-game-tile-label">Roulette</span></button>
           <button type="button" class="hr-game-tile" data-hrgame="videopoker"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><g fill="none" stroke="#d4af5a" stroke-width="1.4"><rect x="5" y="10" width="10" height="15" rx="1.6" transform="rotate(-14 10 17)"/><rect x="11" y="8" width="10" height="15" rx="1.6"/><rect x="17" y="10" width="10" height="15" rx="1.6" transform="rotate(14 22 17)"/></g><path d="M15.2 13.2 L16.8 13.2 L16.8 15.5 L19 15.5 L16 19.5 L13 15.5 L15.2 15.5 Z" fill="#d4af5a"/></svg></span><span class="hr-game-tile-label">Video Poker</span></button>
+        </div>
+        <div class="hr-spotlight-card">
+          <span class="hr-spotlight-icon">🏆</span>
+          <div class="hr-spotlight-text">
+            <span class="hr-spotlight-label">Biggest Win Ever</span>
+            <span class="hr-spotlight-val" id="maxinesBiggestWinVal">Loading…</span>
+          </div>
         </div>
         <div class="hr-lb-panel">
           <div class="hr-lb-title">🏆 Maxine's Leaderboard</div>
@@ -3835,7 +3884,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.146"; // Found the actual root cause of "both logos showing" — not a CSS logic bug at all, my toggle rules were correct in the file. dashboard.css was linked with zero cache-busting (plain href="dashboard.css", no version query string), meaning a browser can keep serving its own stale cached copy indefinitely even after the server has the correct new file — which explains why this kept reading as broken across multiple rounds of edits that were individually fine. Added a version query string (dashboard.css?v=146) tied to this same number, so a genuine fetch happens on every version bump instead of relying on the browser's own cache heuristics. IMPORTANT GOING FORWARD: whenever dashboard.css actually changes, bump the ?v= number on this link tag to match this APP_VERSION bump, not just the JS comment — the two now need to move together or this exact class of "my fix is right but you can't see it" bug returns. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.151"; // Went much further on the vault door and the room's visual language per direct request to "go hard, make it extravagant" — while keeping the existing gold/black palette rather than reverting to green. The door now has three real phases instead of one: a lock wheel spins hard (four spokes, an actual "unlocking" beat), a light beam brightens down the seam as the panels start to separate, THEN the riveted doors (real stud details along each edge, not flat slabs) slide fully apart with a 14-particle gold sparkle burst timed to when they clear — total runtime ~1.3s, up from .9s, still a pure decorative overlay that can never block a real interaction. Also pulled in the main lounge's own spotlight-card layout (icon + label/value stack, .casino-floor-spotlight) for the Biggest Win card — same layout language, Maxine's own colours kept throughout, nothing reverted to green. Updated hr-room-preview.html's section 4 to match exactly, including a genuine bug I caught before shipping: a leftover stray closing brace from the CSS replacement that would have broken every rule after it in that file. dashboard.css changed again, cache-buster moved to ?v=151. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8085,8 +8134,177 @@ async function awardHighRollerXP(amount, reason){
       if(putRes.status !== 412) throw new Error(`Maxine's balance write failed: ${putRes.status}`);
     }
     if(!landed) throw new Error("Maxine's balance write conflict — too many retries, chips NOT credited");
+    // Biggest Win hall of fame + milestone celebrations — pure bragging
+    // rights, no economic weight, and deliberately checked here rather
+    // than in each game separately since this is the one place every
+    // single HR win/loss already passes through regardless of which of
+    // the five games it came from.
+    if(amount > 0){
+      maxinesCheckBiggestWin(amount);
+      maxinesCheckMilestone(next);
+    }
     return true;
   }catch(e){ console.error('awardHighRollerXP failed:', e); return false; }
+}
+// The single largest win ever recorded in the room — separate from the
+// balance leaderboard, pure "hall of fame" bragging rights. ETag-guarded
+// so two big wins landing close together can't race each other into
+// recording the smaller one as the record.
+async function maxinesCheckBiggestWin(amount){
+  if(!currentUserUid) return;
+  try{
+    const res = await authedFetch('/highRollers/biggestWin.json', { headers: {'X-Firebase-ETag':'true'} });
+    const etag = res.headers.get('ETag');
+    const current = res.ok ? await res.json() : null;
+    if(current && typeof current.amount === 'number' && current.amount >= amount) return; // not a new record
+    const me = (currentState && currentState.members || []).find(m => m.linkedUid === currentUserUid);
+    const name = me ? me.name : 'A High Roller';
+    const putRes = await authedFetch('/highRollers/biggestWin.json', {
+      method:'PUT', headers:{'Content-Type':'application/json', 'if-match': etag},
+      body: JSON.stringify({ amount, name, uid: currentUserUid, ts: Date.now() })
+    });
+    if(putRes.ok) renderMaxinesBiggestWin();
+  }catch(e){}
+}
+async function renderMaxinesBiggestWin(){
+  const el = document.getElementById('maxinesBiggestWinVal');
+  if(!el) return;
+  try{
+    const res = await authedFetch('/highRollers/biggestWin.json');
+    const data = res.ok ? await res.json() : null;
+    el.textContent = data && data.amount ? `${data.amount.toLocaleString()} chips — ${data.name}` : 'No record yet — be the first';
+  }catch(e){ el.textContent = 'No record yet — be the first'; }
+}
+// ---- The House Comp — a deliberately narrow lifeline, not a free
+// reset button. If busting out cost nothing, "no limits" would be
+// meaningless — you could shove every hand with zero real downside.
+// Three separate things keep this from just being awardHighRollerXP
+// with extra steps:
+//   1. Smaller than the welcome grant — the first comp is 5,000,000
+//      chips, a tenth of the original 50,000,000 stake. Busting out
+//      has a real, lasting cost to your standing; this is a lifeline,
+//      not a reset.
+//   2. Rationed by a real 24-hour cooldown, tracked server-side
+//      (lastCompClaim) — you cannot grind comps by repeatedly busting
+//      in the same session.
+//   3. Diminishing on repeat use — each comp this account has EVER
+//      claimed (compCount, never reset) shrinks the next one by
+//      1,000,000, down to a 500,000 floor. Someone on their fifth
+//      comp is playing a visibly smaller lifeline than someone on
+//      their first, and that history is the "marker" — visible on the
+//      leaderboard (see renderHrLeaderboard) rather than hidden.
+const MAXINES_COMP_BASE = 5000000;
+const MAXINES_COMP_FLOOR = 500000;
+const MAXINES_COMP_STEP = 1000000;
+const MAXINES_COMP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const MAXINES_COMP_ELIGIBLE_BELOW = 1000; // a balance this small can't meaningfully play any of the five games anyway
+function maxinesCompAmountFor(compCount){
+  return Math.max(MAXINES_COMP_FLOOR, MAXINES_COMP_BASE - (compCount || 0) * MAXINES_COMP_STEP);
+}
+async function getMaxinesCompStatus(){
+  if(!currentUserUid) return null;
+  try{
+    const [balRes, claimRes, countRes] = await Promise.all([
+      authedFetch(`/highRollers/${currentUserUid}/balance.json`),
+      authedFetch(`/highRollers/${currentUserUid}/lastCompClaim.json`),
+      authedFetch(`/highRollers/${currentUserUid}/compCount.json`)
+    ]);
+    const balance = balRes.ok ? ((await balRes.json()) || 0) : null;
+    const lastClaim = claimRes.ok ? (await claimRes.json()) : null;
+    const compCount = countRes.ok ? ((await countRes.json()) || 0) : 0;
+    const msRemaining = lastClaim ? Math.max(0, MAXINES_COMP_COOLDOWN_MS - (Date.now() - lastClaim)) : 0;
+    return {
+      balance, compCount, msRemaining,
+      needsComp: balance != null && balance < MAXINES_COMP_ELIGIBLE_BELOW,
+      onCooldown: msRemaining > 0,
+      nextAmount: maxinesCompAmountFor(compCount)
+    };
+  }catch(e){ return null; }
+}
+async function maxinesRequestComp(){
+  const status = await getMaxinesCompStatus();
+  const btn = document.getElementById('maxinesCompBtn');
+  const note = document.getElementById('maxinesCompNote');
+  if(!status || !status.needsComp){
+    if(note) note.textContent = 'Your balance is still playable — the comp is only for a near-empty stack.';
+    return;
+  }
+  if(status.onCooldown){
+    if(note) note.textContent = `Not yet — next comp available in ${maxinesFormatCooldown(status.msRemaining)}.`;
+    return;
+  }
+  if(btn) btn.disabled = true;
+  try{
+    // ETag-guarded claim, same reasoning as the balance write itself —
+    // two rapid taps (or two tabs) should not both land a comp.
+    const claimRes = await authedFetch(`/highRollers/${currentUserUid}/lastCompClaim.json`, { headers: {'X-Firebase-ETag':'true'} });
+    const etag = claimRes.headers.get('ETag');
+    const currentClaim = claimRes.ok ? await claimRes.json() : null;
+    const stillOnCooldown = currentClaim && (Date.now() - currentClaim) < MAXINES_COMP_COOLDOWN_MS;
+    if(stillOnCooldown){
+      if(note) note.textContent = 'Someone (or another tab) just claimed this — try again shortly.';
+      return;
+    }
+    const claimPutRes = await authedFetch(`/highRollers/${currentUserUid}/lastCompClaim.json`, {
+      method:'PUT', headers:{'Content-Type':'application/json', 'if-match': etag}, body: JSON.stringify(Date.now())
+    });
+    if(!claimPutRes.ok){
+      if(note) note.textContent = 'Someone (or another tab) just claimed this — try again shortly.';
+      return;
+    }
+    const amount = maxinesCompAmountFor(status.compCount);
+    const granted = await awardHighRollerXP(amount, "Maxine's house comp");
+    if(granted){
+      await authedFetch(`/highRollers/${currentUserUid}/compCount.json`, {
+        method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify((status.compCount||0)+1)
+      });
+      showToast(`🎁 The house has staked you ${amount.toLocaleString()} chips.`);
+      refreshHrHubBalance();
+      renderMaxinesCompUI();
+    } else {
+      if(note) note.textContent = 'Comp claimed but the chips failed to land — check the console.';
+    }
+  }catch(e){
+    if(note) note.textContent = 'Something went wrong — try again.';
+  } finally {
+    if(btn) btn.disabled = false;
+  }
+}
+function maxinesFormatCooldown(ms){
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+async function renderMaxinesCompUI(){
+  const wrap = document.getElementById('maxinesCompArea');
+  if(!wrap) return;
+  const status = await getMaxinesCompStatus();
+  if(!status || !status.needsComp){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const btn = document.getElementById('maxinesCompBtn');
+  const note = document.getElementById('maxinesCompNote');
+  if(status.onCooldown){
+    if(btn) btn.disabled = true;
+    if(note) note.textContent = `Next comp available in ${maxinesFormatCooldown(status.msRemaining)} — ${status.nextAmount.toLocaleString()} chips.`;
+  } else {
+    if(btn) btn.disabled = false;
+    if(note) note.textContent = `${status.nextAmount.toLocaleString()} chips${status.compCount > 0 ? ` (comp #${status.compCount+1} — shrinks each time)` : ''}.`;
+  }
+}
+// Milestone celebrations — a genuine flourish when a balance CROSSES a
+// round threshold (checked before/after so this only fires once per
+// threshold per crossing, not on every win once you're already above
+// it), matching the celebratory language already used across all five
+// games this session rather than inventing a new pattern.
+const MAXINES_MILESTONES = [100000000, 250000000, 500000000, 1000000000];
+let maxinesLastKnownBalance = null;
+function maxinesCheckMilestone(newBalance){
+  const prev = maxinesLastKnownBalance;
+  maxinesLastKnownBalance = newBalance;
+  if(prev == null) return; // first read this session — nothing to compare against, avoid a false trigger on load
+  const crossed = MAXINES_MILESTONES.find(m => prev < m && newBalance >= m);
+  if(!crossed) return;
+  showToast(`🏆 ${crossed.toLocaleString()} chips! A new milestone at Maxine's.`);
+  if(typeof bjPlayChime === 'function') bjPlayChime(true);
 }
 // Reach-Sovereign-or-above gate. Mirrors the exact computation the Tier
 // status card already uses (computePrestigeScore + casinoTierFor) rather
@@ -8132,6 +8350,24 @@ document.getElementById('hrRoomBannerBtn').addEventListener('click', async () =>
   }
   await enterHighRollersRoom();
 });
+// Shared exit — reported live: there was no way back to the regular
+// lobby from INSIDE an actual Maxine's game, only from the room hub
+// page itself. Turns off HR mode on whichever game is currently active
+// (calling every game's own setter is harmless — a game that isn't
+// currently in HR mode just no-ops), restores the regular game grid,
+// hides every game panel, clears the room's whole page-wide theme, and
+// drops back to the main Casino hub — the actual "regular lobby".
+function leaveMaxines(){
+  ['bjSetHighRollerMode','warSetHighRollerMode','slotsSetHighRollerMode','rouletteSetHighRollerMode','vpSetHighRollerMode'].forEach(fn => {
+    if(typeof window[fn] === 'function') window[fn](false);
+  });
+  maxinesAmbienceStop();
+  document.body.classList.remove('maxines-lounge-active');
+  const gridPanel = document.getElementById('casinoGamesGridPanel');
+  if(gridPanel) gridPanel.style.display = '';
+  document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
+  showCasinoView(null);
+}
 async function enterHighRollersRoom(){
   // Welcome grant — the room needs SOME chips to actually play with,
   // seeded once on first entry rather than a buy-in drawn from real XP,
@@ -8184,6 +8420,30 @@ async function enterHighRollersRoom(){
   // infrastructure just for this one moment.
   if(typeof bjPlayChime === 'function') bjPlayChime(true);
   maxinesAmbienceStart();
+  // Vault door reveal — plays ON TOP of the already-rendered room
+  // below, then removes itself; the room is fully usable underneath
+  // the whole time, this is purely a decorative layer, not a gate.
+  const door = document.getElementById('maxinesVaultDoor');
+  if(door){
+    // Sparkle particles need a per-particle outward direction, which is
+    // easiest to set as inline CSS custom properties from JS rather
+    // than hardcoding N separate keyframe variants — generated fresh
+    // each time the door plays so it never looks identical twice.
+    const sparkleWrap = document.getElementById('maxinesVaultSparkle');
+    if(sparkleWrap){
+      sparkleWrap.innerHTML = '';
+      for(let i=0;i<14;i++){
+        const s = document.createElement('span');
+        const angle = (i/14)*Math.PI*2, dist = 50+Math.random()*70;
+        s.style.setProperty('--sx', `${Math.cos(angle)*dist}px`);
+        s.style.setProperty('--sy', `${Math.sin(angle)*dist}px`);
+        s.style.animationDelay = `${Math.random()*80}ms`;
+        sparkleWrap.appendChild(s);
+      }
+    }
+    door.classList.add('playing');
+    setTimeout(() => door.classList.remove('playing'), 1350);
+  }
   document.querySelectorAll('.casino-view').forEach(v => v.classList.toggle('active', v.id === 'casinoHighRollersView'));
   document.getElementById('casinoHubPanel').style.display = 'none';
   const membersPanel = document.getElementById('casinoMembersPanel');
@@ -8193,6 +8453,8 @@ async function enterHighRollersRoom(){
   stopCasinoFloorPolling();
   refreshHrHubBalance();
   renderHrLeaderboard();
+  renderMaxinesBiggestWin();
+  renderMaxinesCompUI();
   reconcileCasinoAmbience();
 }
 async function refreshHrHubBalance(){
@@ -8305,9 +8567,13 @@ async function renderHrLeaderboard(){
         const claimedRes = await authedFetch(`/highRollers/${m.linkedUid}/welcomeGrantClaimed.json`);
         const claimed = claimedRes.ok ? await claimedRes.json() : null;
         if(!claimed) return null;
-        const balRes = await authedFetch(`/highRollers/${m.linkedUid}/balance.json`);
+        const [balRes, compRes] = await Promise.all([
+          authedFetch(`/highRollers/${m.linkedUid}/balance.json`),
+          authedFetch(`/highRollers/${m.linkedUid}/compCount.json`)
+        ]);
         const bal = balRes.ok ? ((await balRes.json()) || 0) : 0;
-        return { name: m.name, uid: m.linkedUid, balance: bal };
+        const comps = compRes.ok ? ((await compRes.json()) || 0) : 0;
+        return { name: m.name, uid: m.linkedUid, balance: bal, comps };
       }catch(e){ return null; }
     }));
     const entered = rows.filter(r => r != null);
@@ -8319,9 +8585,14 @@ async function renderHrLeaderboard(){
     const medals = ['🥇','🥈','🥉'];
     area.innerHTML = entered.slice(0, 10).map((r, i) => {
       const isMe = r.uid === currentUserUid;
-      return `<div class="hr-lb-row${isMe ? ' hr-lb-me' : ''}">
+      // The comp count IS the "marker" — visible next to a name rather
+      // than hidden, the same way a real house keeps a running tally of
+      // who's needed staking. Only shown when non-zero, so it never
+      // clutters a row for someone who's never needed one.
+      const compTag = r.comps > 0 ? `<span class="hr-lb-comp-tag">(${r.comps} comp${r.comps>1?'s':''})</span>` : '';
+      return `<div class="hr-lb-row${isMe ? ' hr-lb-me' : ''}${i===0 ? ' hr-lb-top1' : ''}">
         <span class="hr-lb-rank">${medals[i] || (i+1)}</span>
-        <span class="hr-lb-name">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</span>
+        <span class="hr-lb-name">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${compTag}</span>
         <span class="hr-lb-val">${r.balance.toLocaleString()}</span>
       </div>`;
     }).join('');
@@ -11012,7 +11283,9 @@ const CASINO_RULES = {
     <h3>The welcome grant</h3>
     <p>50,000,000 chips, staked for you once, the first time you ever walk in. Not drawn from your real XP — this room's chips were never real XP to begin with.</p>
     <h3>No limits</h3>
-    <p>The regular per-hand/per-spin cap doesn't apply in here. Bet as much of your chip stack as you want, on Blackjack, Casino War, or Slots.</p>
+    <p>The regular per-hand/per-spin cap doesn't apply in here. Bet as much of your chip stack as you want, on any of the five games.</p>
+    <h3>The house comp</h3>
+    <p>If your stack runs dry, the house will stake you again — but it's a lifeline, not a reset. The first comp is 5,000,000 chips, a tenth of the welcome grant. Each comp you've ever claimed shrinks the next one by 1,000,000, down to a 500,000 floor, and there's a 24-hour cooldown between them. Your comp count is visible next to your name on the leaderboard.</p>
     <p class="hint" style="margin-top:6px;">What happens in here stays in here — there's no way to cash chips back out into real XP.</p>
   `}
 };

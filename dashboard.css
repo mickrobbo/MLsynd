@@ -449,6 +449,100 @@
     background:none; -webkit-text-fill-color:unset; color:rgba(230,210,160,.75);
   }
 
+  /* Vault door entrance reveal — replaces the old instant panel swap on
+     first entering the room each session. A proper sequence now: the
+     lock wheel spins (unlocking), the crack lights up from behind, then
+     both panels — riveted, not flat slabs — slide apart with a sparkle
+     burst as they clear. Purely decorative throughout: it sits ON TOP
+     of the already-rendered room content for its ~1.3s runtime then
+     removes itself from layout, so it can never block a real
+     interaction if something goes wrong with the animation timing —
+     the room underneath is already fully functional the instant it's
+     shown, the door is just theatre layered over it. */
+  .hr-vault-door{
+    position:fixed; inset:0; z-index:50; pointer-events:none;
+    display:none; overflow:hidden;
+  }
+  .hr-vault-door.playing{ display:block; pointer-events:auto; }
+  .hr-vault-panel{
+    position:absolute; top:0; bottom:0; width:50%;
+    background: linear-gradient(165deg, #241a0c, #0a0603);
+    border-top:2px solid #8a6620; border-bottom:2px solid #8a6620;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.6);
+  }
+  .hr-vault-left{ left:0; border-right:1px solid #d4af5a; }
+  .hr-vault-right{ right:0; border-left:1px solid #d4af5a; }
+  .hr-vault-door.playing .hr-vault-left{ animation: hrVaultLeft 1.3s cubic-bezier(.7,0,.3,1) forwards; }
+  .hr-vault-door.playing .hr-vault-right{ animation: hrVaultRight 1.3s cubic-bezier(.7,0,.3,1) forwards; }
+  @keyframes hrVaultLeft{ 0%,42%{ transform:translateX(0); } 100%{ transform:translateX(-100%); } }
+  @keyframes hrVaultRight{ 0%,42%{ transform:translateX(0); } 100%{ transform:translateX(100%); } }
+  /* Rivets — small studded bolts along each panel, the one detail that
+     most separates "a flat gold rectangle" from an actual riveted door */
+  .hr-vault-rivet{
+    position:absolute; width:6px; height:6px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #fff3d2, #8a6620 70%);
+    box-shadow: 0 1px 2px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.3);
+  }
+  /* Light beam — brightens down the seam as the doors start to part,
+     the "something bright is behind this" cue before you can see the
+     room itself */
+  .hr-vault-beam{
+    position:absolute; top:0; bottom:0; left:50%; width:6px; transform:translateX(-50%);
+    background: linear-gradient(90deg, transparent, rgba(255,224,150,.9), transparent);
+    opacity:0; filter: blur(2px);
+  }
+  .hr-vault-door.playing .hr-vault-beam{ animation: hrVaultBeam 1.3s ease-out forwards; }
+  @keyframes hrVaultBeam{
+    0%,30%{ opacity:0; width:6px; }
+    45%{ opacity:1; width:14px; }
+    65%{ opacity:.9; width:60px; }
+    100%{ opacity:0; width:100vw; }
+  }
+  /* Lock wheel — a real "unlocking" beat before the doors ever move:
+     four spokes spin hard, then the whole wheel flashes and scales
+     away right as the panels start to separate */
+  .hr-vault-wheel{
+    position:absolute; top:50%; left:50%; width:74px; height:74px;
+    transform:translate(-50%,-50%); z-index:2;
+  }
+  .hr-vault-wheel-inner{
+    position:relative; width:100%; height:100%; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #fff3d2, #d4af5a 55%, #8a6620);
+    box-shadow: 0 0 0 3px #0a0603, 0 0 0 4.5px #8a6620, 0 0 25px rgba(255,224,150,.5);
+    opacity:0; transform:scale(.5) rotate(0deg);
+  }
+  .hr-vault-door.playing .hr-vault-wheel-inner{ animation: hrVaultWheel 1.3s cubic-bezier(.6,0,.3,1) forwards; }
+  @keyframes hrVaultWheel{
+    0%{ opacity:0; transform:scale(.5) rotate(0deg); }
+    10%{ opacity:1; transform:scale(1) rotate(0deg); }
+    38%{ opacity:1; transform:scale(1) rotate(540deg); }
+    46%{ opacity:1; transform:scale(1.25) rotate(560deg); }
+    58%{ opacity:0; transform:scale(1.6) rotate(580deg); }
+    100%{ opacity:0; transform:scale(1.6) rotate(580deg); }
+  }
+  .hr-vault-spoke{
+    position:absolute; top:50%; left:50%; width:64px; height:3px; margin-top:-1.5px; margin-left:-32px;
+    background: rgba(10,6,3,.5); border-radius:2px;
+  }
+  .hr-vault-crest{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:26px; color:#0a0603; line-height:1;
+  }
+
+  /* Sparkle burst — fires right as the doors clear, a handful of small
+     gold flecks flying outward from the centre */
+  .hr-vault-sparkle{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+  .hr-vault-sparkle span{
+    position:absolute; top:50%; left:50%; width:4px; height:4px; border-radius:50%;
+    background:#fff3d2; box-shadow:0 0 6px rgba(255,224,150,.9); opacity:0;
+  }
+  .hr-vault-door.playing .hr-vault-sparkle span{ animation: hrVaultSparkle 1.3s ease-out forwards; }
+  @keyframes hrVaultSparkle{
+    0%,52%{ opacity:0; transform:translate(-50%,-50%) translate(0,0) scale(1); }
+    58%{ opacity:1; }
+    100%{ opacity:0; transform:translate(-50%,-50%) translate(var(--sx,60px), var(--sy,-40px)) scale(.3); }
+  }
+
   .hr-hub-panel{
     background: linear-gradient(165deg, #1a1108, #0a0603);
     border:1px solid #c9a24b; border-radius:18px; padding:22px 16px 20px;
@@ -473,10 +567,27 @@
   }
   .hr-hub-sub{ font-size:12px; color:rgba(230,210,160,.6); margin-top:4px; font-style:italic; }
   .hr-hub-balance-row{
-    display:flex; justify-content:space-between; align-items:baseline; position:relative; z-index:1;
+    display:flex; align-items:center; gap:14px; position:relative; z-index:1;
     padding:12px 16px; border-radius:12px; margin-bottom:4px;
     background:rgba(201,162,75,.08); border:1px solid rgba(201,162,75,.3);
   }
+  /* Chip stack visual — three overlapping edge-marked discs standing in
+     for an actual stack of casino chips, replacing what used to be just
+     bold text with nothing behind it. Pure CSS, no image asset. */
+  .hr-chip-stack{ position:relative; width:34px; height:40px; flex-shrink:0; }
+  .hr-chip-stack span{
+    position:absolute; left:0; width:30px; height:9px; border-radius:50%;
+    background: radial-gradient(ellipse at 35% 30%, #fff3d2, #d4af5a 55%, #8a6620);
+    box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.25), 0 2px 3px rgba(0,0,0,.4);
+  }
+  .hr-chip-stack span::before{
+    content:''; position:absolute; inset:2px; border-radius:50%;
+    border:1.5px dashed rgba(0,0,0,.2);
+  }
+  .hr-chip-stack span:nth-child(1){ bottom:0; }
+  .hr-chip-stack span:nth-child(2){ bottom:7px; left:2px; }
+  .hr-chip-stack span:nth-child(3){ bottom:14px; left:1px; }
+  .hr-hub-balance-text{ display:flex; flex-direction:column; }
   .hr-hub-balance-label{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:rgba(230,210,160,.65); }
   .hr-hub-balance-val{ font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:22px; color:#fdf0c8; }
   .hr-game-row{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; position:relative; z-index:1; margin-top:6px; }
@@ -634,15 +745,67 @@
     font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:1px;
     text-transform:uppercase; color:rgba(230,210,160,.7); margin-bottom:8px; text-align:center;
   }
+  /* Leaderboard rows upgraded — the plain flat rows read as leftover
+     default styling rather than something belonging to this room, so
+     each rank now gets its own weight (gold-ringed circle badge for the
+     rank number instead of bare text, a subtle background wash that
+     gets stronger the higher the rank) matching the room's own visual
+     language elsewhere (the crest, the chip-edge rim, etc). */
   .hr-lb-row{
-    display:flex; align-items:center; gap:10px; padding:9px 6px;
+    display:flex; align-items:center; gap:10px; padding:10px 8px;
     border-bottom:1px solid rgba(201,162,75,.15);
+    background: linear-gradient(90deg, rgba(201,162,75,.05), transparent);
   }
   .hr-lb-row:last-child{ border-bottom:none; }
-  .hr-lb-row.hr-lb-me{ background:rgba(201,162,75,.1); border-radius:8px; }
-  .hr-lb-rank{ width:22px; text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:14px; color:#d4af5a; }
+  .hr-lb-row.hr-lb-me{ background:rgba(201,162,75,.12); border-radius:8px; }
+  .hr-lb-row.hr-lb-top1{ background:linear-gradient(90deg, rgba(255,224,150,.14), transparent); }
+  .hr-lb-rank{
+    width:26px; height:26px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:12px; color:#d4af5a;
+    background: radial-gradient(circle at 35% 30%, rgba(255,243,210,.12), rgba(0,0,0,.3) 70%);
+    box-shadow: inset 0 0 0 1px rgba(212,175,90,.35);
+  }
   .hr-lb-name{ flex:1; font-size:13px; color:#fdf0c8; }
   .hr-lb-val{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; color:#d4af5a; }
+
+  /* Spotlight card — the same icon+label+value language the main
+     lounge already uses (.casino-floor-spotlight), brought into
+     Maxine's with its own colours rather than reused wholesale: the
+     gold/black palette stays, only the layout pattern is borrowed —
+     an icon with its own glow, sitting beside a label/value stack,
+     instead of a card that's just centred text. */
+  .hr-spotlight-card{
+    display:flex; align-items:center; gap:12px; position:relative; z-index:1;
+    margin-top:14px; padding:12px 16px; border-radius:12px;
+    background:linear-gradient(165deg, rgba(255,224,150,.1), rgba(0,0,0,.28));
+    border:1px solid rgba(201,162,75,.3);
+    box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 3px 8px rgba(0,0,0,.3);
+  }
+  .hr-spotlight-icon{ font-size:24px; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(255,224,150,.4)); }
+  .hr-spotlight-text{ display:flex; flex-direction:column; text-align:left; }
+  .hr-spotlight-label{
+    font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:rgba(230,210,160,.65);
+  }
+  .hr-spotlight-val{
+    font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:15px; color:#fdf0c8; margin-top:1px;
+  }
+
+  /* The House Comp card — a distinct crimson-leaning accent (not the
+     usual gold) specifically because this is a "your balance is nearly
+     gone" moment, not a celebratory one; the colour itself should
+     signal that before anyone reads a word of it */
+  .hr-comp-card{
+    position:relative; z-index:1; margin:2px 0 14px; padding:12px 16px; border-radius:12px;
+    background:rgba(224,138,114,.08); border:1px solid rgba(224,138,114,.35); text-align:center;
+  }
+  .hr-comp-title{
+    font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:14px; color:#e08a72; margin-bottom:4px;
+  }
+  .hr-comp-note{ font-size:11.5px; color:rgba(230,210,160,.75); line-height:1.5; }
+  #maxinesCompBtn:disabled{ opacity:.45; cursor:default; }
+  .hr-lb-comp-tag{
+    font-size:9.5px; color:rgba(224,138,114,.85); margin-left:4px; font-weight:600;
+  }
 
   /* Inline badge shown next to a High Roller's name on the regular
      Casino leaderboard too, not just inside the room itself */
