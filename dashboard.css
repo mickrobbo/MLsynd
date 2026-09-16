@@ -60,7 +60,13 @@
   @keyframes toastIn{ to{ opacity:1; transform:translateY(0) scale(1); } }
   @keyframes toastOut{ to{ opacity:0; transform:translateY(-10px) scale(.96); } }
 
-  header{ text-align:center; margin-bottom:16px; position:relative; }
+  header{
+    text-align:center; margin-bottom:16px; position:relative;
+    padding:14px 10px; border-radius:16px;
+    background: linear-gradient(165deg, #1a1108, #0a0603);
+    border:1px solid #8a6620;
+    box-shadow: 0 6px 16px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,243,210,.08);
+  }
   header::before{
     content:''; position:absolute; top:-20px; left:50%; transform:translateX(-50%);
     width:220px; height:100px; background: radial-gradient(ellipse at center, rgba(199,162,72,.16), transparent 70%);
@@ -77,6 +83,7 @@
   }
   .header-banner{
     max-width:100%; width:340px; height:auto; position:relative;
+    border-radius:8px;
     filter: drop-shadow(0 0 22px rgba(199,162,72,.28));
   }
   .account-bar{
@@ -2578,6 +2585,25 @@
   .toteboard-cell.neg .val{ color: var(--loss); }
 
   .tab-panel{ display:none; }
+  /* Home tab background silhouette — the user's own commissioned art,
+     not a UI element. Fixed positioning works fine without needing
+     #tab-balance itself to become a positioning context: it's a DOM
+     CHILD of a panel that's display:none whenever Home isn't the active
+     tab, so a hidden ancestor already hides it the same way regardless
+     of its own position value. Low opacity and pointer-events:none —
+     "visible but not dominant" was the brief, so it reads as ambience
+     behind the real content, never competes with it or blocks taps.
+     z-index:-1 (not just a low positive number) keeps this reliably
+     behind every panel without needing to touch any other element's
+     own stacking — a broad rule forcing position/z-index onto every
+     sibling would risk breaking anything that already relies on its
+     own absolute/fixed positioning for its own purposes. */
+  .home-silhouette-bg{
+    position:fixed; right:-40px; bottom:0; height:78vh; max-height:640px; width:auto;
+    opacity:.1; pointer-events:none; z-index:-1;
+    -webkit-mask-image: linear-gradient(to top, black 55%, transparent 95%);
+    mask-image: linear-gradient(to top, black 55%, transparent 95%);
+  }
   .tab-panel.active{ display:block; }
 
   .tabbar{
