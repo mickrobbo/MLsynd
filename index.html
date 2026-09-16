@@ -2344,8 +2344,10 @@
     </div><!-- /#casinoGamesView -->
 
     <div class="casino-view" id="casinoHighRollersView">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <audio id="maxinesAmbienceAudio" src="sounds/maxines-ambience.mp3" loop preload="none"></audio>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
         <button type="button" class="pill-btn casino-rules-btn" data-rules="highrollers">📜 House Rules</button>
+        <button type="button" class="pill-btn" id="maxinesMuteBtn" title="Mute the piano">🎵</button>
         <button type="button" class="pill-btn" id="hrRoomBackBtn">← Back</button>
       </div>
       <div class="hr-hub-panel">
@@ -3831,7 +3833,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.133"; // Maxine's: fixed a real double-payment bug reported live — the welcome grant's read-then-grant-then-write flow had a genuine race (two rapid taps could both read "not claimed" before either write landed, both would grant chips). Now the claim itself is an ETag-guarded conditional write attempted BEFORE any chips are granted, so only one concurrent call can ever win it. Added Roulette and Video Poker, same proven wrapper-function pattern as the other three (mode flag, every balance call routed through per-game wrappers, bet cap removed) — checked against their real uploaded source rather than guessed. Fixed the game-tile row for 5 tiles: was a straight grid, which left the last row's 2 tiles stuck to the left with an awkward gap — switched to a wrapping flexbox that centers a partial row properly. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.135"; // Maxine's: added the background ambience track (jazz piano loop, a real royalty-free Freesound download — clean local path is sounds/maxines-ambience.mp3, needs adding to the repo at that path). Plain HTML5 <audio> with a gentle fade in both directions rather than a hard start/stop, kept quiet (0.14 volume target) per the brief, plays across the whole room including whichever game you open from it, correctly stops on a genuine exit. Built as a fully separate, self-contained system rather than touching reconcileCasinoAmbience — still haven't located that function's actual definition anywhere in this file, only its call sites, so didn't want to build on top of something unverified. Added a mute toggle (persisted via localStorage) and pause-on-backgrounded-tab handling. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5136,7 +5138,7 @@ document.getElementById('hubBountiesBtn').addEventListener('click', () => {
   showCasinoView('casinoBountiesView');
 });
 document.getElementById('bountiesBackBtn').addEventListener('click', () => showCasinoView(null));
-document.getElementById('hrRoomBackBtn').addEventListener('click', () => showCasinoView(null));
+document.getElementById('hrRoomBackBtn').addEventListener('click', () => { maxinesAmbienceStop(); showCasinoView(null); });
 document.getElementById('newBountyBtn').addEventListener('click', () => {
   document.getElementById('newBountyForm').style.display = 'block';
   document.getElementById('newBountyBtn').style.display = 'none';
@@ -8178,6 +8180,7 @@ async function enterHighRollersRoom(){
   // casino win moment already uses, rather than building new audio
   // infrastructure just for this one moment.
   if(typeof bjPlayChime === 'function') bjPlayChime(true);
+  maxinesAmbienceStart();
   document.querySelectorAll('.casino-view').forEach(v => v.classList.toggle('active', v.id === 'casinoHighRollersView'));
   document.getElementById('casinoHubPanel').style.display = 'none';
   const membersPanel = document.getElementById('casinoMembersPanel');
@@ -8195,6 +8198,71 @@ async function refreshHrHubBalance(){
   const bal = await getHighRollerBalance();
   val.textContent = bal == null ? '–' : `${bal.toLocaleString()} chips`;
 }
+// Maxine's ambience — a genuinely separate, self-contained system from
+// whatever the main floor's reconcileCasinoAmbience does (never located
+// that one's actual definition, only its call sites — didn't want to
+// bolt this onto something I can't verify). Plain HTML5 <audio> with a
+// gentle fade in both directions rather than a hard start/stop, which
+// reads as a bug on a table this animated everywhere else. Kept quiet —
+// "subtle" was the brief — and mutable, since background music is a
+// matter of taste even at a volume this low.
+const MAXINES_AMBIENCE_TARGET_VOLUME = 0.14;
+let maxinesAmbienceMuted = (localStorage.getItem('maxinesAmbienceMuted') === '1');
+let maxinesFadeHandle = null;
+function maxinesAmbienceFadeTo(target, ms){
+  const audio = document.getElementById('maxinesAmbienceAudio');
+  if(!audio) return;
+  if(maxinesFadeHandle) clearInterval(maxinesFadeHandle);
+  const steps = 20, stepMs = Math.max(16, ms/steps);
+  const start = audio.volume, delta = (target - start) / steps;
+  let i = 0;
+  maxinesFadeHandle = setInterval(() => {
+    i++;
+    audio.volume = Math.max(0, Math.min(1, start + delta*i));
+    if(i >= steps){
+      clearInterval(maxinesFadeHandle); maxinesFadeHandle = null;
+      audio.volume = target;
+      if(target === 0) audio.pause();
+    }
+  }, stepMs);
+}
+function maxinesAmbienceStart(){
+  const audio = document.getElementById('maxinesAmbienceAudio');
+  if(!audio || maxinesAmbienceMuted) return;
+  if(!audio.paused && audio.volume >= MAXINES_AMBIENCE_TARGET_VOLUME * 0.9) return; // already playing at (near) full — a re-entry into an already-scored room shouldn't restart the fade
+  audio.volume = audio.paused ? 0 : audio.volume;
+  audio.play().catch(() => {}); // browsers can block autoplay before any tap on the page at all — harmless no-op if so, the next real interaction (e.g. the entry chime) clears it
+  maxinesAmbienceFadeTo(MAXINES_AMBIENCE_TARGET_VOLUME, 2200);
+}
+function maxinesAmbienceStop(){
+  const audio = document.getElementById('maxinesAmbienceAudio');
+  if(!audio || audio.paused) return;
+  maxinesAmbienceFadeTo(0, 1400);
+}
+function maxinesAmbienceSetMuted(muted){
+  maxinesAmbienceMuted = muted;
+  localStorage.setItem('maxinesAmbienceMuted', muted ? '1' : '0');
+  const btn = document.getElementById('maxinesMuteBtn');
+  if(btn) btn.textContent = muted ? '🔇' : '🎵';
+  if(muted) maxinesAmbienceStop();
+  else maxinesAmbienceStart();
+}
+document.getElementById('maxinesMuteBtn').addEventListener('click', () => maxinesAmbienceSetMuted(!maxinesAmbienceMuted));
+document.getElementById('maxinesMuteBtn').textContent = maxinesAmbienceMuted ? '🔇' : '🎵';
+// Pause (not the fade — a hard pause is correct here) whenever the tab
+// itself goes into the background, and only resume if we're still
+// actually sitting in Maxine's when it comes back — no point spending
+// battery/bandwidth on music nobody's there to hear, and it shouldn't
+// resume into a game you've since navigated away from.
+document.addEventListener('visibilitychange', () => {
+  const audio = document.getElementById('maxinesAmbienceAudio');
+  if(!audio) return;
+  if(document.hidden){
+    if(!audio.paused) audio.pause();
+  } else if(!maxinesAmbienceMuted && document.getElementById('casinoHighRollersView')?.classList.contains('active')){
+    maxinesAmbienceStart();
+  }
+});
 // High Rollers leaderboard — deliberately its OWN ranking, separate from
 // renderXPLeaderboard above, ranked by the isolated /highRollers/{uid}/
 // balance rather than real XP. Only shows members who've actually
@@ -8242,11 +8310,23 @@ document.querySelectorAll('.hr-game-tile').forEach(btn => {
     enterHighRollerGame(game);
   });
 });
-function enterHighRollerGame(game){
-  // All three games now follow the identical mode-flag pattern (see
+async function enterHighRollerGame(game){
+  // All five games now follow the identical mode-flag pattern (see
   // HR_MODE_SETTERS in the shared game-bubble handler) — this just
   // reuses each game's own regular navigation button, tagged so the
   // shared handler knows to switch it into High Roller mode first.
+  //
+  // FIXED — real bug reported live as "none of the games work": every
+  // .casino-game-panel (casinoGameBlackjack etc.) is a DOM CHILD of
+  // casinoGamesView, not a sibling. The old code clicked the game bubble
+  // directly, which correctly set the right game panel's own display to
+  // block — but casinoGamesView itself was never made the active view
+  // first (we were navigating away from casinoHighRollersView), so it
+  // stayed hidden, and a hidden parent hides every descendant no matter
+  // what display value is set directly on the child. The game panel WAS
+  // technically "shown", just invisibly, trapped inside an invisible
+  // parent. Making casinoGamesView active first fixes this.
+  await showCasinoView('casinoGamesView');
   const btn = document.querySelector(`.game-bubble[data-game="${game}"]`);
   if(!btn) return;
   btn.dataset.hrEntry = '1';
@@ -10193,7 +10273,13 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     };
     const hrSetterName = HR_MODE_SETTERS[btn.dataset.game];
     if(hrSetterName && typeof window[hrSetterName] === 'function'){
-      window[hrSetterName](btn.dataset.hrEntry === '1');
+      const enteringHr = btn.dataset.hrEntry === '1';
+      window[hrSetterName](enteringHr);
+      // The piano should keep playing across the whole room, not just
+      // the lobby page — continues into whichever game you open from
+      // here, and correctly stops if this is actually a normal click on
+      // a game bubble from outside Maxine's (hrEntry unset).
+      if(enteringHr) maxinesAmbienceStart(); else maxinesAmbienceStop();
     }
     // Leaving whatever game was previously active (or the hub) — show its
     // recap if any hands were actually played, then start a fresh session
