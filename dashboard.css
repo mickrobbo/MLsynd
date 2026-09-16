@@ -2585,25 +2585,35 @@
   .toteboard-cell.neg .val{ color: var(--loss); }
 
   .tab-panel{ display:none; }
-  /* Home tab background silhouette — the user's own commissioned art,
-     not a UI element. Fixed positioning works fine without needing
-     #tab-balance itself to become a positioning context: it's a DOM
-     CHILD of a panel that's display:none whenever Home isn't the active
-     tab, so a hidden ancestor already hides it the same way regardless
-     of its own position value. Low opacity and pointer-events:none —
-     "visible but not dominant" was the brief, so it reads as ambience
-     behind the real content, never competes with it or blocks taps.
-     z-index:-1 (not just a low positive number) keeps this reliably
-     behind every panel without needing to touch any other element's
-     own stacking — a broad rule forcing position/z-index onto every
-     sibling would risk breaking anything that already relies on its
-     own absolute/fixed positioning for its own purposes. */
+  /* Maxine's background silhouette — the user's own commissioned art,
+     not a UI element. Global (not nested inside any tab-panel or
+     casino-view), because the room is nested several levels deep and
+     needs to persist across the room AND every one of its games; a
+     "hidden ancestor hides it too" approach only works cleanly for a
+     single fixed panel, not this. Visibility is instead tied directly
+     to the same body.maxines-lounge-active class that already controls
+     every other part of the room's theme, so it's on exactly when
+     everything else brown-and-gold is on, and off everywhere else —
+     including the Home tab, where it doesn't belong.
+     FIXED — real bug, reported live as "uploaded but still not
+     displaying": z-index:-1 on a position:fixed element is a genuine,
+     well-known CSS trap. body has its own opaque background (var(--ink)),
+     and a negative z-index can render BEHIND that root background layer
+     in normal stacking rules rather than merely behind other content —
+     the previous version wasn't hidden by a missing file or a typo, it
+     was rendering, just underneath the page's own paint. Removed the
+     negative value entirely; default stacking plus DOM order (this
+     element comes first in the page, so normal content painted after it
+     naturally layers on top) achieves the same "behind everything" look
+     without the trap. */
   .home-silhouette-bg{
+    display:none;
     position:fixed; right:-40px; bottom:0; height:78vh; max-height:640px; width:auto;
-    opacity:.1; pointer-events:none; z-index:-1;
+    opacity:.1; pointer-events:none;
     -webkit-mask-image: linear-gradient(to top, black 55%, transparent 95%);
     mask-image: linear-gradient(to top, black 55%, transparent 95%);
   }
+  body.maxines-lounge-active .home-silhouette-bg{ display:block; }
   .tab-panel.active{ display:block; }
 
   .tabbar{

@@ -33,6 +33,7 @@
 <script defer src="https://www.gstatic.com/firebasejs/12.17.1/firebase-database-compat.js"></script>
 </head>
 <body>
+<img src="home-silhouette.jpg" alt="" class="home-silhouette-bg">
 <div id="authGate" class="auth-gate">
   <div class="auth-box">
     <img src="/logo-icon.png" alt="" class="auth-logo-icon">
@@ -84,11 +85,10 @@
 </div>
 <div class="wrap">
   <header>
-    <img src="/banner.png" alt="MLSynd" class="header-banner">
+    <img src="/banner-gold.png" alt="MLSynd" class="header-banner">
   </header>
 
   <div class="tab-panel active" id="tab-balance">
-    <img src="home-silhouette.jpg" alt="" class="home-silhouette-bg">
     <div class="subnav-row" id="homeMainSubnav">
       <button type="button" class="subnav-btn active" data-homesub="overview"><span class="subnav-icon">🏠</span>Overview</button>
       <button type="button" class="subnav-btn" data-homesub="cash"><span class="subnav-icon">💰</span>Cash</button>
@@ -3834,7 +3834,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.141"; // Added a home-tab background silhouette (the user's own commissioned art — a clothed evening-gown figure, accepted after two earlier submissions were declined for depicting nudity in a sexualized pose). Fixed positioning, opacity .1, pointer-events:none, a soft top-edge fade via mask-image — genuinely "visible but not dominant" rather than competing with real content, and z-index:-1 rather than a broad rule forcing position/z-index onto every sibling element, which would've risked breaking anything already relying on its own absolute/fixed positioning for its own purposes. Sits as a DOM child of #tab-balance, so it's already correctly hidden on every other tab via that panel's own display:none — no extra visibility logic needed. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.143"; // Two fixes for the home-tab silhouette, reported live as "uploaded but still not displaying". First, a genuine CSS trap: it had z-index:-1 on a position:fixed element, which can render behind the page's own opaque root background in normal stacking rules — it wasn't a missing file or a typo, it was painting, just underneath everything else. Removed the negative value; DOM order (it's now the very first element in the page) achieves the same "stays behind normal content" result without the trap. Second, moved it off the Home tab entirely per direct correction — it's now a global element gated by the same body.maxines-lounge-active class that already controls the rest of the room's theme, on throughout the room and every one of its games, off everywhere else including Home, rather than nested inside a single tab panel the way the last version had it. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
