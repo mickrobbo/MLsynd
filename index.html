@@ -3833,7 +3833,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.136"; // Maxine's: the "own feel and tone" request, reported live as "it takes me to the existing game" — the games weren't feeling distinct because .hr-mode-active only ever overrode the outer panel's own background. Fixed at the actual leverage point: every game's felt, cards, chips, and text all pull colour from the SAME shared CSS variables (461 uses across dashboard.css), so overriding --felt/--brass/--chalk/etc. once inside .hr-mode-active cascades the black-and-gold theme through everything inside the room automatically, no per-game reskinning needed. Replaced the five game-tile emoji with original gold line-art SVG icons (a card, crossed swords, slot reels, a roulette wheel, a card fan) and gave the House Rules/mute/Back buttons real premium button styling instead of the plain default. Added the two suggested improvements from last time: ducking (hooked once into the shared bjPlayChime, covers every game's win/loss sound rather than five separate call sites) and a "now playing" equalizer-bars indicator next to the mute icon — caught and fixed a real bug while wiring the latter, where the existing mute-toggle code did btn.textContent = ... on the button itself, which would have silently wiped out the new equalizer-bars child element every time it ran. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.137"; // Maxine's: found the actual cause of "clicking a game in the room takes you here" (screenshotted as the plain regular casino grid) — the earlier showCasinoView('casinoGamesView') fix correctly made the target game panel REACHABLE, but reachable isn't visible: the grid sits at the top of that same page and the selected game's own panel renders further down it, not as a separate screen. A normal visitor arrives already scrolled to the top and naturally continues down into whichever table they pick, so it never read as broken for them — arriving from Maxine's, you're dropped at that same scroll position with no path down to what you actually asked for, so it just looked like a bounce back to the regular casino. enterHighRollerGame() now explicitly scrolls the target panel into view. Also gave the game tiles the "more finesse" requested — deeper shadow/depth, a shimmer sweep matching the room panel's own, and each icon sitting in its own circular badge (same radial-gradient + ring treatment as the crest) instead of just floating on the tile. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8338,22 +8338,28 @@ async function enterHighRollerGame(game){
   // reuses each game's own regular navigation button, tagged so the
   // shared handler knows to switch it into High Roller mode first.
   //
-  // FIXED — real bug reported live as "none of the games work": every
-  // .casino-game-panel (casinoGameBlackjack etc.) is a DOM CHILD of
-  // casinoGamesView, not a sibling. The old code clicked the game bubble
-  // directly, which correctly set the right game panel's own display to
-  // block — but casinoGamesView itself was never made the active view
-  // first (we were navigating away from casinoHighRollersView), so it
-  // stayed hidden, and a hidden parent hides every descendant no matter
-  // what display value is set directly on the child. The game panel WAS
-  // technically "shown", just invisibly, trapped inside an invisible
-  // parent. Making casinoGamesView active first fixes this.
+  // showCasinoView('casinoGamesView') below makes the RIGHT panel
+  // reachable (see the earlier fix's comment for why that matters), but
+  // reachable isn't the same as visible — reported live as "it takes
+  // you here" alongside a screenshot of the plain green games grid, not
+  // the actual reskinned table. The grid sits at the top of that page
+  // and the selected game's own panel renders further down the SAME
+  // page, not as a separate screen — a normal visitor arrives already
+  // scrolled to the top and simply continues down into whichever table
+  // they pick, so it never reads as broken for them. Arriving from
+  // Maxine's, though, you're dropped straight onto that same scroll
+  // position with no path down to what you actually asked for, so it
+  // just looks like you got bounced back to the regular casino. Scroll
+  // the target panel into view explicitly instead of leaving it to chance.
   await showCasinoView('casinoGamesView');
   const btn = document.querySelector(`.game-bubble[data-game="${game}"]`);
   if(!btn) return;
   btn.dataset.hrEntry = '1';
   btn.click();
   delete btn.dataset.hrEntry;
+  const panelId = CASINO_GAME_PANEL_IDS[game];
+  const panel = panelId ? document.getElementById(panelId) : null;
+  if(panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Drives both the Casino tab's own XP readout AND the small Home tab
