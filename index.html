@@ -1310,7 +1310,7 @@
 
     <!-- Game selector + tables view -->
     <div class="casino-view" id="casinoGamesView">
-    <div class="panel" style="padding:10px; text-align:center;">
+    <div class="panel" id="casinoGamesGridPanel" style="padding:10px; text-align:center;">
       <div class="game-bubble-row">
         <button type="button" class="game-bubble" data-game="blackjack"><span class="game-bubble-icon">🃏</span><span class="game-bubble-label">Blackjack</span></button>
         <button type="button" class="game-bubble" data-game="baccarat"><span class="game-bubble-icon">🎴</span><span class="game-bubble-label">Baccarat</span></button>
@@ -3833,7 +3833,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.137"; // Maxine's: found the actual cause of "clicking a game in the room takes you here" (screenshotted as the plain regular casino grid) — the earlier showCasinoView('casinoGamesView') fix correctly made the target game panel REACHABLE, but reachable isn't visible: the grid sits at the top of that same page and the selected game's own panel renders further down it, not as a separate screen. A normal visitor arrives already scrolled to the top and naturally continues down into whichever table they pick, so it never read as broken for them — arriving from Maxine's, you're dropped at that same scroll position with no path down to what you actually asked for, so it just looked like a bounce back to the regular casino. enterHighRollerGame() now explicitly scrolls the target panel into view. Also gave the game tiles the "more finesse" requested — deeper shadow/depth, a shimmer sweep matching the room panel's own, and each icon sitting in its own circular badge (same radial-gradient + ring treatment as the crest) instead of just floating on the tile. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.138"; // Maxine's: the scroll fix from last time wasn't enough — reported live with a screenshot showing the plain green casino grid still fully visible above the (correctly scrolled-to) table, which broke the room's whole identity the moment you actually sat down to play. The real fix: the grid panel and its "pick a game" empty state are now hidden entirely while in any Maxine's game (a new casinoGamesGridPanel id, toggled right alongside the existing HR_MODE_SETTERS logic in the shared game-bubble handler), so the reskinned table is the only thing on screen. Always restored on a genuine regular-casino click, so this can never leak into the normal flow outside the room. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10308,6 +10308,18 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
       // here, and correctly stops if this is actually a normal click on
       // a game bubble from outside Maxine's (hrEntry unset).
       if(enteringHr) maxinesAmbienceStart(); else maxinesAmbienceStop();
+      // FIXED — real gap reported live: scrolling to the right table
+      // wasn't enough, the plain green grid was still fully visible
+      // above it, breaking the room's whole black-and-gold identity the
+      // moment you actually sat down at a table. Hides the grid itself
+      // (and its "pick a game" empty state) entirely while in a Maxine's
+      // game, so the reskinned table is the ONLY thing on screen — and
+      // always restores it on a genuine regular-casino click, so this
+      // never leaks into the normal flow.
+      const gridPanel = document.getElementById('casinoGamesGridPanel');
+      const emptyState = document.getElementById('casinoGamesEmptyState');
+      if(gridPanel) gridPanel.style.display = enteringHr ? 'none' : '';
+      if(emptyState && enteringHr) emptyState.style.display = 'none';
     }
     // Leaving whatever game was previously active (or the hub) — show its
     // recap if any hands were actually played, then start a fresh session
