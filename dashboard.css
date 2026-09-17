@@ -2858,10 +2858,10 @@
      without the trap. */
   .home-silhouette-bg{
     display:none;
-    position:fixed; right:-40px; bottom:0; height:78vh; max-height:640px; width:auto;
-    opacity:.1; pointer-events:none;
-    -webkit-mask-image: linear-gradient(to top, black 55%, transparent 95%);
-    mask-image: linear-gradient(to top, black 55%, transparent 95%);
+    position:fixed; right:0; bottom:60px; height:62vh; max-height:520px; width:auto;
+    opacity:.16; pointer-events:none;
+    -webkit-mask-image: linear-gradient(to top, black 50%, transparent 92%);
+    mask-image: linear-gradient(to top, black 50%, transparent 92%);
   }
   body.maxines-lounge-active .home-silhouette-bg{ display:block; }
   .tab-panel.active{ display:block; }
