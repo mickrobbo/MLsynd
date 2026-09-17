@@ -8,6 +8,46 @@
 // never actually Blackjack-specific under the hood.
 let bacDeck = [];
 let bacSelectedBet = 'player';
+
+// ---- High Rollers Room mode — identical pattern to the other five
+// games, see casino-blackjack.js for the full rationale.
+let bacHighRollerMode = false;
+window.bacSetHighRollerMode = function(active){
+  bacHighRollerMode = !!active;
+  const panel = document.getElementById('casinoGameBaccarat');
+  if(panel) panel.classList.toggle('hr-mode-active', bacHighRollerMode);
+  const badge = document.getElementById('bacHrModeBadge');
+  if(badge) badge.style.display = bacHighRollerMode ? 'block' : 'none';
+  const capNote = document.getElementById('bacCapNote');
+  if(capNote){
+    capNote.style.display = bacHighRollerMode ? 'none' : '';
+    capNote.textContent = `Max bet: ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP per hand`;
+  }
+  if(bacHighRollerMode) bacRefreshHrBalanceDisplay();
+};
+async function bacGetBalance(){
+  return bacHighRollerMode ? await getHighRollerBalance() : await getXPBalance();
+}
+async function bacAwardXP(amount, reason, opts){
+  if(bacHighRollerMode) return await awardHighRollerXP(amount, `[Maxine's] ${reason}`);
+  return await awardXP(amount, reason, opts);
+}
+async function bacUpdateBalanceDisplay(bal){
+  if(bal == null) return;
+  if(bacHighRollerMode){
+    const el = document.getElementById('bacHrModeBalanceVal');
+    if(el) el.textContent = `${bal.toLocaleString()} chips`;
+    const hubEl = document.getElementById('hrHubBalanceVal');
+    if(hubEl) hubEl.textContent = `${bal.toLocaleString()} chips`;
+    return;
+  }
+  updateXPBalanceDisplay(bal);
+}
+async function bacRefreshHrBalanceDisplay(){
+  const bal = await bacGetBalance();
+  bacUpdateBalanceDisplay(bal);
+}
+
 let bacLastBet = null; // snapshot of the last hand's bet type + amount, for the Same Bet button
 let bacStep = 'start';
 let bacPlayerHand = [], bacBankerHand = [];
@@ -74,13 +114,13 @@ async function bacDealInner(){
   const bet = parseInt(betInput.value, 10);
   const ppOn = document.getElementById('bacPerfectPairsCheck').checked;
   const ppBet = parseInt(document.getElementById('bacPerfectPairsAmount').value, 10) || 0;
-  const balance = await getXPBalance();
+  const balance = await bacGetBalance();
   const totalStake = bet + (ppOn ? ppBet : 0);
   if(!bet || bet < 1){ errEl.textContent = 'Place a bet first.'; return; }
   if(ppOn && ppBet < 1){ errEl.textContent = 'Add a Perfect Pairs side bet amount first.'; return; }
-  if(totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
-  if(balance == null){ errEl.textContent = 'Could not check your XP balance — try again.'; return; }
-  if(totalStake > balance){ errEl.textContent = `You only have ${balance} XP.`; return; }
+  if(!bacHighRollerMode && totalStake > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum bet per hand is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (including side bets).`; return; }
+  if(balance == null){ errEl.textContent = bacHighRollerMode ? 'Could not check your chip balance — try again.' : 'Could not check your XP balance — try again.'; return; }
+  if(totalStake > balance){ errEl.textContent = bacHighRollerMode ? `You only have ${balance.toLocaleString()} chips.` : `You only have ${balance} XP.`; return; }
 
   bacBetAmountLocked = bet;
   bacBetTypeLocked = betType;
@@ -133,13 +173,13 @@ async function bacResolvePerfectPairs(){
     ppEl.classList.remove('bj-outcome-pop'); void ppEl.offsetWidth; ppEl.classList.add('bj-outcome-pop');
     bjPlaySideBetDing();
     bjLaunchConfetti(ppEl, 14);
-    await awardXP(win, `Baccarat Perfect Pairs (${which} ${pp.label})`, { silent: true });
+    await bacAwardXP(win, `Baccarat Perfect Pairs (${which} ${pp.label})`, { silent: true });
   } else {
     ppEl.innerHTML = `<span style="color:var(--loss);">Perfect Pairs: no pair (-${ppBet} XP)</span>`;
-    await awardXP(-ppBet, 'Baccarat Perfect Pairs (no pair)', { silent: true });
+    await bacAwardXP(-ppBet, 'Baccarat Perfect Pairs (no pair)', { silent: true });
   }
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  const bal = await bacGetBalance();
+  bacUpdateBalanceDisplay(bal);
 }
 async function bacHit(){
   const hitBtn = document.getElementById('bacHitBtn');
@@ -341,9 +381,9 @@ async function bacResolve(){
     setTimeout(() => tableEl.classList.remove('pc-shake', 'pc-flash-red'), 700);
   }
 
-  if(delta !== 0) await awardXP(delta, delta > 0 ? 'Baccarat win' : 'Baccarat loss', { silent: true, detail: { type: 'cards', playerCards: bacPlayerHand, bankerCards: bacBankerHand, playerTotal, bankerTotal } });
-  const bal = await getXPBalance();
-  updateXPBalanceDisplay(bal);
+  if(delta !== 0) await bacAwardXP(delta, delta > 0 ? 'Baccarat win' : 'Baccarat loss', { silent: true, detail: { type: 'cards', playerCards: bacPlayerHand, bankerCards: bacBankerHand, playerTotal, bankerTotal } });
+  const bal = await bacGetBalance();
+  bacUpdateBalanceDisplay(bal);
 }
 function bacNewHand(){
   document.getElementById('bacBetPanel').style.display = 'block';

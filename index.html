@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=151">
+<link rel="stylesheet" href="dashboard.css?v=153">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -1342,7 +1342,10 @@
     <div class="panel" id="bjBetPanel">
       <div id="bjHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
-        <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="bjHrModeBalanceVal">–</span> · No limits</div>
+        <div class="hr-balance-pill-row">
+          <span class="hr-balance-pill"><span class="hr-balance-pill-dot"></span><span id="bjHrModeBalanceVal">–</span> chips</span>
+          <span class="hr-nolimits-pill">No limits</span>
+        </div>
         <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="bjCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
@@ -1427,6 +1430,15 @@
     <div class="casino-game-panel" id="casinoGameBaccarat" style="display:none;">
     <div style="text-align:center; margin-bottom:8px;"><button type="button" class="pill-btn casino-rules-btn" data-rules="baccarat">📜 Rules</button></div>
     <div class="panel" id="bacBetPanel">
+      <div id="bacHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
+        <span class="hr-mode-badge">💎 MAXINE'S</span>
+        <div class="hr-balance-pill-row">
+          <span class="hr-balance-pill"><span class="hr-balance-pill-dot"></span><span id="bacHrModeBalanceVal">–</span> chips</span>
+          <span class="hr-nolimits-pill">No limits</span>
+        </div>
+        <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
+      </div>
+      <div id="bacCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
       <div style="display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap;">
         <div class="bet-spot-row">
           <button type="button" class="bet-spot-btn active" data-bac-bet="player">Player<br><small>1:1</small></button>
@@ -1534,7 +1546,10 @@
     <div class="panel" id="rouletteBetPanel">
       <div id="rouletteHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
-        <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="rouletteHrModeBalanceVal">–</span> · No limits</div>
+        <div class="hr-balance-pill-row">
+          <span class="hr-balance-pill"><span class="hr-balance-pill-dot"></span><span id="rouletteHrModeBalanceVal">–</span> chips</span>
+          <span class="hr-nolimits-pill">No limits</span>
+        </div>
         <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="rouletteCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
@@ -1570,7 +1585,10 @@
     <div class="panel" id="warBetPanel">
       <div id="warHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
-        <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="warHrModeBalanceVal">–</span> · No limits</div>
+        <div class="hr-balance-pill-row">
+          <span class="hr-balance-pill"><span class="hr-balance-pill-dot"></span><span id="warHrModeBalanceVal">–</span> chips</span>
+          <span class="hr-nolimits-pill">No limits</span>
+        </div>
         <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="warCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
@@ -1805,7 +1823,10 @@
     <div class="panel" id="slotsBetPanel">
       <div id="slotsHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
-        <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="slotsHrModeBalanceVal">–</span> · No limits</div>
+        <div class="hr-balance-pill-row">
+          <span class="hr-balance-pill"><span class="hr-balance-pill-dot"></span><span id="slotsHrModeBalanceVal">–</span> chips</span>
+          <span class="hr-nolimits-pill">No limits</span>
+        </div>
         <div id="slotsHrJackpotNote" style="display:none; font-size:10.5px; color:rgba(230,210,160,.55); margin-top:3px; font-style:italic;">The communal jackpot is shared with the regular Casino, so it's neither fed by nor payable to Maxine's spins.</div>
         <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
@@ -1874,7 +1895,10 @@
     <div class="panel" id="vpBetPanel">
       <div id="vpHrModeBadge" style="display:none; text-align:center; margin-bottom:8px;">
         <span class="hr-mode-badge">💎 MAXINE'S</span>
-        <div style="font-size:11px; color:rgba(230,210,160,.7); margin-top:2px;">Balance: <span id="vpHrModeBalanceVal">–</span> · No limits</div>
+        <div class="hr-balance-pill-row">
+          <span class="hr-balance-pill"><span class="hr-balance-pill-dot"></span><span id="vpHrModeBalanceVal">–</span> chips</span>
+          <span class="hr-nolimits-pill">No limits</span>
+        </div>
         <button type="button" class="pill-btn hr-header-btn" style="margin-top:6px; font-size:11px; padding:6px 12px;" onclick="leaveMaxines()">← Leave Maxine's</button>
       </div>
       <div id="vpCapNote" class="hint" style="text-align:center; margin-bottom:6px;"></div>
@@ -2417,6 +2441,7 @@
           <button type="button" class="hr-game-tile" data-hrgame="slots"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><rect x="6" y="6" width="20" height="20" rx="2.5" fill="none" stroke="#d4af5a" stroke-width="1.6"/><line x1="6" y1="12" x2="26" y2="12" stroke="#d4af5a" stroke-width="1.3"/><line x1="12.6" y1="12" x2="12.6" y2="26" stroke="#d4af5a" stroke-width="1"/><line x1="19.3" y1="12" x2="19.3" y2="26" stroke="#d4af5a" stroke-width="1"/><circle cx="16" cy="19" r="2" fill="#d4af5a"/><rect x="27" y="10" width="2.4" height="8" rx="1.2" fill="#d4af5a"/></svg></span><span class="hr-game-tile-label">Slots</span></button>
           <button type="button" class="hr-game-tile" data-hrgame="roulette"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><circle cx="16" cy="16" r="11" fill="none" stroke="#d4af5a" stroke-width="1.6"/><circle cx="16" cy="16" r="2.2" fill="#d4af5a"/><g stroke="#d4af5a" stroke-width="1"><line x1="16" y1="5" x2="16" y2="12"/><line x1="16" y1="20" x2="16" y2="27"/><line x1="5" y1="16" x2="12" y2="16"/><line x1="20" y1="16" x2="27" y2="16"/><line x1="8.3" y1="8.3" x2="12.8" y2="12.8"/><line x1="19.2" y1="19.2" x2="23.7" y2="23.7"/><line x1="23.7" y1="8.3" x2="19.2" y2="12.8"/><line x1="12.8" y1="19.2" x2="8.3" y2="23.7"/></g></svg></span><span class="hr-game-tile-label">Roulette</span></button>
           <button type="button" class="hr-game-tile" data-hrgame="videopoker"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><g fill="none" stroke="#d4af5a" stroke-width="1.4"><rect x="5" y="10" width="10" height="15" rx="1.6" transform="rotate(-14 10 17)"/><rect x="11" y="8" width="10" height="15" rx="1.6"/><rect x="17" y="10" width="10" height="15" rx="1.6" transform="rotate(14 22 17)"/></g><path d="M15.2 13.2 L16.8 13.2 L16.8 15.5 L19 15.5 L16 19.5 L13 15.5 L15.2 15.5 Z" fill="#d4af5a"/></svg></span><span class="hr-game-tile-label">Video Poker</span></button>
+          <button type="button" class="hr-game-tile" data-hrgame="baccarat"><span class="hr-game-tile-icon"><svg viewBox="0 0 32 32" width="28" height="28"><rect x="7" y="5" width="14" height="20" rx="2" fill="none" stroke="#d4af5a" stroke-width="1.6"/><circle cx="14" cy="15" r="4" fill="none" stroke="#d4af5a" stroke-width="1.4"/><path d="M23 9 L27 9 L27 23 L13 23" fill="none" stroke="#d4af5a" stroke-width="1.2" opacity=".65"/></svg></span><span class="hr-game-tile-label">Baccarat</span></button>
         </div>
         <div class="hr-spotlight-card">
           <span class="hr-spotlight-icon">🏆</span>
@@ -2428,6 +2453,10 @@
         <div class="hr-lb-panel">
           <div class="hr-lb-title">🏆 Maxine's Leaderboard</div>
           <div id="hrLeaderboardArea"><div class="hint" style="text-align:center;">Loading…</div></div>
+        </div>
+        <div class="hr-lb-panel">
+          <div class="hr-lb-title">📰 Live Feed</div>
+          <div id="maxinesFeedArea"><div class="hint" style="text-align:center;">Loading…</div></div>
         </div>
       </div>
     </div><!-- /#casinoHighRollersView -->
@@ -3884,7 +3913,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.151"; // Went much further on the vault door and the room's visual language per direct request to "go hard, make it extravagant" — while keeping the existing gold/black palette rather than reverting to green. The door now has three real phases instead of one: a lock wheel spins hard (four spokes, an actual "unlocking" beat), a light beam brightens down the seam as the panels start to separate, THEN the riveted doors (real stud details along each edge, not flat slabs) slide fully apart with a 14-particle gold sparkle burst timed to when they clear — total runtime ~1.3s, up from .9s, still a pure decorative overlay that can never block a real interaction. Also pulled in the main lounge's own spotlight-card layout (icon + label/value stack, .casino-floor-spotlight) for the Biggest Win card — same layout language, Maxine's own colours kept throughout, nothing reverted to green. Updated hr-room-preview.html's section 4 to match exactly, including a genuine bug I caught before shipping: a leftover stray closing brace from the CSS replacement that would have broken every rule after it in that file. dashboard.css changed again, cache-buster moved to ?v=151. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.154"; // Built the two features requested from last round's list: Whale Watch and Reactive Mood, both deliberately routed through the same single choke point every other room-wide feature already uses (awardHighRollerXP) rather than needing to touch all six games separately. Whale Watch triggers on the MAGNITUDE of a settlement (win or loss, either is a spectacle) crossing 10,000,000 — an immediate toast for whoever it just happened to, plus a marked "whale" flag on that feed entry so someone else polling the feed a few seconds later still sees it highlighted rather than blending into an ordinary line. Reactive Mood computes a net-of-recent-feed score (sum of amounts, not a win/loss count, so one huge win moves it more than five small ones) and feeds it into a CSS custom property that the room's own ambient glow responds to via calc() in its alpha channel — a 3s transition so it drifts like atmosphere across a session rather than flickering on every 15s poll. Both fully additive; a quiet room with no feed history just renders at the same static glow it always has. dashboard.css changed, cache-buster moved to ?v=153. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8143,8 +8172,106 @@ async function awardHighRollerXP(amount, reason){
       maxinesCheckBiggestWin(amount);
       maxinesCheckMilestone(next);
     }
+    maxinesLogFeedEntry(amount, reason);
     return true;
   }catch(e){ console.error('awardHighRollerXP failed:', e); return false; }
+}
+// Live activity feed, attached to the leaderboard — same idea as the
+// main lounge's Floor Feed, but deliberately a SIMPLER design rather
+// than mirroring that one's per-member-log-merge approach exactly: a
+// single shared /highRollers/feed node that any win/loss pushes an
+// entry onto (Firebase's own auto-generated push key, so no collision
+// risk between two entries landing in the same millisecond), read back
+// as the most recent N via a single query. Same trust model already
+// used everywhere else in this app — any approved member can write an
+// entry, there's no per-entry ownership lock — because the worst case
+// of someone faking a line here is a fake "X won Y" row, not an actual
+// economic exploit; it never touches a real balance.
+// Whale Watch — a big bet at this table should FEEL like one, not just
+// tick a number quietly upward. Threshold checked on the SETTLEMENT
+// amount (win or loss) rather than needing to touch all six games' own
+// bet-validation code separately — the same single choke point every
+// other room-wide feature (biggest win, milestones, the feed itself)
+// already routes through. A big loss is exactly as much of a spectacle
+// as a big win, so this fires on magnitude, not direction.
+const MAXINES_WHALE_THRESHOLD = 10000000;
+function maxinesCheckWhale(amount, name){
+  if(Math.abs(amount) < MAXINES_WHALE_THRESHOLD) return false;
+  const win = amount > 0;
+  showToast(`🐋 Whale alert — ${name} just ${win ? 'won' : 'lost'} ${Math.abs(amount).toLocaleString()} chips at Maxine's.`);
+  if(typeof bjPlayChime === 'function') bjPlayChime(win);
+  return true;
+}
+async function maxinesLogFeedEntry(amount, reason){
+  if(!currentUserUid) return;
+  try{
+    const me = (currentState && currentState.members || []).find(m => m.linkedUid === currentUserUid);
+    const name = me ? me.name : 'A High Roller';
+    // Strip the "[Maxine's] " prefix and any trailing detail in
+    // parens for a cleaner feed line — the room already knows it's
+    // Maxine's activity, no need to repeat that on every row.
+    const cleanReason = (reason || '').replace(/^\[Maxine's\]\s*/, '');
+    const isWhale = maxinesCheckWhale(amount, name);
+    await authedFetch('/highRollers/feed.json', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, amount, reason: cleanReason, ts: Date.now(), whale: isWhale })
+    });
+  }catch(e){}
+}
+async function renderMaxinesFeed(){
+  const area = document.getElementById('maxinesFeedArea');
+  if(!area) return;
+  try{
+    const res = await authedFetch('/highRollers/feed.json?orderBy=%22ts%22&limitToLast=12');
+    const data = res.ok ? await res.json() : null;
+    if(!data){ area.innerHTML = '<div class="hint" style="text-align:center;">No activity yet — be the first.</div>'; return; }
+    const entries = Object.values(data).sort((a,b) => b.ts - a.ts);
+    area.innerHTML = entries.map(e => {
+      const win = e.amount > 0;
+      const amtStr = `${win ? '+' : ''}${e.amount.toLocaleString()}`;
+      // Whale rows get their own distinct treatment — this is how
+      // someone polling the feed a few seconds after the fact (rather
+      // than being there for the live toast) still sees it as the
+      // spectacle it was, not just another line.
+      const whaleClass = e.whale ? ' hr-feed-whale' : '';
+      const whaleIcon = e.whale ? '🐋 ' : '';
+      return `<div class="hr-feed-row${whaleClass}">
+        <span class="hr-feed-dot ${win ? 'hr-feed-win' : 'hr-feed-loss'}"></span>
+        <span class="hr-feed-text">${whaleIcon}<b>${escapeHtml(e.name)}</b> ${escapeHtml(e.reason || (win ? 'won' : 'lost'))}</span>
+        <span class="hr-feed-amt ${win ? 'hr-feed-win' : 'hr-feed-loss'}">${amtStr}</span>
+      </div>`;
+    }).join('');
+    maxinesApplyMood(entries);
+  }catch(e){
+    area.innerHTML = '<div class="hint" style="text-align:center;">Couldn\'t load the feed — try again.</div>';
+  }
+}
+// Reactive Mood — the room's own ambient glow shifts based on how the
+// last dozen feed entries have gone, rather than staying static
+// regardless of what's actually happening. Net of wins minus losses
+// (not just a win/loss COUNT) so one enormous win or loss genuinely
+// moves the needle more than several small ones — a room that just saw
+// one huge win should feel hotter than one that saw five tiny ones.
+// Clamped to ±1 and eased with a CSS transition (set once, in the CSS)
+// rather than snapping, so it reads as a slow shift in atmosphere
+// across a session, not a flicker on every single poll.
+function maxinesApplyMood(entries){
+  const panel = document.querySelector('.hr-hub-panel');
+  if(!panel) return;
+  if(!entries || entries.length === 0){ panel.style.setProperty('--maxines-mood', '0'); return; }
+  const recent = entries.slice(0, 12);
+  const net = recent.reduce((sum, e) => sum + e.amount, 0);
+  const scale = recent.reduce((sum, e) => sum + Math.abs(e.amount), 0) || 1;
+  const mood = Math.max(-1, Math.min(1, net / scale));
+  panel.style.setProperty('--maxines-mood', mood.toFixed(2));
+}
+let maxinesFeedPollHandle = null;
+function startMaxinesFeedPolling(){
+  stopMaxinesFeedPolling();
+  maxinesFeedPollHandle = setInterval(renderMaxinesFeed, 15000);
+}
+function stopMaxinesFeedPolling(){
+  if(maxinesFeedPollHandle){ clearInterval(maxinesFeedPollHandle); maxinesFeedPollHandle = null; }
 }
 // The single largest win ever recorded in the room — separate from the
 // balance leaderboard, pure "hall of fame" bragging rights. ETag-guarded
@@ -8358,10 +8485,11 @@ document.getElementById('hrRoomBannerBtn').addEventListener('click', async () =>
 // hides every game panel, clears the room's whole page-wide theme, and
 // drops back to the main Casino hub — the actual "regular lobby".
 function leaveMaxines(){
-  ['bjSetHighRollerMode','warSetHighRollerMode','slotsSetHighRollerMode','rouletteSetHighRollerMode','vpSetHighRollerMode'].forEach(fn => {
+  ['bjSetHighRollerMode','warSetHighRollerMode','slotsSetHighRollerMode','rouletteSetHighRollerMode','vpSetHighRollerMode','bacSetHighRollerMode'].forEach(fn => {
     if(typeof window[fn] === 'function') window[fn](false);
   });
   maxinesAmbienceStop();
+  stopMaxinesFeedPolling();
   document.body.classList.remove('maxines-lounge-active');
   const gridPanel = document.getElementById('casinoGamesGridPanel');
   if(gridPanel) gridPanel.style.display = '';
@@ -8455,6 +8583,8 @@ async function enterHighRollersRoom(){
   renderHrLeaderboard();
   renderMaxinesBiggestWin();
   renderMaxinesCompUI();
+  renderMaxinesFeed();
+  startMaxinesFeedPolling();
   reconcileCasinoAmbience();
 }
 async function refreshHrHubBalance(){
@@ -10571,7 +10701,8 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
       war: 'warSetHighRollerMode',
       slots: 'slotsSetHighRollerMode',
       roulette: 'rouletteSetHighRollerMode',
-      videopoker: 'vpSetHighRollerMode'
+      videopoker: 'vpSetHighRollerMode',
+      baccarat: 'bacSetHighRollerMode'
     };
     const hrSetterName = HR_MODE_SETTERS[btn.dataset.game];
     if(hrSetterName && typeof window[hrSetterName] === 'function'){

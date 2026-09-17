@@ -159,9 +159,23 @@
   .pc-pip-tl{ top:5px; left:5px; }
   .pc-pip-br{ bottom:5px; right:5px; transform:rotate(180deg); }
   .pc-suit-mini{ font-size:10px; margin-top:1px; }
-  .pc-suit-big{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:26px; z-index:1; text-shadow:0 1px 1px rgba(0,0,0,.08); }
+  .pc-suit-big{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:26px; z-index:1; text-shadow:0 1px 2px rgba(0,0,0,.12); }
   .playing-card.pc-red{ color:#B5342A; }
   .playing-card.pc-black{ color:#1c1c1c; }
+
+  /* Maxine's — a gold foil edge on every card, the one detail that
+     separates "same white card on a different-coloured table" from
+     "this deck actually belongs to a VIP room". Purely additive: the
+     face, pips and suit colours are untouched, only the border/shadow
+     change, cascading from the same .hr-mode-active scope as everything
+     else rather than a whole separate card skin. */
+  .hr-mode-active .playing-card:not(.pc-back){
+    border:1px solid #c9a24b;
+    box-shadow:0 4px 10px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,243,210,.5), 0 0 6px rgba(212,175,90,.25);
+  }
+  .hr-mode-active .playing-card:not(.pc-back)::before{
+    background: linear-gradient(135deg, rgba(255,243,210,.5) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 68%, rgba(212,175,90,.16) 100%);
+  }
 
   .playing-card.pc-back{
     background: repeating-linear-gradient(45deg, var(--brass-dim), var(--brass-dim) 4px, var(--felt-3) 4px, var(--felt-3) 8px);
@@ -548,10 +562,20 @@
     border:1px solid #c9a24b; border-radius:18px; padding:22px 16px 20px;
     box-shadow: 0 10px 26px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,224,150,.12), 0 0 30px rgba(201,162,75,.18);
     text-align:center; position:relative; overflow:hidden;
+    --maxines-mood: 0; /* -1 (cold, recent losses) to 1 (hot, recent wins) — set by JS from the live feed, see maxinesApplyMood */
   }
+  /* Reactive Mood — the room's own glow now actually responds to how
+     it's been running lately (net of the last dozen feed entries, not
+     just a win/loss count, so one enormous win moves this more than
+     five small ones) rather than staying identically lit regardless of
+     what's happening. A 3s transition on the glow itself means this
+     drifts like atmosphere across a session rather than flickering on
+     every 15s poll. Intensity only — no colour category is ever
+     "wrong" or alarming, a cold stretch just dims rather than warns. */
   .hr-hub-panel::before{
     content:''; position:absolute; inset:0;
-    background: radial-gradient(ellipse at 50% -10%, rgba(201,162,75,.22), transparent 55%);
+    background: radial-gradient(ellipse at 50% -10%, rgba(201,162,75, calc(0.22 + var(--maxines-mood) * 0.15)), transparent 55%);
+    transition: background 3s ease;
   }
   .hr-hub-header{ position:relative; z-index:1; margin-bottom:18px; }
   .hr-hub-crest{
@@ -689,6 +713,30 @@
     font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:11px; letter-spacing:1.5px;
     box-shadow: 0 2px 8px rgba(0,0,0,.4);
   }
+  /* Balance made obvious in-game — was a bare inline text line ("Balance:
+     X · No limits"), which under-sold the one number that actually
+     matters while you're sitting at a table. Now its own bubble with a
+     pulsing gold dot, "No limits" split out as its own separate pill
+     rather than trailing text, so the two ideas don't compete for
+     attention in one run-on line. */
+  .hr-balance-pill-row{ display:flex; align-items:center; justify-content:center; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .hr-balance-pill{
+    display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:999px;
+    background: linear-gradient(165deg, rgba(255,224,150,.16), rgba(0,0,0,.3));
+    border:1px solid rgba(212,175,90,.5);
+    font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:12px; color:#fdf0c8;
+    box-shadow: 0 2px 6px rgba(0,0,0,.35);
+  }
+  .hr-balance-pill-dot{
+    width:6px; height:6px; border-radius:50%; background:#d4af5a;
+    box-shadow:0 0 5px rgba(255,224,150,.8); animation: hrBadgePulse 2.4s ease-in-out infinite;
+  }
+  .hr-nolimits-pill{
+    display:inline-block; padding:4px 10px; border-radius:999px;
+    background:rgba(224,138,114,.12); border:1px solid rgba(224,138,114,.4);
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:10.5px; letter-spacing:.4px;
+    color:#e08a72; text-transform:uppercase;
+  }
 
   /* ---- Further polish pass — shimmer, corner flourishes, suit
      watermarks, a real chip-edge crest, and the High Rollers
@@ -767,6 +815,32 @@
   }
   .hr-lb-name{ flex:1; font-size:13px; color:#fdf0c8; }
   .hr-lb-val{ font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:13px; color:#d4af5a; }
+
+  /* Live feed — a small dot instead of a rank medal (this isn't ranked,
+     it's chronological), coloured win/loss so the shape of the recent
+     action is readable at a glance before reading a single word */
+  .hr-feed-row{
+    display:flex; align-items:center; gap:8px; padding:7px 6px;
+    border-bottom:1px solid rgba(201,162,75,.12); font-size:12px;
+  }
+  .hr-feed-row:last-child{ border-bottom:none; }
+  .hr-feed-dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .hr-feed-dot.hr-feed-win{ background:#8fd4ac; box-shadow:0 0 5px rgba(143,212,172,.6); }
+  .hr-feed-dot.hr-feed-loss{ background:#e08a72; box-shadow:0 0 5px rgba(224,138,114,.5); }
+  .hr-feed-text{ flex:1; color:rgba(230,210,160,.85); }
+  .hr-feed-text b{ color:#fdf0c8; }
+  .hr-feed-amt{ font-family:'IBM Plex Mono',monospace; font-weight:700; flex-shrink:0; }
+  .hr-feed-amt.hr-feed-win{ color:#8fd4ac; }
+  .hr-feed-amt.hr-feed-loss{ color:#e08a72; }
+  /* Whale rows — a big bet should still read as one a few seconds
+     later when someone else's poll picks it up, not just blend into
+     the rest of the feed as an ordinary line */
+  .hr-feed-row.hr-feed-whale{
+    background:linear-gradient(90deg, rgba(255,224,150,.12), transparent);
+    border-radius:6px; margin:2px 0;
+  }
+  .hr-feed-row.hr-feed-whale .hr-feed-text{ font-weight:600; color:#fdf0c8; }
+  .hr-feed-row.hr-feed-whale .hr-feed-amt{ font-size:13px; text-shadow:0 0 8px currentColor; }
 
   /* Spotlight card — the same icon+label+value language the main
      lounge already uses (.casino-floor-spotlight), brought into
@@ -2977,13 +3051,27 @@
   .tier-badge.tier-immortal{
     background: linear-gradient(155deg, #fff6d8, #f5c518 45%, #b8860b 75%, #3a2a00);
     box-shadow:0 1px 3px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(0,0,0,.4), 0 0 8px rgba(245,197,24,.8);
-    animation: immortalBadgePulse 2s ease-in-out infinite, immortalBadgeShift 4s linear infinite;
+    animation: immortalBadgePulse 2s ease-in-out infinite, immortalBadgeShift 5s ease-in-out infinite;
   }
   @keyframes immortalBadgePulse{
     0%,100%{ box-shadow:0 1px 3px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(0,0,0,.4), 0 0 8px rgba(245,197,24,.8); }
     50%{ box-shadow:0 1px 3px rgba(0,0,0,.6), inset 0 1px 1px rgba(255,255,255,.8), inset 0 -1px 1px rgba(0,0,0,.4), 0 0 16px 4px rgba(245,197,24,1); }
   }
-  @keyframes immortalBadgeShift{ 0%{ filter:hue-rotate(0deg); } 100%{ filter:hue-rotate(360deg); } }
+  /* FIXED — reported live as "flashing multi colour, looks cheap": this
+     used to run filter:hue-rotate() through the FULL 360°, meaning the
+     badge actually cycled through every colour in the spectrum — green,
+     blue, purple — on the app's single highest, most exclusive tier.
+     That reads as a cheap RGB gaming peripheral, not a premium cosmetic.
+     Narrowed to a 28° swing entirely within the gold family (warm
+     amber → pale champagne → rose-gold and back), the way a real opal
+     or shifting foil actually looks: always recognisably gold, never
+     leaving that family, just catching the light differently. Slower
+     too — 5s ease-in-out instead of 4s linear, an elegant drift rather
+     than a mechanical spin. */
+  @keyframes immortalBadgeShift{
+    0%,100%{ filter:hue-rotate(0deg) saturate(1); }
+    50%{ filter:hue-rotate(-14deg) saturate(1.15); }
+  }
   @media (prefers-reduced-motion: reduce){
     .tier-badge.tier-diamond, .tier-badge.tier-sovereign, .tier-badge.tier-immortal{ animation:none; }
   }
@@ -3037,12 +3125,13 @@
   }
   .avatar-rankcard.tier-immortal img, .avatar-rankcard.tier-immortal .avatar-rankcard-fallback{
     box-shadow:0 0 0 2px #f5c518, 0 0 18px -1px rgba(245,197,24,1), 0 3px 10px rgba(0,0,0,.5);
-    animation: rankCardImmortalPulse 3s ease-in-out infinite;
+    animation: rankCardImmortalPulse 5s ease-in-out infinite;
   }
+  /* Same fix as the badge above — narrow gold-family hue swing instead
+     of a full 360° rainbow cycle. */
   @keyframes rankCardImmortalPulse{
-    0%{ filter:drop-shadow(0 0 3px rgba(245,197,24,.7)) hue-rotate(0deg); }
-    50%{ filter:drop-shadow(0 0 13px rgba(245,197,24,1)) hue-rotate(180deg); }
-    100%{ filter:drop-shadow(0 0 3px rgba(245,197,24,.7)) hue-rotate(360deg); }
+    0%,100%{ filter:drop-shadow(0 0 3px rgba(245,197,24,.7)) hue-rotate(0deg); }
+    50%{ filter:drop-shadow(0 0 13px rgba(245,197,24,1)) hue-rotate(-14deg); }
   }
   @media (prefers-reduced-motion: reduce){
     .avatar-rankcard.tier-diamond img, .avatar-rankcard.tier-diamond .avatar-rankcard-fallback,
