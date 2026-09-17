@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=154">
+<link rel="stylesheet" href="dashboard.css?v=155">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -2456,7 +2456,7 @@
         </div>
         <div class="hr-lb-panel">
           <div class="hr-lb-title">📰 Live Feed</div>
-          <div id="maxinesFeedArea"><div class="hint" style="text-align:center;">Loading…</div></div>
+          <div id="maxinesFeedArea" class="hr-feed-scroll"><div class="hint" style="text-align:center;">Loading…</div></div>
         </div>
       </div>
     </div><!-- /#casinoHighRollersView -->
@@ -3913,7 +3913,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.155"; // Found the real reason the home silhouette "still wasn't showing" even after confirming the file was genuinely deployed at the right path (screenshotted GitHub view). Two compounding problems, not one: right:-40px on a position:fixed element assumes spare gutter space beyond the viewport edge to tuck the overflow into, but this whole app is a narrow mobile layout (.wrap has only 12px of side padding) — that negative offset was almost certainly pushing a meaningful chunk of the image straight off the edge of the screen rather than "peeking" from it. And what little was left on-screen was at only .1 opacity, likely too faint to register at all layered under the room's own dark panels. Removed the negative offset entirely (right:0, no overflow risk), bumped opacity to .16, and pulled it up to bottom:60px so it sits clear of the fixed tabbar's own ~96px reserved zone instead of the two fighting for the same strip. dashboard.css changed, cache-buster moved to ?v=154. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.156"; // Two bugs reported together turned out to be one root cause, not two — the chat screenshot showed someone stuck on the Blackjack table unable to get out, plus the brown theme bleeding into other tabs after leaving Maxine's. setActiveTab is the ONE function every bottom-nav tap (Home, Board, Tipping, Sport) already runs through, and it never checked or cleaned up Maxine's state at all — that's both the missing escape hatch (whatever state the Blackjack table itself got stuck in, tapping any other tab now always gets you fully out) and the direct cause of the colour leak (nothing removed the body class except the room's own specific buttons). Extracted the cleanup already used by leaveMaxines() into its own function and call it at the top of setActiveTab, unconditionally, for every tab — a no-op instantly if Maxine's isn't active, so normal tab switching is unaffected. Also upgraded the leaderboard to the same visual language as the Board ladder per direct request — real avatars with tier-coloured rings via the app's own existing avatarRankCardHtml/getCasinoTierKey rather than bare name-only rows. Live feed bumped from 12 to 50 entries, now in a scrollable 280px container instead of rendering all of them inline. dashboard.css changed, cache-buster moved to ?v=155. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8222,7 +8222,7 @@ async function renderMaxinesFeed(){
   const area = document.getElementById('maxinesFeedArea');
   if(!area) return;
   try{
-    const res = await authedFetch('/highRollers/feed.json?orderBy=%22ts%22&limitToLast=12');
+    const res = await authedFetch('/highRollers/feed.json?orderBy=%22ts%22&limitToLast=50');
     const data = res.ok ? await res.json() : null;
     if(!data){ area.innerHTML = '<div class="hint" style="text-align:center;">No activity yet — be the first.</div>'; return; }
     const entries = Object.values(data).sort((a,b) => b.ts - a.ts);
@@ -8484,7 +8484,21 @@ document.getElementById('hrRoomBannerBtn').addEventListener('click', async () =>
 // currently in HR mode just no-ops), restores the regular game grid,
 // hides every game panel, clears the room's whole page-wide theme, and
 // drops back to the main Casino hub — the actual "regular lobby".
-function leaveMaxines(){
+// Shared cleanup — extracted so it can run from TWO places: the
+// explicit "Leave Maxine's" button (leaveMaxines, below) AND the top of
+// setActiveTab itself. The second one is the actual fix for two bugs
+// reported together: someone stuck on the Blackjack table unable to
+// get out, and the brown theme bleeding into other tabs after leaving.
+// Neither was really two separate problems — setActiveTab is the ONE
+// function every bottom-nav tap (Home, Board, Tipping, Sport) already
+// runs through, and it never checked or cleaned up Maxine's state at
+// all. That's a real escape hatch missing (however the Blackjack table
+// itself got stuck, tapping ANY other tab now always gets you fully
+// out) AND the direct cause of the colour leak (nothing ever removed
+// the body class when leaving via a tab, only via the room's own
+// specific buttons).
+function maxinesCleanupIfActive(){
+  if(!document.body.classList.contains('maxines-lounge-active')) return;
   ['bjSetHighRollerMode','warSetHighRollerMode','slotsSetHighRollerMode','rouletteSetHighRollerMode','vpSetHighRollerMode','bacSetHighRollerMode'].forEach(fn => {
     if(typeof window[fn] === 'function') window[fn](false);
   });
@@ -8494,6 +8508,9 @@ function leaveMaxines(){
   const gridPanel = document.getElementById('casinoGamesGridPanel');
   if(gridPanel) gridPanel.style.display = '';
   document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
+}
+function leaveMaxines(){
+  maxinesCleanupIfActive();
   showCasinoView(null);
 }
 async function enterHighRollersRoom(){
@@ -8697,13 +8714,15 @@ async function renderHrLeaderboard(){
         const claimedRes = await authedFetch(`/highRollers/${m.linkedUid}/welcomeGrantClaimed.json`);
         const claimed = claimedRes.ok ? await claimedRes.json() : null;
         if(!claimed) return null;
-        const [balRes, compRes] = await Promise.all([
+        const [balRes, compRes, avatar, tierKey] = await Promise.all([
           authedFetch(`/highRollers/${m.linkedUid}/balance.json`),
-          authedFetch(`/highRollers/${m.linkedUid}/compCount.json`)
+          authedFetch(`/highRollers/${m.linkedUid}/compCount.json`),
+          getAvatarDataUri(m.linkedUid), // cached after first load elsewhere in the app, so this is free on repeat renders
+          getCasinoTierKey(m.linkedUid)  // this member's REAL tier — a High Roller by definition already qualifies for Sovereign+, so this ring is always at least that rich
         ]);
         const bal = balRes.ok ? ((await balRes.json()) || 0) : 0;
         const comps = compRes.ok ? ((await compRes.json()) || 0) : 0;
-        return { name: m.name, uid: m.linkedUid, balance: bal, comps };
+        return { name: m.name, uid: m.linkedUid, balance: bal, comps, avatar, tierKey };
       }catch(e){ return null; }
     }));
     const entered = rows.filter(r => r != null);
@@ -8713,15 +8732,16 @@ async function renderHrLeaderboard(){
     }
     entered.sort((a,b) => b.balance - a.balance);
     const medals = ['🥇','🥈','🥉'];
+    // Same visual language as the Board ladder (see screenshotted
+    // request) rather than the plain bare-name rows this had before:
+    // real avatar with its tier-coloured ring, "You" tag, comp count
+    // still shown as its own marker.
     area.innerHTML = entered.slice(0, 10).map((r, i) => {
       const isMe = r.uid === currentUserUid;
-      // The comp count IS the "marker" — visible next to a name rather
-      // than hidden, the same way a real house keeps a running tally of
-      // who's needed staking. Only shown when non-zero, so it never
-      // clutters a row for someone who's never needed one.
       const compTag = r.comps > 0 ? `<span class="hr-lb-comp-tag">(${r.comps} comp${r.comps>1?'s':''})</span>` : '';
       return `<div class="hr-lb-row${isMe ? ' hr-lb-me' : ''}${i===0 ? ' hr-lb-top1' : ''}">
         <span class="hr-lb-rank">${medals[i] || (i+1)}</span>
+        ${avatarRankCardHtml(r.name, r.avatar, r.tierKey, 34)}
         <span class="hr-lb-name">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${compTag}</span>
         <span class="hr-lb-val">${r.balance.toLocaleString()}</span>
       </div>`;
@@ -15460,6 +15480,12 @@ async function refresh(){
 
 // ---------- Tabs ----------
 function setActiveTab(tab){
+  // Real fix for the "stuck in Maxine's" / "brown theme leaked into
+  // another tab" pair reported together — see maxinesCleanupIfActive's
+  // own comment for the full reasoning. Runs before anything else in
+  // here, for every tab, unconditionally: a no-op instantly if Maxine's
+  // isn't active, so this changes nothing about normal tab switching.
+  maxinesCleanupIfActive();
   // Diag moved from being its own top-level tab into a Home pill — this
   // keeps every existing setActiveTab('diag') call site working (the
   // health-pill jump, and session-restore-after-refresh below) without
