@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=157">
+<link rel="stylesheet" href="dashboard.css?v=158">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -2462,11 +2462,11 @@
           <div id="maxinesShopArea"><div class="hint" style="text-align:center;">Loading…</div></div>
           <div class="hr-shop-row" style="margin-top:10px;">
             <input type="text" id="maxinesTaglineInput" maxlength="24" placeholder="Your nameplate…" class="hr-shop-input">
-            <button type="button" class="pill-btn hr-header-btn" id="maxinesTaglineBtn" onclick="maxinesBuyTagline()">💬 Set — 2,000,000</button>
+            <button type="button" class="pill-btn hr-header-btn" id="maxinesTaglineBtn" onclick="maxinesBuyTagline()">💬 Set — 2.0M</button>
           </div>
           <div class="hr-shop-row">
             <input type="text" id="maxinesEntranceLineInput" maxlength="40" placeholder="Your entrance line…" class="hr-shop-input">
-            <button type="button" class="pill-btn hr-header-btn" id="maxinesEntranceLineBtn" onclick="maxinesBuyEntranceLine()">🎤 Set — 2,000,000</button>
+            <button type="button" class="pill-btn hr-header-btn" id="maxinesEntranceLineBtn" onclick="maxinesBuyEntranceLine()">🎤 Set — 2.0M</button>
           </div>
         </div>
         <div class="hr-lb-panel">
@@ -3928,7 +3928,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.159"; // "Build them all" — all 8 remaining Vault Shop concepts from the preview, plus a full rework of the data model to support them cleanly. Replaced the old separate Firebase fields (ownsCrimson, activeTheme, tagline) with a single unified /highRollers/{uid}/cosmetics object — this went from 2 shop items to 9 across two rounds, and one object means one Firebase rule and one read to restore a whole session, not nine of each. Built one generic picker system (MAXINES_SHOP) covering all 7 "choose one of N" categories — Room Theme (added Emerald and Sapphire alongside Crimson, full separate palettes not tints), Crest Symbol, Row Glow (shown on that member's row to EVERYONE viewing the board, fetched per-member in renderHrLeaderboard — different from the other categories, which are each viewer's own personal rendering), Avatar Frame (same, layered on top of the existing tier ring), Entrance Sound (real Web Audio synthesis, same three sounds from the preview), Sparkle Colour, Door Finish — plus the tagline and a new Entrance Line as their own text-input purchases. Reordered room entry so cosmetics load BEFORE the fanfare/door trigger fires, specifically so the door actually plays with each member's own chosen sound/crest/sparkle/finish instead of always firing hardcoded defaults. Firebase rules updated to match the new unified field, replacing the three old ones — needs redeploying. dashboard.css changed, cache-buster moved to ?v=157. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.160"; // Rebuilt the shop's option UI, reported live with a screenshot showing real breakage — "Brushed Gold" wrapping onto two lines and overlapping "Marble"/"Obsidian" entirely, "None Laurel Crown" jammed together unreadable. Root cause: text options were forced into fixed 26px squares with no wrap control. Bigger issue underneath the visual one — the price only ever lived in a hover `title` attribute, which never fires on a touch screen, so it was genuinely invisible on the only device this app runs on, not just unclear. Full rebuild: category label now sits on its own line instead of squeezed beside the options, each option is a proper auto-width pill that wraps naturally instead of overlapping its neighbours, and every locked pill shows a real visible price badge (compact format — "3.0M" instead of "3,000,000", fits without crowding). Active pill gets a gold glow border and a ✓ instead of a price. Also brought the nameplate/entrance-line buttons in line with the same compact price format for consistency across the whole shop. dashboard.css changed, cache-buster moved to ?v=158. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8854,22 +8854,32 @@ function maxinesApplyCosmetics(){
     if(lineEl) lineEl.textContent = maxinesCosmetics.entranceLine || '';
   }
 }
+// Compact price format for pills — "3,000,000" doesn't fit in a small
+// button, "3.0M" does, and it's still unambiguous at these price points.
+function maxinesCompactPrice(n){
+  return n >= 1000000 ? `${(n/1000000).toFixed(n % 1000000 === 0 ? 0 : 1)}M` : n.toLocaleString();
+}
 function maxinesRenderShop(){
   const wrap = document.getElementById('maxinesShopArea');
   if(!wrap || !maxinesCosmetics) return;
   wrap.innerHTML = Object.entries(MAXINES_SHOP).map(([key, cat]) => {
     const active = maxinesCosmetics[key];
-    const swatches = cat.options.map(o => {
+    const pills = cat.options.map(o => {
       const ownedKey = `${key}:${o.id}`;
       const isFree = o.id === cat.free;
       const isOwned = isFree || maxinesCosmetics.owned.includes(ownedKey);
       const isActive = active === o.id;
-      const swatchStyle = o.swatch ? `background:${o.swatch};` : '';
-      const cls = `hr-shop-swatch${isActive ? ' hr-shop-swatch-active' : ''}${!isOwned ? ' hr-shop-swatch-locked' : ''}`;
-      const title = escapeHtml(o.label) + (!isOwned ? ` — ${cat.price.toLocaleString()}` : '');
-      return `<button type="button" class="${cls}" style="${swatchStyle}" onclick="maxinesSelectCosmetic('${key}','${o.id}')" title="${title}">${o.swatch ? '' : escapeHtml(o.label)}</button>`;
+      const cls = `hr-shop-pill${isActive ? ' hr-shop-pill-active' : ''}${!isOwned ? ' hr-shop-pill-locked' : ''}`;
+      // Real bug, not just style: the price used to live ONLY in a
+      // hover title attribute, which never fires on a touch screen —
+      // meaning it was genuinely invisible on mobile, the only place
+      // this app is ever used. Now a real visible price badge on every
+      // locked pill, and an ✓ on the currently active one instead.
+      const swatchHtml = o.swatch ? `<span class="hr-shop-pill-swatch" style="background:${o.swatch};"></span>` : '';
+      const priceHtml = !isOwned ? `<span class="hr-shop-pill-price">${maxinesCompactPrice(cat.price)}</span>` : (isActive ? `<span class="hr-shop-pill-check">✓</span>` : '');
+      return `<button type="button" class="${cls}" onclick="maxinesSelectCosmetic('${key}','${o.id}')">${swatchHtml}<span class="hr-shop-pill-label">${escapeHtml(o.label)}</span>${priceHtml}</button>`;
     }).join('');
-    return `<div class="hr-shop-cat-row"><span class="hr-shop-cat-label">${escapeHtml(cat.label)}</span><div class="hr-shop-swatches">${swatches}</div></div>`;
+    return `<div class="hr-shop-cat"><div class="hr-shop-cat-label">${escapeHtml(cat.label)}</div><div class="hr-shop-pills">${pills}</div></div>`;
   }).join('');
 }
 async function maxinesBuyTagline(){

@@ -928,16 +928,36 @@
   .hr-lb-name-wrap{ flex:1; display:flex; flex-direction:column; min-width:0; }
   .hr-lb-name-wrap .hr-lb-name{ flex:none; }
   .hr-lb-tagline{ font-size:10px; font-style:italic; color:rgba(212,175,90,.6); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .hr-shop-cat-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid rgba(201,162,75,.1); }
-  .hr-shop-cat-row:last-child{ border-bottom:none; }
-  .hr-shop-cat-label{ font-size:11.5px; color:rgba(230,210,160,.75); flex-shrink:0; }
-  .hr-shop-swatches{ display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
-  .hr-shop-swatch{
-    width:26px; height:26px; border-radius:8px; border:1px solid rgba(201,162,75,.35);
-    background:rgba(0,0,0,.25); color:#fdf0c8; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  /* FIXED — real problem, not just polish, seen live on a phone
+     screenshot: text options ("Brushed Gold", "None"/"Laurel"/"Crown")
+     were squeezed into fixed 26px squares as raw text with no wrapping
+     control, so labels ran directly into their neighbours and became
+     unreadable. And the price only ever lived in a hover `title`
+     attribute — which never fires on a touch screen, meaning it was
+     genuinely invisible on the only device this app is ever used on,
+     not just uninformative. Full rebuild: category label now sits on
+     its own line above the options instead of squeezed beside them,
+     each option is a proper auto-width pill that wraps naturally, and
+     locked pills show a real visible price badge inline. */
+  .hr-shop-cat{ padding:10px 0; border-bottom:1px solid rgba(201,162,75,.1); }
+  .hr-shop-cat:last-child{ border-bottom:none; }
+  .hr-shop-cat-label{ font-size:11.5px; color:rgba(230,210,160,.75); margin-bottom:8px; font-weight:600; }
+  .hr-shop-pills{ display:flex; gap:6px; flex-wrap:wrap; }
+  .hr-shop-pill{
+    display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(201,162,75,.35); background:rgba(0,0,0,.25); color:#fdf0c8;
+    font-size:11.5px; font-family:'Barlow',sans-serif; cursor:pointer; white-space:nowrap;
   }
-  .hr-shop-swatch-active{ box-shadow:0 0 0 2px #d4af5a, 0 0 8px rgba(212,175,90,.5); }
-  .hr-shop-swatch-locked{ opacity:.45; }
+  .hr-shop-pill:active{ transform:scale(.96); }
+  .hr-shop-pill-swatch{ width:14px; height:14px; border-radius:50%; flex-shrink:0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25); }
+  .hr-shop-pill-label{ font-weight:600; }
+  .hr-shop-pill-price{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:700; color:#d4af5a;
+    background:rgba(212,175,90,.12); padding:2px 6px; border-radius:999px;
+  }
+  .hr-shop-pill-check{ color:#8fd4ac; font-weight:800; font-size:12px; }
+  .hr-shop-pill-active{ border-color:#d4af5a; box-shadow:0 0 0 1px #d4af5a, 0 0 10px rgba(212,175,90,.4); background:rgba(212,175,90,.1); }
+  .hr-shop-pill-locked{ opacity:.55; }
   .hr-shop-row{ display:flex; gap:8px; margin-bottom:8px; }
   .hr-shop-row:last-child{ margin-bottom:0; }
   .hr-shop-input{
