@@ -542,6 +542,20 @@
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     font-size:26px; color:#0a0603; line-height:1;
   }
+  /* Personal entrance line — flashes as the doors finish parting, then
+     fades; doesn't linger, unlike the persistent nameplate tagline */
+  .hr-vault-entrance-line{
+    position:absolute; top:62%; left:50%; transform:translate(-50%,0); z-index:4;
+    font-family:'Barlow Condensed',sans-serif; font-style:italic; font-size:15px; color:#fdf0c8;
+    text-shadow:0 0 14px rgba(255,224,150,.6); text-align:center; width:80%; opacity:0; pointer-events:none;
+  }
+  .hr-vault-door.playing .hr-vault-entrance-line{ animation: hrEntranceLine 1.3s ease-out forwards; }
+  @keyframes hrEntranceLine{
+    0%,58%{ opacity:0; }
+    68%{ opacity:1; }
+    92%{ opacity:1; }
+    100%{ opacity:0; }
+  }
 
   /* Sparkle burst — fires right as the doors clear, a handful of small
      gold flecks flying outward from the centre */
@@ -550,6 +564,8 @@
     position:absolute; top:50%; left:50%; width:4px; height:4px; border-radius:50%;
     background:#fff3d2; box-shadow:0 0 6px rgba(255,224,150,.9); opacity:0;
   }
+  .hr-vault-sparkle.hr-sparkle-silver span{ background:#e8ecf0; box-shadow:0 0 6px rgba(200,215,230,.9); }
+  .hr-vault-sparkle.hr-sparkle-rose span{ background:#f5c9c9; box-shadow:0 0 6px rgba(230,150,150,.9); }
   .hr-vault-door.playing .hr-vault-sparkle span{ animation: hrVaultSparkle 1.3s ease-out forwards; }
   @keyframes hrVaultSparkle{
     0%,52%{ opacity:0; transform:translate(-50%,-50%) translate(0,0) scale(1); }
@@ -590,6 +606,7 @@
     text-shadow: 0 0 20px rgba(201,162,75,.3);
   }
   .hr-hub-sub{ font-size:12px; color:rgba(230,210,160,.6); margin-top:4px; font-style:italic; }
+  .hr-mood-caption{ font-size:11px; color:rgba(212,175,90,.7); margin-top:6px; min-height:14px; transition:opacity .4s ease; }
   .hr-hub-balance-row{
     display:flex; align-items:center; gap:14px; position:relative; z-index:1;
     padding:12px 16px; border-radius:12px; margin-bottom:4px;
@@ -706,6 +723,32 @@
     --line: rgba(212,175,90,.18);
     --brass: #d4af5a; --brass-dim: #8a6620; --brass-light: #fff3d2;
     --chalk: #fdf0c8; --muted: #b89968; --win: #8fd4ac; --loss: #e08a72;
+  }
+  /* Vault Shop item — a purchased alternate palette, layered on TOP of
+     the gold default when both classes are present (this one loads
+     after it in the stylesheet, so it wins). Same structure, different
+     family entirely — deep crimson/black rather than gold, so it reads
+     as a genuinely different room, not a tinted copy. */
+  body.maxines-lounge-active.maxines-theme-crimson{
+    --ink: #0d0505;
+    --felt: #1f0d0d; --felt-2: #2b1212; --felt-3: #3a1717;
+    --line: rgba(196,90,90,.2);
+    --brass: #c45a5a; --brass-dim: #7a3030; --brass-light: #f5c9c9;
+    --chalk: #f5e5e0; --muted: #b58080; --win: #8fd4ac; --loss: #e08a72;
+  }
+  body.maxines-lounge-active.maxines-theme-emerald{
+    --ink: #050d08;
+    --felt: #0d1f14; --felt-2: #12291a; --felt-3: #173420;
+    --line: rgba(75,162,110,.2);
+    --brass: #4ba26e; --brass-dim: #245c39; --brass-light: #d8f0e2;
+    --chalk: #e5f5ec; --muted: #7fada0; --win: #8fd4ac; --loss: #e08a72;
+  }
+  body.maxines-lounge-active.maxines-theme-sapphire{
+    --ink: #05080d;
+    --felt: #0d1522; --felt-2: #121d2e; --felt-3: #17263a;
+    --line: rgba(74,126,196,.2);
+    --brass: #4a7ec4; --brass-dim: #254368; --brass-light: #d5e5f5;
+    --chalk: #e5edf7; --muted: #7f9bb5; --win: #8fd4ac; --loss: #e08a72;
   }
   .hr-mode-badge{
     display:inline-block; margin:0 auto 8px; padding:4px 14px; border-radius:999px;
@@ -880,6 +923,60 @@
   #maxinesCompBtn:disabled{ opacity:.45; cursor:default; }
   .hr-lb-comp-tag{
     font-size:9.5px; color:rgba(224,138,114,.85); margin-left:4px; font-weight:600;
+  }
+  .hr-lb-achievements{ margin-left:4px; font-size:11px; }
+  .hr-lb-name-wrap{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .hr-lb-name-wrap .hr-lb-name{ flex:none; }
+  .hr-lb-tagline{ font-size:10px; font-style:italic; color:rgba(212,175,90,.6); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hr-shop-cat-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid rgba(201,162,75,.1); }
+  .hr-shop-cat-row:last-child{ border-bottom:none; }
+  .hr-shop-cat-label{ font-size:11.5px; color:rgba(230,210,160,.75); flex-shrink:0; }
+  .hr-shop-swatches{ display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+  .hr-shop-swatch{
+    width:26px; height:26px; border-radius:8px; border:1px solid rgba(201,162,75,.35);
+    background:rgba(0,0,0,.25); color:#fdf0c8; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .hr-shop-swatch-active{ box-shadow:0 0 0 2px #d4af5a, 0 0 8px rgba(212,175,90,.5); }
+  .hr-shop-swatch-locked{ opacity:.45; }
+  .hr-shop-row{ display:flex; gap:8px; margin-bottom:8px; }
+  .hr-shop-row:last-child{ margin-bottom:0; }
+  .hr-shop-input{
+    flex:1; padding:8px 12px; border-radius:8px; border:1px solid rgba(201,162,75,.3);
+    background:rgba(0,0,0,.25); color:#fdf0c8; font-size:12px; min-width:0;
+  }
+  .hr-shop-input::placeholder{ color:rgba(230,210,160,.4); }
+
+  /* Personal row glow — independent of room theme, a signature on
+     THIS member's row specifically wherever they appear on the board */
+  .hr-lb-row.hr-glow-blue{ background:linear-gradient(90deg, rgba(90,155,212,.14), transparent) !important; }
+  .hr-lb-row.hr-glow-blue .avatar-rankcard img, .hr-lb-row.hr-glow-blue .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #5a9bd4, 0 0 10px rgba(90,155,212,.5) !important; }
+  .hr-lb-row.hr-glow-violet{ background:linear-gradient(90deg, rgba(163,116,212,.14), transparent) !important; }
+  .hr-lb-row.hr-glow-violet .avatar-rankcard img, .hr-lb-row.hr-glow-violet .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #a374d4, 0 0 10px rgba(163,116,212,.5) !important; }
+  .hr-lb-row.hr-glow-emerald{ background:linear-gradient(90deg, rgba(75,162,110,.14), transparent) !important; }
+  .hr-lb-row.hr-glow-emerald .avatar-rankcard img, .hr-lb-row.hr-glow-emerald .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #4ba26e, 0 0 10px rgba(75,162,110,.5) !important; }
+
+  /* VIP avatar frame — layered ON TOP of the existing tier ring
+     (avatar-rankcard already sets its own box-shadow ring; this adds
+     an outer decoration around the whole wrapper, not a replacement) */
+  .hr-lb-row .avatar-rankcard.hr-frame-laurel{ position:relative; }
+  .hr-lb-row .avatar-rankcard.hr-frame-laurel::before, .hr-lb-row .avatar-rankcard.hr-frame-laurel::after{
+    content:''; position:absolute; top:50%; width:9px; height:16px; border:1.5px solid #d4af5a; border-radius:50% 50% 0 0/60% 60% 0 0;
+  }
+  .hr-lb-row .avatar-rankcard.hr-frame-laurel::before{ left:-9px; transform:translateY(-50%) rotate(-20deg); }
+  .hr-lb-row .avatar-rankcard.hr-frame-laurel::after{ right:-9px; transform:translateY(-50%) rotate(20deg) scaleX(-1); }
+  .hr-lb-row .avatar-rankcard.hr-frame-crown{ position:relative; }
+  .hr-lb-row .avatar-rankcard.hr-frame-crown::before{
+    content:'👑'; position:absolute; top:-10px; left:50%; transform:translateX(-50%); font-size:11px; line-height:1;
+  }
+
+  /* Vault door finish — texture overlays on the panels, independent of
+     which colour theme (gold/crimson/emerald/sapphire) is active */
+  .hr-vault-door.playing.hr-finish-marble .hr-vault-panel{
+    background-image: linear-gradient(165deg, var(--felt-2), var(--ink)),
+      repeating-linear-gradient(115deg, rgba(255,255,255,.08) 0px, transparent 2px, transparent 18px, rgba(255,255,255,.05) 20px);
+  }
+  .hr-vault-door.playing.hr-finish-obsidian .hr-vault-panel{
+    box-shadow: inset 0 0 40px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.05);
   }
 
   /* Inline badge shown next to a High Roller's name on the regular

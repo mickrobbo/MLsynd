@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=155">
+<link rel="stylesheet" href="dashboard.css?v=157">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -2401,6 +2401,7 @@
           </div>
         </div>
         <div class="hr-vault-sparkle" id="maxinesVaultSparkle"></div>
+        <div class="hr-vault-entrance-line" id="maxinesVaultEntranceLine"></div>
       </div>
       <audio id="maxinesAmbienceAudio" src="sounds/maxines-ambience.mp3" loop preload="none"></audio>
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
@@ -2419,6 +2420,7 @@
           <span class="hr-hub-crest">♠</span>
           <div class="hr-hub-title">MAXINE'S</div>
           <div class="hr-hub-sub">No limits. What happens here stays here.</div>
+          <div class="hr-mood-caption" id="maxinesMoodCaption"></div>
         </div>
         <div class="hr-hub-balance-row">
           <div class="hr-chip-stack" aria-hidden="true">
@@ -2453,6 +2455,19 @@
         <div class="hr-lb-panel">
           <div class="hr-lb-title">🏆 Maxine's Leaderboard</div>
           <div id="hrLeaderboardArea"><div class="hint" style="text-align:center;">Loading…</div></div>
+        </div>
+        <div class="hr-lb-panel">
+          <div class="hr-lb-title">🛍️ The Vault Shop</div>
+          <div class="hint" style="text-align:center; margin-bottom:10px;">Permanent, cosmetic, funded from your chips — nothing here touches odds or balances.</div>
+          <div id="maxinesShopArea"><div class="hint" style="text-align:center;">Loading…</div></div>
+          <div class="hr-shop-row" style="margin-top:10px;">
+            <input type="text" id="maxinesTaglineInput" maxlength="24" placeholder="Your nameplate…" class="hr-shop-input">
+            <button type="button" class="pill-btn hr-header-btn" id="maxinesTaglineBtn" onclick="maxinesBuyTagline()">💬 Set — 2,000,000</button>
+          </div>
+          <div class="hr-shop-row">
+            <input type="text" id="maxinesEntranceLineInput" maxlength="40" placeholder="Your entrance line…" class="hr-shop-input">
+            <button type="button" class="pill-btn hr-header-btn" id="maxinesEntranceLineBtn" onclick="maxinesBuyEntranceLine()">🎤 Set — 2,000,000</button>
+          </div>
         </div>
         <div class="hr-lb-panel">
           <div class="hr-lb-title">📰 Live Feed</div>
@@ -3913,7 +3928,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.156"; // Two bugs reported together turned out to be one root cause, not two — the chat screenshot showed someone stuck on the Blackjack table unable to get out, plus the brown theme bleeding into other tabs after leaving Maxine's. setActiveTab is the ONE function every bottom-nav tap (Home, Board, Tipping, Sport) already runs through, and it never checked or cleaned up Maxine's state at all — that's both the missing escape hatch (whatever state the Blackjack table itself got stuck in, tapping any other tab now always gets you fully out) and the direct cause of the colour leak (nothing removed the body class except the room's own specific buttons). Extracted the cleanup already used by leaveMaxines() into its own function and call it at the top of setActiveTab, unconditionally, for every tab — a no-op instantly if Maxine's isn't active, so normal tab switching is unaffected. Also upgraded the leaderboard to the same visual language as the Board ladder per direct request — real avatars with tier-coloured rings via the app's own existing avatarRankCardHtml/getCasinoTierKey rather than bare name-only rows. Live feed bumped from 12 to 50 entries, now in a scrollable 280px container instead of rendering all of them inline. dashboard.css changed, cache-buster moved to ?v=155. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.159"; // "Build them all" — all 8 remaining Vault Shop concepts from the preview, plus a full rework of the data model to support them cleanly. Replaced the old separate Firebase fields (ownsCrimson, activeTheme, tagline) with a single unified /highRollers/{uid}/cosmetics object — this went from 2 shop items to 9 across two rounds, and one object means one Firebase rule and one read to restore a whole session, not nine of each. Built one generic picker system (MAXINES_SHOP) covering all 7 "choose one of N" categories — Room Theme (added Emerald and Sapphire alongside Crimson, full separate palettes not tints), Crest Symbol, Row Glow (shown on that member's row to EVERYONE viewing the board, fetched per-member in renderHrLeaderboard — different from the other categories, which are each viewer's own personal rendering), Avatar Frame (same, layered on top of the existing tier ring), Entrance Sound (real Web Audio synthesis, same three sounds from the preview), Sparkle Colour, Door Finish — plus the tagline and a new Entrance Line as their own text-input purchases. Reordered room entry so cosmetics load BEFORE the fanfare/door trigger fires, specifically so the door actually plays with each member's own chosen sound/crest/sparkle/finish instead of always firing hardcoded defaults. Firebase rules updated to match the new unified field, replacing the three old ones — needs redeploying. dashboard.css changed, cache-buster moved to ?v=157. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8198,8 +8213,24 @@ const MAXINES_WHALE_THRESHOLD = 10000000;
 function maxinesCheckWhale(amount, name){
   if(Math.abs(amount) < MAXINES_WHALE_THRESHOLD) return false;
   const win = amount > 0;
-  showToast(`🐋 Whale alert — ${name} just ${win ? 'won' : 'lost'} ${Math.abs(amount).toLocaleString()} chips at Maxine's.`);
+  showToast(`🐋 Whale alert — ${name} just ${win ? 'won' : 'lost'} ${Math.abs(amount).toLocaleString()} chips at Maxine's. ${maxinesVoicePick(MAXINES_VOICE.whale)}`);
   if(typeof bjPlayChime === 'function') bjPlayChime(win);
+  // Tracked for the Whale achievement badge on the leaderboard — a
+  // simple increment, not gated behind win/loss, since triggering the
+  // moment at all is the achievement, not which way it went.
+  if(currentUserUid){
+    authedFetch(`/highRollers/${currentUserUid}/whaleCount.json`, { headers: {'X-Firebase-ETag':'true'} })
+      .then(res => {
+        const etag = res.headers.get('ETag');
+        return res.ok ? res.json() : 0;
+      })
+      .then(current => {
+        authedFetch(`/highRollers/${currentUserUid}/whaleCount.json`, {
+          method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify((current||0)+1)
+        });
+      })
+      .catch(() => {});
+  }
   return true;
 }
 async function maxinesLogFeedEntry(amount, reason){
@@ -8255,15 +8286,59 @@ async function renderMaxinesFeed(){
 // Clamped to ±1 and eased with a CSS transition (set once, in the CSS)
 // rather than snapping, so it reads as a slow shift in atmosphere
 // across a session, not a flicker on every single poll.
+// House voice — a small pool of flavour lines per moment type, so the
+// room reads as having some personality behind it rather than the same
+// generic toast every time. Picked at random from each pool, not
+// sequential, so two comps or two whale hits in a row don't repeat.
+const MAXINES_VOICE = {
+  mood: [
+    [-1, -0.5, "The house is feeling generous tonight."],
+    [-0.5, -0.15, "A quiet stretch — the house is up a little."],
+    [-0.15, 0.15, "Even money tonight. Anyone's game."],
+    [0.15, 0.5, "The tables are running hot."],
+    [0.5, 1.01, "The house is running scared — big night for the room."]
+  ],
+  comp: [
+    "The house spots you this one.",
+    "On the house — don't make a habit of it.",
+    "A little something to keep you in the game.",
+    "The house remembers who keeps coming back."
+  ],
+  whale: [
+    "Now THAT'S a bet.",
+    "The whole room felt that one.",
+    "The house takes notice of a bet like that.",
+    "Bold. The house respects it."
+  ],
+  milestone: [
+    "A new high water mark.",
+    "The house tips its hat.",
+    "Climbing steadily — the house is watching.",
+    "That's a number worth remembering."
+  ]
+};
+function maxinesVoicePick(pool){
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+function maxinesMoodCaption(mood){
+  const row = MAXINES_VOICE.mood.find(([lo, hi]) => mood >= lo && mood < hi);
+  return row ? row[2] : MAXINES_VOICE.mood[2][2];
+}
 function maxinesApplyMood(entries){
   const panel = document.querySelector('.hr-hub-panel');
   if(!panel) return;
-  if(!entries || entries.length === 0){ panel.style.setProperty('--maxines-mood', '0'); return; }
+  const caption = document.getElementById('maxinesMoodCaption');
+  if(!entries || entries.length === 0){
+    panel.style.setProperty('--maxines-mood', '0');
+    if(caption) caption.textContent = maxinesMoodCaption(0);
+    return;
+  }
   const recent = entries.slice(0, 12);
   const net = recent.reduce((sum, e) => sum + e.amount, 0);
   const scale = recent.reduce((sum, e) => sum + Math.abs(e.amount), 0) || 1;
   const mood = Math.max(-1, Math.min(1, net / scale));
   panel.style.setProperty('--maxines-mood', mood.toFixed(2));
+  if(caption) caption.textContent = maxinesMoodCaption(mood);
 }
 let maxinesFeedPollHandle = null;
 function startMaxinesFeedPolling(){
@@ -8385,7 +8460,7 @@ async function maxinesRequestComp(){
       await authedFetch(`/highRollers/${currentUserUid}/compCount.json`, {
         method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify((status.compCount||0)+1)
       });
-      showToast(`🎁 The house has staked you ${amount.toLocaleString()} chips.`);
+      showToast(`🎁 The house has staked you ${amount.toLocaleString()} chips. ${maxinesVoicePick(MAXINES_VOICE.comp)}`);
       refreshHrHubBalance();
       renderMaxinesCompUI();
     } else {
@@ -8430,7 +8505,7 @@ function maxinesCheckMilestone(newBalance){
   if(prev == null) return; // first read this session — nothing to compare against, avoid a false trigger on load
   const crossed = MAXINES_MILESTONES.find(m => prev < m && newBalance >= m);
   if(!crossed) return;
-  showToast(`🏆 ${crossed.toLocaleString()} chips! A new milestone at Maxine's.`);
+  showToast(`🏆 ${crossed.toLocaleString()} chips! A new milestone at Maxine's. ${maxinesVoicePick(MAXINES_VOICE.milestone)}`);
   if(typeof bjPlayChime === 'function') bjPlayChime(true);
 }
 // Reach-Sovereign-or-above gate. Mirrors the exact computation the Tier
@@ -8505,6 +8580,11 @@ function maxinesCleanupIfActive(){
   maxinesAmbienceStop();
   stopMaxinesFeedPolling();
   document.body.classList.remove('maxines-lounge-active');
+  // Theme classes only ever take effect alongside maxines-lounge-active
+  // (see the CSS selector), so leaving them on body isn't a visible bug
+  // — but removing them here is still the correct, tidy thing to do
+  // rather than letting stale classes accumulate on body indefinitely.
+  ['gold','crimson','emerald','sapphire'].forEach(t => document.body.classList.remove(`maxines-theme-${t}`));
   const gridPanel = document.getElementById('casinoGamesGridPanel');
   if(gridPanel) gridPanel.style.display = '';
   document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
@@ -8560,10 +8640,20 @@ async function enterHighRollersRoom(){
     }
   }catch(e){}
   document.body.classList.add('maxines-lounge-active');
-  // A distinct entry cue — reuses the same shared chime every other
-  // casino win moment already uses, rather than building new audio
-  // infrastructure just for this one moment.
-  if(typeof bjPlayChime === 'function') bjPlayChime(true);
+  // Cosmetics loaded BEFORE the fanfare/door trigger below — moved
+  // earlier specifically so the door actually plays with whichever
+  // fanfare sound, crest symbol, sparkle colour, and finish this member
+  // has chosen, rather than always firing the hardcoded defaults and
+  // only catching up to their real preferences after the fact.
+  await maxinesRestorePreferences();
+  // A distinct entry cue — this member's own chosen fanfare, falling
+  // back to the shared chime every other casino win moment uses if
+  // cosmetics somehow failed to load.
+  if(maxinesCosmetics && maxinesCosmetics.fanfare !== 'chime'){
+    maxinesFanfareSound(maxinesCosmetics.fanfare);
+  } else if(typeof bjPlayChime === 'function'){
+    bjPlayChime(true);
+  }
   maxinesAmbienceStart();
   // Vault door reveal — plays ON TOP of the already-rendered room
   // below, then removes itself; the room is fully usable underneath
@@ -8657,6 +8747,206 @@ function maxinesUpdateEqBars(playing){
   const eq = document.getElementById('maxinesEqBars');
   if(eq) eq.classList.toggle('playing', playing);
 }
+// ---- The Vault Shop — chips finally have somewhere to go besides the
+// tables. Everything here is permanent, cosmetic-only, and funded from
+// the same isolated balance as everything else — never touches odds or
+// balances anywhere. One unified /highRollers/{uid}/cosmetics object
+// rather than a separate Firebase field per item — this grew from 2
+// items to 9 across two rounds, and a single object means one Firebase
+// rule and one read to restore a whole session instead of that
+// multiplying by nine. Category ids are prefixed inside `owned`
+// (theme:crimson, crest:heart, etc) specifically so two categories can
+// never collide on the same option name (sparkle:gold and theme:gold
+// both exist and must stay distinct).
+const MAXINES_SHOP = {
+  theme: { label:'Room Theme', price:5000000, free:'gold', options:[
+    {id:'gold', label:'Gold', swatch:'#d4af5a'},
+    {id:'crimson', label:'Crimson', swatch:'#c45a5a'},
+    {id:'emerald', label:'Emerald', swatch:'#4ba26e'},
+    {id:'sapphire', label:'Sapphire', swatch:'#4a7ec4'}
+  ]},
+  crest: { label:'Crest Symbol', price:3000000, free:'spade', options:[
+    {id:'spade', label:'♠'}, {id:'heart', label:'♥'}, {id:'club', label:'♣'}, {id:'diamond', label:'♦'}
+  ]},
+  rowGlow: { label:'Row Glow', price:2500000, free:'none', options:[
+    {id:'none', label:'None', swatch:'#555'},
+    {id:'blue', label:'Sapphire', swatch:'#5a9bd4'},
+    {id:'violet', label:'Violet', swatch:'#a374d4'},
+    {id:'emerald', label:'Emerald', swatch:'#4ba26e'}
+  ]},
+  frame: { label:'Avatar Frame', price:3000000, free:'none', options:[
+    {id:'none', label:'None'}, {id:'laurel', label:'Laurel'}, {id:'crown', label:'Crown'}
+  ]},
+  fanfare: { label:'Entrance Sound', price:1500000, free:'chime', options:[
+    {id:'chime', label:'Chime'}, {id:'brass', label:'Brass'}, {id:'bell', label:'Bell'}
+  ]},
+  sparkle: { label:'Sparkle Colour', price:1500000, free:'gold', options:[
+    {id:'gold', label:'Gold', swatch:'#d4af5a'}, {id:'silver', label:'Silver', swatch:'#c8d7e6'}, {id:'rose', label:'Rose', swatch:'#e69696'}
+  ]},
+  finish: { label:'Door Finish', price:2000000, free:'plain', options:[
+    {id:'plain', label:'Brushed Gold'}, {id:'marble', label:'Marble'}, {id:'obsidian', label:'Obsidian'}
+  ]}
+};
+const MAXINES_TAGLINE_PRICE = 2000000;
+const MAXINES_ENTRANCE_LINE_PRICE = 2000000;
+let maxinesCosmetics = null; // { theme, owned:[], crest, rowGlow, frame, fanfare, sparkle, finish, tagline, entranceLine }
+function maxinesDefaultCosmetics(){
+  return { theme:'gold', owned:[], crest:'spade', rowGlow:'none', frame:'none', fanfare:'chime', sparkle:'gold', finish:'plain', tagline:'', entranceLine:'' };
+}
+async function maxinesLoadCosmetics(uid){
+  try{
+    const res = await authedFetch(`/highRollers/${uid}/cosmetics.json`);
+    const data = res.ok ? await res.json() : null;
+    return data ? Object.assign(maxinesDefaultCosmetics(), data) : maxinesDefaultCosmetics();
+  }catch(e){ return maxinesDefaultCosmetics(); }
+}
+async function maxinesSaveCosmetics(){
+  if(!currentUserUid || !maxinesCosmetics) return;
+  try{
+    await authedFetch(`/highRollers/${currentUserUid}/cosmetics.json`, {
+      method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(maxinesCosmetics)
+    });
+  }catch(e){}
+}
+async function maxinesSelectCosmetic(category, optionId){
+  if(!maxinesCosmetics) maxinesCosmetics = maxinesDefaultCosmetics();
+  const cat = MAXINES_SHOP[category];
+  const opt = cat.options.find(o => o.id === optionId);
+  if(!opt) return;
+  const ownedKey = `${category}:${optionId}`;
+  const isFree = optionId === cat.free;
+  const isOwned = isFree || maxinesCosmetics.owned.includes(ownedKey);
+  if(!isOwned){
+    // Priced fresh against a live balance read right before spending,
+    // not a cached number, so nobody can buy something they can no
+    // longer afford by acting on a stale figure.
+    const balance = await getHighRollerBalance();
+    if(balance == null || balance < cat.price){
+      showToast(`${cat.label} — ${opt.label} costs ${cat.price.toLocaleString()} chips — you don't have enough.`);
+      return;
+    }
+    const granted = await awardHighRollerXP(-cat.price, `Maxine's Vault Shop — ${cat.label}: ${opt.label}`);
+    if(!granted){ showToast('Purchase failed — try again.'); return; }
+    maxinesCosmetics.owned.push(ownedKey);
+    showToast(`✨ ${opt.label} unlocked.`);
+    refreshHrHubBalance();
+  }
+  maxinesCosmetics[category] = optionId;
+  await maxinesSaveCosmetics();
+  maxinesApplyCosmetics();
+  maxinesRenderShop();
+  if(category === 'rowGlow' || category === 'frame') renderHrLeaderboard(); // these show on THIS member's row for everyone, not just locally
+}
+function maxinesApplyCosmetics(){
+  if(!maxinesCosmetics) return;
+  ['gold','crimson','emerald','sapphire'].forEach(t => document.body.classList.remove(`maxines-theme-${t}`));
+  document.body.classList.add(`maxines-theme-${maxinesCosmetics.theme}`);
+  const crestChar = ({spade:'♠', heart:'♥', club:'♣', diamond:'♦'})[maxinesCosmetics.crest] || '♠';
+  document.querySelectorAll('.hr-hub-crest, .hr-vault-crest').forEach(el => { el.textContent = crestChar; });
+  const door = document.getElementById('maxinesVaultDoor');
+  if(door){
+    door.classList.remove('hr-sparkle-silver','hr-finish-marble','hr-finish-obsidian');
+    if(maxinesCosmetics.sparkle === 'silver') door.querySelector('.hr-vault-sparkle')?.classList.add('hr-sparkle-silver');
+    if(maxinesCosmetics.sparkle === 'rose') door.querySelector('.hr-vault-sparkle')?.classList.add('hr-sparkle-rose');
+    if(maxinesCosmetics.finish === 'marble') door.classList.add('hr-finish-marble');
+    if(maxinesCosmetics.finish === 'obsidian') door.classList.add('hr-finish-obsidian');
+    const lineEl = document.getElementById('maxinesVaultEntranceLine');
+    if(lineEl) lineEl.textContent = maxinesCosmetics.entranceLine || '';
+  }
+}
+function maxinesRenderShop(){
+  const wrap = document.getElementById('maxinesShopArea');
+  if(!wrap || !maxinesCosmetics) return;
+  wrap.innerHTML = Object.entries(MAXINES_SHOP).map(([key, cat]) => {
+    const active = maxinesCosmetics[key];
+    const swatches = cat.options.map(o => {
+      const ownedKey = `${key}:${o.id}`;
+      const isFree = o.id === cat.free;
+      const isOwned = isFree || maxinesCosmetics.owned.includes(ownedKey);
+      const isActive = active === o.id;
+      const swatchStyle = o.swatch ? `background:${o.swatch};` : '';
+      const cls = `hr-shop-swatch${isActive ? ' hr-shop-swatch-active' : ''}${!isOwned ? ' hr-shop-swatch-locked' : ''}`;
+      const title = escapeHtml(o.label) + (!isOwned ? ` — ${cat.price.toLocaleString()}` : '');
+      return `<button type="button" class="${cls}" style="${swatchStyle}" onclick="maxinesSelectCosmetic('${key}','${o.id}')" title="${title}">${o.swatch ? '' : escapeHtml(o.label)}</button>`;
+    }).join('');
+    return `<div class="hr-shop-cat-row"><span class="hr-shop-cat-label">${escapeHtml(cat.label)}</span><div class="hr-shop-swatches">${swatches}</div></div>`;
+  }).join('');
+}
+async function maxinesBuyTagline(){
+  const input = document.getElementById('maxinesTaglineInput');
+  const text = (input.value || '').trim().slice(0, 24);
+  if(!text){ showToast('Type something for your nameplate first.'); return; }
+  const balance = await getHighRollerBalance();
+  if(balance == null || balance < MAXINES_TAGLINE_PRICE){
+    showToast(`Nameplates cost ${MAXINES_TAGLINE_PRICE.toLocaleString()} chips — you don't have enough.`);
+    return;
+  }
+  const granted = await awardHighRollerXP(-MAXINES_TAGLINE_PRICE, "Maxine's Vault Shop — nameplate");
+  if(!granted){ showToast('Purchase failed — try again.'); return; }
+  maxinesCosmetics.tagline = text;
+  await maxinesSaveCosmetics();
+  showToast(`💬 Nameplate set: "${text}"`);
+  refreshHrHubBalance();
+  renderHrLeaderboard();
+}
+async function maxinesBuyEntranceLine(){
+  const input = document.getElementById('maxinesEntranceLineInput');
+  const text = (input.value || '').trim().slice(0, 40);
+  if(!text){ showToast('Type an entrance line first.'); return; }
+  const balance = await getHighRollerBalance();
+  if(balance == null || balance < MAXINES_ENTRANCE_LINE_PRICE){
+    showToast(`Entrance lines cost ${MAXINES_ENTRANCE_LINE_PRICE.toLocaleString()} chips — you don't have enough.`);
+    return;
+  }
+  const granted = await awardHighRollerXP(-MAXINES_ENTRANCE_LINE_PRICE, "Maxine's Vault Shop — entrance line");
+  if(!granted){ showToast('Purchase failed — try again.'); return; }
+  maxinesCosmetics.entranceLine = text;
+  await maxinesSaveCosmetics();
+  const lineEl = document.getElementById('maxinesVaultEntranceLine');
+  if(lineEl) lineEl.textContent = text;
+  showToast(`🎤 Entrance line set.`);
+  refreshHrHubBalance();
+}
+function maxinesFanfareSound(kind){
+  // Same three actual sounds shown live in the preview — real Web
+  // Audio synthesis, not a description of what they'd sound like.
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    if(kind === 'brass'){
+      [440,554,659].forEach((f,i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type='sawtooth'; o.frequency.value=f;
+        g.gain.setValueAtTime(0, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(.12, ctx.currentTime+.02+i*0.03);
+        g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.5);
+        o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime+i*0.03); o.stop(ctx.currentTime+.55);
+      });
+    } else if(kind === 'bell'){
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(220, ctx.currentTime);
+      g.gain.setValueAtTime(.3, ctx.currentTime); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+1.4);
+      o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+1.4);
+    } else {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(880, ctx.currentTime); o.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime+.15);
+      g.gain.setValueAtTime(.25, ctx.currentTime); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.6);
+      o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+.6);
+    }
+  }catch(e){}
+}
+// Restores a member's full cosmetics set on entry — otherwise every
+// fresh session would silently reset back to every default even for
+// someone who's paid for several of these.
+async function maxinesRestorePreferences(){
+  if(!currentUserUid) return;
+  maxinesCosmetics = await maxinesLoadCosmetics(currentUserUid);
+  maxinesApplyCosmetics();
+  maxinesRenderShop();
+  const taglineInput = document.getElementById('maxinesTaglineInput');
+  if(taglineInput && maxinesCosmetics.tagline) taglineInput.value = maxinesCosmetics.tagline;
+  const entranceInput = document.getElementById('maxinesEntranceLineInput');
+  if(entranceInput && maxinesCosmetics.entranceLine) entranceInput.value = maxinesCosmetics.entranceLine;
+}
 // Fast dip, slow recovery — standard ducking shape, so a win chime cuts
 // through cleanly instead of getting muddied under the piano. Rapid wins
 // in a row correctly just keep re-triggering the dip rather than
@@ -8709,21 +8999,48 @@ async function renderHrLeaderboard(){
   if(!currentState || !currentState.members){ area.innerHTML = '<div class="hint" style="text-align:center;">No roster loaded yet.</div>'; return; }
   const linked = currentState.members.filter(m => m.linkedUid);
   try{
+    // Fetched once, outside the per-member loop — every row just
+    // compares against this rather than each doing its own fetch.
+    let biggestWinUid = null;
+    try{
+      const bwRes = await authedFetch('/highRollers/biggestWin.json');
+      const bw = bwRes.ok ? await bwRes.json() : null;
+      biggestWinUid = bw ? bw.uid : null;
+    }catch(e){}
     const rows = await Promise.all(linked.map(async m => {
+      let claimed;
       try{
         const claimedRes = await authedFetch(`/highRollers/${m.linkedUid}/welcomeGrantClaimed.json`);
-        const claimed = claimedRes.ok ? await claimedRes.json() : null;
-        if(!claimed) return null;
-        const [balRes, compRes, avatar, tierKey] = await Promise.all([
-          authedFetch(`/highRollers/${m.linkedUid}/balance.json`),
-          authedFetch(`/highRollers/${m.linkedUid}/compCount.json`),
-          getAvatarDataUri(m.linkedUid), // cached after first load elsewhere in the app, so this is free on repeat renders
-          getCasinoTierKey(m.linkedUid)  // this member's REAL tier — a High Roller by definition already qualifies for Sovereign+, so this ring is always at least that rich
-        ]);
-        const bal = balRes.ok ? ((await balRes.json()) || 0) : 0;
-        const comps = compRes.ok ? ((await compRes.json()) || 0) : 0;
-        return { name: m.name, uid: m.linkedUid, balance: bal, comps, avatar, tierKey };
-      }catch(e){ return null; }
+        claimed = claimedRes.ok ? await claimedRes.json() : null;
+      }catch(e){ return null; } // this ONE check legitimately decides whether they belong on this leaderboard at all — genuine failure here means we can't tell, so skip them
+      if(!claimed) return null;
+      // FIXED — real bug reported live as "only showing two people" while
+      // the feed clearly had four names in it. This used to fetch
+      // balance/comps/avatar/tierKey together in one Promise.all and
+      // catch any failure by dropping the WHOLE member — so someone with
+      // a perfectly good balance but, say, no avatar set (or any other
+      // single field hiccuping) vanished from the board entirely rather
+      // than just missing that one piece of polish. Each field now fails
+      // on its own and falls back to something reasonable, so a member
+      // who's genuinely entered the room can never be silently dropped
+      // over an unrelated field.
+      const bal = await (async () => {
+        try{ const r = await authedFetch(`/highRollers/${m.linkedUid}/balance.json`); return r.ok ? ((await r.json()) || 0) : 0; }catch(e){ return 0; }
+      })();
+      const comps = await (async () => {
+        try{ const r = await authedFetch(`/highRollers/${m.linkedUid}/compCount.json`); return r.ok ? ((await r.json()) || 0) : 0; }catch(e){ return 0; }
+      })();
+      const whales = await (async () => {
+        try{ const r = await authedFetch(`/highRollers/${m.linkedUid}/whaleCount.json`); return r.ok ? ((await r.json()) || 0) : 0; }catch(e){ return 0; }
+      })();
+      const avatar = await (async () => { try{ return await getAvatarDataUri(m.linkedUid); }catch(e){ return null; } })();
+      const tierKey = await (async () => { try{ return await getCasinoTierKey(m.linkedUid); }catch(e){ return null; } })();
+      // rowGlow/frame/tagline are THIS member's own chosen cosmetics —
+      // shown to everyone viewing the board, not just to them locally
+      // (unlike theme/crest/sparkle/finish, which are each viewer's own
+      // personal rendering of the room and never fetched per-member here).
+      const cosmetics = await (async () => { try{ return await maxinesLoadCosmetics(m.linkedUid); }catch(e){ return null; } })();
+      return { name: m.name, uid: m.linkedUid, balance: bal, comps, whales, avatar, tierKey, cosmetics };
     }));
     const entered = rows.filter(r => r != null);
     if(entered.length === 0){
@@ -8739,10 +9056,24 @@ async function renderHrLeaderboard(){
     area.innerHTML = entered.slice(0, 10).map((r, i) => {
       const isMe = r.uid === currentUserUid;
       const compTag = r.comps > 0 ? `<span class="hr-lb-comp-tag">(${r.comps} comp${r.comps>1?'s':''})</span>` : '';
-      return `<div class="hr-lb-row${isMe ? ' hr-lb-me' : ''}${i===0 ? ' hr-lb-top1' : ''}">
+      // Achievement badges — a different currency of status than the
+      // balance number itself. Reigning is computed here (rank 0 in
+      // THIS render), Record Holder compares against the one shared
+      // biggestWin fetch above rather than each row doing its own.
+      const badges = [];
+      if(i === 0) badges.push('👑');
+      if(r.uid === biggestWinUid) badges.push('🏆');
+      if(r.whales > 0) badges.push('🐋');
+      if(r.comps > 0) badges.push('🎁');
+      const badgeHtml = badges.length ? `<span class="hr-lb-achievements">${badges.join(' ')}</span>` : '';
+      const glowClass = r.cosmetics && r.cosmetics.rowGlow && r.cosmetics.rowGlow !== 'none' ? ` hr-glow-${r.cosmetics.rowGlow}` : '';
+      const frameClass = r.cosmetics && r.cosmetics.frame && r.cosmetics.frame !== 'none' ? ` hr-frame-${r.cosmetics.frame}` : '';
+      const avatarHtml = avatarRankCardHtml(r.name, r.avatar, r.tierKey, 34).replace('avatar-rankcard', `avatar-rankcard${frameClass}`);
+      const taglineHtml = r.cosmetics && r.cosmetics.tagline ? `<div class="hr-lb-tagline">${escapeHtml(r.cosmetics.tagline)}</div>` : '';
+      return `<div class="hr-lb-row${isMe ? ' hr-lb-me' : ''}${i===0 ? ' hr-lb-top1' : ''}${glowClass}">
         <span class="hr-lb-rank">${medals[i] || (i+1)}</span>
-        ${avatarRankCardHtml(r.name, r.avatar, r.tierKey, 34)}
-        <span class="hr-lb-name">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${compTag}</span>
+        ${avatarHtml}
+        <span class="hr-lb-name-wrap"><span class="hr-lb-name">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${compTag}${badgeHtml}</span>${taglineHtml}</span>
         <span class="hr-lb-val">${r.balance.toLocaleString()}</span>
       </div>`;
     }).join('');
