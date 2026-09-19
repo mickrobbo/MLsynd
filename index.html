@@ -3928,7 +3928,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.160"; // Rebuilt the shop's option UI, reported live with a screenshot showing real breakage — "Brushed Gold" wrapping onto two lines and overlapping "Marble"/"Obsidian" entirely, "None Laurel Crown" jammed together unreadable. Root cause: text options were forced into fixed 26px squares with no wrap control. Bigger issue underneath the visual one — the price only ever lived in a hover `title` attribute, which never fires on a touch screen, so it was genuinely invisible on the only device this app runs on, not just unclear. Full rebuild: category label now sits on its own line instead of squeezed beside the options, each option is a proper auto-width pill that wraps naturally instead of overlapping its neighbours, and every locked pill shows a real visible price badge (compact format — "3.0M" instead of "3,000,000", fits without crowding). Active pill gets a gold glow border and a ✓ instead of a price. Also brought the nameplate/entrance-line buttons in line with the same compact price format for consistency across the whole shop. dashboard.css changed, cache-buster moved to ?v=158. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.161"; // Found the real cause of "the group multi isn't showing on the main page" — reported live alongside a screenshot showing the Push to Home Screen button had just claimed "✓ Confirmed on Firebase" the same moment Home was showing the empty kitchen state. Two things were true at once: renderGroupMultiChart hard-gates on groupMultiCleared BEFORE it ever looks at the draft data, so that flag landing correctly is just as load-bearing as the draft itself — but its write was fire-and-forget with only .catch(() => {}), which (same lesson already learned two lines below it for the draft write) only ever catches a genuine network failure, never an HTTP rejection from Firebase. A rejected write there would silently leave groupMultiCleared stuck at true on the server while this session's own optimistic local flip made everything look fine. Compounding it: the Push button's own verification only ever checked groupEntryDraft — never groupMultiCleared — so it could genuinely, correctly report "confirmed" while the one flag actually gating Home's display stayed broken. Fixed both: the write now checks res.ok and rolls back the optimistic flip if Firebase rejects it, and the verification now checks BOTH fields, only reporting success if the data will actually be visible on Home. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -19934,11 +19934,32 @@ async function saveAdminGroupEntryDraft(){
     // renderGroupEntryTable: "if(resultEl.value && state.groupMultiCleared)").
     const draft = currentState.groupEntryDraft || {};
     const hasRealEntry = Object.values(draft).some(e => e && e.result);
+    // FIXED — real bug, this is the actual cause of "the group multi
+    // isn't showing on the main page" even after the Push button
+    // claimed a confirmed save. renderGroupMultiChart on Home hard-
+    // gates on groupMultiCleared BEFORE it ever looks at the draft
+    // data (see that function: `if(state.groupMultiCleared){ show
+    // empty state; return; }`) — so this flag landing is just as
+    // load-bearing as the draft itself, not a minor side-effect. This
+    // write used to be fire-and-forget with only `.catch(() => {})`,
+    // which — per the exact same lesson already learned two lines
+    // below for the draft write — only catches a genuine network
+    // failure, never an HTTP-level rejection from Firebase. A rejected
+    // write here would silently leave groupMultiCleared stuck at true
+    // on the server while the LOCAL optimistic flip to false made
+    // everything in THIS session look fine, right up until the next
+    // fresh state read pulled the real (still-true) server value back
+    // in. Now checked and surfaced exactly like the draft write is.
     if(hasRealEntry && currentState.groupMultiCleared){
       currentState.groupMultiCleared = false;
-      groupEntryUngatedFetch('/state/groupMultiCleared.json', {
+      const clearRes = await groupEntryUngatedFetch('/state/groupMultiCleared.json', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: 'false'
-      }).catch(() => {});
+      });
+      if(!clearRes.ok){
+        currentState.groupMultiCleared = true; // roll back the optimistic flip — it didn't actually land
+        const bodyText = await clearRes.text().catch(() => '');
+        throw new Error(`Firebase rejected clearing groupMultiCleared (HTTP ${clearRes.status}): ${bodyText || clearRes.statusText || 'no details'}`);
+      }
     }
     const res = await groupEntryUngatedFetch('/state/groupEntryDraft.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -19999,16 +20020,42 @@ document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', asy
   // against what was actually just typed. This settles definitively
   // whether the write genuinely landed server-side, independent of
   // whatever this device's own build/cache situation is.
+  //
+  // FIXED — real bug, reported live as "the group multi isn't showing
+  // on the main page" even though this exact button had just claimed
+  // "✓ Confirmed on Firebase". This verification only ever checked
+  // groupEntryDraft — it never checked groupMultiCleared, even though
+  // Home's renderGroupMultiChart hard-gates on THAT flag before it
+  // ever looks at the draft. A confirmed draft with a still-true
+  // groupMultiCleared on the server is exactly what "saved but not
+  // showing" looks like, and the old verification had no way to catch
+  // it — it was only ever checking half of what actually needs to be
+  // true for Home to display anything.
   try{
-    const verifyRes = await groupEntryUngatedFetch('/state/groupEntryDraft.json');
-    const serverDraft = await verifyRes.json();
+    const [draftRes, clearedRes] = await Promise.all([
+      groupEntryUngatedFetch('/state/groupEntryDraft.json'),
+      groupEntryUngatedFetch('/state/groupMultiCleared.json')
+    ]);
+    const serverDraft = await draftRes.json();
+    const serverCleared = await clearedRes.json();
     const localDraft = currentState.groupEntryDraft || {};
-    const matches = canonicalJSON(serverDraft || {}) === canonicalJSON(localDraft);
+    const draftMatches = canonicalJSON(serverDraft || {}) === canonicalJSON(localDraft);
+    // groupMultiCleared should be false/missing whenever there's a real
+    // entry — if it's still true, Home will show the empty state
+    // regardless of how correct the draft itself is.
+    const hasRealEntry = Object.values(localDraft).some(e => e && e.result);
+    const clearedOk = !hasRealEntry || !serverCleared;
     if(statusEl){
-      statusEl.textContent = matches
-        ? '✓ Confirmed on Firebase — this is genuinely saved server-side.'
-        : `⚠️ Mismatch — Firebase has different data than what's shown here. Server: ${JSON.stringify(serverDraft)}`;
-      statusEl.className = matches ? 'status-msg ok' : 'status-msg error';
+      if(draftMatches && clearedOk){
+        statusEl.textContent = '✓ Confirmed on Firebase — genuinely saved AND will show on Home.';
+        statusEl.className = 'status-msg ok';
+      } else if(!draftMatches){
+        statusEl.textContent = `⚠️ Draft mismatch — Firebase has different data than what's shown here. Server: ${JSON.stringify(serverDraft)}`;
+        statusEl.className = 'status-msg error';
+      } else {
+        statusEl.textContent = '⚠️ Draft saved correctly, but groupMultiCleared is still true on Firebase — Home will keep showing the empty state until this clears. Try Push again.';
+        statusEl.className = 'status-msg error';
+      }
     }
   }catch(e){
     if(statusEl){ statusEl.textContent = `Could not verify: ${e.message}`; statusEl.className = 'status-msg error'; }
