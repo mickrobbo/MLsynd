@@ -3928,7 +3928,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.161"; // Found the real cause of "the group multi isn't showing on the main page" — reported live alongside a screenshot showing the Push to Home Screen button had just claimed "✓ Confirmed on Firebase" the same moment Home was showing the empty kitchen state. Two things were true at once: renderGroupMultiChart hard-gates on groupMultiCleared BEFORE it ever looks at the draft data, so that flag landing correctly is just as load-bearing as the draft itself — but its write was fire-and-forget with only .catch(() => {}), which (same lesson already learned two lines below it for the draft write) only ever catches a genuine network failure, never an HTTP rejection from Firebase. A rejected write there would silently leave groupMultiCleared stuck at true on the server while this session's own optimistic local flip made everything look fine. Compounding it: the Push button's own verification only ever checked groupEntryDraft — never groupMultiCleared — so it could genuinely, correctly report "confirmed" while the one flag actually gating Home's display stayed broken. Fixed both: the write now checks res.ok and rolls back the optimistic flip if Firebase rejects it, and the verification now checks BOTH fields, only reporting success if the data will actually be visible on Home. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.162"; // Different bug from last time, reported live as "Not saving again" on the SAME build that had the groupMultiCleared fix — genuinely useful signal that this was something new, not a recurrence. The per-row input handler in renderAdminGroupEntry only listened for 'input' events. Correct for the odds <input>, wrong for .adminWkResult, which is a <select> — 'change' is the standard, reliably-supported event for dropdowns, and whether 'input' fires on a <select> at all depends on the specific browser/webview. If it doesn't fire here, picking Win/Loss/Void/MIA updates what the native picker visually shows without ever reaching currentState.groupEntryDraft — scheduleAdminGroupDraftSave never even gets called, so there was nothing wrong in the save path itself to find, because no save was ever attempted. Matches exactly what the screenshot showed: several members with odds typed in (the input field working correctly) but stuck on "No bet" despite presumably having a result picked, and Trasky showing "MIA" selected in the visible dropdown while evidently never having saved. Now listens for both 'input' and 'change' — harmless redundancy given the existing debounce, and removes the dependency on this browser's particular <select> event behaviour. Spot-checked the rest of the file for the same pattern (an 'input'-only listener on something that looks like a dropdown) and found no other instances. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -20101,7 +20101,22 @@ function renderAdminGroupEntry(){
     </div>`;
   }).join('');
   wrap.querySelectorAll('.adminWkOdds, .adminWkResult').forEach(el => {
-    el.addEventListener('input', () => {
+    // FIXED — real bug, reported live as "Not saving again", and a
+    // genuinely different cause from the groupMultiCleared issue fixed
+    // last time. This only listened for 'input' — correct for the odds
+    // <input>, but .adminWkResult is a <select>, and 'change' is the
+    // standard, reliably-supported event for selects; 'input' firing on
+    // a <select> at all depends on the specific browser/webview. If it
+    // doesn't fire here, picking a result from the dropdown updates
+    // what's visually shown in the native picker but never reaches
+    // currentState.groupEntryDraft at all — scheduleAdminGroupDraftSave
+    // never even gets called, so there's nothing to debug in the SAVE
+    // path itself, because no save was ever attempted. Listening for
+    // both events is harmless (the debounce in scheduleAdminGroupDraft-
+    // Save already collapses any duplicate firing) and removes the
+    // dependency on this particular browser's exact 'input' support for
+    // <select> elements.
+    const handler = () => {
       const name = el.dataset.name;
       if(!currentState.groupEntryDraft[name]) currentState.groupEntryDraft[name] = {};
       const oddsEl = wrap.querySelector(`.adminWkOdds[data-name="${CSS.escape(name)}"]`);
@@ -20109,7 +20124,9 @@ function renderAdminGroupEntry(){
       currentState.groupEntryDraft[name].odds = oddsEl.value !== '' ? parseFloat(oddsEl.value) : null;
       currentState.groupEntryDraft[name].result = resultEl.value || null;
       scheduleAdminGroupDraftSave();
-    });
+    };
+    el.addEventListener('input', handler);
+    el.addEventListener('change', handler);
   });
 }
 
