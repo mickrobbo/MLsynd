@@ -3928,7 +3928,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.162"; // Different bug from last time, reported live as "Not saving again" on the SAME build that had the groupMultiCleared fix — genuinely useful signal that this was something new, not a recurrence. The per-row input handler in renderAdminGroupEntry only listened for 'input' events. Correct for the odds <input>, wrong for .adminWkResult, which is a <select> — 'change' is the standard, reliably-supported event for dropdowns, and whether 'input' fires on a <select> at all depends on the specific browser/webview. If it doesn't fire here, picking Win/Loss/Void/MIA updates what the native picker visually shows without ever reaching currentState.groupEntryDraft — scheduleAdminGroupDraftSave never even gets called, so there was nothing wrong in the save path itself to find, because no save was ever attempted. Matches exactly what the screenshot showed: several members with odds typed in (the input field working correctly) but stuck on "No bet" despite presumably having a result picked, and Trasky showing "MIA" selected in the visible dropdown while evidently never having saved. Now listens for both 'input' and 'change' — harmless redundancy given the existing debounce, and removes the dependency on this browser's particular <select> event behaviour. Spot-checked the rest of the file for the same pattern (an 'input'-only listener on something that looks like a dropdown) and found no other instances. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-09-12.163"; // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -20046,7 +20046,24 @@ document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', asy
     const hasRealEntry = Object.values(localDraft).some(e => e && e.result);
     const clearedOk = !hasRealEntry || !serverCleared;
     if(statusEl){
-      if(draftMatches && clearedOk){
+      // FIXED — real issue, reported live as "again didn't save or push
+      // to the main screen" a third time, alongside a screenshot
+      // showing odds typed in for several people but every result still
+      // on "No bet". The draft and groupMultiCleared writes were both
+      // genuinely correct here — the actual gap was in THIS message.
+      // renderGroupMultiChart on Home filters entries by e.result, same
+      // as hasRealEntry above, by what looks like deliberate design (a
+      // "who's cooking it" roast needs to know who won or lost, not
+      // just what the odds were) — odds alone with no result picked is
+      // legitimately incomplete and correctly shows nothing on Home yet.
+      // But this message still said "will show on Home" unconditionally
+      // whenever the writes matched, which is only true once at least
+      // one person has an actual result — claiming otherwise here is
+      // what sent someone looking for a save bug that didn't exist.
+      if(!hasRealEntry){
+        statusEl.textContent = 'Draft saved — but nobody has a result picked yet (odds alone don\'t count). Home will keep showing the empty state until at least one person has Win/Loss/Void/MIA selected, not just odds.';
+        statusEl.className = 'status-msg';
+      } else if(draftMatches && clearedOk){
         statusEl.textContent = '✓ Confirmed on Firebase — genuinely saved AND will show on Home.';
         statusEl.className = 'status-msg ok';
       } else if(!draftMatches){
