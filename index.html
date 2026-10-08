@@ -3947,7 +3947,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-08.166"; // v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-08.167"; // v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9649,7 +9649,12 @@ async function isEligibleForPot(uid, monthKey, playCount){
       const log = (await res.json()) || {};
       return Object.values(log).some(entry => entry && entry.amount > 0 && !CASINO_POT_REASON_PATTERN.test(entry.reason || '') && !CASINO_POT_PAYOUT_REASON_PATTERN.test(entry.reason || ''));
     }
-    const res = await authedFetch(`/xp/${uid}/log.json`);
+    // Perf v167: closed periods used to download the player's ENTIRE XP
+    // log. A week key is its Monday, so a ts window a day either side
+    // covers it; the exact period check below still filters precisely.
+    const keyMs = Date.parse(monthKey + 'T00:00:00Z');
+    let res = isNaN(keyMs) ? null : await authedFetch(`/xp/${uid}/log.json?orderBy=${encodeURIComponent('"ts"')}&startAt=${keyMs - 86400000}&endAt=${keyMs + 9 * 86400000}`);
+    if(!res || !res.ok) res = await authedFetch(`/xp/${uid}/log.json`);
     const log = (await res.json()) || {};
     return Object.values(log).some(entry => {
       if(!entry || !(entry.amount > 0)) return false;
@@ -9672,30 +9677,34 @@ async function isEligibleForPot(uid, monthKey, playCount){
 // are credited elsewhere, not through this function, and are unaffected —
 // only the periodic pot distribution and jackpot draw are excluded from
 // tier.
+// Atomic numeric add at a Firebase path (ETag compare-and-swap, retried).
+// Throws if the write can't land, so callers never mistake a failure for success.
+async function etagAddNumber(path, delta){
+  for(let attempt = 0; attempt < 6; attempt++){
+    const res = await authedFetch(path, { headers: { 'X-Firebase-ETag': 'true' } });
+    if(!res.ok) throw new Error(`Read ${path} failed (HTTP ${res.status})`);
+    const etag = res.headers.get('ETag');
+    const cur = Number(await res.json()) || 0;
+    const next = cur + delta;
+    const put = await authedFetch(path, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'if-match': etag }, body: JSON.stringify(next) });
+    if(put.ok) return next;
+    if(put.status !== 412) throw new Error(`Write ${path} failed (HTTP ${put.status})`);
+  }
+  throw new Error(`Write ${path} kept conflicting — gave up`);
+}
+// FIXED v167: used a plain read-then-PUT with no ETag and swallowed every
+// error. If the player was mid-game when the pot paid out, one of the two
+// writes silently overwrote the other (either the payout or their own
+// winnings vanished), and a failed payout still got recorded as paid.
 async function creditPotXP(uid, amount, reason){
   if(!(amount > 0)) return;
-  try{
-    const balRes = await authedFetch(`/xp/${uid}/balance.json`);
-    const bal = (await balRes.json()) || 0;
-    const next = bal + amount;
-    await authedFetch(`/xp/${uid}/balance.json`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
-    });
-    await authedFetch(`/xp/${uid}/log.json`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
-    });
-  }catch(e){}
+  const next = await etagAddNumber(`/xp/${uid}/balance.json`, amount);
+  await authedFetch(`/xp/${uid}/log.json`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, reason, balanceAfter: next, ts: Date.now() })
+  }).catch(() => {});
 }
 
-// Finds any period bucket(s) under /casinoPot/months that aren't the
-// current real-world period (1st-15th / 16th-end of month) — i.e. periods
-// that ended but were never closed out. Normally at most one (the last
-// period), but if the admin hasn't opened the app in a while there could
-// be several; those get merged into a single distribution rather than run
-// one at a time, which is also how "no one eligible → roll into next
-// period" naturally falls out (an unclosed period just sits here until
-// it's merged into a later run).
 async function findStaleCasinoPotMonths(){
   try{
     const res = await authedFetch('/casinoPot/months.json');
@@ -9788,7 +9797,9 @@ async function distributeCasinoPotLocked(monthKeys){
   const combinedPlayCounts = {};
   let combinedFines = 0;
   for(const monthKey of monthKeys){
-    const { losses, playCounts, fines } = await fetchCasinoPotMonth(monthKey);
+    const { losses, playCounts, fines, readFailed } = await fetchCasinoPotMonth(monthKey);
+    // A failed read looks exactly like an empty pot — never act on it.
+    if(readFailed) return { skipped: true, reason: `could not read period ${monthKey}` };
     Object.entries(losses).forEach(([uid, v]) => { combinedLosses[uid] = (combinedLosses[uid] || 0) + (Number(v) || 0); });
     Object.entries(playCounts).forEach(([uid, v]) => { combinedPlayCounts[uid] = (combinedPlayCounts[uid] || 0) + (Number(v) || 0); });
     combinedFines += Number(fines) || 0;
@@ -9814,7 +9825,33 @@ async function distributeCasinoPotLocked(monthKeys){
     // claiming here and then bailing out would leave a permanent
     // "claiming: true" placeholder blocking this label forever, since
     // nothing later would ever overwrite it with a real history entry.
-    return { skipped: true, rolled: true, totalPot };
+    //
+    // FIXED v167: but returning WITHOUT touching the closed bucket meant a
+    // week with nobody eligible (or fines >= losses) sat in
+    // /casinoPot/months forever — every future run saw the same numbers,
+    // so it was "overdue" on every health check and its XP went nowhere.
+    // Now its losses and fines carry forward into the current week's pot,
+    // then the closed bucket is removed. Still no claim placeholder.
+    const currentKey = casinoPotPeriodKey();
+    const toRoll = monthKeys.filter(k => k !== currentKey);
+    if(toRoll.length === 0) return { skipped: true, rolled: false, totalPot };
+    // Never carry forward a period that was actually paid already (its
+    // bucket just failed to delete) — that would count the money twice.
+    try{
+      const hRes = await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`);
+      const h = hRes.ok ? await hRes.json() : null;
+      if(h && h.totalPot != null && !h.claiming){
+        for(const k of toRoll) await authedWrite(`/casinoPot/months/${k}.json`, { method: 'DELETE' });
+        return { skipped: true, reason: 'already paid — leftover bucket cleaned up', label, cleaned: true };
+      }
+      if(h && h.claiming) return { skipped: true, reason: 'a payout run crashed part-way — needs a manual check before re-running', label, stuck: true };
+    }catch(e){ return { skipped: true, reason: 'could not check payout history: ' + e.message }; }
+    for(const [uid, v] of Object.entries(combinedLosses)){
+      if(Number(v) > 0) await etagAddNumber(`/casinoPot/months/${currentKey}/losses/${uid}.json`, Number(v));
+    }
+    if(combinedFines > 0) await etagAddNumber(`/casinoPot/months/${currentKey}/fines.json`, combinedFines);
+    for(const k of toRoll) await authedWrite(`/casinoPot/months/${k}.json`, { method: 'DELETE' });
+    return { skipped: true, rolled: true, rolledInto: currentKey, totalPot, label };
   }
 
   // Atomic claim — see claimDistributionLabelClient's own comment for the
@@ -9822,6 +9859,19 @@ async function distributeCasinoPotLocked(monthKeys){
   // once eligibility is already confirmed — never earlier.
   const claimed = await claimDistributionLabelClient(label);
   if(!claimed){
+    // FIXED v167: a REAL history entry means this period was already paid
+    // and only the bucket delete failed afterwards — safe to clean up. A
+    // bare {claiming:true} stub means a run crashed mid-payout: left alone
+    // on purpose (re-running could double-pay) and reported instead.
+    try{
+      const hRes = await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`);
+      const h = hRes.ok ? await hRes.json() : null;
+      if(h && h.totalPot != null && !h.claiming){
+        for(const k of monthKeys) await authedWrite(`/casinoPot/months/${k}.json`, { method: 'DELETE' });
+        return { skipped: true, reason: 'already paid — leftover bucket cleaned up', label, cleaned: true };
+      }
+      if(h && h.claiming) return { skipped: true, reason: `a payout run crashed part-way (${new Date(h.claimedAt || 0).toLocaleString()}) — needs a manual check before re-running`, label, stuck: true };
+    }catch(e){}
     return { skipped: true, reason: 'already distributed or claimed by another invocation', label };
   }
 
@@ -9867,12 +9917,15 @@ async function distributeCasinoPotLocked(monthKeys){
   const jackpotPoolCandidates = jackpotCandidates.length > 0 ? jackpotCandidates : eligible;
   const jackpotWinner = jackpotPoolCandidates[Math.floor(Math.random() * jackpotPoolCandidates.length)];
 
+  const payoutFailures = [];
   for(const uid of Object.keys(proportional)){
-    await creditPotXP(uid, proportional[uid], `Casino Pot – Even Split (${label})`);
+    try{ await creditPotXP(uid, proportional[uid], `Casino Pot – Even Split (${label})`); }
+    catch(e){ payoutFailures.push({ uid, amount: proportional[uid], kind: 'split', error: e.message }); }
   }
-  await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`);
+  try{ await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`); }
+  catch(e){ payoutFailures.push({ uid: jackpotWinner, amount: jackpotPool, kind: 'jackpot', error: e.message }); }
 
-  const historyEntry = { month: label, totalPot, rawPot, finesApplied: combinedFines, cappedPot, capBurnedAmount, proportional, jackpotWinner, jackpotAmount: jackpotPool, burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now() };
+  const historyEntry = { payoutFailures: payoutFailures.length ? payoutFailures : null, month: label, totalPot, rawPot, finesApplied: combinedFines, cappedPot, capBurnedAmount, proportional, jackpotWinner, jackpotAmount: jackpotPool, burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now() };
   try{
     await authedFetch(`/casinoPot/history/${label.replace(/\./g, '_')}.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(historyEntry)
@@ -9895,8 +9948,16 @@ async function autoCheckCasinoPotRollover(){
   if(!isAdmin) return;
   try{
     const stale = await findStaleCasinoPotMonths();
-    if(stale.length > 0) await distributeCasinoPot(stale);
-  }catch(e){}
+    if(stale.length > 0){
+      const r = await distributeCasinoPot(stale);
+      // Previously silent either way — the admin had no idea a period was stuck.
+      if(r && r.rolled) showToast(`🎰 Casino Pot ${stale.join(', ')}: nobody qualified, carried into this week's pot`);
+      else if(r && r.cleaned) showToast(`🎰 Casino Pot ${stale.join(', ')}: already paid, leftover cleaned up`);
+      else if(r && r.payoutFailures) showToast(`⚠️ Casino Pot paid, but ${r.payoutFailures.length} payout(s) failed — see Casino Pot history`);
+      else if(r && r.month) showToast(`🎰 Casino Pot ${r.month} distributed (catch-up)`);
+      else if(r && r.skipped && r.reason) showToast(`⚠️ Casino Pot ${stale.join(', ')} not distributed: ${r.reason}`);
+    }
+  }catch(e){ showToast('⚠️ Casino Pot catch-up failed: ' + e.message); }
 }
 
 function nameForUid(uid){
@@ -17979,9 +18040,14 @@ async function runFullHealthCheck(){
         missingGroup: !h.group,
         missingEntries: !h.groupEntries
       }))
-      .filter(w => w.missingGroup || w.missingEntries);
+      // FIXED v167: Firebase never stores an empty object, so a week saved
+      // with no group multi has no groupEntries key at all — that's normal
+      // (and why the "Clear warning" tool's {} write never stuck). Only a
+      // missing `group` (the week's money) is a real problem.
+      .filter(w => w.missingGroup);
+    const legacyNoMulti = currentState.history.filter(h => !h.groupEntries).length;
     const detail = brokenWeeks.length === 0
-      ? `${currentState.history.length} week(s) saved, all have expected fields`
+      ? `${currentState.history.length} week(s) saved, all have expected fields${legacyNoMulti ? ` (${legacyNoMulti} older week(s) have no group-multi detail recorded — normal for weeks saved before it was tracked)` : ''}`
       : `${currentState.history.length} week(s) saved. Missing fields: ` +
         brokenWeeks.map(w => `"${w.label}" (missing ${[w.missingGroup && 'group', w.missingEntries && 'groupEntries'].filter(Boolean).join(' + ')})`).join('; ');
     check('Season history entries', brokenWeeks.length === 0 ? 'pass' : 'warn', detail);
@@ -18491,8 +18557,24 @@ async function runFullHealthCheck(){
     const all = res.ok ? ((await res.json()) || {}) : {};
     const currentKey = casinoPotPeriodKey();
     const stale = Object.keys(all).filter(k => k !== currentKey);
+    // v167: say WHY each one is stuck, not just that it is.
+    const why = [];
+    for(const k of stale){
+      const b = all[k] || {};
+      const pot = Math.max(0, sumLosses(b.losses || {}) - (Number(b.fines) || 0));
+      const players = Object.values(b.playCounts || {}).filter(v => Number(v) > 0).length;
+      let h = null;
+      try{ const hr = await authedFetch(`/casinoPot/history/${k}.json`); h = hr.ok ? await hr.json() : null; }catch(e){}
+      let reason;
+      if(h && h.claiming) reason = 'payout crashed part-way — needs a manual check';
+      else if(h && h.totalPot != null) reason = 'already paid, bucket not cleaned up — next admin open removes it';
+      else if(pot <= 0) reason = `pot is ${pot.toLocaleString()} XP after fines — next admin open carries it forward`;
+      else if(players === 0) reason = `${pot.toLocaleString()} XP but nobody played — next admin open carries it forward`;
+      else reason = `${pot.toLocaleString()} XP, ${players} player(s) — never attempted; next admin open pays it`;
+      why.push(`${k}: ${reason}`);
+    }
     check('Casino Pot overdue distribution', stale.length === 0 ? 'pass' : 'fail',
-      stale.length === 0 ? `Only the current period (${currentKey}) is open, as expected` : `${stale.length} closed period(s) never distributed: ${stale.join(', ')} — real XP is sitting undelivered`);
+      stale.length === 0 ? `Only the current period (${currentKey}) is open, as expected` : `${stale.length} closed period(s) never distributed — ${why.join('; ')}`);
   }catch(e){
     check('Casino Pot overdue distribution', 'fail', e.message);
   }
@@ -18507,7 +18589,11 @@ async function runFullHealthCheck(){
   try{
     const res = await authedFetch('/casinoPot/months.json');
     const all = res.ok ? ((await res.json()) || {}) : {};
-    const legacy = Object.keys(all).filter(k => !/^\d{4}-\d{2}-(01|16)$/.test(k));
+    // FIXED v167: still expected the old twice-monthly keys (-01/-16), so it
+    // flagged every correct weekly key as "old format". Weekly keys are the
+    // Monday that starts the week.
+    const isMondayKey = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && new Date(k + 'T00:00:00Z').getUTCDay() === 1;
+    const legacy = Object.keys(all).filter(k => !isMondayKey(k));
     check('Casino Pot key format', legacy.length === 0 ? 'pass' : 'fail',
       legacy.length === 0 ? 'All bucket keys use the current period format' : `Old-format bucket(s) found, invisible to current distribution logic: ${legacy.join(', ')}`);
   }catch(e){
@@ -18523,9 +18609,12 @@ async function runFullHealthCheck(){
   try{
     const res = await authedFetch('/xp/weeklyTopupLastRun.json');
     const val = res.ok ? await res.json() : null;
-    const ok = val == null || typeof val === 'number';
+    // FIXED v167: the weekly top-up job stores an ISO week marker like
+    // "2026-W40" (its "already ran this week" key). Only an object — the
+    // original Sept 1 reset mistake — is actually wrong.
+    const ok = val == null || typeof val === 'number' || (typeof val === 'string' && /^\d{4}-W\d{2}$/.test(val));
     check('weeklyTopupLastRun shape', ok ? 'pass' : 'fail',
-      ok ? (val == null ? 'Not set yet' : `Valid timestamp — ${timeAgo(val)}`) : `Wrong shape (${JSON.stringify(val).slice(0,80)}) — should be a plain timestamp number, not an object. Delete this node in Firebase console and re-add it as a number.`);
+      ok ? (val == null ? 'Not set yet' : (typeof val === 'string' ? `Last ran for week ${val}` : `Valid timestamp — ${timeAgo(val)}`)) : `Wrong shape (${JSON.stringify(val).slice(0,80)}) — should be a plain timestamp number, not an object. Delete this node in Firebase console and re-add it as a number.`);
   }catch(e){
     check('weeklyTopupLastRun shape', 'fail', e.message);
   }
@@ -20955,6 +21044,17 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
       if(!confirm('No group multi entries were captured for this week — every member appears excluded, which usually means a form-rendering glitch rather than a real empty week. Save anyway?')){
         status.className = 'status-msg error';
         status.textContent = 'Save cancelled — check the Group Multi Entry table above before trying again.';
+        return;
+      }
+    }
+    // v167 guard: the classic symptom of the old draft-wiping bug was a week
+    // saved with every row still on "No bet". Catch that before it's
+    // committed to history (and before drafts are cleared below).
+    const withResult = Object.values(groupEntries).filter(e => e.result).length;
+    if(Object.keys(groupEntries).length > 0 && withResult === 0){
+      if(!confirm('Nobody in the Group Multi table has a result picked (everyone is on "No bet"). Saving will record this week with no group multi at all. Save anyway?')){
+        status.className = 'status-msg error';
+        status.textContent = 'Save cancelled — pick results in the Group Multi Entry table first.';
         return;
       }
     }

@@ -1,7 +1,11 @@
 {
-  "version": "2026-10-08.166",
+  "version": "2026-10-08.167",
   "date": "2026-10-08",
   "changes": [
+    "Casino Pot: a week where nobody qualified now carries its pot into the current week instead of getting stuck forever; already-paid leftovers clean themselves up",
+    "Casino Pot payouts can no longer overwrite (or be overwritten by) a player's own game winnings, and failed payouts are recorded",
+    "Health check: fixed three false alarms (weekly pot key format, top-up week marker, older weeks without group-multi detail) and it now explains why a pot period is stuck",
+    "Save Week now warns if nobody in the Group Multi table has a result picked",
     "Group multi entries no longer disappear: background refresh can't overwrite unsaved edits, saves only send edited rows, and unsent edits are recovered on next launch",
     "Money-critical writes (Save Week, members, history, group) now verify the server accepted them; 15s poll skips redundant re-renders",
     "Faster startup: Firebase live-table SDK only loads when a live table opens; Maxine's images compressed and lazy-loaded",
