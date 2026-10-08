@@ -3759,7 +3759,7 @@ async function resolveMyMemberIndex(oldName){
 // on rather than surfacing it.
 async function renameOnAllMyPicks(newName){
   try{
-    const games = await fetchTippingFixtures();
+    const games = await fetchAllAflFixtures(); // every year's picks carry the name
     await Promise.all(games.map(async g => {
       try{
         const res = await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}.json`);
@@ -3947,7 +3947,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-08.167"; // v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-08.168"; // v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -16162,7 +16162,7 @@ async function refreshAfl(){
       // matching a separate live-scores endpoint by team name — matching by name alone
       // breaks whenever two teams play each other more than once in the season, since it
       // can land on the wrong occurrence and show a wildly wrong date.
-      const [oddsRes, fixtures] = await Promise.all([oddsPromise, fetchTippingFixtures().catch(() => [])]);
+      const [oddsRes, fixtures] = await Promise.all([oddsPromise, fetchAllAflFixtures().catch(() => [])]);
       if(!fixtures || fixtures.length === 0){
         area.innerHTML = '<div class="panel"><div class="empty">No games right now.</div></div>';
         return;
@@ -16857,14 +16857,49 @@ async function getSeasonStartRound(){
 let tippingFixturesCache = null;
 let tippingFixturesCacheTime = 0;
 
-async function fetchTippingFixtures(){
+// ---- Tipping season year (v168) ----
+// /tipping/config/year is set by "Archive & start new season". Everything
+// tipping-related (games list, ladder, XP, Joker, Form Guide, admin
+// submissions) now only looks at fixtures from THAT year. Previously the
+// fixtures feed's games were used as-is, so after archiving 2026 the feed
+// kept serving 2026 games and the ladder rebuilt itself from 2026 picks.
+let tippingSeasonYearCache = null, tippingSeasonYearCacheTime = 0;
+async function getTippingSeasonYear(){
+  if(tippingSeasonYearCache && Date.now() - tippingSeasonYearCacheTime < 300000) return tippingSeasonYearCache;
+  try{
+    const res = await authedFetch('/tipping/config/year.json');
+    const v = res.ok ? await res.json() : null;
+    tippingSeasonYearCache = v != null ? Number(v) : new Date().getFullYear();
+  }catch(e){
+    tippingSeasonYearCache = tippingSeasonYearCache || new Date().getFullYear();
+  }
+  tippingSeasonYearCacheTime = Date.now();
+  return tippingSeasonYearCache;
+}
+function fixtureYear(g){
+  if(g && g.year != null) return Number(g.year);
+  const m = g && g.date ? String(g.date).match(/^(\d{4})/) : null;
+  return m ? Number(m[1]) : null;
+}
+// Raw feed, every year it returns (the Sport tab and name-sweeps want this).
+async function fetchAllAflFixtures(){
   if(tippingFixturesCache && (Date.now() - tippingFixturesCacheTime) < 45000) return tippingFixturesCache;
   trackApiCall('afl-fixtures');
-  const res = await fetch('/.netlify/functions/afl-fixtures', { cache: 'no-store' });
+  const year = await getTippingSeasonYear();
+  // ?year= is passed so the fixtures function can serve the right season
+  // once it supports it; ignored harmlessly if it doesn't.
+  const res = await fetch(`/.netlify/functions/afl-fixtures?year=${year}`, { cache: 'no-store' });
   const data = await res.json();
   tippingFixturesCache = data.games || [];
   tippingFixturesCacheTime = Date.now();
   return tippingFixturesCache;
+}
+// Current tipping season only.
+async function fetchTippingFixtures(){
+  const [all, year] = await Promise.all([fetchAllAflFixtures(), getTippingSeasonYear()]);
+  const season = all.filter(g => fixtureYear(g) === year);
+  rebuildTippingRoundNames(season);
+  return season;
 }
 
 function isFirstGameOfRound(games, g){
@@ -17151,7 +17186,15 @@ async function refreshTipping(isBackgroundPoll){
   const roundSelectWrap = document.getElementById('tippingRoundSelectWrap');
   try{
     const games = await fetchTippingFixtures();
-    if(games.length === 0){ gamesArea.innerHTML = '<div class="empty">No fixture data available.</div>'; return; }
+    if(games.length === 0){
+      const yr = await getTippingSeasonYear();
+      document.getElementById('tippingRoundHeading').textContent = `Footy Tipping — ${yr}`;
+      roundSelectWrap.innerHTML = '';
+      gamesArea.innerHTML = `<div class="empty">🏉 The ${yr} season fixture isn't out yet — games will appear here automatically once the AFL releases it. Last season's results are under History.</div>`;
+      renderTippingLadder([]);
+      renderTippingPrizePot();
+      return;
+    }
     const allRounds = [...new Set(games.map(g => g.round))].sort((a, b) => a - b);
     const openRounds = games.filter(g => g.complete < 100).map(g => g.round);
     const currentRound = openRounds.length ? Math.min(...openRounds) : Math.max(...allRounds);
@@ -17189,17 +17232,46 @@ async function renderTippingPrizePot(){
   }
 }
 
-const TIPPING_ROUND_NAMES = {
-  0: 'Opening Round',
-  5: 'Gather Round',
+// Round names (v168). Used to be one fixed table (0 = Opening Round,
+// 5 = Gather Round, 25-29 = finals), which is wrong from 2027: Opening
+// Round is gone (all 18 clubs play a normal Round 1) and Gather Round moves
+// (8-11 April 2027, i.e. Round 4 on the announced dates). Names are now
+// read from the fixture itself each season:
+//   - Opening Round / finals: the feed's own roundname
+//   - Gather Round: the round where every game is in South Australia
+// The table below is only a fallback before fixtures have loaded.
+const TIPPING_ROUND_NAMES_FALLBACK = {
   25: 'Wildcard Finals',
-  26: 'Qualifying/Elimination Round',
+  26: 'Qualifying/Elimination Finals',
   27: 'Semi Finals',
   28: 'Preliminary Finals',
   29: 'Grand Final'
 };
+let tippingRoundNames = {};
+const SA_VENUE_PATTERN = /adelaide oval|norwood|barossa|mount barker|summit sports|unley|alberton|prospect|glenelg|thebarton/i;
+function rebuildTippingRoundNames(games){
+  const byRound = {};
+  (games || []).forEach(g => { (byRound[g.round] = byRound[g.round] || []).push(g); });
+  const names = {};
+  Object.entries(byRound).forEach(([r, list]) => {
+    const rns = [...new Set(list.map(g => (g.roundname || '').trim()).filter(Boolean))];
+    const rn = rns.length === 1 ? rns[0] : '';
+    if(rns.length > 1 && rns.every(x => /final/i.test(x))){
+      // A finals week whose games carry different names (Qualifying +
+      // Elimination) — use the standard name for that week.
+      names[r] = TIPPING_ROUND_NAMES_FALLBACK[r] || rns.join(' / ');
+    } else if(rn && !/^round\s*\d+$/i.test(rn)){
+      names[r] = rn; // e.g. "Opening Round", "Grand Final"
+    } else if(list.length >= 6 && list.every(g => SA_VENUE_PATTERN.test(g.venue || ''))){
+      names[r] = 'Gather Round';
+    }
+  });
+  tippingRoundNames = names;
+}
 function roundLabel(r){
-  return TIPPING_ROUND_NAMES[r] || `Round ${r}`;
+  if(tippingRoundNames[r]) return tippingRoundNames[r];
+  if(Number(r) === 0) return 'Opening Round'; // archived seasons (2024-2026) only
+  return TIPPING_ROUND_NAMES_FALLBACK[r] || `Round ${r}`;
 }
 
 let tippingDraft = {}; // { [gameId]: { pick, margin } } — live selections before the one Save-all click
@@ -17447,8 +17519,10 @@ async function saveAllTippingPicks(auth){
 
     const rounds = [...new Set(toWrite.map(w => w.round))];
     rounds.forEach(r => {
+      // v168: a timestamp instead of `true`, so the admin tracker can tell
+      // this season's submission apart from last season's same round number.
       authedFetch(`/tipping/submissions/${r}/${auth.uid}.json`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
       }).catch(() => {});
     });
     // Casino Pot jackpot eligibility for Tipping-only accounts — per
@@ -19766,14 +19840,17 @@ document.getElementById('adminSaveFirstRoundBtn').addEventListener('click', asyn
 async function loadAdminSubmissionsRounds(){
   const select = document.getElementById('adminSubmissionsRoundSelect');
   try{
-    const res = await fetch('https://mlsynddash.netlify.app/.netlify/functions/afl-fixtures', { cache: 'no-store' });
-    const data = await res.json();
-    const games = data.games || [];
+    const games = await fetchTippingFixtures(); // this season only
+    if(games.length === 0){
+      select.innerHTML = '<option value="">Fixture not released yet</option>';
+      document.getElementById('adminTippingSubmissionsArea').innerHTML = '<div class="empty">No games for this season yet.</div>';
+      return;
+    }
     const allRounds = [...new Set(games.map(g => g.round))].sort((a, b) => a - b);
     const openRounds = games.filter(g => g.complete < 100).map(g => g.round);
     const currentRound = openRounds.length ? Math.min(...openRounds) : Math.max(...allRounds);
     select.innerHTML = '<option value="">Pick a round</option>' + allRounds.map(r =>
-      `<option value="${r}">Round ${r}${r === currentRound ? ' — current' : ''}</option>`
+      `<option value="${r}">${roundLabel(r)}${r === currentRound ? ' — current' : ''}</option>`
     ).join('');
     select.value = currentRound;
     loadAdminSubmissionsForRound(currentRound);
@@ -19794,7 +19871,13 @@ async function loadAdminSubmissionsForRound(round){
       authedFetch(`/tipping/submissions/${round}.json`)
     ]);
     const allUsers = (await usersRes.json()) || {};
-    const submitted = (await subsRes.json()) || {};
+    const rawSubmitted = (await subsRes.json()) || {};
+    // Submissions are keyed by round NUMBER, so last season's Round 1 sat
+    // under the same key as this season's. Only count timestamps from this
+    // season (old `true` values are last season's).
+    const seasonStartMs = Date.UTC(await getTippingSeasonYear(), 0, 1);
+    const submitted = {};
+    Object.entries(rawSubmitted).forEach(([uid, v]) => { if(typeof v === 'number' && v >= seasonStartMs) submitted[uid] = true; });
     const eligible = Object.entries(allUsers).filter(([, u]) => u && u.status === 'approved' && u.tippingOptOut !== true);
     if(eligible.length === 0){
       area.innerHTML = '<div class="empty">No tipping-eligible people yet.</div>';
@@ -19985,6 +20068,13 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
   }
   if(!confirm(`Archive the ${outgoingYear} season and reset Tipping for ${newYear}? This wipes all Jokers and round-lock times, and sets first round to ${newFirstRound} and prize pot to $${newPrizePot}. Picks/results history is kept (never touched), only the live config resets. This cannot be undone.`)) return;
   if(!confirm('Definitely sure? This is your last chance to back out.')) return;
+  // v168 guard: running this twice would archive the NEW (empty) season
+  // over the top of a real one.
+  try{
+    const exRes = await authedFetch(`/tippingArchive/${outgoingYear}.json?shallow=true`);
+    const existing = exRes.ok ? await exRes.json() : null;
+    if(existing && !confirm(`${outgoingYear} has already been archived. Archiving again will REPLACE that saved ladder with whatever is live now. Only continue if you're sure.`)) return;
+  }catch(e){}
   statusEl.className = 'status-msg';
   statusEl.textContent = 'Archiving…';
   try{

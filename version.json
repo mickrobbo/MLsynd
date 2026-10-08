@@ -1,7 +1,11 @@
 {
-  "version": "2026-10-08.167",
+  "version": "2026-10-08.168",
   "date": "2026-10-08",
   "changes": [
+    "Footy Tipping now only shows the current season set in Archive & start new season \u2014 last season's games and ladder no longer carry over",
+    "Round names come from the fixture: no Opening Round from 2027, Gather Round detected automatically, finals named from the feed",
+    "Admin submissions tracker no longer counts last season's picks for the same round number",
+    "Archiving a season twice now asks before overwriting the saved ladder",
     "Casino Pot: a week where nobody qualified now carries its pot into the current week instead of getting stuck forever; already-paid leftovers clean themselves up",
     "Casino Pot payouts can no longer overwrite (or be overwritten by) a player's own game winnings, and failed payouts are recorded",
     "Health check: fixed three false alarms (weekly pot key format, top-up week marker, older weeks without group-multi detail) and it now explains why a pot period is stuck",
