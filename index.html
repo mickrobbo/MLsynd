@@ -3928,7 +3928,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-09-12.163"; // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-08.164"; // v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -15794,6 +15794,7 @@ async function refresh(){
   refreshOnThisDayIfNeeded(); // cheap date check most of the time; only actually fetches once the day rolls over
   const statusBar = document.getElementById('statusBar');
   try{
+    const fetchStartedAt = Date.now();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     const res = await authedFetch(`${DATA_PATH}?_=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
@@ -15801,6 +15802,13 @@ async function refresh(){
     if(res.ok){
       const remote = await res.json();
       if(remote){
+        // Never let a poll that raced an edit clobber unsaved group-draft
+        // rows with the stale server copy (the cause of entered group bets
+        // "disappearing" and of stale full-draft PUTs wiping other rows).
+        if(currentState && (groupDraftHasLocalChanges() || adminGroupDraftLastWriteAt > fetchStartedAt)){
+          remote.groupEntryDraft = Object.assign({}, remote.groupEntryDraft || {}, currentState.groupEntryDraft || {});
+          if(currentState.groupMultiCleared === false) remote.groupMultiCleared = false;
+        }
         currentState = remote;
         render(remote);
         statusBar.textContent = 'Last updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
@@ -19875,6 +19883,48 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
 // broader overwrite.
 let adminGroupDraftSaveTimer = null;
 let adminGroupDraftSaveRetries = 0;
+// Persistence hardening for the group multi draft (v164). Rows edited since
+// the last confirmed save are tracked by name so (a) saves PATCH only those
+// rows instead of PUTting the whole draft over anyone else's, (b) refresh()
+// never overwrites unsaved/in-flight local edits with stale server data, and
+// (c) a localStorage mirror lets a draft survive the app being killed before
+// the debounce fires.
+const GROUP_DRAFT_LS_KEY = 'mlsynd-groupdraft-pending';
+let adminGroupDraftDirty = new Set();
+let adminGroupDraftInFlight = 0;
+let adminGroupDraftLastWriteAt = 0;
+function groupDraftHasLocalChanges(){
+  return !!adminGroupDraftSaveTimer || adminGroupDraftInFlight > 0 || adminGroupDraftDirty.size > 0;
+}
+function groupDraftDirtyRows(){
+  const out = {};
+  const d = (currentState && currentState.groupEntryDraft) || {};
+  adminGroupDraftDirty.forEach(n => { out[n] = d[n] || null; });
+  return out;
+}
+function groupDraftMirrorWrite(){
+  try{
+    if(adminGroupDraftDirty.size === 0){ localStorage.removeItem(GROUP_DRAFT_LS_KEY); return; }
+    localStorage.setItem(GROUP_DRAFT_LS_KEY, JSON.stringify({ ts: Date.now(), rows: groupDraftDirtyRows() }));
+  }catch(e){}
+}
+// Called once after the first successful refresh: if a previous session was
+// killed with unsent edits, merge them back in and push them.
+function groupDraftRecoverFromMirror(){
+  try{
+    const raw = localStorage.getItem(GROUP_DRAFT_LS_KEY);
+    if(!raw || !currentState) return;
+    const saved = JSON.parse(raw);
+    if(!saved || !saved.rows || Date.now() - saved.ts > 7*24*3600*1000){ localStorage.removeItem(GROUP_DRAFT_LS_KEY); return; }
+    if(!currentState.groupEntryDraft) currentState.groupEntryDraft = {};
+    Object.keys(saved.rows).forEach(n => {
+      currentState.groupEntryDraft[n] = saved.rows[n];
+      adminGroupDraftDirty.add(n);
+    });
+    if(typeof renderAdminGroupEntry === 'function' && diagEntryLoaded) renderAdminGroupEntry();
+    saveAdminGroupEntryDraft();
+  }catch(e){}
+}
 // A genuine mechanics difference from the Ledger, found by directly
 // comparing its actual authedFetch against this app's: the Ledger's has
 // no read-only-role gate at all. This app's authedFetch throws before
@@ -19903,21 +19953,24 @@ async function groupEntryUngatedFetch(path, options){
 // keepalive:true so the request itself can survive past the page
 // actually going away.
 function flushAdminGroupEntryDraftSync(){
-  if(!adminGroupDraftSaveTimer) return; // nothing pending
+  if(!adminGroupDraftSaveTimer && adminGroupDraftDirty.size === 0) return; // nothing pending
   clearTimeout(adminGroupDraftSaveTimer);
   adminGroupDraftSaveTimer = null;
   try{
     const auth = authStorageGet();
-    if(!auth) return;
+    if(!auth || adminGroupDraftDirty.size === 0) return;
+    groupDraftMirrorWrite(); // belt and braces: if this keepalive dies, next launch re-sends it
     fetch(`${FIREBASE_URL}/state/groupEntryDraft.json?auth=${auth.idToken}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentState.groupEntryDraft || {}),
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(groupDraftDirtyRows()),
       keepalive: true
     });
   }catch(e){}
 }
 window.addEventListener('pagehide', flushAdminGroupEntryDraftSync);
 window.addEventListener('beforeunload', flushAdminGroupEntryDraftSync);
+// Mobile PWAs are usually backgrounded/killed without pagehide ever firing.
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') flushAdminGroupEntryDraftSync(); });
 // Debounce timing (800ms) matches the Ledger's own scheduleDraftSave
 // exactly, ported directly from its real, working implementation rather
 // than a guessed value.
@@ -19961,11 +20014,22 @@ async function saveAdminGroupEntryDraft(){
         throw new Error(`Firebase rejected clearing groupMultiCleared (HTTP ${clearRes.status}): ${bodyText || clearRes.statusText || 'no details'}`);
       }
     }
-    const res = await groupEntryUngatedFetch('/state/groupEntryDraft.json', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentState.groupEntryDraft || {}),
-      keepalive: true
-    });
+    // PATCH only the rows edited since the last confirmed save (never a
+    // whole-draft PUT of a possibly stale copy). A full PUT is used only
+    // when nothing is tracked as dirty (e.g. a manual Push).
+    const sentNames = Array.from(adminGroupDraftDirty);
+    const sentSnapshot = JSON.stringify(sentNames.map(n => (currentState.groupEntryDraft || {})[n] || null));
+    adminGroupDraftInFlight++;
+    let res;
+    try{
+      res = await groupEntryUngatedFetch('/state/groupEntryDraft.json', sentNames.length ? {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(groupDraftDirtyRows()), keepalive: true
+      } : {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentState.groupEntryDraft || {}), keepalive: true
+      });
+    } finally { adminGroupDraftInFlight--; adminGroupDraftLastWriteAt = Date.now(); }
     // Real bug, found directly: fetch() does NOT throw on an HTTP error
     // response (401/403/400/etc) — only on a genuine network failure.
     // This never checked res.ok, so a write Firebase actually REJECTED
@@ -19977,6 +20041,11 @@ async function saveAdminGroupEntryDraft(){
       throw new Error(`Firebase rejected the write (HTTP ${res.status}): ${bodyText || res.statusText || 'no details'}`);
     }
     adminGroupDraftSaveRetries = 0;
+    // Only mark rows clean if they weren't edited again while this save was in flight.
+    sentNames.forEach((n, k) => {
+      if(JSON.stringify((currentState.groupEntryDraft || {})[n] || null) === JSON.stringify(JSON.parse(sentSnapshot)[k])) adminGroupDraftDirty.delete(n);
+    });
+    groupDraftMirrorWrite();
     // Matches the Slips admin tool's established pattern (update
     // currentState, then render(currentState)) — reflects immediately
     // without waiting for the next poll.
@@ -20140,6 +20209,8 @@ function renderAdminGroupEntry(){
       const resultEl = wrap.querySelector(`.adminWkResult[data-name="${CSS.escape(name)}"]`);
       currentState.groupEntryDraft[name].odds = oddsEl.value !== '' ? parseFloat(oddsEl.value) : null;
       currentState.groupEntryDraft[name].result = resultEl.value || null;
+      adminGroupDraftDirty.add(name);
+      groupDraftMirrorWrite();
       scheduleAdminGroupDraftSave();
     };
     el.addEventListener('input', handler);
@@ -21019,6 +21090,7 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
     // Entry Inputs resets in the Ledger.
     adminIndDraftRows = [{ name: '', outlay: '50', ret: '' }, { name: '', outlay: '50', ret: '' }];
     currentState.groupEntryDraft = {};
+    adminGroupDraftDirty.clear(); groupDraftMirrorWrite();
     currentState.weekLabelDraft = null;
     await Promise.all([
       authedFetch('/state/individualBetDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(adminIndDraftRows) }),
@@ -23224,6 +23296,7 @@ function startApp(){
     // Guests aren't a roster member and shouldn't be prompted to "pick which
     // name is you" — that flow (and its write) is for real squad members only.
     if(currentUserRole !== 'readonly') resolveMyMemberIndex(currentUserName).catch(() => {});
+    if(currentUserRole !== 'readonly') groupDraftRecoverFromMirror();
     renderHomeDigest();
     pollActsOfGod();
     checkGroupChatUnread();

@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-12.163",
-  "date": "2026-09-12",
-  "changes": []
+  "version": "2026-10-08.164",
+  "date": "2026-10-08",
+  "changes": ["Group multi entries no longer disappear: background refresh can't overwrite unsaved edits, saves only send edited rows, and unsent edits are recovered on next launch"]
 }
