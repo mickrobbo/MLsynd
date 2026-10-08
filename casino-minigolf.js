@@ -1260,5 +1260,6 @@ function mgResume(){
   mgRenderWeeklyLadder();
   mgCheckWeeklyPrize();
   mgStartLadderPolling();
+  if(mgAnimId) cancelAnimationFrame(mgAnimId); // never stack two loops (double speed + double CPU)
   mgAnimId = requestAnimationFrame(mgLoop);
 }

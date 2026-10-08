@@ -413,7 +413,7 @@ function pongMpPopulateOpponentSelect(){
   if(!sel || !currentState || !Array.isArray(currentState.members)) return;
   const others = currentState.members.filter(m => m.linkedUid && m.linkedUid !== currentUserUid);
   sel.innerHTML = others.length
-    ? others.map(m => `<option value="${m.linkedUid}">${m.name}</option>`).join('')
+    ? others.map(m => `<option value="${escapeHtml(m.linkedUid)}">${escapeHtml(m.name)}</option>`).join('')
     : '<option value="">No other linked members yet</option>';
 }
 

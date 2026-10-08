@@ -1,86 +1,89 @@
-// ---- Multiplayer Pong — Stage 3b: the Firebase adapter ----
+// ---- Multiplayer Pong — the Firebase sync layer connecting two
+// clients' PongMpLockstep sessions (see pong-mp-lockstep.js) to each
+// other. This app talks to Firebase purely over REST (authedFetch
+// against .json endpoints) everywhere else — Hold'em, multiplayer
+// Blackjack, the Casino floor feed all work this way — rather than the
+// Firebase JS SDK's websocket-based real-time listeners, so "real-time"
+// here means frequent polling with client-side smoothing to hide the
+// gaps, not a true push channel. Matches that existing convention
+// rather than introducing a new networking approach just for Pong.
 //
-// Everything determinism-critical lives in pong-mp-lockstep.js and was
-// proven correct there via simulated-network unit tests. This file is
-// deliberately as thin and boring as possible: it just moves bytes
-// between that scheduler and Firebase. It CANNOT be unit-tested the way
-// the last two files were — it needs a real Firebase connection, so
-// this only gets verified once two actual phones play a real match.
-// Keeping it this thin is exactly why: less surface area here means
-// less that can only be checked live.
-//
-// Reuses ensureHoldemRealtimeAuth() (defined in index.html, despite the
-// name it's generic to any realtime listener in this app — see its own
-// comment) rather than minting a second auth bridge. No new Netlify
-// function needed for this stage.
-//
-// Firebase layout this reads/writes (rules for this added to
-// firebase-rules.json alongside this delivery):
-//   /pongLive/{matchId}/inputs/p1/{tick} = y   (challenger writes only this)
-//   /pongLive/{matchId}/inputs/p2/{tick} = y   (opponent writes only this)
+// What actually gets synced is deliberately small: each player's
+// current PADDLE TARGET Y, nothing else. Not ball position, not score,
+// not paddle velocity — because the whole point of the lockstep engine
+// is that both clients compute everything else identically from that
+// one number plus their own local input, given the shared deterministic
+// physics. Syncing paddle targets instead of full game state is both
+// far less data over the wire and far more resistant to a slow or
+// jittery connection: a stale ball-position sync would visibly jump the
+// ball around on a lag spike, while a stale paddle target just means
+// the opponent's paddle briefly stops updating and then catches up
+// smoothly once a fresh value arrives (helped by the engine's own
+// PADDLE_MAX_SPEED cap, which was already there for exactly this).
 
-function pongMpCreateFirebaseAdapter(session, matchId) {
-  const mySide = session.mySide;
-  const otherSide = session.otherSide;
-  let sendTimer = null;
-  let remoteRef = null;
-  let stopped = false;
+function pongMpCreateFirebaseAdapter(session, matchId){
+  const SYNC_MS = 80; // ~12.5 syncs/sec — smooth enough given PADDLE_MAX_SPEED, without hammering Firebase every 16ms
+  let syncHandle = null;
+  let mySide = null;       // 'p1' or 'p2' — matches the role-based path structure already defined in firebase-rules.json's pongLive node
+  let opponentSide = null;
+  let lastWrittenY = null; // avoids re-writing the identical value every tick when the local paddle isn't moving
 
-  // Drains whatever ticks the scheduler has buffered locally since the
-  // last send and pushes them out as ONE merged update() call rather
-  // than one write per tick — at 60 ticks/sec, writing every single
-  // tick individually would be both needlessly chatty against Firebase
-  // and pointless, since input delay already means several ticks
-  // accumulate between sends anyway. update() merges keys rather than
-  // replacing the whole node, so earlier ticks already written are
-  // never clobbered by a later batch.
-  function flushOutbox() {
-    const batch = session.drainOutbox();
-    if (batch.length === 0) return;
-    const patch = {};
-    batch.forEach(({ tick, y }) => { patch[tick] = y; });
-    firebase.database().ref(`/pongLive/${matchId}/inputs/${mySide}`).update(patch).catch(() => {
-      // A failed update here is exactly the "genuinely lost input"
-      // scenario flagged in pong-mp-lockstep.test.js's closing note —
-      // this adapter doesn't retry it, which means the opponent's
-      // session will stall waiting for these specific ticks. Stage 4
-      // needs a real stall/forfeit UI; for now this at least doesn't
-      // pretend the send succeeded.
-      console.warn('Pong PvP: failed to send input batch — opponent may stall until reconnect.');
-    });
+  // IMPORTANT: the path structure below (/pongLive/{matchId}/inputs/p1
+  // and /inputs/p2, gated by challengerUid=p1/opponentUid=p2) is not a
+  // new design — firebase-rules.json already had a pongLive node with
+  // exactly this shape and exactly these write permissions before this
+  // file was written. Matched deliberately rather than inventing a
+  // parallel /pongMatches/{id}/live/{uid}/y path, which would have
+  // needed its own new rules and duplicated a decision someone had
+  // already made correctly.
+  async function fetchMatchSides(){
+    const res = await authedFetch(`/pongMatches/${matchId}.json`);
+    if(!res.ok) throw new Error('Could not load match details.');
+    const match = await res.json();
+    if(!match) throw new Error('Match not found.');
+    mySide = match.challengerUid === currentUserUid ? 'p1' : 'p2';
+    opponentSide = mySide === 'p1' ? 'p2' : 'p1';
   }
 
-  // child_added fires once per NEW tick key as it appears under the
-  // opponent's inputs node — exactly the shape we want (one event per
-  // tick, in the order Firebase saw them written), rather than 'value'
-  // which would hand back the entire growing object on every change.
-  function startListening() {
-    remoteRef = firebase.database().ref(`/pongLive/${matchId}/inputs/${otherSide}`);
-    remoteRef.on('child_added', (snap) => {
-      const tick = parseInt(snap.key, 10);
-      const y = snap.val();
-      if (Number.isFinite(tick) && typeof y === 'number') {
-        session.receiveRemoteInput(tick, y);
-      }
-    });
+  async function writeMyPaddle(){
+    // Reads the local target from casino-pong.js's own global rather
+    // than taking it as a parameter — matches how pongPvpSession.advance
+    // already reads it (via the getLocalTargetY callback passed in from
+    // the same global), so there's one source of truth for "where is my
+    // paddle right now" rather than two that could disagree.
+    const y = typeof pongPvpLocalTargetY === 'number' ? pongPvpLocalTargetY : null;
+    if(y === null || y === lastWrittenY) return;
+    lastWrittenY = y;
+    try{
+      await authedFetch(`/pongLive/${matchId}/inputs/${mySide}.json`, {
+        method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(y)
+      });
+    }catch(e){} // a single missed write is fine — the next sync tick retries with a fresher value anyway
   }
 
-  async function start() {
-    await ensureHoldemRealtimeAuth(); // generic despite the name — see its own comment in index.html
-    startListening();
-    // Sent on a fixed short interval rather than after every single
-    // recordLocalInput() call — batches naturally accumulate a handful
-    // of ticks between sends this way, which is the entire point of
-    // draining a buffer instead of writing per-tick.
-    sendTimer = setInterval(flushOutbox, 66); // ~15 sends/sec — comfortably inside the input-delay budget (6 ticks = 100ms) without writing on every single tick
+  async function readOpponentPaddle(){
+    try{
+      const res = await authedFetch(`/pongLive/${matchId}/inputs/${opponentSide}.json`);
+      if(!res.ok) return;
+      const y = await res.json();
+      if(typeof y === 'number') session.setRemoteTargetY(y);
+    }catch(e){} // isStalled() on the session already surfaces a sustained gap to the UI — no need to duplicate that handling here
   }
 
-  function stop() {
-    if (stopped) return;
-    stopped = true;
-    if (sendTimer) clearInterval(sendTimer);
-    if (remoteRef) remoteRef.off('child_added');
-  }
-
-  return { start, stop, flushOutbox };
+  return {
+    async start(){
+      await fetchMatchSides();
+      // First read happens immediately rather than waiting a full
+      // SYNC_MS — otherwise the opponent's paddle sits at the default
+      // centre position for up to 80ms after the match visibly begins.
+      await readOpponentPaddle();
+      syncHandle = setInterval(() => {
+        writeMyPaddle();
+        readOpponentPaddle();
+      }, SYNC_MS);
+    },
+    stop(){
+      if(syncHandle){ clearInterval(syncHandle); syncHandle = null; }
+    }
+  };
 }

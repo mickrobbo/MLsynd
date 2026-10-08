@@ -1,5 +1,12 @@
 {
-  "version": "2026-10-08.164",
+  "version": "2026-10-08.166",
   "date": "2026-10-08",
-  "changes": ["Group multi entries no longer disappear: background refresh can't overwrite unsaved edits, saves only send edited rows, and unsent edits are recovered on next launch"]
+  "changes": [
+    "Group multi entries no longer disappear: background refresh can't overwrite unsaved edits, saves only send edited rows, and unsent edits are recovered on next launch",
+    "Money-critical writes (Save Week, members, history, group) now verify the server accepted them; 15s poll skips redundant re-renders",
+    "Faster startup: Firebase live-table SDK only loads when a live table opens; Maxine's images compressed and lazy-loaded",
+    "Battery: background timers pause while the app is hidden; Mini Golf stops drawing when you leave Casino; approval check stops once approved",
+    "Fix: Maxine's wins threw an error after crediting, so wins never reached the live feed or milestones",
+    "Smoother animations: tier gems, casino button sheens and coin shines now GPU-animated"
+  ]
 }

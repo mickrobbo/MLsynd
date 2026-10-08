@@ -13,8 +13,10 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=158">
+<link rel="stylesheet" href="dashboard.css?v=166">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -28,12 +30,9 @@
      initial page load, so there's no downside to not blocking on them.
      Not doing this originally was a real gap — worth fixing regardless
      of whether it turns out to be the actual cause of anything. -->
-<script defer src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/12.17.1/firebase-auth-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/12.17.1/firebase-database-compat.js"></script>
 </head>
 <body>
-<img src="/home-silhouette.jpg" alt="" class="home-silhouette-bg">
+<img src="/home-silhouette.jpg" alt="" class="home-silhouette-bg" loading="lazy" decoding="async">
 <div id="authGate" class="auth-gate">
   <div class="auth-box">
     <img src="/logo-icon.png" alt="" class="auth-logo-icon">
@@ -86,7 +85,7 @@
 <div class="wrap">
   <header>
     <img src="/banner.png" alt="MLSynd" class="header-banner header-banner-default">
-    <img src="/banner-gold.png" alt="MLSynd" class="header-banner header-banner-maxines">
+    <img src="/banner-gold.png" alt="MLSynd" class="header-banner header-banner-maxines" loading="lazy" decoding="async">
   </header>
 
   <div class="tab-panel active" id="tab-balance">
@@ -3170,6 +3169,18 @@ async function authedFetch(path, options){
   return fetch(`${FIREBASE_URL}${path}${sep}auth=${auth.idToken}`, options);
 }
 
+
+// Write wrapper: fetch() resolves on HTTP errors (401/403/400), so a bare
+// `await authedFetch(...)` treats a REJECTED write as success. Use this for
+// every write whose success matters; it throws with the real status instead.
+async function authedWrite(path, options){
+  const res = await authedFetch(path, options);
+  if(!res.ok){
+    const t = await res.text().catch(() => '');
+    throw new Error(`Write to ${path} failed (HTTP ${res.status})${t ? ': ' + t.slice(0,160) : ''}`);
+  }
+  return res;
+}
 // ---- Gate control ----
 let appStarted = false;
 let approvalPollFn = null;
@@ -3621,6 +3632,14 @@ async function checkApprovalAndProceed(){
         const diagBtn = document.getElementById('homeDiagSubBtn');
         if(diagBtn) diagBtn.style.display = '';
       }
+      // Perf: stop the 30s pending-approval poll once approved (it used to
+      // keep re-fetching the profile and re-running this for the whole session).
+      if(approvalPollFn){
+        clearInterval(approvalPollFn._intervalId);
+        const pi = smartPollers.findIndex(p => p.fn === approvalPollFn);
+        if(pi > -1) smartPollers.splice(pi, 1);
+        approvalPollFn = null;
+      }
       if(!appStarted){
         appStarted = true;
         applyRoleTabRestrictions();
@@ -3640,7 +3659,7 @@ async function checkApprovalAndProceed(){
       // "online" as "active in the last few minutes" in Diagnostics without
       // needing a persistent connection.
       sendPresenceHeartbeat();
-      if(!presenceHeartbeatHandle) presenceHeartbeatHandle = setInterval(sendPresenceHeartbeat, 60000);
+      if(!presenceHeartbeatHandle) presenceHeartbeatHandle = setInterval(() => { if(!document.hidden) sendPresenceHeartbeat(); }, 60000);
       // Same 60s cadence as presence — flushes whatever tab/game has been
       // open that long without requiring the user to actually switch away.
       if(!timeTrackFlushHandle) timeTrackFlushHandle = setInterval(flushTabTime, 60000);
@@ -3648,7 +3667,7 @@ async function checkApprovalAndProceed(){
       showAuthGate('pending');
       if(!approvalPollFn){
         approvalPollFn = checkApprovalAndProceed;
-        startSmartPolling(approvalPollFn, 30000);
+        approvalPollFn._intervalId = startSmartPolling(approvalPollFn, 30000);
       }
     }
   }catch(e){
@@ -3928,7 +3947,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-08.164"; // v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-08.166"; // v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -5366,9 +5385,30 @@ const firebaseConfig = {
 };
 let holdemFirebaseApp = null;
 let holdemRealtimeAuthPromise = null;
+// Perf (v166): the Firebase SDK (~3 scripts, several hundred KB) used to
+// load on every app open even though only live Blackjack/Hold'em tables use
+// it — everything else talks to Firebase over REST. Now fetched on demand
+// the first time a live table opens.
+let firebaseSdkPromise = null;
+function loadFirebaseSdk(){
+  if(window.firebase && window.firebase.database) return Promise.resolve();
+  if(firebaseSdkPromise) return firebaseSdkPromise;
+  const base = 'https://www.gstatic.com/firebasejs/12.17.1/';
+  const load = (f) => new Promise((resolve, reject) => {
+    const el = document.createElement('script');
+    el.src = base + f; el.async = false;
+    el.onload = resolve; el.onerror = () => reject(new Error('Could not load ' + f));
+    document.head.appendChild(el);
+  });
+  firebaseSdkPromise = load('firebase-app-compat.js')
+    .then(() => Promise.all([load('firebase-auth-compat.js'), load('firebase-database-compat.js')]))
+    .catch(e => { firebaseSdkPromise = null; throw e; });
+  return firebaseSdkPromise;
+}
 function ensureHoldemRealtimeAuth(){
   if(holdemRealtimeAuthPromise) return holdemRealtimeAuthPromise;
   holdemRealtimeAuthPromise = (async () => {
+    await loadFirebaseSdk();
     if(!holdemFirebaseApp) holdemFirebaseApp = firebase.initializeApp(firebaseConfig);
     if(firebase.auth().currentUser && firebase.auth().currentUser.uid === currentUserUid) return true;
     const { customToken } = await holdemDealerCall(null, 'mintRealtimeToken', {});
@@ -5504,7 +5544,7 @@ async function openMpBjTable(tableId){
   }
   if(mpBjPollTimer) clearInterval(mpBjPollTimer);
   mpBjPollTimer = setInterval(() => {
-    if(mpBjCurrentTableId !== tableId) return;
+    if(document.hidden || mpBjCurrentTableId !== tableId) return;
     renderMpBjSeatGrid();
     renderMpBjChat(tableId, 'mpBjTableChatMessages');
     // Real gap in the earlier ambience fix, found from a live report:
@@ -7942,7 +7982,7 @@ function renderActOfGodBanner(){
   el.innerHTML = `<b>${escapeHtml(activeActOfGod.label)}</b><span>${escapeHtml(activeActOfGod.desc)} — ${minsLeft}m left</span>`;
   el.style.display = 'flex';
 }
-setInterval(pollActsOfGod, 60000);
+setInterval(() => { if(!document.hidden) pollActsOfGod(); }, 60000);
 
 // ---- Syndy Voice — a genuine AI voice via Google Cloud Text-to-Speech
 // (WaveNet), replacing the earlier browser-native speechSynthesis
@@ -8152,6 +8192,10 @@ async function getHighRollerBalance(){
 async function awardHighRollerXP(amount, reason){
   if(!currentUserUid || !amount) return;
   try{
+    let next = 0; // BUG FIX v166: was `const next` inside the retry loop, so the post-loop
+    // maxinesCheckMilestone(next) threw ReferenceError on EVERY winning hand — after the
+    // chips landed, so the catch reported a failure, and wins never reached the feed,
+    // milestones or (depending on order) Biggest Win.
     let landed = false;
     for(let attempt = 0; attempt < 5; attempt++){
       const res = await authedFetch(`/highRollers/${currentUserUid}/balance.json`, {
@@ -8168,7 +8212,7 @@ async function awardHighRollerXP(amount, reason){
       if(!res.ok) throw new Error(`Maxine's balance read failed: ${res.status}`);
       const etag = res.headers.get('ETag');
       const current = (await res.json()) || 0;
-      const next = (typeof current === 'number' ? current : 0) + amount;
+      next = (typeof current === 'number' ? current : 0) + amount;
       const putRes = await authedFetch(`/highRollers/${currentUserUid}/balance.json`, {
         method: 'PUT',
         headers: { 'Content-Type':'application/json', 'if-match': etag },
@@ -8343,7 +8387,7 @@ function maxinesApplyMood(entries){
 let maxinesFeedPollHandle = null;
 function startMaxinesFeedPolling(){
   stopMaxinesFeedPolling();
-  maxinesFeedPollHandle = setInterval(renderMaxinesFeed, 15000);
+  maxinesFeedPollHandle = setInterval(() => { if(!document.hidden) renderMaxinesFeed(); }, 15000);
 }
 function stopMaxinesFeedPolling(){
   if(maxinesFeedPollHandle){ clearInterval(maxinesFeedPollHandle); maxinesFeedPollHandle = null; }
@@ -9506,7 +9550,7 @@ function renderCasinoPotCountdown(){
   // a weekly Monday-date key doesn't carry that same ambiguity to resolve).
   el.innerHTML = `⏳ Locks in <b>${formatPotCountdown(diff)}</b> · redistributed 8am AEST every Monday`;
 }
-setInterval(renderCasinoPotCountdown, 30000);
+setInterval(() => { if(!document.hidden) renderCasinoPotCountdown(); }, 30000);
 
 async function renderCasinoPotPanel(){
   const totalEl = document.getElementById('casinoPotTotal');
@@ -10181,7 +10225,12 @@ async function loadProfileActivity(uid, forName){
     // log every time, which is fine for a personal log at this scale but
     // would need revisiting (a real limitToLast + matching index) if any
     // single account's log ever grows large enough for that to matter.
-    const res = await authedFetch(`/xp/${uid}/log.json`);
+    // Perf (v166): the log grows with every casino hand, so pulling the whole
+    // thing on each profile open got slower forever. The ts index is in the
+    // rules and already used by the Floor feed, so ask for the newest 150 and
+    // only fall back to the full fetch if the server rejects the query.
+    let res = await authedFetch(`/xp/${uid}/log.json?orderBy=${encodeURIComponent('"ts"')}&limitToLast=150`);
+    if(res.status === 400) res = await authedFetch(`/xp/${uid}/log.json`);
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     if(!res.ok){
       area.innerHTML = `<div class="empty">Couldn't load activity (server said ${res.status}).</div>`;
@@ -10521,7 +10570,7 @@ const CASINO_GAME_LABELS = {
 let casinoFloorPollHandle = null;
 function startCasinoFloorPolling(){
   stopCasinoFloorPolling();
-  casinoFloorPollHandle = setInterval(renderCasinoFloorFeed, 20000);
+  casinoFloorPollHandle = setInterval(() => { if(!document.hidden) renderCasinoFloorFeed(); }, 20000);
 }
 function stopCasinoFloorPolling(){
   if(casinoFloorPollHandle){ clearInterval(casinoFloorPollHandle); casinoFloorPollHandle = null; }
@@ -11893,7 +11942,6 @@ document.getElementById('crapsRollTopBtn').addEventListener('click', crapsRoll);
 
 </script>
 <script src="casino-mines.js"></script>
-<script src="pong-mp-engine.js"></script>
 <script src="pong-mp-lockstep.js"></script>
 <script src="pong-mp-firebase-adapter.js"></script>
 <script src="casino-pong.js"></script>
@@ -14272,7 +14320,7 @@ async function checkGroupChatUnread(){
     updateGroupChatUnreadBadge(isUnread);
   }catch(e){}
 }
-setInterval(checkGroupChatUnread, 60000);
+setInterval(() => { if(!document.hidden) checkGroupChatUnread(); }, 60000);
 
 // A minimal, deliberately narrow markdown renderer — just **bold**,
 // numbered/bulleted lists, and line breaks, which is all Syndy's replies
@@ -14491,7 +14539,7 @@ function switchChatMode(mode){
     renderGroupChat(true);
     renderGroupChatTyping();
     if(!groupChatPollHandle){
-      groupChatPollHandle = setInterval(() => { renderGroupChat(false); renderGroupChatTyping(); }, 5000);
+      groupChatPollHandle = setInterval(() => { if(document.hidden) return; renderGroupChat(false); renderGroupChatTyping(); }, 5000);
     }
   } else {
     document.getElementById('syndyChatHeaderName').textContent = 'Syndy';
@@ -15800,7 +15848,18 @@ async function refresh(){
     const res = await authedFetch(`${DATA_PATH}?_=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
     clearTimeout(timeout);
     if(res.ok){
-      const remote = await res.json();
+      const rawText = await res.text();
+      let remote = null;
+      try{ remote = JSON.parse(rawText); }catch(e){ remote = null; }
+      // Perf: the 15s poll used to rebuild the whole UI even when nothing
+      // changed. Skip the heavy render when the payload is byte-identical,
+      // there are no local unsaved edits, and we rendered within the last 60s.
+      if(remote && currentState && rawText === window.__lastStateRaw && !groupDraftHasLocalChanges() && Date.now() - (window.__lastStateRenderAt || 0) < 60000){
+        statusBar.textContent = 'Last updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        return;
+      }
+      window.__lastStateRaw = rawText;
+      window.__lastStateRenderAt = Date.now();
       if(remote){
         // Never let a poll that raced an edit clobber unsaved group-draft
         // rows with the stale server copy (the cause of entered group bets
@@ -15835,6 +15894,14 @@ function setActiveTab(tab){
   // here, for every tab, unconditionally: a no-op instantly if Maxine's
   // isn't active, so this changes nothing about normal tab switching.
   maxinesCleanupIfActive();
+  // Perf: Mini Golf's 60fps render loop only stopped on a game-to-game
+  // switch, so leaving the Casino tab while on Mini Golf kept it drawing
+  // to a hidden canvas for the rest of the session.
+  if(tab !== 'casino' && typeof mgActive !== 'undefined') mgActive = false;
+  else if(tab === 'casino' && typeof mgResume === 'function' && typeof mgBuilt !== 'undefined' && mgBuilt && !mgActive){
+    const mgPanel = document.getElementById(CASINO_GAME_PANEL_IDS.minigolf);
+    if(mgPanel && mgPanel.style.display === 'block') mgResume();
+  }
   // Diag moved from being its own top-level tab into a Home pill — this
   // keeps every existing setActiveTab('diag') call site working (the
   // health-pill jump, and session-restore-after-refresh below) without
@@ -16550,16 +16617,25 @@ function applyPricesToOpenRow(runnersDiv, venue, race){
 // Netlify's function-call cap and Firebase's data-download cap when a phone is left open.
 const smartPollers = [];
 function startSmartPolling(fn, intervalMs){
+  const entry = { fn, intervalMs, lastRun: Date.now() };
+  const run = () => { entry.lastRun = Date.now(); fn(); };
+  entry.run = run;
   const id = setInterval(() => {
     if(document.hidden) return; // skip this tick — screen locked / tab backgrounded
-    fn();
+    run();
   }, intervalMs);
-  smartPollers.push(fn);
+  smartPollers.push(entry);
   return id;
 }
 document.addEventListener('visibilitychange', () => {
   if(!document.hidden){
-    smartPollers.forEach(fn => fn()); // came back into view — refresh right away instead of waiting for the next tick
+    // Came back into view — refresh right away, but only pollers whose
+    // data is actually stale (perf: a quick app-switch used to fire every
+    // poller at once, including 5-minute ones that had just run). Staggered
+    // so they don't all hit the network in the same frame.
+    const now = Date.now();
+    smartPollers.filter(p => now - p.lastRun >= Math.min(p.intervalMs, 15000))
+      .forEach((p, i) => setTimeout(p.run, i * 150));
   } else {
     // Going hidden (app-switch, phone lock, browser tab hidden) — same
     // synchronous direct flush used for pagehide/beforeunload, not the
@@ -16591,7 +16667,7 @@ let priceRefreshFn = null;
 function stopPriceRefresh(){
   if(priceRefreshTimer){ clearInterval(priceRefreshTimer); priceRefreshTimer = null; }
   if(priceRefreshFn){
-    const idx = smartPollers.indexOf(priceRefreshFn);
+    const idx = smartPollers.findIndex(p => p.fn === priceRefreshFn);
     if(idx > -1) smartPollers.splice(idx, 1);
     priceRefreshFn = null;
   }
@@ -18967,7 +19043,7 @@ let diagRepairLoaded = false;
 // newer data sitting in Firebase. Scoping the write to just this one
 // sub-path makes that entire class of bug structurally impossible.
 async function saveSlipsToFirebase(slipsArray){
-  await authedFetch('/state/slips.json', {
+  await authedWrite('/state/slips.json', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(slipsArray)
   });
@@ -19086,7 +19162,7 @@ document.getElementById('adminSlipFileInput').addEventListener('change', async (
 // per member), so one shared write helper covers all three rather than
 // three near-identical copies.
 async function saveMembersToFirebase(membersArray){
-  await authedFetch('/state/members.json', {
+  await authedWrite('/state/members.json', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(membersArray)
   });
@@ -19969,8 +20045,6 @@ function flushAdminGroupEntryDraftSync(){
 }
 window.addEventListener('pagehide', flushAdminGroupEntryDraftSync);
 window.addEventListener('beforeunload', flushAdminGroupEntryDraftSync);
-// Mobile PWAs are usually backgrounded/killed without pagehide ever firing.
-document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') flushAdminGroupEntryDraftSync(); });
 // Debounce timing (800ms) matches the Ledger's own scheduleDraftSave
 // exactly, ported directly from its real, working implementation rather
 // than a guessed value.
@@ -20299,7 +20373,7 @@ async function saveAdminGroupFinancialsDraft(){
   });
   currentState.groupFinancialsDraft = draft;
   try{
-    await authedFetch('/state/groupFinancialsDraft.json', {
+    await authedWrite('/state/groupFinancialsDraft.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft)
     });
   }catch(e){}
@@ -20337,7 +20411,7 @@ function scheduleAdminIndDraftSave(){
 }
 async function saveAdminIndividualBetDraft(){
   try{
-    await authedFetch('/state/individualBetDraft.json', {
+    await authedWrite('/state/individualBetDraft.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(adminIndDraftRows || [])
     });
@@ -20558,7 +20632,7 @@ document.getElementById('adminSaveWeeklyBetsBtn').addEventListener('click', asyn
       placed: !!v.placed
     }));
   try{
-    await authedFetch('/state/weeklyIndividualBets.json', {
+    await authedWrite('/state/weeklyIndividualBets.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rows)
     });
     currentState.weeklyIndividualBets = rows;
@@ -20604,10 +20678,10 @@ function renderAdminBettorRotationPanel(){
         return;
       }
       try{
-        await authedFetch('/state/bettorRotationOrder.json', {
+        await authedWrite('/state/bettorRotationOrder.json', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(order)
         });
-        await authedFetch('/state/bettorRotationNextUpIndex.json', {
+        await authedWrite('/state/bettorRotationNextUpIndex.json', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(idx)
         });
         currentState.bettorRotationOrder = order;
@@ -20671,10 +20745,10 @@ document.getElementById('adminRotationSetupNextBtn').addEventListener('click', a
   });
   const nextWeeklyBets = nextNames.map(name => ({ name, result: '', pl: '', sgm: false, sgmResult: '', sgmAmount: '', cashedOut: false, placed: false }));
   try{
-    await authedFetch('/state/weeklyIndividualBets.json', {
+    await authedWrite('/state/weeklyIndividualBets.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nextWeeklyBets)
     });
-    await authedFetch('/state/bettorRotationNextUpIndex.json', {
+    await authedWrite('/state/bettorRotationNextUpIndex.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nextUpIndex)
     });
     currentState.weeklyIndividualBets = nextWeeklyBets;
@@ -21069,16 +21143,16 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
 
     // Everything computed successfully — now write it all back, each to
     // its own scoped path, never a full /state.json overwrite.
-    await authedFetch('/state/members.json', {
+    await authedWrite('/state/members.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingMembers)
     });
-    await authedFetch('/state/group.json', {
+    await authedWrite('/state/group.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingGroup)
     });
-    await authedFetch('/state/history.json', {
+    await authedWrite('/state/history.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingHistory)
     });
-    await authedFetch('/state/lastSnapshot.json', {
+    await authedWrite('/state/lastSnapshot.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lastSnapshot)
     });
     currentState.members = workingMembers;
@@ -21096,7 +21170,7 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
       authedFetch('/state/individualBetDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(adminIndDraftRows) }),
       authedFetch('/state/groupEntryDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }),
       authedFetch('/state/weekLabelDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(null) }),
-    ].map(p => p.catch(() => {})));
+    ].map(p => p.then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); }).catch(e => { showToast('Week saved, but clearing a draft field failed (' + e.message + ') — check the Entry tab'); })));
 
     renderAdminFinIndRows();
     renderAdminGroupEntry();
@@ -21207,13 +21281,13 @@ document.getElementById('adminUndoWeekBtn').addEventListener('click', async () =
     workingGroup.bonus = (workingGroup.bonus || 0) - (last.group.bonus || 0);
     workingGroup.sgmWin = (workingGroup.sgmWin || 0) - (last.group.sgmWin || 0);
 
-    await authedFetch('/state/members.json', {
+    await authedWrite('/state/members.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingMembers)
     });
-    await authedFetch('/state/group.json', {
+    await authedWrite('/state/group.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingGroup)
     });
-    await authedFetch('/state/history.json', {
+    await authedWrite('/state/history.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(workingHistory)
     });
     currentState.members = workingMembers;
@@ -21302,10 +21376,10 @@ document.getElementById('adminRecalcBtn').addEventListener('click', async () => 
   try{
     const before = { ...(currentState.group || {}) };
     const { newGroup, newMembers } = recalculateAllFromHistoryAdmin();
-    await authedFetch('/state/group.json', {
+    await authedWrite('/state/group.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newGroup)
     });
-    await authedFetch('/state/members.json', {
+    await authedWrite('/state/members.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newMembers)
     });
     currentState.group = newGroup;
@@ -21540,10 +21614,10 @@ document.getElementById('adminFixWeekSaveBtn').addEventListener('click', async (
     // needs the whole season's totals rebuilt from history just like a
     // full recalculate does, not a partial patch.
     const { newGroup, newMembers } = recalculateAllFromHistoryAdmin();
-    await authedFetch('/state/group.json', {
+    await authedWrite('/state/group.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newGroup)
     });
-    await authedFetch('/state/members.json', {
+    await authedWrite('/state/members.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newMembers)
     });
     currentState.group = newGroup;
@@ -21753,7 +21827,7 @@ document.getElementById('adminClearWhoCookingBtn').addEventListener('click', asy
   status.className = 'status-msg';
   status.textContent = 'Clearing…';
   try{
-    await authedFetch('/state/groupMultiCleared.json', {
+    await authedWrite('/state/groupMultiCleared.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
     });
     status.className = 'status-msg ok';
@@ -21802,19 +21876,19 @@ document.getElementById('adminResetSeasonBtn').addEventListener('click', async (
     // write fails, the function throws and nothing else below runs, so a
     // failed archive can never result in lost stats with no record of
     // them anywhere.
-    await authedFetch('/state/seasonArchive.json', {
+    await authedWrite('/state/seasonArchive.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(seasonArchive)
     });
-    await authedFetch('/state/members.json', {
+    await authedWrite('/state/members.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newMembers)
     });
-    await authedFetch('/state/group.json', {
+    await authedWrite('/state/group.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newGroup)
     });
-    await authedFetch('/state/history.json', {
+    await authedWrite('/state/history.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify([])
     });
-    await authedFetch('/state/lastSnapshot.json', { method: 'DELETE' });
+    await authedWrite('/state/lastSnapshot.json', { method: 'DELETE' });
 
     currentState.seasonArchive = seasonArchive;
     currentState.members = newMembers;
@@ -21924,7 +21998,7 @@ document.getElementById('adminDuesXPBackpayBtn').addEventListener('click', async
       }
     }
   }
-  await authedFetch('/state/duesXPBackpaidAt.json', {
+  await authedWrite('/state/duesXPBackpaidAt.json', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
   });
   currentState.duesXPBackpaidAt = Date.now();
@@ -22020,7 +22094,7 @@ document.getElementById('adminBonusBtn').addEventListener('click', async () => {
   // /state.json overwrite — same principle as saveMembersToFirebase.
   const pushHistory = async (entry) => {
     const next = [...(currentState.rolloutBonusHistory || []), entry];
-    await authedFetch('/state/rolloutBonusHistory.json', {
+    await authedWrite('/state/rolloutBonusHistory.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next)
     });
     currentState.rolloutBonusHistory = next;
@@ -22189,7 +22263,7 @@ document.getElementById('adminRestoreFile').addEventListener('change', async (e)
       status.className = 'status-msg';
       status.textContent = 'Restoring…';
       try{
-        await authedFetch('/state.json', {
+        await authedWrite('/state.json', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(adminPendingRestoreState)
         });
         status.className = 'status-msg ok';

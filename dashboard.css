@@ -5444,3 +5444,53 @@
      render a border set directly on <tr> in most browsers. */
   table.mg-ladder tr.me td{ font-weight:800; }
   table.mg-ladder tr.me td:first-child{ border-left:3px solid var(--brass-light); padding-left:5px; }
+
+  /* =====================================================================
+     PERFORMANCE PASS (v166) — same look, cheaper to draw.
+     Every loop below used to animate a property that forces the browser to
+     re-layout or re-paint every frame (left, box-shadow, filter). They now
+     animate transform/opacity, which the GPU handles without touching
+     layout, so phones stay cool and scrolling stays smooth.
+     ===================================================================== */
+
+  /* Casino pill sheen + coin shines: `left` -> transform (no layout per frame) */
+  @keyframes btnSheen{ 0%{ transform:translateX(0) skewX(-20deg); } 35%,100%{ transform:translateX(475%) skewX(-20deg); } }
+  #tab-casino .pill-btn::after{ will-change:transform; }
+  @keyframes donCoinIdleShine{ 0%,62%{ transform:translateX(0); } 85%,100%{ transform:translateX(509%); } }
+  @keyframes coinSweep{ 0%,58%{ transform:translateX(0); } 78%,100%{ transform:translateX(509%); } }
+  .don-coin-shine::after, .coin-shine::after{ will-change:transform; }
+
+  /* Tier gem pulse: box-shadow keyframes -> an opacity-only glow layer */
+  .tier-badge.tier-diamond, .tier-badge.tier-sovereign{ animation:none; }
+  .tier-badge.tier-immortal{ animation: immortalBadgeShift 5s ease-in-out infinite; will-change:filter; }
+  .tier-badge.tier-diamond::after, .tier-badge.tier-sovereign::after, .tier-badge.tier-immortal::after{
+    content:''; position:absolute; inset:0; border-radius:2px; pointer-events:none;
+    opacity:0; will-change:opacity;
+    animation: tierGlowPulse 2.4s ease-in-out infinite;
+  }
+  .tier-badge.tier-diamond::after{ box-shadow:0 0 11px 2px rgba(127,216,255,1); }
+  .tier-badge.tier-sovereign::after{ box-shadow:0 0 13px 3px rgba(168,85,247,1), 0 0 7px rgba(255,214,120,.8); animation-duration:2.2s; }
+  .tier-badge.tier-immortal::after{ box-shadow:0 0 16px 4px rgba(245,197,24,1); animation-duration:2s; }
+  @keyframes tierGlowPulse{ 0%,100%{ opacity:0; } 50%{ opacity:1; } }
+
+  /* Filter-based glows on avatars/seats: give them their own GPU layer so
+     the animation runs on the compositor instead of repainting the page */
+  .avatar-rankcard.tier-diamond img, .avatar-rankcard.tier-diamond .avatar-rankcard-fallback,
+  .avatar-rankcard.tier-sovereign img, .avatar-rankcard.tier-sovereign .avatar-rankcard-fallback,
+  .avatar-rankcard.tier-immortal img, .avatar-rankcard.tier-immortal .avatar-rankcard-fallback,
+  body.tier-diamond .holdem-seat.me, body.tier-sovereign .holdem-seat.me, body.tier-immortal .holdem-seat.me{
+    will-change:filter;
+  }
+
+  /* Heavy blur on the fixed tab bar is redrawn on every scroll frame; a
+     lighter blur looks the same on a dark felt background at a fraction
+     of the cost */
+  .tabbar{ backdrop-filter: blur(10px) saturate(130%); -webkit-backdrop-filter: blur(10px) saturate(130%); }
+
+  /* Accessibility + battery: honour the OS "reduce motion" setting everywhere */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:.01ms !important; animation-iteration-count:1 !important;
+      transition-duration:.01ms !important; scroll-behavior:auto !important;
+    }
+  }

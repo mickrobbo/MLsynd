@@ -1,0 +1,479 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "name": {
+          ".write": "auth != null && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "email": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "createdAt": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "lastNameChange": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+        "status": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        },
+        "role": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        },
+        "tippingOptOut": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        }
+      }
+    },
+    "state": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && root.child('users').child(auth.uid).child('role').val() !== 'tipping'",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && root.child('users').child(auth.uid).child('role').val() !== 'tipping'"
+    },
+    "tipping": {
+      "config": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        "firstRound": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        },
+        "prizePot": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        },
+        "year": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        }
+      },
+      "lastComputedLadder": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      },
+      "meta": {
+        "$gameId": {
+          ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+          "commence_time_ms": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+          }
+        }
+      },
+      "picks": {
+        "$gameId": {
+          ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && now > (root.child('tipping').child('meta').child($gameId).child('commence_time_ms').val() - 43200000)",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            "pick": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && now < root.child('tipping').child('meta').child($gameId).child('commence_time_ms').val()"
+            },
+            "margin": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && now < root.child('tipping').child('meta').child($gameId).child('commence_time_ms').val()"
+            },
+            "name": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+            }
+          }
+        }
+      },
+      "submissions": {
+        "$round": {
+          ".read": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+          }
+        }
+      },
+      "joker": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+        "$uid": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (!data.exists() || data.child('round').val() == null || !root.child('tipping').child('roundLockTime').child(data.child('round').val() + '').exists() || now < root.child('tipping').child('roundLockTime').child(data.child('round').val() + '').val()) && (newData.child('round').val() == null || !root.child('tipping').child('roundLockTime').child(newData.child('round').val() + '').exists() || now < root.child('tipping').child('roundLockTime').child(newData.child('round').val() + '').val())"
+        }
+      },
+      "roundLockTime": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+        "$round": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+        }
+      }
+    },
+    "tippingArchive": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "$year": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      }
+    },
+    "pushSubscriptions": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      }
+    },
+    "pushJokerLastChanceNotified": {
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+    },
+    "xp": {
+      "$uid": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        "balance": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "log": {
+          ".indexOn": [
+            "ts"
+          ],
+          "$logId": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+          }
+        },
+        "awardedTippingRounds": {
+          "$round": {
+            ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+          }
+        },
+        "weeklyBonus": {
+          "$weekKey": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+          }
+        },
+        "lifetimeEarned": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "foundingNumber": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "dailySpinLastAt": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "currentStreak": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "lastKnownTier": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "activityIndex": {
+          "$dateKey": {
+            "$entryId": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+            }
+          }
+        }
+      }
+    },
+    "highRollers": {
+      "$uid": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        "balance": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "welcomeGrantClaimed": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "lastCompClaim": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "compCount": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "whaleCount": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        },
+        "cosmetics": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        }
+      },
+      "feed": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".indexOn": ["ts"],
+        "$entryId": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+        }
+      }
+    },
+    "xpMeta": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "foundingCount": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      }
+    },
+    "apiUsage": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "perplexity": {
+        ".write": false
+      },
+      "otherCosts": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      }
+    },
+    "guestLinks": {
+      "$token": {
+        ".read": true,
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      }
+    },
+    "challenges": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+    },
+    "bounties": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+    },
+    "actsOfGod": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+    },
+    "onThisDayCache": {
+      ".read": false,
+      ".write": false
+    },
+    "predictionMarkets": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "$marketId": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+        "stakes": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+          }
+        }
+      }
+    },
+    "predictionMarketReserve": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+    },
+    "legBets": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "$betId": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+        "stakes": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+          }
+        }
+      }
+    },
+    "groupChat": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "messages": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+        ".indexOn": [
+          "ts"
+        ],
+        "$messageId": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+          "reactions": {
+            "$emoji": {
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+              }
+            }
+          }
+        }
+      },
+      "pinned": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      },
+      "archived": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      },
+      "typing": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+        }
+      }
+    },
+    "tippingDues": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "$uid": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      }
+    },
+    "tippingDuesConfig": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+    },
+    "holdemTables": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": false
+    },
+    "blackjackTables": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": false
+    },
+    "blackjackTableSecrets": {
+      ".read": false,
+      ".write": false
+    },
+    "holdemHands": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": false
+    },
+    "holdemHandSecrets": {
+      "$handId": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": false
+        }
+      }
+    },
+    "holdemHandInternal": {
+      ".read": false,
+      ".write": false
+    },
+    "holdemHistory": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": false
+    },
+    "holdemChat": {
+      "$tableId": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".indexOn": [
+          "ts"
+        ]
+      }
+    },
+    "blackjackChat": {
+      "$tableId": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".indexOn": [
+          "ts"
+        ]
+      }
+    },
+    "avatars": {
+      "$uid": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      }
+    },
+    "games": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "pong": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+        }
+      },
+      "pongAllTime": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+        }
+      },
+      "pongLeaderboard": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+        }
+      }
+    },
+    "casinoSlotsJackpot": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "amount": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      }
+    },
+    "pongMatches": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "$matchId": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && !data.exists() && auth.uid === newData.child('challengerUid').val() && newData.child('status').val() === 'pending'",
+        "status": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === root.child('pongMatches').child($matchId).child('challengerUid').val() || auth.uid === root.child('pongMatches').child($matchId).child('opponentUid').val()) && root.child('pongMatches').child($matchId).child('status').val() === 'pending' && (newData.val() === 'accepted' || newData.val() === 'declined' || newData.val() === 'cancelled')"
+        }
+      }
+    },
+    "pongLive": {
+      "$matchId": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === root.child('pongMatches').child($matchId).child('challengerUid').val() || auth.uid === root.child('pongMatches').child($matchId).child('opponentUid').val())",
+        "inputs": {
+          "p1": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && auth.uid === root.child('pongMatches').child($matchId).child('challengerUid').val()"
+          },
+          "p2": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && auth.uid === root.child('pongMatches').child($matchId).child('opponentUid').val()"
+          }
+        }
+      }
+    },
+    "minigolf": {
+      "weeklyScores": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        "$weekKey": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved' && (!data.exists() || newData.child('strokes').val() < data.child('strokes').val())"
+          }
+        }
+      },
+      "weeklyWinners": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      },
+      "activeWeekKey": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      },
+      "activeVariant": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      }
+    },
+    "casinoPot": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "months": {
+        "$monthKey": {
+          "playCounts": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid"
+            }
+          },
+          "losses": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid"
+            }
+          },
+          "tippingGames": {
+            "$uid": {
+              "$gameId": {
+                ".write": "auth != null && auth.uid === $uid"
+              }
+            }
+          },
+          "fines": {
+            ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+          }
+        }
+      },
+      "history": {
+        ".write": false
+      },
+      "distributionLock": {
+        ".read": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      },
+      "fineHistory": {
+        "$uid": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        }
+      },
+      "fineEvents": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      }
+    },
+    "tippingStats": {
+      "$uid": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        "seasonPoints": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        }
+      }
+    },
+    "presence": {
+      "$uid": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+      },
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+    },
+    "analytics": {
+      "$uid": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+      },
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+    }
+  }
+}
