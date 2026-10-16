@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>MLSynd Dashboard</title>
-<meta name="theme-color" content="#121413">
+<meta name="theme-color" content="#0B0C0B">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=183">
+<link rel="stylesheet" href="dashboard.css?v=188">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -32,6 +32,7 @@
      of whether it turns out to be the actual cause of anything. -->
 </head>
 <body>
+<div id="cpSplash" aria-hidden="true"><div class="cp-splash-logo"><img src="/banner-clear.png" alt=""></div><div class="cp-splash-bar"><span></span></div></div>
 <img src="/home-silhouette.jpg" alt="" class="home-silhouette-bg" loading="lazy" decoding="async">
 <div id="authGate" class="auth-gate">
   <div class="auth-box">
@@ -740,7 +741,7 @@
   </div>
 
   <div class="tab-panel" id="tab-tipping">
-    <div style="text-align:center; font-family:'Manrope', sans-serif; font-size:13px; font-weight:700; letter-spacing:0; color:var(--brass-light); text-transform:none; margin-bottom:10px;">MLSynd Footy Tipping Comp</div>
+    <div class="tipping-comp-title">MLSynd Footy Tipping</div>
     <div class="panel" id="tippingPrizePotPanel" style="text-align:center;">
       <div style="font-family:'Manrope', sans-serif; font-size:11px; letter-spacing:0; text-transform:none; color:var(--muted);">Prize Pot</div>
       <div id="tippingPrizePotVal" style="font-family:'Manrope', sans-serif; font-size:26px; font-weight:700; color:var(--brass);">$0</div>
@@ -754,7 +755,7 @@
     <div class="subnav-row">
       <button type="button" class="subnav-btn active" data-tipsub="games"><span class="subnav-icon">🏉</span>Games</button>
       <button type="button" class="subnav-btn" data-tipsub="ladder"><span class="subnav-icon">🏆</span>Ladder</button>
-      <button type="button" class="subnav-btn" data-tipsub="history"><span class="subnav-icon">📅</span>Past Seasons</button>
+      <button type="button" class="subnav-btn" data-tipsub="history"><span class="subnav-icon">📅</span>Seasons</button>
       <button type="button" class="subnav-btn" id="tippingRulesBtn"><span class="subnav-icon">📜</span>Rules</button>
     </div>
 
@@ -842,7 +843,8 @@
           <span class="casino-hub-sub">Stake XP on group predictions</span>
         </div>
       </div>
-      <button type="button" class="hr-room-banner hr-room-locked" id="hrRoomBannerBtn" style="width:100%; margin-top:10px;">
+      <!-- v188: Maxine's removed from the app. The element stays (hidden) only because older code still looks it up by id. -->
+      <button type="button" class="hr-room-banner hr-room-locked" id="hrRoomBannerBtn" hidden style="display:none;">
         <span class="hr-room-banner-icon">🔒</span>
         <span class="hr-room-banner-text">
           <span class="hr-room-banner-title">Maxine's</span>
@@ -3996,7 +3998,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-17.183"; // v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-17.188"; // v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4678,8 +4680,12 @@ async function getMyUnlockedCasinoBadgeIds(){
   const ids = [];
   if(founding) ids.push('founding-player');
   if(jackpotWins > 0) ids.push('jackpot-winner');
-  XP_MILESTONE_BADGES.forEach(b => { if(lifetime >= b.threshold) ids.push(b.key); });
-  return { ids, lifetime, founding, jackpotWins };
+  // v188: XP milestone badges are permanent, so they count every season
+  // (archived seasons in /xp/{uid}/allTime/earned + this season's lifetimeEarned).
+  let allTimeTotal = lifetime;
+  try{ const atRes = await authedFetch(`/xp/${currentUserUid}/allTime/earned.json`); const at = atRes.ok ? await atRes.json() : 0; allTimeTotal += Number(at) || 0; }catch(e){}
+  XP_MILESTONE_BADGES.forEach(b => { if(allTimeTotal >= b.threshold) ids.push(b.key); });
+  return { ids, lifetime, allTimeTotal, founding, jackpotWins };
 }
 async function renderCasinoBadgesView(){
   const body = document.getElementById('casinoBadgesBody');
@@ -8571,6 +8577,7 @@ async function updateHrRoomBannerState(){
   sub.textContent = unlocked ? 'No limits. What happens here stays here.' : 'Sovereign tier and above only';
 }
 document.getElementById('hrRoomBannerBtn').addEventListener('click', async () => {
+  return; // v188: Maxine's has been removed, there is no way in
   const unlocked = await hasHighRollerAccess();
   if(!unlocked){
     showToast('🔒 Maxine\'s is for Sovereign tier and above. Keep earning XP to unlock it.');
@@ -8620,6 +8627,7 @@ function leaveMaxines(){
   showCasinoView(null);
 }
 async function enterHighRollersRoom(){
+  return; // v188: Maxine's removed
   // Welcome grant — the room needs SOME chips to actually play with,
   // seeded once on first entry rather than a buy-in drawn from real XP,
   // since real XP crossing into this room at all would undercut the
@@ -9997,7 +10005,7 @@ function spawnPotConfetti(){
   if(!layer) return;
   // A tighter, mostly-gold palette with only a whisper of cream/bronze
   // reads as elegant rather than a busy multicolour burst.
-  const colors = ['#CDF464', '#CDF464', '#E2F99B', '#3B4622', '#F3F4F0'];
+  const colors = ['#CDF464', '#CDF464', '#E2F99B', '#353B36', '#F3F4F0'];
   for(let i = 0; i < 22; i++){
     const el = document.createElement('div');
     el.className = 'pot-confetti-piece';
@@ -10413,7 +10421,7 @@ function advanceCasinoTicker(){
 // during quiet real-activity periods, twice, getting mistaken for a
 // live repeat of the original duplicate-payout bug. Current-format
 // payouts ("(2026-09-01)"/"(2026-09-16)") still show normally.
-const FLOOR_FEED_EXCLUDE_PATTERN = /\b(buy-in|buy in|cash out|cashed out|refund|force-closed|admin adjust|admin grant|manual (grant|adjust)|fine)\b/i;
+const FLOOR_FEED_EXCLUDE_PATTERN = /\b(buy-in|buy in|cash out|cashed out|refund|force-closed|admin adjust|admin grant|manual (grant|adjust)|fine|new season \d{4})\b/i;
 const FLOOR_FEED_LEGACY_CASINO_POT_PATTERN = /^Casino Pot – (Even Split|Jackpot|Proportional) \(\d{4}-\d{2}\)$/;
 async function renderCasinoFloorFeed(){
   const area = document.getElementById('casinoFloorArea');
@@ -11512,7 +11520,7 @@ async function renderXPLeaderboard(){
       // screenshot showing the badge on people who are clearly Board
       // members with a linked account.
       const isTippingCat = r.uid ? !(currentState.members || []).some(m => m.linkedUid === r.uid) : false;
-      const hrBadge = r.isHighRoller ? `<span class="hr-lb-badge" title="Maxine's">💎</span>` : '';
+      const hrBadge = ''; // v188: Maxine's removed
       return `<div class="xp-lb-row" data-name="${escapeHtml(r.name)}" style="display:flex; align-items:center; gap:10px; padding:${isTop3 ? '13px 8px' : '10px 4px'}; border-bottom:1px solid var(--line); cursor:pointer; ${bg}">
         <span style="width:30px; text-align:center; font-size:${isTop3 ? '19px' : '15px'}; ${isTop3 ? `filter: drop-shadow(${topGlow[i]});` : ''}">${medals[i] || (i+1)}</span>
         ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40, isTippingCat)}
@@ -12385,7 +12393,7 @@ function badgeSvg(badgeId, size){
   // additive. Used for Sovereign/Immortal so even the small badge icon
   // reads as visibly different from the standard achievement gold, not
   // just a bigger number in the same circle.
-  const ring = def.ringFill || '#3B4622';
+  const ring = def.ringFill || '#353B36';
   const inner = def.innerFill || '#CDF464';
   const iconFillDefault = def.innerFill ? '#fff6d8' : '#3a2e0f'; // dark icon on gold, light icon on a dark/rich inner fill
   return `<svg width="${s}" height="${s}" viewBox="0 0 140 140">
@@ -12593,7 +12601,7 @@ function openBoardProfile(m, name){
       </div>
       <div class="highlight-chip" id="profileLifetimeXPCell" style="${m.linkedUid ? '' : 'display:none;'}">
         <span class="hl-icon">🏆</span>
-        <div><span class="hl-label">Lifetime XP</span><span class="hl-val" id="profileLifetimeXPVal">…</span></div>
+        <div><span class="hl-label">All-time XP</span><span class="hl-val" id="profileLifetimeXPVal">…</span></div>
       </div>
       <div class="highlight-chip" id="profileBountiesCell" style="${m.linkedUid ? '' : 'display:none;'}">
         <span class="hl-icon">🎯</span>
@@ -12847,7 +12855,7 @@ async function drawSeasonShareCard(m){
     ctx.fillText(s.label, cx, cy + 26);
   });
 
-  ctx.fillStyle = '#3B4622';
+  ctx.fillStyle = '#353B36';
   ctx.font = '400 13px "IBM Plex Mono", monospace';
   ctx.fillText('mlsynddash.netlify.app', W / 2, H - 30);
 }
@@ -12965,7 +12973,7 @@ function openTippingOnlyProfile(uid, name){
       </div>
       <div class="highlight-chip" id="profileLifetimeXPCell">
         <span class="hl-icon">🏆</span>
-        <div><span class="hl-label">Lifetime XP</span><span class="hl-val" id="profileLifetimeXPVal">…</span></div>
+        <div><span class="hl-label">All-time XP</span><span class="hl-val" id="profileLifetimeXPVal">…</span></div>
       </div>
       <div class="highlight-chip" id="profileBountiesCell">
         <span class="hl-icon">🎯</span>
@@ -13137,7 +13145,7 @@ async function loadProfileGameStats(linkedUid, forName){
     const res = await authedFetch(`/xp/${linkedUid}/log.json`);
     if(!res.ok) return;
     const data = await res.json();
-    const entries = (data && typeof data === 'object' ? Object.values(data) : []).filter(e => e && typeof e === 'object');
+    const entries = (data && typeof data === 'object' ? Object.values(data) : []).filter(e => e && typeof e === 'object' && !/^New season \d{4}/.test(e.reason || '')); // v188: the yearly reset isn't a win or a loss
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     if(entries.length === 0) return;
 
@@ -13456,8 +13464,13 @@ async function loadProfileCasinoBadges(linkedUid, forName){
     ]);
     if(document.getElementById('profileModal').dataset.openName !== forName) return; // modal moved on
     const lifetime = (await lifetimeRes.json()) || 0;
+    // v188: seasons reset each New Year; "All-time XP" adds every archived season to this one
+    let allTimeRec = null;
+    try{ const atRes = await authedFetch(`/xp/${linkedUid}/allTime.json`); allTimeRec = atRes.ok ? await atRes.json() : null; }catch(e){}
+    const allTimeTotal = lifetime + (Number(allTimeRec && allTimeRec.earned) || 0);
     const lifetimeEl = document.getElementById('profileLifetimeXPVal');
-    if(lifetimeEl) lifetimeEl.textContent = lifetime.toLocaleString();
+    if(lifetimeEl) lifetimeEl.textContent = allTimeTotal.toLocaleString();
+    try{ if(typeof window.renderProfileSeasons === 'function') window.renderProfileSeasons(linkedUid, forName, lifetime, allTimeRec); }catch(e){}
     const tippingPoints = tippingRes.ok ? ((await tippingRes.json()) || 0) : 0;
     const tpEl = document.getElementById('profileTippingPointsVal');
     if(tpEl) tpEl.textContent = tippingPoints.toLocaleString();
@@ -13606,7 +13619,7 @@ async function loadProfileCasinoBadges(linkedUid, forName){
 
     const unlockedIds = [];
     if(founding) unlockedIds.push('founding-player');
-    XP_MILESTONE_BADGES.forEach(b => { if(lifetime >= b.threshold) unlockedIds.push(b.key); });
+    XP_MILESTONE_BADGES.forEach(b => { if(allTimeTotal >= b.threshold) unlockedIds.push(b.key); });
 
     // Flex moment — own profile only, checked here since this is the one
     // place both the tier and the casino-badge unlock list are known
@@ -13920,8 +13933,8 @@ function buildChart(history){
 
   return `<div class="chart-wrap"><svg id="chartSvg" viewBox="0 0 ${chartW} ${chartH + 20}" width="100%" height="${chartH + 20}" preserveAspectRatio="none" style="min-width:280px;">
     <line x1="${padX}" y1="${zeroY.toFixed(1)}" x2="${chartW-padX}" y2="${zeroY.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
-    <path d="${areaPath}" fill="${lineColor}" opacity="0.12" stroke="none"/>
-    <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2"/>
+    <defs><linearGradient id="cpAreaG1" x1="0" y1="${finalPl >= 0 ? 0 : 1}" x2="0" y2="${finalPl >= 0 ? 1 : 0}"><stop offset="0" style="stop-color:${lineColor};stop-opacity:.24"/><stop offset="1" style="stop-color:${lineColor};stop-opacity:0"/></linearGradient></defs><path d="${areaPath}" fill="url(#cpAreaG1)" stroke="none"/>
+    <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     <line id="chartGuide" x1="0" y1="0" x2="0" y2="${chartH}" stroke="var(--brass)" stroke-width="1" stroke-dasharray="2,2" opacity="0"/>
     ${dots}
     <circle id="chartSelDot" r="4" fill="var(--brass)" stroke="#000" stroke-width="1" opacity="0"/>
@@ -14006,8 +14019,8 @@ function buildTipPointsChart(seriesPoints){
 
   return `<div class="chart-wrap"><svg id="tipChartSvg" viewBox="0 0 ${chartW} ${chartH + 20}" width="100%" height="${chartH + 20}" preserveAspectRatio="none" style="min-width:280px;">
     <line x1="${padX}" y1="${zeroY.toFixed(1)}" x2="${chartW-padX}" y2="${zeroY.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
-    <path d="${areaPath}" fill="${lineColor}" opacity="0.12" stroke="none"/>
-    <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2"/>
+    <defs><linearGradient id="cpAreaG2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${lineColor};stop-opacity:.28"/><stop offset="1" style="stop-color:${lineColor};stop-opacity:0"/></linearGradient></defs><path d="${areaPath}" fill="url(#cpAreaG2)" stroke="none"/>
+    <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
     <line id="tipChartGuide" x1="0" y1="0" x2="0" y2="${chartH}" stroke="var(--brass)" stroke-width="1" stroke-dasharray="2,2" opacity="0"/>
     ${dots}
     <circle id="tipChartSelDot" r="4" fill="var(--brass)" stroke="#000" stroke-width="1" opacity="0"/>
@@ -16050,6 +16063,7 @@ async function fetchMlsyndOnThisDay(){
     const currentYear = now.getFullYear();
     const matches = Object.values(data).filter(e => {
       if(!e || !e.ts) return false;
+      if(/^New season \d{4}/.test(e.reason || '')) return false; // v188: the yearly reset isn't a real swing
       const d = new Date(e.ts);
       return d.getMonth() === todayMonth && d.getDate() === todayDate && d.getFullYear() < currentYear;
     });
@@ -17708,9 +17722,9 @@ async function buildTippingOffseasonHtml(yr){
       const medals = ['🥇', '🥈', '🥉'];
       podium = `<div class="offseason-champ">
         <div class="offseason-kicker">${yr - 1} champion</div>
-        <div class="offseason-champ-name">🏆 ${escapeHtml(rows[0].name || '—')}</div>
+        <div class="offseason-champ-name">${escapeHtml(rows[0].name || '—')}</div>
         <div class="offseason-champ-pts">${rows[0].points} points</div>
-        <div class="offseason-podium">${rows.slice(0, 3).map((r, i) => `<div class="offseason-podium-row"><span>${medals[i]}</span><span>${escapeHtml(r.name || '—')}</span><b>${r.points}</b></div>`).join('')}</div>
+        <div class="offseason-podium">${rows.slice(0, 3).map((r, i) => `<div class="offseason-podium-row"><span class="offseason-rank r${i + 1}">${i + 1}</span><span>${escapeHtml(r.name || '—')}</span><b>${r.points}</b></div>`).join('')}</div>
         <button type="button" class="pill-btn" id="offseasonHistoryBtn" style="margin-top:10px;">Full ${yr - 1} ladder ›</button>
       </div>`;
     }
@@ -18712,7 +18726,7 @@ async function runFullHealthCheck(){
       const founding = await foundRes.json();
       const balOk = bal == null || (typeof bal === 'number' && !isNaN(bal));
       const ltOk = lifetime == null || (typeof lifetime === 'number' && lifetime >= 0 && !isNaN(lifetime));
-      const balVsLifetime = (typeof bal === 'number' && typeof lifetime === 'number' && bal > lifetime);
+      const balVsLifetime = (typeof bal === 'number' && typeof lifetime === 'number' && bal > lifetime + 10000); // v188: every season starts on 10,000 XP with lifetimeEarned back at 0
       check('Casino XP balance shape', balOk ? 'pass' : 'fail', balOk ? `Balance: ${bal == null ? '(never initialized)' : bal.toLocaleString()}` : `Balance is not a valid number: ${JSON.stringify(bal)}`);
       check('Casino lifetime-earned shape', ltOk ? 'pass' : 'fail', ltOk ? `Lifetime earned: ${lifetime == null ? '(never initialized)' : lifetime.toLocaleString()}` : `lifetimeEarned is invalid: ${JSON.stringify(lifetime)}`);
       check('Balance vs lifetime-earned sanity', !balVsLifetime ? 'pass' : 'warn', !balVsLifetime ? 'Balance never exceeds lifetime earned (as expected — wins add to both, losses only reduce balance)' : `Balance (${bal}) is higher than lifetime earned (${lifetime}) — shouldn't be possible unless lifetimeEarned wasn't credited somewhere`);
@@ -24304,5 +24318,7 @@ function startApp(){
 initAuthGate();
 </script>
 
+<script src="casino-premium.js?v=186"></script>
+<script src="app-premium.js?v=188"></script>
 </body>
 </html>

@@ -701,6 +701,7 @@ async function slotsSpin(){
   // win ever auto-credits real XP directly anymore; Cash Out is always
   // the deliberate step for that. A loss draws down Machine Balance
   // first, and only reaches into real XP for whatever it doesn't cover.
+  try{ if(window.casinoPremiumRound) window.casinoPremiumRound('slots', totalDelta); }catch(e){} // v185 premium layer: banner, results strip, Auto Play
   const goesToGamble = totalDelta > 0 && !isFreeSpin;
   if(totalDelta > 0 && !goesToGamble){
     slotsMachineBalance += totalDelta;

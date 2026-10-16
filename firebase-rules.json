@@ -157,6 +157,9 @@
               ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
             }
           }
+        },
+        "presence": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
         }
       }
     },

@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.183",
+  "version": "2026-10-17.188",
   "date": "2026-10-17",
   "changes": [
-    "A brand new look across the whole app: graphite and lime, bold numbers and rounder cards",
-    "New floating menu at the bottom: tap a tab and it opens into a lime pill",
-    "The group multi is now a card with everyone's photo: tap a face to see their leg, and it turns into a tick, cross, gold ? for MIA or blue dash for void once it's marked"
+    "Fresh chip rails on every casino table: cleaner chips and one clear stake you can tap to change",
+    "Every New Year the Casino starts a new season: balances reset to 10,000 XP and tiers start again, with your all-time XP and past seasons kept on your profile",
+    "Maxine's has been removed so the app stays focused on the syndicate"
   ]
 }
