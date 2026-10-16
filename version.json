@@ -1,14 +1,9 @@
 {
-  "version": "2026-10-16.175",
+  "version": "2026-10-16.178",
   "date": "2026-10-16",
   "changes": [
-    "Home updates within seconds of any change, and the app opens instantly with your last view while it refreshes",
-    "Push alerts when a group multi leg wins or loses",
-    "Admin: a 'This week' checklist that takes you to each step, and \u2699\ufe0f in the header to open Admin",
-    "Phone back gesture now steps back through the app; tap the current tab to jump to the top",
-    "Dots on Tipping (tips to enter) and Casino (free spin ready); each tab remembers where you were",
-    "Home cards jump to Cash/Board/Tipping; Casino shows your recently played games; bigger, easier-to-read text",
-    "Tipping shows last season's champion and a countdown until the new season's fixture is out",
-    "Fixed: the Sport tab's scores never refreshed by themselves"
+    "A cleaner, calmer look across the whole app, with this week's multi as a real-looking bet slip on Home",
+    "The Board is now easy-to-read rows instead of a table you had to scroll sideways",
+    "The tab bar tucks away while you scroll down and comes back when you scroll up, and Syndy now lives at the top of the screen"
   ]
 }

@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=175">
+<link rel="stylesheet" href="dashboard.css?v=178">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -86,6 +86,10 @@
   <header>
     <img src="/banner.png" alt="MLSynd" class="header-banner header-banner-default">
     <img src="/banner-gold.png" alt="MLSynd" class="header-banner header-banner-maxines" loading="lazy" decoding="async">
+    <button type="button" id="syndyFabBtn" class="syndy-fab header-syndy-btn" title="Ask Syndy" style="display:none;">
+  <img src="syndy-icon.png" alt="Syndy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🤖',style:'font-size:26px;'}))">
+  <span class="syndy-fab-badge" id="syndyFabBadge" style="display:none;"></span>
+</button>
     <button type="button" id="headerAdminBtn" class="header-admin-btn" style="display:none;" aria-label="Admin">⚙️<span class="header-admin-dot" id="headerAdminDot"></span></button>
   </header>
 
@@ -97,80 +101,98 @@
       <button type="button" class="subnav-btn" data-homesub="diag" id="homeDiagSubBtn" style="display:none;"><span class="subnav-icon">🛠️</span>Admin</button>
     </div>
 
-    <div id="homeSubview-overview" class="home-subview">
+    <div id="homeSubview-overview" class="home-subview home-v2">
     <div id="changelogBanner" style="display:none;"></div>
-    <div class="panel" id="homeDigestWidget" style="display:none;"></div>
-    <div class="panel casino-teaser-panel" id="activityFeedTeaser">
-      <div class="casino-teaser-row">
-        <div class="casino-teaser-icon">📰</div>
-        <div class="casino-teaser-mid">
-          <div class="casino-teaser-lbl">Recent Activity</div>
-          <div class="casino-teaser-val" style="font-size:11px; color:var(--muted);">Board, Casino, Syndy — one feed</div>
-        </div>
-        <button type="button" class="pill-btn pill-btn-primary casino-teaser-btn" id="activityFeedOpenBtn">View →</button>
-      </div>
+
+    <!-- v177 Home: calmer. Two objects (the slip and the money), everything
+         else is plain sections on the felt with room to breathe. -->
+    <div class="home-greet">
+      <div class="home-greet-hi" id="homeGreetHi">Welcome back</div>
+      <div class="home-greet-sub" id="homeGreetSub"></div>
     </div>
-    <div id="weeklyReminderPanel" class="panel" style="display:none;">
-      <h2>🔔 This week's outstanding items</h2>
-      <div id="weeklyReminderList"></div>
-      <div style="text-align:center; margin-top:10px;">
-        <button type="button" class="pill-btn" id="weeklyReminderClearBtn">Clear all</button>
+
+    <section class="home-slip" aria-label="This week's group multi">
+      <div class="home-slip-head">
+        <span class="home-slip-brand">MLSYND GROUP MULTI</span>
+        <span class="home-slip-week" id="homeSlipWeek"></span>
       </div>
-    </div>
+      <div id="groupMultiArea"></div>
+      <div class="home-slip-tear" aria-hidden="true"></div>
+      <div class="home-slip-foot" id="homeSlipFoot"></div>
+    </section>
+
     <div class="offline-money-notice" id="moneyOfflineNoticeHome" style="display:none;"></div>
-    <button type="button" class="home-owe-chip" id="homeOweChip" data-goto="home:cash" style="display:none;"></button>
-    <div class="panel nav-shortcut" data-goto="home:cash">
-      <span class="nav-shortcut-hint">Cash ›</span>
-      <h2>Rolling balance</h2>
-      <div class="balance-grid">
-        <div class="toteboard-cell" id="balBankCell"><span class="lbl">Bank</span><span class="val" id="balBank">$0</span></div>
-        <div class="toteboard-cell"><span class="lbl">Outlay</span><span class="val" id="balOutlay">$0</span></div>
-        <div class="toteboard-cell"><span class="lbl">Return</span><span class="val" id="balReturn">$0</span></div>
-        <div class="toteboard-cell"><span class="lbl">Bonus pot</span><span class="val" id="balPot">$0</span></div>
-        <div class="toteboard-cell" id="balPlOverallCell"><span class="lbl">P/L overall</span><span class="val" id="balPlOverall">$0</span></div>
-        <div class="toteboard-cell" id="balPlWeeklyCell"><span class="lbl">P/L weekly</span><span class="val" id="balPlWeekly">$0</span></div>
-      </div>
-    </div>
 
-    <div class="panel casino-teaser-panel" id="homeCasinoTeaser" style="display:none;">
-      <div class="casino-teaser-row">
-        <div class="casino-teaser-icon">🃏</div>
-        <div class="casino-teaser-mid">
-          <div class="casino-teaser-lbl">Casino XP</div>
-          <div class="casino-teaser-val" id="homeXPBalanceDisplay">—</div>
-        </div>
-        <button type="button" class="pill-btn pill-btn-primary casino-teaser-btn" id="homeCasinoTeaserBtn">Play →</button>
-      </div>
+    <!-- The money, in one block: bank on top, season and week underneath -->
+    <div class="home-money" id="homeCards">
+      <button type="button" class="home-money-cell home-money-bank toteboard-cell" id="balBankCell" data-goto="home:cash">
+        <span class="home-money-lbl">Syndicate bank</span>
+        <span class="val home-money-val" id="balBank">$0</span>
+        <span class="home-money-meta">Bonus pot <b id="balPot">$0</b></span>
+      </button>
+      <button type="button" class="home-money-cell toteboard-cell" id="balPlOverallCell" data-goto="board">
+        <span class="home-money-lbl">Season P/L</span>
+        <span class="val home-money-val" id="balPlOverall">$0</span>
+        <span class="home-money-meta" id="homeSeasonMeta">Whole syndicate</span>
+      </button>
+      <button type="button" class="home-money-cell toteboard-cell" id="balPlWeeklyCell" data-goto="home:cash">
+        <span class="home-money-lbl">Last week</span>
+        <span class="val home-money-val" id="balPlWeekly">$0</span>
+        <span class="home-money-meta">Out <b id="balOutlay">$0</b> &nbsp;Back <b id="balReturn">$0</b></span>
+      </button>
     </div>
+    <button type="button" class="home-owe" id="homeOweChip" data-goto="home:cash" style="display:none;"></button>
 
-    <div class="panel">
-      <div class="pl-hero nav-shortcut" data-goto="board">
-        <span class="nav-shortcut-hint">Board ›</span>
-        <div class="pl-hero-lbl">Season P/L</div>
-        <div class="pl-hero-val" id="plHeroVal">$0</div>
+    <div class="home-quick">
+      <button type="button" class="home-quick-btn" id="homeCasinoTeaser" style="display:none;">
+        <span class="home-quick-lbl">Casino</span>
+        <span class="home-quick-val" id="homeXPBalanceDisplay">—</span>
+        <span id="homeCasinoTeaserBtn" hidden></span>
+      </button>
+      <button type="button" class="home-quick-btn" id="activityFeedTeaser">
+        <span class="home-quick-lbl">Activity feed</span>
+        <span class="home-quick-val home-quick-val-sm">See what's new</span>
+        <span id="activityFeedOpenBtn" hidden></span>
+      </button>
+    </div>
+    <div id="homeCardsDots" hidden></div>
+
+    <div class="panel" id="homeDigestWidget" style="display:none;"></div>
+    <details id="weeklyReminderPanel" class="home-todo" style="display:none;">
+      <summary><span class="home-todo-dot"></span><span id="weeklyReminderCount">Still to do this week</span><span class="home-todo-chev" aria-hidden="true"></span></summary>
+      <div id="weeklyReminderList"></div>
+      <div class="home-todo-actions">
+        <button type="button" class="home-link" id="weeklyReminderClearBtn">Hide until next week</button>
+      </div>
+    </details>
+
+    <section class="home-sec home-podium-wrap" aria-label="Top of the Board">
+      <div class="home-row-head"><span class="home-section-title">Top of the Board</span><button type="button" class="home-link" data-goto="board">Full board</button></div>
+      <div class="home-podium" id="homePodium"></div>
+    </section>
+
+    <section class="home-sec home-season">
+      <div class="home-row-head">
+        <span class="home-section-title">The season so far</span>
+        <span class="pl-hero-val" id="plHeroVal" hidden>$0</span>
       </div>
       <div id="chartArea"></div>
-    </div>
+    </section>
 
-    <div class="panel">
-      <h2>This Week's Multi — Who's Cooking It?</h2>
-      <div id="groupMultiArea"></div>
-    </div>
-
-    <div class="panel">
-      <h2>This week's individual bets</h2>
+    <section class="home-sec home-ind" id="homeIndSection">
+      <div class="home-row-head"><span class="home-section-title">Individual bets</span></div>
       <div id="weeklyIndividualBetsArea"></div>
-    </div>
+    </section>
 
-    <div class="panel" id="formGuidePanel">
-      <h2>📋 Form Guide</h2>
+    <section class="home-sec" id="formGuidePanel">
+      <div class="home-row-head"><span class="home-section-title">Form guide</span></div>
       <div id="formGuideArea"><div class="empty">Loading…</div></div>
-    </div>
+    </section>
 
-    <div class="panel panel-quiet" id="onThisDayPanel">
-      <h2>📅 On This Day</h2>
-      <div id="onThisDayArea"><div class="empty">Loading…</div></div>
-    </div>
+    <section class="home-sec" id="onThisDayPanel" hidden>
+      <div class="home-row-head"><span class="home-section-title">On this day</span></div>
+      <div id="onThisDayArea"></div>
+    </section>
 
     <!-- Subtle app footer — de-emphasised sync status + health, deliberately
          quiet compared to the panels above rather than a bold status row. -->
@@ -184,9 +206,9 @@
 
     <div id="homeSubview-cash" class="home-subview" style="display:none;">
     <div class="offline-money-notice" id="moneyOfflineNoticeCash" style="display:none;"></div>
-    <div class="panel" id="myDuesPanel" style="display:none; text-align:center;">
-      <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">You Owe</div>
-      <div id="myDuesVal" style="font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:700;">$0</div>
+    <div class="cash-hero" id="myDuesPanel" style="display:none;">
+      <div class="cash-hero-lbl">You owe</div>
+      <div class="cash-hero-val" id="myDuesVal">$0</div>
     </div>
     <div class="panel">
       <h2>Money owed</h2>
@@ -194,7 +216,7 @@
     </div>
     <div class="panel">
       <h2>Bank share</h2>
-      <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Each member's equal share of the current Bank, minus what they still owe in dues. Updates automatically every week as the Bank changes.</div>
+      <div class="hint cash-hint">Each member's equal share of the current Bank, minus what they still owe in dues. Updates automatically every week as the Bank changes.</div>
       <div id="bankShareArea"></div>
     </div>
     </div>
@@ -2521,10 +2543,7 @@
      approved members only, same rule enforced again server-side in the
      Netlify function so a guest can't just re-show the button via devtools
      and get a real response anyway. -->
-<button type="button" id="syndyFabBtn" class="syndy-fab" title="Ask Syndy" style="display:none;">
-  <img src="syndy-icon.png" alt="Syndy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🤖',style:'font-size:26px;'}))">
-  <span class="syndy-fab-badge" id="syndyFabBadge" style="display:none;"></span>
-</button>
+
 
 <div id="syndyChatModal" class="profile-modal">
   <div class="profile-sheet syndy-chat-sheet">
@@ -3990,7 +4009,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-16.175"; // v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-16.178"; // v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -11264,6 +11283,12 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
   });
 });
 
+// v176: the whole Home tile is the button; route taps on it to the original handlers.
+['homeCasinoTeaser:homeCasinoTeaserBtn', 'activityFeedTeaser:activityFeedOpenBtn'].forEach(pair => {
+  const [tileId, innerId] = pair.split(':');
+  const tile = document.getElementById(tileId);
+  if(tile) tile.addEventListener('click', (e) => { if(!e.target.closest('#' + innerId)) document.getElementById(innerId).click(); });
+});
 document.getElementById('homeCasinoTeaserBtn').addEventListener('click', () => {
   document.querySelector('[data-tab="casino"]').click();
 });
@@ -14128,61 +14153,166 @@ function roastTierForName(name){
 // every leg without a result, so a freshly entered multi never appeared.
 function groupLegIsIn(e){ return !!(e && (e.result || (e.odds != null && e.odds !== '' && !isNaN(Number(e.odds)) && Number(e.odds) > 0))); }
 function renderGroupMultiChart(state){
+  // v176: rendered as a printed bet slip on Home. Same data rules as before:
+  // this week's draft if any leg is in (odds or result), otherwise last
+  // saved week; nothing if the admin cleared it.
   const area = document.getElementById('groupMultiArea');
+  const weekEl = document.getElementById('homeSlipWeek');
+  const footEl = document.getElementById('homeSlipFoot');
+  const setFoot = (html) => { if(footEl) footEl.innerHTML = html; };
+  const emptySlip = (msg) => {
+    area.innerHTML = `<div class="slip-empty">${msg}</div>`;
+    if(weekEl) weekEl.textContent = state.weekLabelDraft || '';
+    setFoot('');
+    renderHomeGreeting(state, { legs: 0, pending: 0, losers: 0 });
+  };
+  if(state.groupMultiCleared){ emptySlip('Blank slip for now. Each leg prints here as soon as its odds go in.'); return; }
 
-  if(state.groupMultiCleared){
-    area.innerHTML = polishedEmptyState('🍳', 'Nobody\'s cooked anything yet this week — the kitchen\'s still cold.');
-    return;
-  }
-
-  // Show the live in-progress draft while it has entries; once a week is
-  // saved the draft empties out, so fall back to showing the just-saved
-  // week's results instead of going blank — this is what actually stays
-  // "who cooked it" visible after saving, until Mick taps Clear on the
-  // Ledger.
   const draft = state.groupEntryDraft || {};
   let source = draft;
+  let weekLabel = state.weekLabelDraft || 'This week';
   const draftHasEntries = Object.values(draft).some(groupLegIsIn);
   if(!draftHasEntries){
     const lastWeek = (state.history && state.history.length > 0) ? state.history[state.history.length - 1] : null;
     source = (lastWeek && lastWeek.groupEntries) ? lastWeek.groupEntries : {};
+    weekLabel = lastWeek && lastWeek.label ? `${lastWeek.label} (saved)` : '';
   }
 
   const entries = Object.entries(source).filter(([, e]) => groupLegIsIn(e));
-  if(entries.length === 0){
-    area.innerHTML = polishedEmptyState('🍳', 'Nobody\'s cooked anything yet this week — the kitchen\'s still cold.');
-    return;
-  }
+  if(entries.length === 0){ emptySlip('Blank slip for now. Each leg prints here as soon as its odds go in.'); return; }
+  if(weekEl) weekEl.textContent = weekLabel;
+
   const losers = entries.filter(([, e]) => e.result === 'Loss');
+  const pending = entries.filter(([, e]) => !e.result).length;
+  const STAMP = { Win: 'Won', Loss: 'Lost', Void: 'Void', MIA: 'MIA' };
   let html = '';
   entries.forEach(([name, e]) => {
-    const icon = !e.result ? '⏳' : e.result === 'Win' ? '✅' : (e.result === 'Loss' ? '❌' : (e.result === 'MIA' ? '❓' : '➖'));
-    const resultCls = !e.result ? 'result-pending' : e.result === 'Win' ? 'result-win' : (e.result === 'Loss' ? 'result-loss' : (e.result === 'MIA' ? 'result-mia' : 'result-void'));
-    let roastHtml = '';
+    const cls = !e.result ? 'result-pending' : e.result === 'Win' ? 'result-win' : (e.result === 'Loss' ? 'result-loss' : (e.result === 'MIA' ? 'result-mia' : 'result-void'));
+    let note = '';
     if(e.result === 'Loss'){
       const pool = roastTierForName(name);
       const roast = pool[hashStr(name + 'live-draft') % pool.length];
-      roastHtml = `<div class="multi-leg-roast">🔥 ${escapeHtml(name)} ${roast}.</div>`;
+      note = `<div class="slip-note">${escapeHtml(name)} ${roast}.</div>`;
     } else if(e.result === 'MIA'){
-      roastHtml = `<div class="multi-leg-mia-note">🛰️ ${escapeHtml(name)} was MIA this week — no leg placed.</div>`;
+      note = `<div class="slip-note">${escapeHtml(name)} was MIA this week, no leg placed.</div>`;
     }
-    html += `<div class="multi-leg-block ${resultCls}">
-      <div class="multi-leg-row">
-        <span class="multi-leg-name${e.result === 'Loss' ? ' loss' : ''}">${escapeHtml(name)}</span>
-        <span class="multi-leg-odds">${e.odds != null ? '@ ' + Number(e.odds).toFixed(2) : '—'}</span>
-        <span class="multi-leg-result">${icon}</span>
+    html += `<div class="slip-leg ${cls}">
+      <div class="slip-line">
+        <span class="slip-name">${escapeHtml(name)}</span>
+        <span class="slip-leader" aria-hidden="true"></span>
+        <span class="slip-odds">${e.odds != null ? Number(e.odds).toFixed(2) : '—'}</span>
+        <span class="slip-stamp">${e.result ? STAMP[e.result] || e.result : 'Running'}</span>
       </div>
-      ${roastHtml}
+      ${note}
     </div>`;
   });
-  const pending = entries.filter(([, e]) => !e.result).length;
-  const pendingNote = pending ? ` · ⏳ ${pending} still running` : '';
-  const summary = pending === entries.length
-    ? `🎟️ ${entries.length} leg${entries.length === 1 ? '' : 's'} in — waiting on results.`
-    : losers.length === 0
-    ? '🎉 Clean sweep so far — nobody let the side down yet.' + pendingNote
-    : `💀 ${losers.length} leg${losers.length === 1 ? '' : 's'} down so far. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.` + pendingNote;
-  area.innerHTML = `<div class="multi-summary-banner${losers.length === 0 ? ' clean' : ''}${pending === entries.length ? ' pending' : ''}">${summary}</div>` + html;
+  area.innerHTML = html;
+  // The slip "prints" in once per app open, on the first real data only.
+  try{ if(!window.__slipPrinted && !currentStateFromCache){ window.__slipPrinted = true; const sl = document.querySelector('.home-slip'); if(sl){ sl.classList.add('slip-print'); } } }catch(e){}
+
+  // Combined odds of the legs still counting (void/MIA legs drop out, like a real multi).
+  const counting = entries.filter(([, e]) => e.result !== 'Void' && e.result !== 'MIA' && e.odds != null && Number(e.odds) > 0);
+  const combined = counting.reduce((m, [, e]) => m * Number(e.odds), 1);
+  let status;
+  if(losers.length) status = `<span class="slip-foot-status lost">Multi's gone. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.</span>`;
+  else if(pending === 0) status = `<span class="slip-foot-status won">Every leg got up.</span>`;
+  else status = `<span class="slip-foot-status">${pending} of ${entries.length} still running</span>`;
+  setFoot(`${status}<span class="slip-foot-odds"><span>Combined odds</span><b>${counting.length ? combined.toFixed(2) : '—'}</b></span>`);
+  renderHomeGreeting(state, { legs: entries.length, pending, losers: losers.length, saved: !draftHasEntries });
+}
+
+// Podium, card meta and swipe dots on Home (v176).
+function renderHomeExtras(state){
+  try{
+    const meta = document.getElementById('homeSeasonMeta');
+    const weeks = (state.history || []).length;
+    if(meta) meta.textContent = weeks ? `${weeks} week${weeks === 1 ? '' : 's'} in` : 'No weeks saved yet';
+  }catch(e){}
+  try{
+    const wrap = document.getElementById('homePodium');
+    if(wrap){
+      const ranked = rankedMembers(state.members || []).slice(0, 3);
+      if(ranked.length === 0){ wrap.innerHTML = '<div class="empty">The Board fills in once weeks are saved.</div>'; }
+      else{
+        const order = ranked.length === 3 ? [1, 0, 2] : ranked.map((_, i) => i); // 2nd, 1st, 3rd
+        wrap.innerHTML = order.map(i => {
+          const m = ranked[i];
+          const initials = escapeHtml(String(m.name || '?').trim().slice(0, 1).toUpperCase());
+          const me = m.linkedUid && m.linkedUid === currentUserUid;
+          return `<button type="button" class="podium-spot podium-${i + 1}${me ? ' is-me' : ''}" data-profile-name="${escapeHtml(m.name)}">
+            <span class="podium-avatar" data-podium-uid="${escapeHtml(m.linkedUid || '')}">${initials}</span>
+            <span class="podium-name">${escapeHtml(m.name)}</span>
+            <span class="podium-pl ${m.pl >= 0 ? 'pos' : 'neg'}">${m.pl > 0 ? '+' : ''}${homeMoney(m.pl || 0)}</span>
+            <span class="podium-step"><span>${i + 1}</span></span>
+          </button>`;
+        }).join('');
+        wrap.querySelectorAll('[data-podium-uid]').forEach(el => {
+          const uid = el.dataset.podiumUid;
+          if(!uid || typeof getAvatarDataUri !== 'function') return;
+          getAvatarDataUri(uid).then(src => { if(src){ el.style.backgroundImage = `url("${src}")`; el.textContent = ''; el.classList.add('has-photo'); } }).catch(() => {});
+        });
+      }
+    }
+  }catch(e){}
+  try{ renderHomeCardDots(); }catch(e){}
+}
+function renderHomeCardDots(){
+  const cards = [...document.querySelectorAll('#homeCards > .home-card')].filter(c => c.style.display !== 'none');
+  const dots = document.getElementById('homeCardsDots');
+  if(!dots) return;
+  dots.innerHTML = cards.map((_, i) => `<span class="${i === 0 ? 'on' : ''}"></span>`).join('');
+}
+{ const rail = document.getElementById('homeCards');
+  if(rail) rail.addEventListener('scroll', () => {
+    const cards = [...rail.querySelectorAll('.home-card')].filter(c => c.style.display !== 'none');
+    const left = rail.scrollLeft + 24;
+    let idx = 0; cards.forEach((c, i) => { if(c.offsetLeft - rail.offsetLeft <= left) idx = i; });
+    document.querySelectorAll('#homeCardsDots span').forEach((d, i) => d.classList.toggle('on', i === idx));
+  }, { passive: true }); }
+// Podium taps open that member's profile, like the Board.
+document.getElementById('homePodium').addEventListener('click', (e) => {
+  const spot = e.target.closest('.podium-spot');
+  if(spot && typeof openProfile === 'function') openProfile(spot.dataset.profileName);
+});
+
+// Greeting line at the top of Home (v176).
+// v176: Home's money cards carry their own classes now, so only flip pos/neg.
+// Home money cards: thousands separators, minus sign, whole dollars when
+// it's a round number ($3,802 rather than $3802.00).
+function homeMoney(v, compact){
+  const n = Number(v) || 0;
+  const abs = Math.abs(n);
+  const cents = Math.round(abs * 100) % 100 !== 0;
+  const body = abs.toLocaleString('en-AU', { minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: 2 });
+  return (n < 0 ? '-$' : '$') + body;
+}
+function setPosNeg(id, isPos){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.add('toteboard-cell');
+  el.classList.toggle('pos', !!isPos);
+  el.classList.toggle('neg', !isPos);
+}
+function renderHomeGreeting(state, info){
+  const hiEl = document.getElementById('homeGreetHi');
+  const subEl = document.getElementById('homeGreetSub');
+  if(!hiEl || !subEl) return;
+  let first = '';
+  try{
+    const me = (state.members || []).find(m => m.linkedUid === currentUserUid) || (state.members || []).find(m => m.name === currentUserName);
+    first = String((me && me.name) || currentUserName || '').split(' ')[0];
+  }catch(e){}
+  let hour = new Date().getHours();
+  try{ hour = Number(new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Melbourne', hour: 'numeric', hourCycle: 'h23' }).format(new Date())); }catch(e){}
+  const part = hour < 5 ? 'Late one' : hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
+  hiEl.textContent = first ? `${part}, ${first}` : part;
+  let sub;
+  if(!info || !info.legs) sub = 'No legs in yet this week.';
+  else if(info.saved) sub = 'Last week is saved. New legs show up here as they go in.';
+  else if(info.losers) sub = info.pending ? `The multi's gone, ${info.pending} still running for pride.` : 'The multi went down this week.';
+  else if(info.pending === 0) sub = 'Every leg got up this week.';
+  else sub = `${info.legs} leg${info.legs === 1 ? '' : 's'} in, ${info.pending} still running.`;
+  subEl.textContent = sub;
 }
 
 // ---- Weekly outstanding-items reminder (Thursday 8am AEST) ----
@@ -14275,7 +14405,7 @@ async function renderWeeklyReminderPanel(){
         <span>${escapeHtml(b.name)}</span>
       </div>
     `).join('');
-    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎲</span><div class="weekly-reminder-text"><b>${betsStillOutstanding.length}</b> individual bet${betsStillOutstanding.length === 1 ? '' : 's'} still don't have a result (✅ = already placed, per the Ledger):${betRows}</div></div>`);
+    rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎲</span><div class="weekly-reminder-text"><b>${betsStillOutstanding.length}</b> individual bet${betsStillOutstanding.length === 1 ? ' still doesn\'t' : 's still don\'t'} have a result:${betRows}</div></div>`);
   }
   if(items.multiOutstanding){
     rows.push(`<div class="weekly-reminder-item"><span class="weekly-reminder-icon">🎟️</span><span class="weekly-reminder-text">This week's <b>group multi</b> hasn't been started yet</span></div>`);
@@ -14287,6 +14417,8 @@ async function renderWeeklyReminderPanel(){
     return;
   }
   document.getElementById('weeklyReminderList').innerHTML = rows.join('');
+  const countEl = document.getElementById('weeklyReminderCount');
+  if(countEl) countEl.textContent = `${rows.length} thing${rows.length === 1 ? '' : 's'} still to do this week`;
   panel.style.display = 'block';
   panel.dataset.weekKey = weekKey;
   updateSyndyBadge(anyRealOutstanding); // badge/nag only for what's genuinely still outstanding, not already-placed items still shown in the checklist
@@ -15458,17 +15590,17 @@ function render(state){
   saveMoneyCache(fin, weeklyPl, lastWeek, state.members);
   setMoneyOfflineNotice(false);
 
-  animateValue('balBank', fin.bank, v => fmtMoney(v).replace('+',''));
-  document.getElementById('balBankCell').className = 'toteboard-cell ' + (fin.bank >= 0 ? 'pos' : 'neg');
-  animateValue('balOutlay', fin.outlay + fin.bonusPot, v => '$' + v.toFixed(2));
-  animateValue('balReturn', fin.ret, v => '$' + v.toFixed(2));
-  animateValue('balPot', fin.bonusPot, v => '$' + v.toFixed(2));
-  animateValue('balPlOverall', fin.profitLoss, v => fmtMoney(v).replace('+',''));
-  document.getElementById('balPlOverallCell').className = 'toteboard-cell ' + (fin.profitLoss >= 0 ? 'pos' : 'neg');
-  animateValue('balPlWeekly', weeklyPl, v => fmtMoney(v).replace('+',''));
-  document.getElementById('balPlWeeklyCell').className = 'toteboard-cell ' + (weeklyPl >= 0 ? 'pos' : 'neg');
+  animateValue('balBank', fin.bank, v => homeMoney(v));
+  setPosNeg('balBankCell', fin.bank >= 0);
+  animateValue('balOutlay', fin.outlay + fin.bonusPot, v => homeMoney(v, true));
+  animateValue('balReturn', fin.ret, v => homeMoney(v, true));
+  animateValue('balPot', fin.bonusPot, v => homeMoney(v, true));
+  animateValue('balPlOverall', fin.profitLoss, v => homeMoney(v));
+  setPosNeg('balPlOverallCell', fin.profitLoss >= 0);
+  animateValue('balPlWeekly', weeklyPl, v => homeMoney(v));
+  setPosNeg('balPlWeeklyCell', weeklyPl >= 0);
 
-  animateValue('plHeroVal', fin.profitLoss, v => fmtMoney(v).replace('+',''));
+  animateValue('plHeroVal', fin.profitLoss, v => homeMoney(v));
   const plHeroEl = document.getElementById('plHeroVal');
   if(plHeroEl) plHeroEl.className = 'pl-hero-val ' + (fin.profitLoss >= 0 ? 'pos' : 'neg');
 
@@ -15476,9 +15608,11 @@ function render(state){
   if(history.length){ selectChartPoint(history.length - 1); }
 
   renderGroupMultiChart(state);
+  renderHomeExtras(state);
   try{ if(document.getElementById('adminWeeklyChecklistRows') && currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) updateWeeklyChecklist(); }catch(e){}
 
   const weeklyBets = state.weeklyIndividualBets || [];
+  { const indSec = document.getElementById('homeIndSection'); if(indSec) indSec.hidden = weeklyBets.length === 0; }
   if(weeklyBets.length === 0){
     document.getElementById('weeklyIndividualBetsArea').innerHTML = polishedEmptyState('🎲', 'No individual bets locked in for this week yet.', 'Check back after entry');
   } else {
@@ -15584,23 +15718,24 @@ function render(state){
       html = `<div class="lb-flex-list">${rows}</div>`;
     }
   } else {
-    html = '<div class="lb-scroll"><table class="lb-table"><tr><th class="lb-sticky lb-rank-col">#</th><th class="lb-sticky lb-name-col">Name</th><th>P/L</th><th>Win%</th><th>Score</th><th>W-L-V</th><th>Ind W-L</th><th>Avg Leg</th></tr>';
-    ranked.forEach((m, i) => {
+    // v178: all-time Board as clean rows (was an 8-column table that
+    // scrolled sideways on a phone). The whole row opens the profile.
+    html = '<div class="lb-rows">' + ranked.map((m, i) => {
       const rank = i + 1;
       const isMe = (m.linkedUid && m.linkedUid === currentUserUid) || m.name === currentUserName;
-      const rowCls = `${rank===1?'rank-1':''}${isMe ? ' my-row' : ''}`;
-      html += `<tr class="${rowCls}">
-        <td class="lb-sticky lb-rank-col ${rowCls}">${rank}</td>
-        <td class="name profile-link lb-sticky lb-name-col ${rowCls}" data-profile-name="${escapeHtml(m.name)}" data-uid="${escapeHtml(m.linkedUid || '')}">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</td>
-        <td class="${m.pl>=0?'pos':'neg'}">${fmtMoney(m.pl)}</td>
-        <td>${(m.winPct*100).toFixed(0)}%</td>
-        <td>${m.dataScore.toFixed(2)}</td>
-        <td>${m.wins}-${m.losses}-${m.voids}</td>
-        <td>${m.indWin}-${m.indLoss}</td>
-        <td>${m.avgLeg > 0 ? '@ ' + m.avgLeg.toFixed(2) : '—'}</td>
-      </tr>`;
-    });
-    html += '</table></div>';
+      const decided = (m.wins || 0) + (m.losses || 0);
+      return `<button type="button" class="lb-row profile-link${rank === 1 ? ' rank-1' : ''}${isMe ? ' my-row' : ''}" data-profile-name="${escapeHtml(m.name)}" data-uid="${escapeHtml(m.linkedUid || '')}">
+        <span class="lb-row-rank">${rank}</span>
+        <span class="lb-row-main">
+          <span class="lb-row-name">${escapeHtml(m.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}</span>
+          <span class="lb-row-meta">${(decided || m.voids) ? `<span>${m.wins || 0}-${m.losses || 0}-${m.voids || 0}</span>` : ''}<span>${decided ? (m.winPct*100).toFixed(0) + '% win' : 'No results yet'}</span>${m.avgLeg > 0 ? `<span>Avg @ ${m.avgLeg.toFixed(2)}</span>` : ''}${(m.indWin || m.indLoss) ? `<span>Ind ${m.indWin}-${m.indLoss}</span>` : ''}</span>
+        </span>
+        <span class="lb-row-end">
+          <span class="lb-row-pl ${m.pl >= 0 ? 'pos' : 'neg'}">${m.pl > 0 ? '+' : ''}${homeMoney(m.pl)}</span>
+          <span class="lb-row-score">Score ${m.dataScore.toFixed(2)}</span>
+        </span>
+      </button>`;
+    }).join('') + '</div>';
   }
   document.getElementById('leaderboardArea').innerHTML = html;
   refreshJokerIconSlots();
@@ -15658,6 +15793,7 @@ function render(state){
         const myOwed = Math.round(myMember.duesOwed || 0);
         document.getElementById('myDuesVal').textContent = '$' + myOwed;
         document.getElementById('myDuesVal').style.color = myOwed > 0 ? 'var(--loss)' : 'var(--win)';
+        { const l = document.querySelector('#myDuesPanel .cash-hero-lbl'); if(l) l.textContent = myOwed > 0 ? 'You owe' : 'All paid up'; }
         updateHomeOweChip(myOwed);
       } else {
         myDuesPanel.style.display = 'none';
@@ -15758,14 +15894,14 @@ function setMoneyOfflineNotice(show, savedAt){
 function renderMoneyFromCache(snapshot){
   const fin = snapshot.fin;
   document.getElementById('balBank').textContent = fmtMoney(fin.bank).replace('+','');
-  document.getElementById('balBankCell').className = 'toteboard-cell ' + (fin.bank >= 0 ? 'pos' : 'neg');
+  setPosNeg('balBankCell', fin.bank >= 0);
   document.getElementById('balOutlay').textContent = '$' + (fin.outlay + fin.bonusPot).toFixed(2);
   document.getElementById('balReturn').textContent = '$' + fin.ret.toFixed(2);
   document.getElementById('balPot').textContent = '$' + fin.bonusPot.toFixed(2);
   document.getElementById('balPlOverall').textContent = fmtMoney(fin.profitLoss).replace('+','');
-  document.getElementById('balPlOverallCell').className = 'toteboard-cell ' + (fin.profitLoss >= 0 ? 'pos' : 'neg');
+  setPosNeg('balPlOverallCell', fin.profitLoss >= 0);
   document.getElementById('balPlWeekly').textContent = fmtMoney(snapshot.weeklyPl).replace('+','');
-  document.getElementById('balPlWeeklyCell').className = 'toteboard-cell ' + (snapshot.weeklyPl >= 0 ? 'pos' : 'neg');
+  setPosNeg('balPlWeeklyCell', snapshot.weeklyPl >= 0);
   const plHeroEl = document.getElementById('plHeroVal');
   if(plHeroEl){
     plHeroEl.textContent = fmtMoney(fin.profitLoss).replace('+','');
@@ -15799,6 +15935,7 @@ function renderMoneyFromCache(snapshot){
         const myOwed = Math.round(myMember.duesOwed || 0);
         document.getElementById('myDuesVal').textContent = '$' + myOwed;
         document.getElementById('myDuesVal').style.color = myOwed > 0 ? 'var(--loss)' : 'var(--win)';
+        { const l = document.querySelector('#myDuesPanel .cash-hero-lbl'); if(l) l.textContent = myOwed > 0 ? 'You owe' : 'All paid up'; }
         updateHomeOweChip(myOwed);
       } else {
         myDuesPanel.style.display = 'none';
@@ -15859,7 +15996,10 @@ function renderOnThisDay(data){
     const yearsLabel = `${data.mlsynd.yearsAgo} year${data.mlsynd.yearsAgo === 1 ? '' : 's'} ago in MLSynd`;
     parts.push(`<div class="otd-block otd-mlsynd"><div class="otd-year">${escapeHtml(yearsLabel)}</div><div class="otd-text">You ${verb} ${Math.abs(amt).toLocaleString()} XP — ${escapeHtml(data.mlsynd.reason || '')}</div></div>`);
   }
-  area.innerHTML = parts.length > 0 ? parts.join('') : '<div class="empty">Nothing suitably outrageous found for today — check back tomorrow.</div>';
+  area.innerHTML = parts.join('');
+  // v177: nothing to show means no section at all, rather than an empty box.
+  const otdPanel = document.getElementById('onThisDayPanel');
+  if(otdPanel) otdPanel.hidden = parts.length === 0;
 }
 // The MLSynd half of On This Day — reads the signed-in member's own XP
 // log (every casino/tipping/bet swing already gets logged with a real
@@ -16766,7 +16906,7 @@ document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(btn => {
 function updateHomeOweChip(owed){
   const chip = document.getElementById('homeOweChip');
   if(!chip) return;
-  if(owed > 0){ chip.innerHTML = `💸 You owe <b>$${owed}</b> <span>Cash ›</span>`; chip.style.display = ''; }
+  if(owed > 0){ chip.innerHTML = `<span>You owe <b>$${owed}</b></span><span class="home-owe-go">Settle up</span>`; chip.style.display = ''; }
   else chip.style.display = 'none';
 }
 function navGoto(dest){
@@ -16784,6 +16924,21 @@ document.getElementById('tab-balance').addEventListener('click', (e) => {
   if(!el || e.target.closest('#chartArea')) return;
   navGoto(el.dataset.goto);
 });
+// v178: the tab bar tucks away while you scroll down a page and comes
+// straight back the moment you scroll up, change tab, or hit the bottom.
+(function(){
+  let lastY = window.scrollY, ticking = false;
+  function update(){
+    ticking = false;
+    const y = window.scrollY;
+    const atBottom = window.innerHeight + y >= document.documentElement.scrollHeight - 40;
+    if(y < 120 || atBottom || y < lastY - 6) document.body.classList.remove('nav-tucked');
+    else if(y > lastY + 6) document.body.classList.add('nav-tucked');
+    if(Math.abs(y - lastY) > 6) lastY = y;
+  }
+  window.addEventListener('scroll', () => { if(!ticking){ ticking = true; requestAnimationFrame(update); } }, { passive: true });
+  document.querySelectorAll('.tabbar .tab-btn').forEach(b => b.addEventListener('click', () => document.body.classList.remove('nav-tucked')));
+})();
 const FORM_GUIDE_DESTINATIONS = { '📈': 'board', '📉': 'board', '💰': 'board', '🎯': 'tipping:ladder', '🔥': 'casino', '🎰': 'casino' };
 function tagFormGuideShortcuts(){
   document.querySelectorAll('#formGuideArea .form-guide-row').forEach(row => {
@@ -24113,7 +24268,7 @@ function startApp(){
     // opened Casino first.
     if(currentUserRole !== 'readonly'){
       const teaser = document.getElementById('homeCasinoTeaser');
-      if(teaser) teaser.style.display = 'block';
+      if(teaser) teaser.style.display = '';
       getXPBalance().then(bal => updateXPBalanceDisplay(bal)).catch(() => {});
     }
   });
