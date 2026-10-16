@@ -6170,3 +6170,27 @@
   .hm-name{ font-size:10px; }
   .hm-leg.sel .hm-av{ box-shadow:0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
   .hm-badge{ display:none; }
+
+  /* v183: calmer multi row. Small faces in a tidy line with breathing room,
+     no names underneath (tap a face and its name shows below), no dashed rings. */
+  .hm-legs{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .hm-leg{ width:30px; flex:0 0 30px; gap:0; }
+  .hm-av{ width:30px; max-width:none; height:30px; font-size:12px; font-weight:800; box-shadow:0 0 0 1.5px rgba(255,255,255,.14); outline:none !important; }
+  .hm-leg.result-pending .hm-av{ outline:none; box-shadow:0 0 0 1.5px rgba(255,255,255,.14); }
+  .hm-av-result{ box-shadow:none; }
+  .hm-av-result svg{ width:60%; height:60%; }
+  .hm-name{ display:none; }
+  .hm-leg.sel .hm-av{ transform:none; box-shadow:0 0 0 2px var(--surface), 0 0 0 3.5px var(--accent); }
+  .hm-detail{ margin-top:12px; }
+  .hm-detail.open{ padding:10px 12px; border-left-width:3px; }
+  .hm-detail-name{ font-size:15px; }
+  .hm-detail-odds{ font-size:16px; }
+  .hm-hint{ font-size:12px; }
+
+  /* On this day: centred */
+  .home-v2 #onThisDayPanel .home-row-head{ justify-content:center; }
+  .home-v2 #onThisDayPanel .otd-year, .home-v2 #onThisDayPanel .otd-text{ text-align:center; }
+  .home-v2 #onThisDayPanel .otd-text{ max-width:34ch; margin-left:auto; margin-right:auto; }
+  .hm-legs{ display:grid; grid-template-columns:repeat(9, minmax(0, 30px)); gap:10px 6px; justify-content:start; }
+  .hm-leg{ width:auto; flex:none; }
+  .hm-av{ width:100%; height:auto; aspect-ratio:1; }
