@@ -1,5 +1,9 @@
 [build]
-  publish = "."
+  # Strips comments/whitespace into dist/ on every deploy (see build.mjs).
+  # GitHub keeps the readable source. If the build ever fails, Netlify keeps
+  # serving the previous deploy, so the live site can't break from this.
+  command = "npm run build"
+  publish = "dist"
 
 [functions]
   directory = "netlify/functions"

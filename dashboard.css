@@ -5498,3 +5498,10 @@
       transition-duration:.01ms !important; scroll-behavior:auto !important;
     }
   }
+
+  /* v174: slip photos now load on demand — soft placeholder until they arrive */
+  .slip-thumb img.slip-img-loading{
+    min-height:64px; background:linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.10), rgba(255,255,255,.04));
+    background-size:200% 100%; animation: slipImgShimmer 1.2s ease-in-out infinite;
+  }
+  @keyframes slipImgShimmer{ 0%{ background-position:100% 0; } 100%{ background-position:-100% 0; } }

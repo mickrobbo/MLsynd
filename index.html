@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=170">
+<link rel="stylesheet" href="dashboard.css?v=174">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -198,7 +198,7 @@
     <div id="homeSubview-slips" class="home-subview" style="display:none;">
     <div class="panel">
       <h2>Bet slips</h2>
-      <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Uploaded from the ledger app each week.</div>
+      <div class="hint" style="font-size:11px; color:var(--muted); margin-bottom:8px;">Uploaded by the admin each week.</div>
       <div id="slipsArea"></div>
     </div>
     </div>
@@ -419,11 +419,8 @@
     <div class="panel">
       <h2>🎯 Group Multi Entry</h2>
       <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week below.</div>
-      <div class="hint" id="adminGroupEntryVersionStamp" style="font-family:'IBM Plex Mono',monospace; opacity:.6;"></div>
       <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
       <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-      <button type="button" id="adminPushMultiToHomeBtn" class="small" style="margin-top:10px;">📤 Push to Home Screen</button>
-      <div class="hint" style="margin-top:4px;">Forces the current draft to save and show on the Home tab's "This Week's Multi" right now, rather than waiting on auto-save — doesn't touch season totals, that's still only Save Week below.</div>
     </div>
     <div class="panel">
       <h2>🎲 Bettor Rotation</h2>
@@ -477,7 +474,7 @@
     </div>
     <div class="panel">
       <h2>👁️ Access Levels</h2>
-      <div class="hint">Dashboard only can view the dashboard but can't open the Ledger. Full access can use both.</div>
+      <div class="hint">Dashboard only can view the app but not the Admin tab. Full access can use both.</div>
       <div id="adminApprovedUsersArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
     </div>
@@ -772,7 +769,7 @@
         <div class="casino-milestone-bar"><div class="casino-milestone-fill" id="casinoMilestoneFill"></div></div>
         <div class="hint" id="casinoMilestoneLabel" style="margin-top:5px;"></div>
       </div>
-      <div class="hint" id="xpEarnHint">XP is play money for this tab only, separate from the real ledger.</div>
+      <div class="hint" id="xpEarnHint">XP is play money for this tab only, separate from the real money.</div>
       <div class="casino-hero-actions">
         <button type="button" id="weeklyBonusBtn" class="casino-hero-action-btn" style="display:none;">🎁 Claim weekly bonus</button>
       </div>
@@ -3165,7 +3162,42 @@ async function authedFetch(path, options){
     throw new Error('Read-only guest access — changes are not saved.');
   }
   const sep = path.includes('?') ? '&' : '?';
-  return fetch(`${FIREBASE_URL}${path}${sep}auth=${auth.idToken}`, options);
+  const res = await fetch(`${FIREBASE_URL}${path}${sep}auth=${auth.idToken}`, options);
+  if(method !== 'GET' && res.ok && isSharedStatePath(path)) bumpStateRev();
+  return res;
+}
+
+// ---- Shared-data change marker (v174) ----
+// Every phone used to download the whole of /state.json (~1MB) every 15s.
+// Now every write to /state also stamps /state/_rev with the server time,
+// and the poll first reads just that tiny value — the full download only
+// happens when something actually changed (or every 2 minutes as a safety
+// net, e.g. for a write from an old cached copy of the app).
+function isSharedStatePath(path){
+  const p = String(path).split('?')[0];
+  return (p === '/state.json' || p.startsWith('/state/')) && !p.startsWith('/state/_rev');
+}
+let stateRevBumpTimer = null;
+function bumpStateRev(){
+  clearTimeout(stateRevBumpTimer);
+  stateRevBumpTimer = setTimeout(async () => {
+    stateRevBumpTimer = null;
+    try{
+      const auth = await getValidAuth();
+      if(!auth) return;
+      await fetch(`${FIREBASE_URL}/state/_rev.json?auth=${auth.idToken}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ '.sv': 'timestamp' })
+      });
+    }catch(e){}
+  }, 250);
+}
+// For writes that must survive the page closing (keepalive).
+function bumpStateRevNow(idToken){
+  try{
+    fetch(`${FIREBASE_URL}/state/_rev.json?auth=${idToken}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ '.sv': 'timestamp' }), keepalive: true
+    });
+  }catch(e){}
 }
 
 
@@ -3691,7 +3723,7 @@ function pickMyMemberIndex(){
     // claimed name and silently bump the real person off it.
     const available = (currentState.members || []).map((m, i) => ({ m, i })).filter(({ m }) => !m.linkedUid);
     if(available.length === 0){
-      list.innerHTML = `<div class="hint" style="padding:10px 4px;">Every roster name already has an account linked to it. If one of these is wrong, ask the admin to fix it from the Ledger's Admin — access panel.</div>`;
+      list.innerHTML = `<div class="hint" style="padding:10px 4px;">Every roster name already has an account linked to it. If one of these is wrong, ask the admin to fix it from the Admin tab's Admin — access panel.</div>`;
     } else {
       list.innerHTML = available.map(({ m, i }) =>
         `<button type="button" class="link-member-option" data-idx="${i}" style="padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:9px; color:var(--chalk); text-align:left; font-size:14px; font-weight:600;">${escapeHtml(m.name)}</button>`
@@ -3946,7 +3978,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-16.173"; // v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-16.174"; // v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -15603,21 +15635,22 @@ function render(state){
   });
   document.getElementById('bankShareArea').innerHTML = bankShareHtml || '<div class="empty">No members yet.</div>';
 
+  try{ maybeMigrateSlipImages(state); }catch(e){}
   const slips = state.slips || [];
   if(slips.length === 0){
     document.getElementById('slipsArea').innerHTML = polishedEmptyState('📎', 'No slip uploaded for this week yet — it\'ll appear here once it lands.', 'Check back after results');
   } else {
     let slipHtml = '';
     [...slips].reverse().forEach(s => {
-      const isImage = IMAGE_EXT.test(s.url) || (s.url||'').startsWith('data:image');
-      const isDataUrl = (s.url||'').startsWith('data:');
+      const isImage = !!s.imageId || IMAGE_EXT.test(s.url) || (s.url||'').startsWith('data:image');
+      const isDataUrl = !!s.imageId || (s.url||'').startsWith('data:');
       // data: URLs get blocked by the browser as a top-level navigation (anti-phishing
       // protection), so open those in an on-page viewer instead of a real link
       const labelMarkup = isDataUrl
         ? `<a href="#" class="slip-open" data-added-at="${s.addedAt}">${escapeHtml(s.label || 'Bet slip')}</a>`
         : `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label || s.url)}</a>`;
       slipHtml += `<div class="slip-card">
-        <div class="slip-thumb${isDataUrl ? ' slip-open' : ''}" ${isDataUrl ? `data-added-at="${s.addedAt}"` : ''}>${isImage ? `<img src="${escapeHtml(s.url)}" alt="${escapeHtml(s.label)}" loading="lazy">` : `<span class="slip-icon">🔗</span>`}</div>
+        <div class="slip-thumb${isDataUrl ? ' slip-open' : ''}" ${isDataUrl ? `data-added-at="${s.addedAt}"` : ''}>${isImage ? slipImgTag(s) : `<span class="slip-icon">🔗</span>`}</div>
         <div class="slip-info">
           ${labelMarkup}
           <span class="slip-date">${new Date(s.addedAt).toLocaleDateString()}</span>
@@ -15625,6 +15658,7 @@ function render(state){
       </div>`;
     });
     document.getElementById('slipsArea').innerHTML = slipHtml;
+    hydrateSlipImages(document.getElementById('slipsArea'));
   }
 }
 
@@ -15853,9 +15887,24 @@ async function refreshOnThisDayIfNeeded(){
   renderOnThisDay(toCache);
 }
 
-async function refresh(){
+let lastStateRev = null, lastFullStateFetchAt = 0;
+const FULL_STATE_SAFETY_MS = 120000;
+async function refresh(opts){
   refreshOnThisDayIfNeeded(); // cheap date check most of the time; only actually fetches once the day rolls over
   const statusBar = document.getElementById('statusBar');
+  // v174: tiny "has anything changed?" check before the big download.
+  if(!(opts && opts.force) && currentState && lastStateRev != null && Date.now() - lastFullStateFetchAt < FULL_STATE_SAFETY_MS && !groupDraftHasLocalChanges()){
+    try{
+      const revRes = await authedFetch(`/state/_rev.json?_=${Date.now()}`, { cache: 'no-store' });
+      if(revRes.ok){
+        const rev = await revRes.json();
+        if(rev === lastStateRev){
+          statusBar.textContent = 'Last updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+          return;
+        }
+      }
+    }catch(e){ /* fall through to the full fetch */ }
+  }
   try{
     const fetchStartedAt = Date.now();
     const controller = new AbortController();
@@ -15866,6 +15915,9 @@ async function refresh(){
       const rawText = await res.text();
       let remote = null;
       try{ remote = JSON.parse(rawText); }catch(e){ remote = null; }
+      lastFullStateFetchAt = Date.now();
+      lastStateRev = remote && remote._rev != null ? remote._rev : null;
+      if(remote && remote._rev == null && currentUserRole && currentUserRole !== 'readonly') bumpStateRev(); // first run: create the marker so later polls can be cheap
       // Perf: the 15s poll used to rebuild the whole UI even when nothing
       // changed. Skip the heavy render when the payload is byte-identical,
       // there are no local unsaved edits, and we rendered within the last 60s.
@@ -15888,16 +15940,16 @@ async function refresh(){
         render(remote);
         statusBar.textContent = 'Last updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
       } else {
-        statusBar.textContent = 'Waiting for the ledger\'s first save…';
+        statusBar.textContent = 'Waiting for the first save…';
       }
     } else {
-      statusBar.textContent = `Could not reach the ledger data (HTTP ${res.status}).`;
+      statusBar.textContent = `Could not reach the shared data (HTTP ${res.status}).`;
       applyMoneyCacheFallback();
     }
   }catch(e){
     statusBar.textContent = e.name === 'AbortError'
-      ? 'Timed out waiting for the ledger data (10s) — the shared data may be too large or the connection too slow.'
-      : 'Could not reach the ledger data: ' + e.message;
+      ? 'Timed out waiting for the shared data (10s) — the shared data may be too large or the connection too slow.'
+      : 'Could not reach the shared data: ' + e.message;
     applyMoneyCacheFallback();
   }
 }
@@ -16513,10 +16565,7 @@ document.getElementById('slipsArea').addEventListener('click', async (e) => {
     e.preventDefault();
     const addedAt = Number(openEl.getAttribute('data-added-at'));
     const slip = (currentState.slips || []).find(s => s.addedAt === addedAt);
-    if(slip){
-      document.getElementById('imgModalImg').src = slip.url;
-      document.getElementById('imgModal').classList.add('open');
-    }
+    if(slip) openSlipInViewer(slip);
   }
 });
 
@@ -18701,24 +18750,24 @@ const HEALTH_CHECK_ACTIONS = {
   'Firebase read': 'If this keeps failing, check the Firebase console for an outage or a rules typo. If it\u2019s just slow, no action needed unless it stays \u2265 2s consistently.',
   'Auth session': 'Sign out and back in \u2014 the token is close to expiring or already invalid.',
   'Members linked to Tipping': 'Ask the unlinked member(s) to open the Tipping tab once \u2014 linking happens automatically on first visit.',
-  'Dues fields valid': 'Open Ledger and re-save that member\u2019s dues fields \u2014 a NaN usually means a blank input got saved.',
-  'Duplicate roster names': 'Rename one of the duplicates in the Ledger roster \u2014 sharing a name merges their stats and badges together.',
-  'Badge data shape': 'Open that member in Ledger and re-save \u2014 badges should be an array, something wrote it as a different type.',
-  'Season history entries': 'Open the affected week in Ledger and re-save it \u2014 group or entries data is missing.',
-  'Season-start-round config': 'Set the season-start round in Ledger if Round 1 isn\u2019t actually correct for this season.',
+  'Dues fields valid': 'Open Admin → Money owed and re-save that member\u2019s dues fields \u2014 a NaN usually means a blank input got saved.',
+  'Duplicate roster names': 'Rename one of the duplicates in Admin → Roster \u2014 sharing a name merges their stats and badges together.',
+  'Badge data shape': 'Open that member in Admin → Badges and re-save \u2014 badges should be an array, something wrote it as a different type.',
+  'Season history entries': 'Open the affected week in Admin → Fix a saved week \u2014 group or entries data is missing.',
+  'Season-start-round config': 'Set the season-start round in Admin → Tipping if Round 1 isn\u2019t actually correct for this season.',
   'Tipping picks reads': 'Open the Tipping tab once \u2014 this runs the commence-time sync, which usually fixes read denials caused by missing kickoff-time data.',
   'Joker round validity': 'Ask the affected member to re-pick their Joker round in Tipping.',
   'Browser storage': 'Turn off private/incognito browsing for this app \u2014 it needs localStorage to remember your session.',
-  'No two members share one account': 'Unlink the duplicate UID in Ledger \u2014 two roster members are pointing at the same Firebase account.',
+  'No two members share one account': 'Unlink the duplicate account in Admin → Roster \u2014 two roster members are pointing at the same Firebase account.',
   'Casino XP balance shape': 'Usually self-heals on their next casino win/loss (awardXP re-initialises it) \u2014 only worth a manual look if it persists.',
   'Casino lifetime-earned shape': 'Same as above \u2014 self-heals on their next casino win.',
   'Balance vs lifetime-earned sanity': 'Worth a manual look at that member\u2019s XP log for a write that skipped crediting lifetimeEarned.',
   'Founding Player number range': 'Check /xpMeta/foundingCount and that member\u2019s /xp/{uid}/foundingNumber directly in the Firebase console.',
   'Founding Player counter': 'Check /xpMeta/foundingCount in the Firebase console \u2014 it should never exceed 11.',
-  'Dues owed within commitment': 'Not necessarily a bug \u2014 just means someone\u2019s ledger entries pushed them over their stated commitment. Worth a look if unexpected.',
-  'Group financial fields valid': 'Open Ledger and re-save the group financial fields \u2014 one is NaN or missing.',
-  'Individual bet drafts \u2014 $ amounts': 'Open Ledger\u2019s individual bets and fill in the missing $ amount before saving the week.',
-  'Individual bet drafts \u2014 SGM results': 'Open Ledger and set a result for the ticked SGM flag(s), or untick it.',
+  'Dues owed within commitment': 'Not necessarily a bug \u2014 just means someone\u2019s entries pushed them over their stated commitment. Worth a look if unexpected.',
+  'Group financial fields valid': 'Open Admin → Entry and re-save the group financial fields \u2014 one is NaN or missing.',
+  'Individual bet drafts \u2014 $ amounts': 'Open Admin → Entry\u2019s individual bets and fill in the missing $ amount before saving the week.',
+  'Individual bet drafts \u2014 SGM results': 'Open Admin → Entry and set a result for the ticked SGM flag(s), or untick it.',
   'Casino Pot rules access': 'Deploy the latest firebase-rules.json \u2014 the /casinoPot rules aren\u2019t live yet.',
   'App version current': 'Hard-refresh this tab (or tap the update banner if it\u2019s showing) \u2014 it\u2019s running stale code.',
   'State size / fetch speed': 'Not urgent, but if this keeps growing, old season history may be worth archiving eventually.',
@@ -19178,6 +19227,77 @@ let diagRepairLoaded = false;
 // history, anything the Ledger owns) could silently overwrite genuinely
 // newer data sitting in Firebase. Scoping the write to just this one
 // sub-path makes that entire class of bug structurally impossible.
+// ---- Slip photos stored separately (v174) ----
+// Photos used to live inside /state/slips as data URLs, so every phone
+// re-downloaded every slip photo on every 15s poll — most of the ~1MB.
+// Now: the photo lives at /slipImages/{id}; /state/slips keeps only
+// {label, addedAt, imageId} (or a plain web link in url). Photos load only
+// when a slips list is actually rendered, once per session.
+const slipImageCache = {};
+const slipImageInflight = {};
+function slipImgTag(s){
+  if(!s.imageId) return `<img src="${escapeHtml(s.url)}" alt="${escapeHtml(s.label || '')}" loading="lazy">`;
+  const cached = slipImageCache[s.imageId];
+  return `<img ${cached ? `src="${cached}"` : ''} data-slip-img="${escapeHtml(s.imageId)}" alt="${escapeHtml(s.label || '')}" loading="lazy" class="${cached ? '' : 'slip-img-loading'}">`;
+}
+function loadSlipImage(id){
+  if(slipImageCache[id]) return Promise.resolve(slipImageCache[id]);
+  if(!slipImageInflight[id]){
+    slipImageInflight[id] = authedFetch(`/slipImages/${encodeURIComponent(id)}.json`)
+      .then(r => r.ok ? r.json() : null)
+      .then(v => { if(typeof v === 'string' && v.startsWith('data:image')) slipImageCache[id] = v; delete slipImageInflight[id]; return slipImageCache[id] || null; })
+      .catch(() => { delete slipImageInflight[id]; return null; });
+  }
+  return slipImageInflight[id];
+}
+function hydrateSlipImages(root){
+  if(!root) return;
+  root.querySelectorAll('img[data-slip-img]:not([src])').forEach(img => {
+    loadSlipImage(img.dataset.slipImg).then(src => { if(src){ img.src = src; img.classList.remove('slip-img-loading'); } });
+  });
+}
+async function openSlipInViewer(slip){
+  const src = slip.imageId ? await loadSlipImage(slip.imageId) : slip.url;
+  if(!src) return showToast("Couldn't load that slip photo");
+  document.getElementById('imgModalImg').src = src;
+  document.getElementById('imgModal').classList.add('open');
+}
+function newSlipImageId(){ return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+async function storeSlipImage(dataUrl){
+  const id = newSlipImageId();
+  await authedWrite(`/slipImages/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dataUrl) });
+  slipImageCache[id] = dataUrl;
+  return id;
+}
+// One-time move of existing photos out of /state (admin only). Safe to
+// interrupt: every photo is written to /slipImages first, and /state/slips
+// is only rewritten once all of them have landed.
+let slipMigrationRunning = false, slipMigrationBlocked = false;
+async function maybeMigrateSlipImages(state){
+  if(slipMigrationRunning || slipMigrationBlocked) return;
+  if(!(currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase())) return;
+  const slips = (state && state.slips) || [];
+  if(!slips.some(s => s && typeof s.url === 'string' && s.url.startsWith('data:image'))) return;
+  slipMigrationRunning = true;
+  try{
+    const next = [];
+    for(const s of slips){
+      if(s && typeof s.url === 'string' && s.url.startsWith('data:image')){
+        const imageId = await storeSlipImage(s.url);
+        const { url, ...rest } = s;
+        next.push({ ...rest, imageId });
+      } else next.push(s);
+    }
+    await saveSlipsToFirebase(next);
+    showToast(`📎 Moved ${next.filter(s => s.imageId).length} slip photo(s) out of the shared data — every refresh is now much lighter`);
+    if(document.getElementById('adminSlipsArea') && typeof renderAdminSlips === 'function') renderAdminSlips();
+  }catch(e){
+    slipMigrationBlocked = true; // most likely the new /slipImages Firebase rule isn't deployed yet — tries again next session
+    console.warn('Slip photo move skipped:', e.message);
+  }finally{
+    slipMigrationRunning = false;
+  }
+}
 async function saveSlipsToFirebase(slipsArray){
   await authedWrite('/state/slips.json', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -19196,13 +19316,13 @@ function renderAdminSlips(){
   let html = '';
   [...slips].reverse().forEach((s) => {
     const idx = slips.indexOf(s);
-    const isImage = IMAGE_EXT.test(s.url) || (s.url || '').startsWith('data:image');
-    const isDataUrl = (s.url || '').startsWith('data:');
+    const isImage = !!s.imageId || IMAGE_EXT.test(s.url) || (s.url || '').startsWith('data:image');
+    const isDataUrl = !!s.imageId || (s.url || '').startsWith('data:');
     const labelMarkup = isDataUrl
       ? `<a href="#" class="admin-slip-open" data-idx="${idx}">${escapeHtml(s.label || 'Bet slip')}</a>`
       : `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label || s.url)}</a>`;
     html += `<div class="slip-card">
-      <div class="slip-thumb${isDataUrl ? ' admin-slip-open' : ''}" ${isDataUrl ? `data-idx="${idx}"` : ''}>${isImage ? `<img src="${escapeHtml(s.url)}" alt="${escapeHtml(s.label)}" loading="lazy">` : `<span class="slip-icon">🔗</span>`}</div>
+      <div class="slip-thumb${isDataUrl ? ' admin-slip-open' : ''}" ${isDataUrl ? `data-idx="${idx}"` : ''}>${isImage ? slipImgTag(s) : `<span class="slip-icon">🔗</span>`}</div>
       <div class="slip-info">
         ${labelMarkup}
         <span class="slip-date">${new Date(s.addedAt).toLocaleDateString()}</span>
@@ -19211,23 +19331,22 @@ function renderAdminSlips(){
     </div>`;
   });
   area.innerHTML = html;
+  hydrateSlipImages(area);
   area.querySelectorAll('.admin-slip-open').forEach(el => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       const idx = parseInt(el.dataset.idx, 10);
       const slip = slips[idx];
-      if(slip){
-        document.getElementById('imgModalImg').src = slip.url;
-        document.getElementById('imgModal').classList.add('open');
-      }
+      if(slip) openSlipInViewer(slip);
     });
   });
   area.querySelectorAll('.admin-slip-remove').forEach(btn => {
     btn.addEventListener('click', async () => {
       const idx = parseInt(btn.dataset.idx, 10);
       const next = [...slips];
-      next.splice(idx, 1);
+      const [removed] = next.splice(idx, 1);
       await saveSlipsToFirebase(next);
+      if(removed && removed.imageId) authedFetch(`/slipImages/${removed.imageId}.json`, { method: 'DELETE' }).catch(() => {});
       renderAdminSlips();
     });
   });
@@ -19268,7 +19387,8 @@ document.getElementById('adminSlipFileInput').addEventListener('change', async (
       const label = baseLabel
         ? (files.length > 1 ? `${baseLabel} (${i + 1} of ${files.length})` : baseLabel)
         : (file.name || 'Bet slip');
-      next.push({ label, url: dataUrl, addedAt: Date.now() });
+      const imageId = await storeSlipImage(dataUrl); // photo to its own path; only the reference goes in shared data
+      next.push({ label, imageId, addedAt: Date.now() });
       uploaded++;
     }catch(err){
       failed++;
@@ -20227,7 +20347,10 @@ async function groupEntryUngatedFetch(path, options){
   const auth = await getValidAuth();
   if(!auth) throw new Error('Not signed in');
   const sep = path.includes('?') ? '&' : '?';
-  return fetch(`${FIREBASE_URL}${path}${sep}auth=${auth.idToken}`, options);
+  const res = await fetch(`${FIREBASE_URL}${path}${sep}auth=${auth.idToken}`, options);
+  const method = ((options && options.method) || 'GET').toUpperCase();
+  if(method !== 'GET' && res.ok && isSharedStatePath(path)) bumpStateRev();
+  return res;
 }
 // Fires the save SYNCHRONOUSLY and directly, bypassing the normal async
 // chain on purpose. A page reload, close, or navigation can tear the JS
@@ -20250,6 +20373,7 @@ function flushAdminGroupEntryDraftSync(){
       body: JSON.stringify(groupDraftDirtyRows()),
       keepalive: true
     });
+    bumpStateRevNow(auth.idToken);
   }catch(e){}
 }
 window.addEventListener('pagehide', flushAdminGroupEntryDraftSync);
@@ -20349,92 +20473,7 @@ async function saveAdminGroupEntryDraft(){
     }
   }
 }
-// Sorts object keys recursively before stringifying, so two
-// semantically-identical objects compare equal regardless of key
-// order — plain JSON.stringify is order-sensitive, and Firebase
-// returns object keys alphabetically sorted while the local draft
-// keeps roster/typing order, which was producing false "mismatch"
-// alarms on data that actually matched perfectly.
-function canonicalJSON(obj){
-  if(obj === null || typeof obj !== 'object') return JSON.stringify(obj);
-  if(Array.isArray(obj)) return '[' + obj.map(canonicalJSON).join(',') + ']';
-  return '{' + Object.keys(obj).sort().map(k => JSON.stringify(k) + ':' + canonicalJSON(obj[k])).join(',') + '}';
-}
-document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('adminPushMultiToHomeBtn');
-  const statusEl = document.getElementById('adminGroupDraftSaveStatus');
-  btn.disabled = true;
-  clearTimeout(adminGroupDraftSaveTimer);
-  adminGroupDraftSaveTimer = null;
-  adminGroupDraftSaveRetries = 0;
-  await saveAdminGroupEntryDraft();
-  // Hard proof, not just a "saved" claim — reads straight back from
-  // Firebase (bypassing any local cache entirely) and compares it
-  // against what was actually just typed. This settles definitively
-  // whether the write genuinely landed server-side, independent of
-  // whatever this device's own build/cache situation is.
-  //
-  // FIXED — real bug, reported live as "the group multi isn't showing
-  // on the main page" even though this exact button had just claimed
-  // "✓ Confirmed on Firebase". This verification only ever checked
-  // groupEntryDraft — it never checked groupMultiCleared, even though
-  // Home's renderGroupMultiChart hard-gates on THAT flag before it
-  // ever looks at the draft. A confirmed draft with a still-true
-  // groupMultiCleared on the server is exactly what "saved but not
-  // showing" looks like, and the old verification had no way to catch
-  // it — it was only ever checking half of what actually needs to be
-  // true for Home to display anything.
-  try{
-    const [draftRes, clearedRes] = await Promise.all([
-      groupEntryUngatedFetch('/state/groupEntryDraft.json'),
-      groupEntryUngatedFetch('/state/groupMultiCleared.json')
-    ]);
-    const serverDraft = await draftRes.json();
-    const serverCleared = await clearedRes.json();
-    const localDraft = currentState.groupEntryDraft || {};
-    const draftMatches = canonicalJSON(serverDraft || {}) === canonicalJSON(localDraft);
-    // groupMultiCleared should be false/missing whenever there's a real
-    // entry — if it's still true, Home will show the empty state
-    // regardless of how correct the draft itself is.
-    const hasRealEntry = Object.values(localDraft).some(groupLegIsIn);
-    const clearedOk = !hasRealEntry || !serverCleared;
-    if(statusEl){
-      // FIXED — real issue, reported live as "again didn't save or push
-      // to the main screen" a third time, alongside a screenshot
-      // showing odds typed in for several people but every result still
-      // on "No bet". The draft and groupMultiCleared writes were both
-      // genuinely correct here — the actual gap was in THIS message.
-      // renderGroupMultiChart on Home filters entries by e.result, same
-      // as hasRealEntry above, by what looks like deliberate design (a
-      // "who's cooking it" roast needs to know who won or lost, not
-      // just what the odds were) — odds alone with no result picked is
-      // legitimately incomplete and correctly shows nothing on Home yet.
-      // But this message still said "will show on Home" unconditionally
-      // whenever the writes matched, which is only true once at least
-      // one person has an actual result — claiming otherwise here is
-      // what sent someone looking for a save bug that didn't exist.
-      if(!hasRealEntry){
-        statusEl.textContent = 'Draft saved — but nobody has odds or a result entered yet. Home will keep showing the empty state until at least one person has Win/Loss/Void/MIA selected, not just odds.';
-        statusEl.className = 'status-msg';
-      } else if(draftMatches && clearedOk){
-        statusEl.textContent = '✓ Confirmed on Firebase — genuinely saved AND will show on Home.';
-        statusEl.className = 'status-msg ok';
-      } else if(!draftMatches){
-        statusEl.textContent = `⚠️ Draft mismatch — Firebase has different data than what's shown here. Server: ${JSON.stringify(serverDraft)}`;
-        statusEl.className = 'status-msg error';
-      } else {
-        statusEl.textContent = '⚠️ Draft saved correctly, but groupMultiCleared is still true on Firebase — Home will keep showing the empty state until this clears. Try Push again.';
-        statusEl.className = 'status-msg error';
-      }
-    }
-  }catch(e){
-    if(statusEl){ statusEl.textContent = `Could not verify: ${e.message}`; statusEl.className = 'status-msg error'; }
-  }
-  btn.disabled = false;
-});
 function renderAdminGroupEntry(){
-  const versionStampEl = document.getElementById('adminGroupEntryVersionStamp');
-  if(versionStampEl) versionStampEl.textContent = `Running build: ${APP_VERSION}`;
   const wrap = document.getElementById('adminGroupEntryRows');
   const members = currentState.members || [];
   if(members.length === 0){
@@ -21415,7 +21454,7 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
   }catch(err){
     console.error('save week failed:', err);
     status.className = 'status-msg error';
-    status.textContent = 'Something went wrong saving this week: ' + err.message + ' — check the Ledger directly to see what actually landed before trying again.';
+    status.textContent = 'Something went wrong saving this week: ' + err.message + ' — check Admin → Season History to see what actually landed before trying again.';
   }
 });
 
@@ -21537,7 +21576,7 @@ document.getElementById('adminUndoWeekBtn').addEventListener('click', async () =
   }catch(err){
     console.error('undo week failed:', err);
     status.className = 'status-msg error';
-    status.textContent = 'Something went wrong undoing this week: ' + err.message + ' — check the Ledger directly to see what actually landed before trying again.';
+    status.textContent = 'Something went wrong undoing this week: ' + err.message + ' — check Admin → Season History to see what actually landed before trying again.';
   }finally{
     btn.disabled = false;
     adminUndoWeekInFlight = false;
@@ -21864,7 +21903,7 @@ document.getElementById('adminFixWeekSaveBtn').addEventListener('click', async (
     renderAdminClearGroupWarnList();
   }catch(e){
     status.className = 'status-msg error';
-    status.textContent = 'Something went wrong partway through — check the Ledger directly to see what actually landed before trying again.';
+    status.textContent = 'Something went wrong partway through — check Admin → Season History to see what actually landed before trying again.';
   }
   saveBtn.disabled = false;
 });
@@ -22398,7 +22437,8 @@ document.getElementById('adminBackupBtn').addEventListener('click', async () => 
   status.className = 'status-msg';
   status.textContent = 'Preparing backup…';
   try{
-    let tipping = null, users = null, groupChat = null, predictionMarkets = null, legBets = null, predictionMarketReserve = null, actsOfGodHistory = null;
+    let tipping = null, users = null, groupChat = null, predictionMarkets = null, legBets = null, predictionMarketReserve = null, actsOfGodHistory = null, slipImages = null;
+    try{ const sr = await authedFetch('/slipImages.json'); slipImages = sr.ok ? await sr.json() : null; }catch(e){}
     try{
       const [tippingRes, usersRes, groupChatRes, marketsRes, legBetsRes, reserveRes, aogRes] = await Promise.all([
         authedFetch('/tipping.json'), authedFetch('/users.json'), authedFetch('/groupChat.json'),
@@ -22413,6 +22453,7 @@ document.getElementById('adminBackupBtn').addEventListener('click', async () => 
       ...currentState, __tipping: tipping, __users: users, __groupChat: groupChat,
       __predictionMarkets: predictionMarkets, __legBets: legBets,
       __predictionMarketReserve: predictionMarketReserve, __actsOfGodHistory: actsOfGodHistory,
+      __slipImages: slipImages,
       __exportedAt: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -22447,6 +22488,7 @@ renderAdminLastBackupHint();
 // trees, not part of /state.json itself) — stripped out here since they
 // were never meant to be written back to /state.json.
 let adminPendingRestoreState = null;
+let adminPendingRestoreSlipImages = null;
 document.getElementById('adminRestoreBtn').addEventListener('click', () => {
   document.getElementById('adminRestoreFile').click();
 });
@@ -22467,8 +22509,9 @@ document.getElementById('adminRestoreFile').addEventListener('change', async (e)
     // Strip the extra bundled data this app's own Backup adds — those
     // are separate Firebase trees (/tipping, /users, etc), never part of
     // /state.json, and must not be written there.
-    const { __tipping, __users, __groupChat, __predictionMarkets, __legBets, __predictionMarketReserve, __actsOfGodHistory, __exportedAt, ...stateOnly } = parsed;
+    const { __tipping, __users, __groupChat, __predictionMarkets, __legBets, __predictionMarketReserve, __actsOfGodHistory, __exportedAt, __slipImages, ...stateOnly } = parsed;
     adminPendingRestoreState = stateOnly;
+    adminPendingRestoreSlipImages = (__slipImages && typeof __slipImages === 'object') ? __slipImages : null;
     const memberCount = stateOnly.members.length;
     const weekCount = Array.isArray(stateOnly.history) ? stateOnly.history.length : 0;
     const exportedLabel = __exportedAt ? new Date(__exportedAt).toLocaleString() : 'unknown date';
@@ -22496,6 +22539,11 @@ document.getElementById('adminRestoreFile').addEventListener('change', async (e)
         await authedWrite('/state.json', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(adminPendingRestoreState)
         });
+        // Slip photos live outside /state since v174 — put them back too.
+        if(adminPendingRestoreSlipImages){
+          try{ await authedWrite('/slipImages.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(adminPendingRestoreSlipImages) }); }
+          catch(e){ showToast('State restored, but slip photos could not be restored: ' + e.message); }
+        }
         status.className = 'status-msg ok';
         status.textContent = 'Restored. Reload the app to see the restored data reflected everywhere.';
         showToast('Restored from backup — reload to see it fully applied');

@@ -1,7 +1,10 @@
 {
-  "version": "2026-10-16.173",
+  "version": "2026-10-16.174",
   "date": "2026-10-16",
   "changes": [
+    "Much lighter refreshes: bet slip photos load only when you open Slips, and the app only re-downloads shared data when something has actually changed",
+    "Smaller team logos and Syndy chat background",
+    "Removed the Push to Home Screen button (entries save automatically)",
     "2027 tipping: XP for each round will pay out (it was going to skip every round already paid in 2026)",
     "Tipping season points reset to 0 for the new season",
     "A fixtures feed outage no longer shows as 'no games'",
