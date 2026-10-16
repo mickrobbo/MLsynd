@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=174">
+<link rel="stylesheet" href="dashboard.css?v=175">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -86,6 +86,7 @@
   <header>
     <img src="/banner.png" alt="MLSynd" class="header-banner header-banner-default">
     <img src="/banner-gold.png" alt="MLSynd" class="header-banner header-banner-maxines" loading="lazy" decoding="async">
+    <button type="button" id="headerAdminBtn" class="header-admin-btn" style="display:none;" aria-label="Admin">⚙️<span class="header-admin-dot" id="headerAdminDot"></span></button>
   </header>
 
   <div class="tab-panel active" id="tab-balance">
@@ -117,7 +118,9 @@
       </div>
     </div>
     <div class="offline-money-notice" id="moneyOfflineNoticeHome" style="display:none;"></div>
-    <div class="panel">
+    <button type="button" class="home-owe-chip" id="homeOweChip" data-goto="home:cash" style="display:none;"></button>
+    <div class="panel nav-shortcut" data-goto="home:cash">
+      <span class="nav-shortcut-hint">Cash ›</span>
       <h2>Rolling balance</h2>
       <div class="balance-grid">
         <div class="toteboard-cell" id="balBankCell"><span class="lbl">Bank</span><span class="val" id="balBank">$0</span></div>
@@ -141,7 +144,8 @@
     </div>
 
     <div class="panel">
-      <div class="pl-hero">
+      <div class="pl-hero nav-shortcut" data-goto="board">
+        <span class="nav-shortcut-hint">Board ›</span>
         <div class="pl-hero-lbl">Season P/L</div>
         <div class="pl-hero-val" id="plHeroVal">$0</div>
       </div>
@@ -369,7 +373,11 @@
       <span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;">Last saved week</span>
       <div id="adminLastSavedWeekIndicator" style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px; color:var(--brass-light); margin-top:2px;">—</div>
     </div>
-    <div class="panel">
+    <div class="panel weekly-checklist" id="adminWeeklyChecklist">
+      <h2>✅ This week</h2>
+      <div id="adminWeeklyChecklistRows"></div>
+    </div>
+    <div class="panel" id="adminPanelSlips">
       <h2>📎 Bet Slips</h2>
       <div class="hint">Upload a screenshot of the lotto ticket or bet slip each week — or paste a link instead. Select more than one at once if a bet needs a few (cropped sections, multiple tickets, etc) — they'll all get added together. Shows up on everyone's Slips tab immediately.</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
@@ -386,12 +394,12 @@
       </div>
       <div id="adminSlipsArea" style="margin-top:12px;"><div class="empty">Loading…</div></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="adminPanelWeek">
       <h2>📅 Week Label</h2>
       <div class="hint">Which week this entry belongs to — auto-saves as a draft the moment you pick one.</div>
       <select id="adminWeekLabel" style="width:100%; margin-top:10px;"><option value="">Select week</option></select>
     </div>
-    <div class="panel">
+    <div class="panel" id="adminPanelFin">
       <h2>💰 This Week's Financials</h2>
       <div class="hint">Outlays prefilled at your fixed rates, just enter returns. Every field here auto-saves as a draft the moment you type — nothing commits to the bank balance yet, that still only happens via Save Week below.</div>
       <div class="admin-fin-header-row" style="margin-top:10px;"><span></span><span class="admin-fin-col-lbl">Outlay</span><span class="admin-fin-col-lbl">Return</span></div>
@@ -416,7 +424,7 @@
         <input type="number" id="adminGBonus" step="0.01" value="10">
       </div>
     </div>
-    <div class="panel">
+    <div class="panel" id="adminPanelMulti">
       <h2>🎯 Group Multi Entry</h2>
       <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week below.</div>
       <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
@@ -430,14 +438,14 @@
       <button type="button" id="adminRotationSetupNextBtn" class="small" style="margin-top:8px;">🔀 Set up next week's bettors →</button>
       <div class="status-msg" id="adminRotationStatus"></div>
     </div>
-    <div class="panel">
+    <div class="panel" id="adminPanelInd">
       <h2>🎫 This Week's Individual Bets</h2>
       <div class="hint">Shows on the dashboard, in a box above Highlights, so everyone knows who's up for an individual bet this week. The $ amount here feeds real season totals at Save Week too — but only for anyone left blank in the detailed table above, so you're never entering the same bet twice.</div>
       <div id="adminWeeklyIndividualBetsEntry" style="margin-top:10px;"></div>
       <button type="button" id="adminSaveWeeklyBetsBtn" class="small" style="margin-top:8px;">💾 Save</button>
       <div class="status-msg" id="adminWeeklyBetsStatus"></div>
     </div>
-    <div class="panel" style="border-color:var(--brass);">
+    <div class="panel" id="adminPanelSave" style="border-color:var(--brass);">
       <h2>💾 Save Week</h2>
       <div class="hint">Commits everything above to real season totals — every member's stats, real XP awards, real fines, and this week's history record, all in one action.</div>
       <button type="button" id="adminSaveWeekBtn" class="small danger" style="margin-top:10px;">💾 Save week</button>
@@ -786,6 +794,7 @@
     <!-- Landing hub: primary action, right after your XP — not buried under info panels. -->
     <div class="act-of-god-banner" id="actOfGodBanner" style="display:none;"></div>
     <div class="panel" id="casinoHubPanel" style="padding:14px 10px; text-align:center;">
+      <div id="casinoRecentRow" class="casino-recent-wrap" style="display:none;"></div>
       <div class="casino-hub-row">
         <div class="casino-hub-bubble" id="hubGamesBtn">
           <span class="casino-hub-icon">🎮</span>
@@ -3146,6 +3155,7 @@ async function getValidAuth(){
 
 function authSignOut(){
   authStorageClear();
+  try{ localStorage.removeItem('mlsynd-state-cache'); localStorage.removeItem('mlsynd-recent-games'); }catch(e){}
   location.reload();
 }
 
@@ -3661,7 +3671,9 @@ async function checkApprovalAndProceed(){
       if(typeof checkForUpdate === 'function') checkForUpdate();
       if(currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
         const diagBtn = document.getElementById('homeDiagSubBtn');
-        if(diagBtn) diagBtn.style.display = '';
+        // v175: Admin opens from the ⚙️ in the header now, not a 4th Home tab.
+        const hdrAdmin = document.getElementById('headerAdminBtn');
+        if(hdrAdmin) hdrAdmin.style.display = '';
       }
       // Perf: stop the 30s pending-approval poll once approved (it used to
       // keep re-fetching the profile and re-running this for the whole session).
@@ -3978,7 +3990,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-16.174"; // v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-16.175"; // v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10653,6 +10665,36 @@ async function showCasinoView(viewId){
   reconcileCasinoAmbience();
 }
 document.getElementById('hubGamesBtn').addEventListener('click', () => showCasinoView('casinoGamesView'));
+
+// ---- Recently played (v175) ----
+// Your last three games, one tap from the lobby (this device only).
+const RECENT_GAMES_KEY = 'mlsynd-recent-games';
+function casinoRecentGames(){ try{ return (JSON.parse(localStorage.getItem(RECENT_GAMES_KEY) || '[]') || []).filter(g => typeof g === 'string'); }catch(e){ return []; } }
+function casinoRecordRecentGame(game){
+  if(!game || game === 'dailyspin') return;
+  const list = [game, ...casinoRecentGames().filter(g => g !== game)].slice(0, 3);
+  try{ localStorage.setItem(RECENT_GAMES_KEY, JSON.stringify(list)); }catch(e){}
+  renderCasinoRecentRow();
+}
+function renderCasinoRecentRow(){
+  const wrap = document.getElementById('casinoRecentRow');
+  if(!wrap) return;
+  const list = casinoRecentGames().filter(g => document.querySelector(`#casinoGamesGridPanel .game-bubble[data-game="${g}"]`));
+  if(list.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  wrap.innerHTML = `<div class="casino-recent-title">Jump back in</div><div class="casino-recent-row">${list.map(g => {
+    const src = document.querySelector(`#casinoGamesGridPanel .game-bubble[data-game="${g}"]`);
+    return `<button type="button" class="game-bubble casino-recent-btn" data-recent-game="${g}">${src.innerHTML}</button>`;
+  }).join('')}</div>`;
+  wrap.style.display = '';
+}
+document.getElementById('casinoRecentRow').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-recent-game]');
+  if(!btn) return;
+  await showCasinoView('casinoGamesView');
+  const target = document.querySelector(`#casinoGamesGridPanel .game-bubble[data-game="${btn.dataset.recentGame}"]`);
+  if(target) target.click();
+});
+renderCasinoRecentRow();
 document.getElementById('hubXpBtn').addEventListener('click', () => { renderXpInfoView(); showCasinoView('casinoXpInfoView'); });
 document.getElementById('hubBadgesBtn').addEventListener('click', () => { renderCasinoBadgesView(); showCasinoView('casinoBadgesView'); });
 document.getElementById('hubBookBtn').addEventListener('click', () => { renderSyndyBook(); renderLegBets(); showCasinoView('casinoBookView'); });
@@ -11197,6 +11239,8 @@ document.querySelectorAll('.game-bubble, .game-bubble-wide').forEach(btn => {
     // in Casino overall" but which specific game ate that time.
     timeTrackSwitchTo(`casino:${btn.dataset.game}`);
     document.querySelectorAll('.game-bubble').forEach(b => b.classList.toggle('active', b === btn));
+    navPushSoon(); // back gesture returns to the games list
+    try{ if(btn.dataset.hrEntry !== '1') casinoRecordRecentGame(btn.dataset.game); }catch(e){}
     document.querySelectorAll('.casino-game-panel').forEach(p => p.style.display = 'none');
     document.getElementById('casinoGamesEmptyState').style.display = 'none';
     document.getElementById(CASINO_GAME_PANEL_IDS[btn.dataset.game]).style.display = 'block';
@@ -13812,6 +13856,7 @@ async function renderFormGuide(){
       lines.push(`<div class="form-guide-row"><span class="form-guide-icon">🎰</span><span class="form-guide-text"><b>${escapeHtml(casinoLeaderName)}</b> — most active at the tables this period (${casinoLeaderCount} plays)</span></div>`);
     }
     area.innerHTML = lines.length ? lines.join('') : '<div class="empty">Not enough activity yet to build a form guide.</div>';
+    tagFormGuideShortcuts();
   }catch(e){
     area.innerHTML = '<div class="empty">Could not load the form guide — try again.</div>';
   }
@@ -15431,6 +15476,7 @@ function render(state){
   if(history.length){ selectChartPoint(history.length - 1); }
 
   renderGroupMultiChart(state);
+  try{ if(document.getElementById('adminWeeklyChecklistRows') && currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) updateWeeklyChecklist(); }catch(e){}
 
   const weeklyBets = state.weeklyIndividualBets || [];
   if(weeklyBets.length === 0){
@@ -15612,8 +15658,10 @@ function render(state){
         const myOwed = Math.round(myMember.duesOwed || 0);
         document.getElementById('myDuesVal').textContent = '$' + myOwed;
         document.getElementById('myDuesVal').style.color = myOwed > 0 ? 'var(--loss)' : 'var(--win)';
+        updateHomeOweChip(myOwed);
       } else {
         myDuesPanel.style.display = 'none';
+        updateHomeOweChip(0);
       }
     }
   }catch(e){
@@ -15751,8 +15799,10 @@ function renderMoneyFromCache(snapshot){
         const myOwed = Math.round(myMember.duesOwed || 0);
         document.getElementById('myDuesVal').textContent = '$' + myOwed;
         document.getElementById('myDuesVal').style.color = myOwed > 0 ? 'var(--loss)' : 'var(--win)';
+        updateHomeOweChip(myOwed);
       } else {
         myDuesPanel.style.display = 'none';
+        updateHomeOweChip(0);
       }
     }
   }catch(e){
@@ -15916,6 +15966,7 @@ async function refresh(opts){
       let remote = null;
       try{ remote = JSON.parse(rawText); }catch(e){ remote = null; }
       lastFullStateFetchAt = Date.now();
+      if(remote && Array.isArray(remote.members)){ currentStateFromCache = false; if(rawText !== window.__lastStateRaw) saveStateCache(rawText); }
       lastStateRev = remote && remote._rev != null ? remote._rev : null;
       if(remote && remote._rev == null && currentUserRole && currentUserRole !== 'readonly') bumpStateRev(); // first run: create the marker so later polls can be cheap
       // Perf: the 15s poll used to rebuild the whole UI even when nothing
@@ -15979,6 +16030,8 @@ function setActiveTab(tab){
   // Home-subview selection and the diag-specific render on top.
   if(tab === 'diag'){
     setActiveTab('balance');
+    const hs = document.getElementById('homeMainSubnav'); if(hs) hs.style.display = 'none'; // Admin has its own sub-menu; Home's would just be noise here
+    const hb = document.getElementById('headerAdminBtn'); if(hb) hb.classList.add('active');
     document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(b => b.classList.toggle('active', b.dataset.homesub === 'diag'));
     document.querySelectorAll('.home-subview').forEach(el => { el.style.display = el.id === 'homeSubview-diag' ? 'block' : 'none'; });
     try{ sessionStorage.setItem('mlsynd-active-tab', 'diag'); }catch(e){} // overwrite balance's own save so refresh-restore still lands back on diag specifically
@@ -15988,6 +16041,12 @@ function setActiveTab(tab){
   // Leaving Casino for another tab entirely — same recap-on-exit as
   // switching games within Casino (see the game-bubble handler).
   if(tab !== 'casino') casinoSessionShowRecapIfAny();
+  // v175: leaving Admin (or arriving at Home normally) always lands on a real
+  // Home view — Overview/Cash/Slips — never a half-shown Admin screen.
+  { const hs = document.getElementById('homeMainSubnav'); if(hs) hs.style.display = '';
+    const hb = document.getElementById('headerAdminBtn'); if(hb) hb.classList.remove('active');
+    const diagView = document.getElementById('homeSubview-diag');
+    if(tab === 'balance' && diagView && diagView.style.display !== 'none') navShowHomeSub(navSavedSubviews().home || 'overview'); }
   timeTrackSwitchTo(tab);
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tab}`));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -16004,14 +16063,169 @@ function setActiveTab(tab){
   // have run) — startApp()'s own unconditional initial calls cover that
   // first load instead.
   if(appStarted){
-    if(tab === 'sport'){ refreshAfl(); refreshRacing(); refreshNews(); }
+    if(tab === 'sport' || tab === 'afl'){ refreshAfl(); refreshRacing(); refreshNews(); } // BUG FIX v175: the Sport tab's id is 'afl', so this immediate refresh never ran
     if(tab === 'tipping'){ refreshTipping(); refreshTippingLadderOnly(); }
     if(tab === 'board'){ refreshBoardJokerData(); }
   }
 }
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
+  btn.addEventListener('click', () => {
+    // v175: tapping the tab you're already on scrolls back to the top.
+    if(btn.classList.contains('active') && btn.dataset.tab !== 'casino') window.scrollTo({ top: 0, behavior: 'smooth' });
+    setActiveTab(btn.dataset.tab);
+    navPushSoon();
+  });
 });
+
+// ==================== Navigation upgrades (v175) ====================
+// 1) Each tab remembers its sub-view across launches (Home, Sport, Tipping).
+const NAV_SUBVIEW_KEY = 'mlsynd-subviews';
+function navSavedSubviews(){ try{ return JSON.parse(localStorage.getItem(NAV_SUBVIEW_KEY) || '{}') || {}; }catch(e){ return {}; } }
+function navSaveSubview(part){ try{ localStorage.setItem(NAV_SUBVIEW_KEY, JSON.stringify(Object.assign(navSavedSubviews(), part))); }catch(e){} }
+function navShowHomeSub(view){
+  document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(b => b.classList.toggle('active', b.dataset.homesub === view));
+  document.querySelectorAll('.home-subview').forEach(el => { el.style.display = el.id === `homeSubview-${view}` ? 'block' : 'none'; });
+}
+function navShowSportSub(view){
+  const btn = document.querySelector(`#sportsMainSubnav .subnav-btn[data-subview="${view}"]`);
+  if(!btn) return;
+  document.querySelectorAll('#sportsMainSubnav .subnav-btn').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('.sports-subview').forEach(el => { el.style.display = el.id === `sportsSubview-${view}` ? 'block' : 'none'; });
+}
+function navShowTippingSub(view){
+  const btn = document.querySelector(`#tab-tipping .subnav-btn[data-tipsub="${view}"]`);
+  if(!btn) return;
+  document.querySelectorAll('#tab-tipping .subnav-btn[data-tipsub]').forEach(b => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('.tipping-subview').forEach(el => { el.style.display = el.id === `tippingSubview-${view}` ? 'block' : 'none'; });
+}
+function navRestoreSubviews(){
+  const s = navSavedSubviews();
+  try{ if(['overview', 'cash', 'slips'].includes(s.home) && document.getElementById('homeSubview-diag').style.display === 'none') navShowHomeSub(s.home); }catch(e){}
+  try{ if(s.sport) navShowSportSub(s.sport); }catch(e){}
+  try{ if(s.tipping === 'games' || s.tipping === 'ladder') navShowTippingSub(s.tipping); }catch(e){}
+  try{
+    const sel = document.getElementById('sportSelect');
+    if(sel && s.sportSelect && [...sel.options].some(o => o.value === s.sportSelect) && sel.value !== s.sportSelect){
+      sel.value = s.sportSelect; sel.dispatchEvent(new Event('change'));
+    }
+  }catch(e){}
+}
+
+// 2) The phone's back gesture/button steps back through the app instead of
+// leaving it: game -> games list -> Casino lobby -> previous tab. An open
+// pop-up (profile, chat, rules...) closes first.
+let navRestoring = false, navPushTimer = null;
+function navSnapshot(){
+  const panel = document.querySelector('.tab-panel.active');
+  const tab = panel ? panel.id.replace('tab-', '') : 'balance';
+  const snap = { tab };
+  if(tab === 'balance'){
+    const v = [...document.querySelectorAll('.home-subview')].find(el => el.style.display !== 'none');
+    snap.home = v ? v.id.replace('homeSubview-', '') : 'overview';
+  }
+  if(tab === 'casino'){
+    const cv = document.querySelector('.casino-view.active');
+    snap.cv = cv ? cv.id : null;
+    if(snap.cv === 'casinoGamesView'){
+      const open = [...document.querySelectorAll('.casino-game-panel')].find(p => p.style.display === 'block');
+      snap.game = open ? open.id : null;
+    }
+  }
+  return snap;
+}
+function navPushSoon(){
+  if(navRestoring) return;
+  clearTimeout(navPushTimer);
+  navPushTimer = setTimeout(() => {
+    if(navRestoring) return;
+    const snap = navSnapshot();
+    try{
+      if(JSON.stringify(snap) === JSON.stringify(history.state)) return;
+      history.pushState(snap, '');
+    }catch(e){}
+  }, 80);
+}
+function navCloseOpenGame(){
+  try{ if(typeof casinoSessionShowRecapIfAny === 'function') casinoSessionShowRecapIfAny(); }catch(e){}
+  if(typeof mgActive !== 'undefined') mgActive = false;
+  try{ if(typeof maxinesCleanupIfActive === 'function') maxinesCleanupIfActive(); }catch(e){}
+  document.querySelectorAll('.casino-game-panel').forEach(p => { p.style.display = 'none'; });
+  document.querySelectorAll('.game-bubble').forEach(b => b.classList.remove('active'));
+  const grid = document.getElementById('casinoGamesGridPanel'); if(grid) grid.style.display = '';
+  const empty = document.getElementById('casinoGamesEmptyState'); if(empty) empty.style.display = '';
+  try{ reconcileCasinoAmbience(); }catch(e){}
+}
+async function navApply(s){
+  if(s.home === 'diag'){ setActiveTab('diag'); return; }
+  setActiveTab(s.tab || 'balance');
+  if(s.tab === 'balance' && s.home) navShowHomeSub(s.home);
+  if(s.tab === 'casino'){
+    await showCasinoView(s.cv || null);
+    if(s.cv === 'casinoGamesView' && !s.game) navCloseOpenGame();
+  }
+}
+window.addEventListener('popstate', (e) => {
+  const openModal = [...document.querySelectorAll('[id$="Modal"].open')].pop();
+  if(openModal){
+    openModal.classList.remove('open');
+    try{ history.pushState(navSnapshot(), ''); }catch(err){}
+    return;
+  }
+  if(!e.state) return;
+  navRestoring = true;
+  Promise.resolve(navApply(e.state)).catch(() => {}).finally(() => { setTimeout(() => { navRestoring = false; }, 250); });
+});
+// showCasinoView is called from many places (hub buttons, back buttons,
+// live tables) — record each change as one back-step.
+{ const _origShowCasinoView = showCasinoView;
+  showCasinoView = async function(viewId){ const r = await _origShowCasinoView.apply(this, arguments); navPushSoon(); return r; }; }
+
+// 3) Admin opens from the header ⚙️ (admin only); tapping it again goes back.
+document.getElementById('headerAdminBtn').addEventListener('click', () => {
+  const inAdmin = document.getElementById('homeSubview-diag').style.display !== 'none' && document.getElementById('tab-balance').classList.contains('active');
+  if(inAdmin){ setActiveTab('balance'); }
+  else { setActiveTab('diag'); }
+  window.scrollTo(0, 0);
+  navPushSoon();
+});
+
+// 4) Little dots on the bottom tabs for things waiting on you.
+function setTabBadge(tab, on, label){
+  const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if(!btn) return;
+  let dot = btn.querySelector('.tab-badge');
+  if(!dot){ dot = document.createElement('span'); dot.className = 'tab-badge'; btn.appendChild(dot); }
+  dot.classList.toggle('on', !!on);
+  if(label) dot.setAttribute('aria-label', label);
+}
+async function refreshNavBadges(){
+  if(!currentUserUid || currentUserRole === 'readonly') return;
+  // Tipping: you haven't tipped every game in the next round, and it starts within 3 days.
+  let tipDot = false;
+  try{
+    const games = await fetchTippingFixtures();
+    const upcoming = games.filter(g => !gameHasStarted(g));
+    if(upcoming.length){
+      const r = Math.min(...upcoming.map(g => g.round));
+      const rg = upcoming.filter(g => g.round === r);
+      const first = Math.min(...rg.map(getKickoffMs));
+      if(first - Date.now() < 3 * 86400000){
+        const picks = await Promise.all(rg.map(g => authedFetch(`/tipping/picks/${g.id}/${currentUserUid}.json`).then(res => res.ok ? res.json() : null).catch(() => null)));
+        tipDot = picks.some(p => !p || !p.pick);
+      }
+    }
+  }catch(e){}
+  setTabBadge('tipping', tipDot, 'Tips still to enter this round');
+  // Casino: your free Daily Spin is ready.
+  let spinDot = false;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/dailySpinLastAt.json`);
+    const last = res.ok ? await res.json() : null;
+    spinDot = !last || last + DAILY_SPIN_COOLDOWN_MS <= Date.now();
+  }catch(e){}
+  setTabBadge('casino', spinDot, 'Free spin ready');
+  try{ if(typeof updateWeeklyChecklist === 'function') updateWeeklyChecklist(); }catch(e){}
+}
 document.getElementById('testPushBtn').addEventListener('click', async () => {
   const btn = document.getElementById('testPushBtn');
   const status = document.getElementById('testPushStatus');
@@ -16509,6 +16723,7 @@ document.getElementById('sportViewLadder').addEventListener('click', () => {
 });
 
 document.getElementById('sportSelect').addEventListener('change', () => {
+  navSaveSubview({ sportSelect: document.getElementById('sportSelect').value });
   sportViewMode = 'scores';
   document.getElementById('sportViewScores').classList.add('active');
   document.getElementById('sportViewLadder').classList.remove('active');
@@ -16526,6 +16741,7 @@ document.querySelectorAll('#sportsMainSubnav .subnav-btn').forEach(btn => {
     });
     if(view === 'racing') refreshRacing();
     if(view === 'news') refreshNews();
+    navSaveSubview({ sport: view });
   });
 });
 
@@ -16539,9 +16755,43 @@ document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(btn => {
     });
     try{ sessionStorage.setItem('mlsynd-active-tab', view === 'diag' ? 'diag' : 'balance'); }catch(e){}
     if(view === 'diag') renderDiagTab();
+    else navSaveSubview({ home: view });
     window.scrollTo(0,0);
+    navPushSoon();
   });
 });
+
+// ---------- Home shortcuts (v175) ----------
+// Tap a Home card to jump to where that number lives.
+function updateHomeOweChip(owed){
+  const chip = document.getElementById('homeOweChip');
+  if(!chip) return;
+  if(owed > 0){ chip.innerHTML = `💸 You owe <b>$${owed}</b> <span>Cash ›</span>`; chip.style.display = ''; }
+  else chip.style.display = 'none';
+}
+function navGoto(dest){
+  if(!dest) return;
+  const [tab, sub] = dest.split(':');
+  if(tab === 'home'){ setActiveTab('balance'); navShowHomeSub(sub || 'overview'); navSaveSubview({ home: sub || 'overview' }); }
+  else if(tab === 'tipping'){ setActiveTab('tipping'); if(sub){ const b = document.querySelector(`#tab-tipping .subnav-btn[data-tipsub="${sub}"]`); if(b) b.click(); } }
+  else if(tab === 'casino'){ const b = document.querySelector('[data-tab="casino"]'); if(b) b.click(); return; }
+  else setActiveTab(tab);
+  window.scrollTo(0, 0);
+  navPushSoon();
+}
+document.getElementById('tab-balance').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-goto]');
+  if(!el || e.target.closest('#chartArea')) return;
+  navGoto(el.dataset.goto);
+});
+const FORM_GUIDE_DESTINATIONS = { '📈': 'board', '📉': 'board', '💰': 'board', '🎯': 'tipping:ladder', '🔥': 'casino', '🎰': 'casino' };
+function tagFormGuideShortcuts(){
+  document.querySelectorAll('#formGuideArea .form-guide-row').forEach(row => {
+    const icon = (row.querySelector('.form-guide-icon') || {}).textContent;
+    const dest = FORM_GUIDE_DESTINATIONS[(icon || '').trim()];
+    if(dest) row.dataset.goto = dest;
+  });
+}
 
 // ---------- Tipping tab sub-navigation (Games / Ladder) ----------
 document.querySelectorAll('#tab-tipping .subnav-btn[data-tipsub]').forEach(btn => {
@@ -16553,6 +16803,7 @@ document.querySelectorAll('#tab-tipping .subnav-btn[data-tipsub]').forEach(btn =
     });
     if(view === 'ladder') refreshTippingLadderOnly();
     if(view === 'history') renderTippingHistory();
+    navSaveSubview({ tipping: view });
   });
 });
 
@@ -17233,7 +17484,7 @@ async function refreshTipping(isBackgroundPoll){
       const yr = await getTippingSeasonYear();
       document.getElementById('tippingRoundHeading').textContent = `Footy Tipping — ${yr}`;
       roundSelectWrap.innerHTML = '';
-      gamesArea.innerHTML = `<div class="empty">🏉 The ${yr} season fixture isn't out yet — games will appear here automatically once the AFL releases it. Last season's results are under History.</div>`;
+      gamesArea.innerHTML = await buildTippingOffseasonHtml(yr);
       renderTippingLadder([]);
       renderTippingPrizePot();
       return;
@@ -17258,6 +17509,43 @@ async function refreshTipping(isBackgroundPoll){
   }
 }
 
+// ---- Off-season Tipping screen (v175) ----
+// Between seasons: last season's champion + podium and a countdown to the
+// new season's Round 1, instead of a bare "fixture isn't out yet".
+// Round 1 date for each upcoming season — the AFL confirmed 2027's opener
+// as the week of 17-21 March (fixture itself due in November). Add next
+// year's here once announced; a missing year just hides the countdown.
+const TIPPING_SEASON_OPENERS = { 2027: '2027-03-17T19:30:00+11:00' };
+async function buildTippingOffseasonHtml(yr){
+  let podium = '';
+  try{
+    const res = await authedFetch(`/tippingArchive/${yr - 1}.json`);
+    const rec = res.ok ? await res.json() : null;
+    const rows = (rec && rec.ladder && Array.isArray(rec.ladder.rows)) ? rec.ladder.rows : [];
+    if(rows.length){
+      const medals = ['🥇', '🥈', '🥉'];
+      podium = `<div class="offseason-champ">
+        <div class="offseason-kicker">${yr - 1} champion</div>
+        <div class="offseason-champ-name">🏆 ${escapeHtml(rows[0].name || '—')}</div>
+        <div class="offseason-champ-pts">${rows[0].points} points</div>
+        <div class="offseason-podium">${rows.slice(0, 3).map((r, i) => `<div class="offseason-podium-row"><span>${medals[i]}</span><span>${escapeHtml(r.name || '—')}</span><b>${r.points}</b></div>`).join('')}</div>
+        <button type="button" class="pill-btn" id="offseasonHistoryBtn" style="margin-top:10px;">Full ${yr - 1} ladder ›</button>
+      </div>`;
+    }
+  }catch(e){}
+  let countdown = '';
+  const opener = TIPPING_SEASON_OPENERS[yr] ? new Date(TIPPING_SEASON_OPENERS[yr]).getTime() : null;
+  if(opener && opener > Date.now()){
+    const days = Math.ceil((opener - Date.now()) / 86400000);
+    countdown = `<div class="offseason-countdown"><div class="offseason-days">${days}</div><div class="offseason-kicker">days until ${yr} Round 1</div></div>`;
+  }
+  setTimeout(() => {
+    const b = document.getElementById('offseasonHistoryBtn');
+    if(b) b.addEventListener('click', () => { const h = document.querySelector('#tab-tipping .subnav-btn[data-tipsub="history"]'); if(h) h.click(); });
+  }, 0);
+  return `<div class="offseason-wrap">${countdown}${podium}
+    <div class="hint" style="text-align:center; margin-top:10px;">🏉 The ${yr} fixture isn't out yet (the AFL usually releases it in November) — games will appear here automatically. No Opening Round in ${yr}: everyone starts in Round 1.</div></div>`;
+}
 async function renderTippingPrizePot(){
   const el = document.getElementById('tippingPrizePotVal');
   try{
@@ -20454,6 +20742,7 @@ async function saveAdminGroupEntryDraft(){
     });
     groupDraftMirrorWrite();
     groupDraftGuardSet(currentState);
+    try{ notifyMultiResults(sentNames); }catch(e){}
     // Matches the Slips admin tool's established pattern (update
     // currentState, then render(currentState)) — reflects immediately
     // without waiting for the next poll.
@@ -20473,6 +20762,102 @@ async function saveAdminGroupEntryDraft(){
     }
   }
 }
+// ---- Push alerts for group multi results (v175) ----
+// When a leg is marked Win or Loss, everyone with alerts on gets a push.
+// The server only lets the admin send these and never repeats the same
+// leg+result, so re-saving or toggling back and forth can't spam anyone.
+const MULTI_NOTIFIED_KEY = 'mlsynd-multi-notified';
+function multiNotifiedMap(){ try{ return JSON.parse(localStorage.getItem(MULTI_NOTIFIED_KEY) || '{}') || {}; }catch(e){ return {}; } }
+async function notifyMultiResults(names){
+  if(!(currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase())) return;
+  const draft = (currentState && currentState.groupEntryDraft) || {};
+  const legs = Object.entries(draft).filter(([, e]) => e && e.odds != null && Number(e.odds) > 0);
+  const losers = legs.filter(([, e]) => e.result === 'Loss').map(([n]) => n);
+  const pending = legs.filter(([, e]) => !e.result).length;
+  const weekKey = (document.getElementById('adminWeekLabel') || {}).value || (currentState && currentState.weekLabelDraft) || 'week';
+  const map = multiNotifiedMap();
+  for(const name of names){
+    const e = draft[name];
+    if(!e || (e.result !== 'Win' && e.result !== 'Loss')) continue;
+    const legKey = `${weekKey}_${name}`;
+    if(map[legKey] === e.result) continue;
+    const odds = e.odds != null ? ` @ ${Number(e.odds).toFixed(2)}` : '';
+    let title, body;
+    if(e.result === 'Win'){
+      title = `✅ ${name}'s leg got up${odds}`;
+      body = losers.length ? `Multi's already gone (${losers.join(' & ')}) — but nice one.`
+        : pending === 0 ? '🎉 That\'s every leg in — the multi got up!' : `${pending} leg${pending === 1 ? '' : 's'} still to go.`;
+    } else {
+      title = `❌ ${name}'s leg went down${odds}`;
+      body = losers.length > 1 ? `That's ${losers.length} legs down this week.` : `The multi's cooked — ${name} owes the boys a beer.`;
+    }
+    try{
+      const auth = await getValidAuth();
+      if(!auth) return;
+      const res = await fetch('/.netlify/functions/send-multi-notify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: auth.idToken, legKey, result: e.result, title, body })
+      });
+      if(res.ok){ map[legKey] = e.result; try{ localStorage.setItem(MULTI_NOTIFIED_KEY, JSON.stringify(map)); }catch(err){} }
+    }catch(err){}
+  }
+}
+
+// ---- Weekly checklist (v175) ----
+// One screen for the weekly job: each step shows done/to-do and taps
+// straight to the panel below that does it. Purely reads what's already
+// entered — never changes anything itself.
+function weeklyChecklistSteps(){
+  const st = currentState || {};
+  const draft = st.groupEntryDraft || {};
+  const legs = Object.values(draft).filter(e => e && e.odds != null && Number(e.odds) > 0);
+  const legsWithResult = legs.filter(e => e.result);
+  const weekSel = document.getElementById('adminWeekLabel');
+  const ret = document.getElementById('adminGMultiRet');
+  const bets = Array.isArray(st.weeklyIndividualBets) ? st.weeklyIndividualBets.filter(b => b && b.name) : [];
+  const betsDone = bets.filter(b => b.result === 'Win' || b.result === 'Loss' || b.result === 'Void');
+  const hist = Array.isArray(st.history) ? st.history : [];
+  const lastSavedAt = hist.length ? (hist[hist.length - 1].savedAt || 0) : 0;
+  const slipsThisWeek = (st.slips || []).filter(x => x && (x.addedAt || 0) > lastSavedAt).length;
+  return [
+    { key: 'week', icon: '📅', label: 'Pick the week', done: !!(weekSel && weekSel.value), detail: weekSel && weekSel.value ? weekSel.value : 'Not picked yet', target: 'adminPanelWeek' },
+    { key: 'legs', icon: '🎯', label: 'Enter the multi legs', done: legs.length > 0, detail: legs.length ? `${legs.length} leg${legs.length === 1 ? '' : 's'} in` : 'No odds entered yet', target: 'adminPanelMulti' },
+    { key: 'slip', icon: '📎', label: 'Upload the bet slip', done: slipsThisWeek > 0, detail: slipsThisWeek ? `${slipsThisWeek} uploaded` : 'None this week', target: 'adminPanelSlips' },
+    { key: 'results', icon: '✅', label: 'Mark the results', done: legs.length > 0 && legsWithResult.length === legs.length, detail: legs.length ? `${legsWithResult.length} of ${legs.length}` : 'Waiting on legs', target: 'adminPanelMulti' },
+    { key: 'ind', icon: '🎫', label: 'Individual bet results', done: bets.length === 0 || betsDone.length === bets.length, detail: bets.length ? `${betsDone.length} of ${bets.length}` : 'None this week', target: 'adminPanelInd' },
+    { key: 'fin', icon: '💰', label: 'Enter the returns', done: !!(ret && ret.value !== ''), detail: ret && ret.value !== '' ? `Group return $${ret.value}` : 'Group return blank', target: 'adminPanelFin' },
+  ];
+}
+function updateWeeklyChecklist(){
+  const wrap = document.getElementById('adminWeeklyChecklistRows');
+  const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const steps = weeklyChecklistSteps();
+  const doneCount = steps.filter(x => x.done).length;
+  const dot = document.getElementById('headerAdminDot');
+  // header ⚙️ dot: something this week is still to do (only once legs have started going in, so it isn't nagging all week)
+  if(dot) dot.classList.toggle('on', !!isAdmin && steps[1].done && doneCount < steps.length);
+  if(!wrap) return;
+  wrap.innerHTML = steps.map(x => `<button type="button" class="wcl-row${x.done ? ' done' : ''}" data-wcl-target="${x.target}">
+      <span class="wcl-tick">${x.done ? '✓' : x.icon}</span>
+      <span class="wcl-text"><span class="wcl-label">${x.label}</span><span class="wcl-detail">${escapeHtml(String(x.detail))}</span></span>
+      <span class="wcl-go">›</span>
+    </button>`).join('') + `<button type="button" class="wcl-save${doneCount === steps.length ? ' ready' : ''}" data-wcl-target="adminPanelSave">
+      ${doneCount === steps.length ? '💾 All done — go to Save Week' : `💾 Save Week (${doneCount} of ${steps.length} done)`}</button>`;
+}
+document.getElementById('adminWeeklyChecklist').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-wcl-target]');
+  if(!b) return;
+  const panel = document.getElementById(b.dataset.wclTarget);
+  if(!panel) return;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  panel.classList.remove('wcl-flash'); void panel.offsetWidth; panel.classList.add('wcl-flash');
+});
+// Keep it current as you type anywhere in the Entry screen.
+{ const entryPanel = document.querySelector('[data-submode-panel="entry"]');
+  let t = null;
+  const kick = () => { clearTimeout(t); t = setTimeout(updateWeeklyChecklist, 250); };
+  if(entryPanel){ entryPanel.addEventListener('input', kick); entryPanel.addEventListener('change', kick); } }
+
 function renderAdminGroupEntry(){
   const wrap = document.getElementById('adminGroupEntryRows');
   const members = currentState.members || [];
@@ -22613,7 +22998,7 @@ function renderDiagTab(retriesLeft){
   // currentState.members would throw. Retry briefly rather than show a
   // scary "could not load" for what's really just "give it a second."
   initAdminCollapsiblePanels();
-  if(!currentState){
+  if(!currentState || currentStateFromCache){ // never build admin screens from the saved offline copy
     if(retriesLeft === undefined) retriesLeft = 10; // ~4s total before actually giving up
     if(retriesLeft <= 0){
       ['pulseErrorsArea', 'presenceArea'].forEach(id => {
@@ -22657,6 +23042,7 @@ function renderDiagTab(retriesLeft){
     renderAdminWeeklyIndividualBetsEntry();
     renderAdminBettorRotationPanel();
   }
+  try{ updateWeeklyChecklist(); }catch(e){}
 }
 document.querySelectorAll('#diagSubmodeRow .admin-submode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -23637,7 +24023,31 @@ async function renderHomeDigest(){
   el.innerHTML = `<h2 style="font-size:14px; margin-bottom:2px;">📋 What's Happening</h2>${parts.join('')}`;
   el.style.display = 'block';
 }
+// ---- Instant open (v175) ----
+// Shows the last data this device saw straight away, then quietly swaps in
+// fresh data the moment it arrives — instead of a blank/loading screen on a
+// slow connection. Admin screens wait for the fresh copy.
+const STATE_CACHE_KEY = 'mlsynd-state-cache';
+let currentStateFromCache = false;
+function showCachedStateIfAny(){
+  try{
+    if(currentState) return;
+    const raw = localStorage.getItem(STATE_CACHE_KEY);
+    if(!raw) return;
+    const st = JSON.parse(raw);
+    if(!st || !Array.isArray(st.members)) return;
+    currentState = st; currentStateFromCache = true;
+    render(st);
+    const bar = document.getElementById('statusBar');
+    if(bar) bar.textContent = 'Showing your last view — updating…';
+  }catch(e){}
+}
+function saveStateCache(rawText){
+  try{ if(rawText && rawText.length < 2500000) localStorage.setItem(STATE_CACHE_KEY, rawText); }catch(e){}
+}
 function startApp(){
+  showCachedStateIfAny();
+  try{ navRestoreSubviews(); history.replaceState(navSnapshot(), ''); }catch(e){}
   refresh().then(() => {
     // Auto-link this account to its Board/Ledger roster entry on every
     // sign-in — previously this only ever ran inside the Edit Name flow,
@@ -23672,17 +24082,19 @@ function startApp(){
   // restricted to the admin client specifically.
   autoCheckCasinoPotRollover();
   renderWeeklyReminderPanel(); // once per session — see its own comment for why
-  startSmartPolling(refresh, 15000); // poll every 15s for live-ish updates (paused while backgrounded) — feeds Home/Board/Cash simultaneously, so this one always runs regardless of active tab
+  startSmartPolling(refresh, 5000); // v175: every 5s — cheap now, since each tick only reads the tiny /state/_rev marker unless something changed
+  setTimeout(refreshNavBadges, 4000);
+  startSmartPolling(refreshNavBadges, 180000); // poll every 15s for live-ish updates (paused while backgrounded) — feeds Home/Board/Cash simultaneously, so this one always runs regardless of active tab
   refreshAfl();
-  startTabScopedPolling(refreshAfl, 20000, ['sport']); // Sport tab scores — only while Sport is actually showing
+  startTabScopedPolling(refreshAfl, 20000, ['afl']); // (v175: the Sport tab's real id is 'afl' — with 'sport' these never ran)  Sport tab scores — only while Sport is actually showing
   refreshRacing();
-  startTabScopedPolling(refreshRacing, 300000, ['sport']); // meetings/races don't change often — every 5 min is plenty, and only while Sport is showing
+  startTabScopedPolling(refreshRacing, 300000, ['afl']); // (v175: the Sport tab's real id is 'afl' — with 'sport' these never ran)  meetings/races don't change often — every 5 min is plenty, and only while Sport is showing
   refreshTipping();
   startTabScopedPolling(() => refreshTipping(true), 180000, ['tipping']); // picks reveal as games kick off — was every 60s, which was rebuilding the whole picks UI from server data mid-tap for anyone still deciding, wiping their unsubmitted picks. 3 min gives real headroom without meaningfully delaying the "picks reveal at kickoff" behaviour this exists for. isBackgroundPoll=true additionally skips the tick entirely while a margin input has focus, and unsaved-but-selected picks now survive the rebuild too (see renderTippingRound/renderTipGame).
   setTimeout(refreshTippingLadderOnly, 2500); // staggered — this reads one row per finished game this season and was competing with the round's own game cards for bandwidth on first load
   startTabScopedPolling(refreshTippingLadderOnly, 240000, ['tipping']); // ladder is read-heavy (1 DB read per finished game this season) — every 4 min is plenty, was riding the 60s cycle before
   refreshNews();
-  startTabScopedPolling(refreshNews, 300000, ['sport']); // headlines don't need to be checked often — every 5 min, only while Sport is showing
+  startTabScopedPolling(refreshNews, 300000, ['afl']); // (v175: the Sport tab's real id is 'afl' — with 'sport' these never ran)  headlines don't need to be checked often — every 5 min, only while Sport is showing
   refreshBoardJokerData();
   startTabScopedPolling(refreshBoardJokerData, 240000, ['board', 'tipping']); // Joker icons render on BOTH the Board leaderboard and Tipping's own Ladder sub-view — every 4 min, only while one of those is showing
   startTabScopedPolling(pollCasinoTicker, 8000, ['casino']); // "live room" ticker — frequent polling that feels live (this app doesn't use Firebase's real-time SDK), only while Casino is actually open
