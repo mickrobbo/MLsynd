@@ -116,13 +116,19 @@ async function releaseLock(secret){
   try{ await dbDelete(LOCK_PATH, secret); }catch(e){}
 }
 
+// FIXED 2026-10-16: was still the old twice-monthly key ("-01"/"-16") after
+// the pot went weekly, so every tipping fine landed in a bucket nothing else
+// used ("2026-10-01"), which then blocked distribution. Must stay identical
+// to periodKeyFor() in casino-pot-distribute-scheduled.js and
+// casinoPotPeriodKey() in the Dashboard: the Monday that starts the week.
 function periodKeyFor(date, timeZone){
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(date);
-  const y = parts.find(p => p.type === 'year').value;
-  const m = parts.find(p => p.type === 'month').value;
-  const day = Number(parts.find(p => p.type === 'day').value);
-  const periodStartDay = day <= 15 ? '01' : '16';
-  return `${y}-${m}-${periodStartDay}`;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).formatToParts(date);
+  const y = Number(parts.find(p => p.type === 'year').value);
+  const m = Number(parts.find(p => p.type === 'month').value);
+  const d = Number(parts.find(p => p.type === 'day').value);
+  const weekdayIndex = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[parts.find(p => p.type === 'weekday').value];
+  const monday = new Date(Date.UTC(y, m - 1, d) - weekdayIndex * 86400000);
+  return `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, '0')}-${String(monday.getUTCDate()).padStart(2, '0')}`;
 }
 function normTeamName(s){ return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
 

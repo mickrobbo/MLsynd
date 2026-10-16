@@ -105,7 +105,11 @@ function isDistributionTime(){
   const parts = new Intl.DateTimeFormat('en-AU', { timeZone: TIMEZONE, weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(new Date());
   const weekday = parts.find(p => p.type === 'weekday').value;
   const hour = parts.find(p => p.type === 'hour').value;
-  return weekday === 'Mon' && Number(hour) === DISTRIBUTE_HOUR;
+  // FIXED 2026-10-16: was "Monday AND hour === 8" only, so one failed or
+  // skipped run meant no retry for a whole week. Now any hourly run counts
+  // except Monday before 8am; distributePot() itself is a no-op unless a
+  // closed period is actually sitting there, so the extra runs are cheap.
+  return !(weekday === 'Mon' && Number(hour) < DISTRIBUTE_HOUR);
 }
 // Separate from isDistributionTime() on purpose. The Clean Record Bonus
 // is monthly and was never meant to change when the pot's own cadence
@@ -286,158 +290,142 @@ async function isEligibleForProportional(uid, monthKey, playCount, secret){
 // Blackjack etc.) are credited elsewhere, not through this function, and
 // are unaffected — only the periodic pot distribution and jackpot draw
 // are excluded from tier.
+// Atomic numeric add (ETag compare-and-swap, retried). FIXED 2026-10-16:
+// creditPotXP used a plain read-then-PUT, so a payout landing while that
+// player was mid-game could overwrite their win (or their game could
+// overwrite the payout).
+async function dbAddNumber(path, secret, delta){
+  const url = `${FIREBASE_URL}${path}.json?access_token=${secret}`;
+  for(let attempt = 0; attempt < 8; attempt++){
+    const getRes = await fetch(url, { headers: { 'X-Firebase-ETag': 'true' } });
+    if(!getRes.ok) throw new Error(`GET ${path} failed: ${getRes.status}`);
+    const etag = getRes.headers.get('ETag');
+    const cur = Number(await getRes.json()) || 0;
+    const next = cur + delta;
+    const putRes = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'If-Match': etag }, body: JSON.stringify(next) });
+    if(putRes.ok) return next;
+    if(putRes.status !== 412) throw new Error(`PUT ${path} failed: ${putRes.status}`);
+  }
+  throw new Error(`PUT ${path} kept conflicting`);
+}
 async function creditPotXP(uid, amount, reason, secret){
   if(!(amount > 0)) return;
-  const bal = (await dbGet(`/xp/${uid}/balance`, secret)) || 0;
-  const next = bal + amount;
-  await dbPut(`/xp/${uid}/balance`, secret, next);
+  const next = await dbAddNumber(`/xp/${uid}/balance`, secret, amount);
   await dbPost(`/xp/${uid}/log`, secret, { amount, reason, balanceAfter: next, ts: Date.now() });
+}
+
+// REWRITTEN 2026-10-16. The old version lumped EVERY closed bucket into one
+// combined pot and, if that came out at zero (fines >= losses) or nobody
+// qualified, just returned — leaving every bucket in place. They then piled
+// up forever and dragged each later week's pot down with them, so nothing
+// ever paid out again (health check: "3 closed periods never distributed").
+// Old-format keys written by the tipping-fines job (e.g. "2026-10-01") were
+// part of that pile too.
+// Now each closed period is settled on its own, oldest first:
+//   - pays out if it has a pot and someone qualifies, then is removed
+//   - otherwise its losses and fines carry into the next period (the next
+//     closed one, or this week's), then it is removed
+//   - an old-format (non-Monday) key always carries forward
+const isMondayKey = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && new Date(k + 'T00:00:00Z').getUTCDay() === 1;
+
+async function rollPeriodForward(mk, data, intoKey, secret){
+  for(const [uid, v] of Object.entries(data.losses || {})){
+    const n = Number(v) || 0;
+    if(n > 0) await dbAddNumber(`/casinoPot/months/${intoKey}/losses/${uid}`, secret, n);
+  }
+  const fines = Number(data.fines) || 0;
+  if(fines > 0) await dbAddNumber(`/casinoPot/months/${intoKey}/fines`, secret, fines);
+  await dbDelete(`/casinoPot/months/${mk}`, secret);
+}
+
+async function distributeOnePeriod(mk, data, rollIntoKey, secret){
+  const losses = data.losses || {};
+  const playCounts = data.playCounts || {};
+  const fines = Number(data.fines) || 0;
+  const rawPot = Object.values(losses).reduce((s, v) => s + (Number(v) || 0), 0);
+  const totalPot = Math.max(0, rawPot - fines);
+  const label = mk;
+
+  // Already paid (a previous run credited everyone, then failed to delete)?
+  const existing = await dbGet(`/casinoPot/history/${label.replace(/\./g, '_')}`, secret).catch(() => null);
+  if(existing && existing.claiming) return { period: mk, skipped: true, stuck: true, reason: 'a previous payout run crashed part-way — needs a manual check' };
+  if(existing){ await dbDelete(`/casinoPot/months/${mk}`, secret); return { period: mk, skipped: true, cleaned: true, reason: 'already paid — leftover bucket removed' }; }
+
+  if(!isMondayKey(mk)){
+    await rollPeriodForward(mk, data, rollIntoKey, secret);
+    return { period: mk, skipped: true, rolled: true, rolledInto: rollIntoKey, reason: 'old-format key — carried forward' };
+  }
+
+  const allUids = new Set([...Object.keys(losses), ...Object.keys(playCounts)]);
+  const eligible = [];
+  for(const uid of allUids){
+    if(await isEligibleForProportional(uid, label, Number(playCounts[uid]) || 0, secret)) eligible.push(uid);
+  }
+  if(totalPot <= 0 || eligible.length === 0){
+    await rollPeriodForward(mk, data, rollIntoKey, secret);
+    return { period: mk, skipped: true, rolled: true, rolledInto: rollIntoKey, totalPot, reason: totalPot <= 0 ? 'pot was zero after fines' : 'nobody qualified' };
+  }
+
+  const claimed = await claimDistributionLabel(label, secret);
+  if(!claimed) return { period: mk, skipped: true, reason: 'claimed by another invocation' };
+
+  const CASINO_POT_CAP = 120000000;
+  const cappedPot = Math.min(totalPot, CASINO_POT_CAP);
+  const capBurnedAmount = totalPot - cappedPot;
+  const CASINO_POT_BURN_RATE = 0.30;
+  const regularBurnedAmount = Math.floor(cappedPot * CASINO_POT_BURN_RATE);
+  const burnedAmount = capBurnedAmount + regularBurnedAmount;
+  const distributable = cappedPot - regularBurnedAmount;
+  const proportionalPool = Math.floor(distributable * 0.75);
+  const jackpotPool = distributable - proportionalPool;
+
+  const proportional = {};
+  const share = Math.floor(proportionalPool / eligible.length);
+  eligible.forEach(uid => { proportional[uid] = share; });
+
+  const TIPPING_JACKPOT_GAME_THRESHOLD = 50;
+  const jackpotCandidates = new Set(Object.keys(playCounts).filter(uid => (Number(playCounts[uid]) || 0) > 0));
+  Object.entries(data.tippingGames || {}).forEach(([uid, games]) => {
+    if(Object.keys(games || {}).length >= TIPPING_JACKPOT_GAME_THRESHOLD) jackpotCandidates.add(uid);
+  });
+  const jackpotPoolCandidates = jackpotCandidates.size > 0 ? [...jackpotCandidates] : eligible;
+  const jackpotWinner = jackpotPoolCandidates[Math.floor(Math.random() * jackpotPoolCandidates.length)];
+
+  const payoutFailures = [];
+  for(const uid of Object.keys(proportional)){
+    try{ await creditPotXP(uid, proportional[uid], `Casino Pot – Even Split (${label})`, secret); }
+    catch(e){ payoutFailures.push({ uid, amount: proportional[uid], kind: 'split', error: e.message }); }
+  }
+  try{ await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`, secret); }
+  catch(e){ payoutFailures.push({ uid: jackpotWinner, amount: jackpotPool, kind: 'jackpot', error: e.message }); }
+
+  const historyEntry = {
+    month: label, totalPot, rawPot, finesApplied: fines, cappedPot, capBurnedAmount, proportional, jackpotWinner, jackpotAmount: jackpotPool,
+    burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now(),
+    payoutFailures: payoutFailures.length ? payoutFailures : null
+  };
+  await dbPut(`/casinoPot/history/${label.replace(/\./g, '_')}`, secret, historyEntry);
+  await dbDelete(`/casinoPot/months/${mk}`, secret);
+  return historyEntry;
 }
 
 async function distributePot(secret){
   const nowKey = periodKeyFor(new Date(), TIMEZONE);
   const allMonths = (await dbGet('/casinoPot/months', secret)) || {};
-  // Everything under /casinoPot/months is by definition from before now —
-  // this function only ever runs Monday 8am (weekly), so any bucket
-  // present here (including one matching a stale nowKey from a prior run
-  // this same hour) is fair game to close out. Excluding an exact nowKey
-  // match just guards against a same-day double-run within the hour this
-  // fires.
-  const monthKeys = Object.keys(allMonths).filter(k => k !== nowKey).sort();
-  if(monthKeys.length === 0) return { skipped: true, reason: 'nothing open' };
-
-  const combinedLosses = {};
-  const combinedPlayCounts = {};
-  const combinedTippingGames = {}; // uid -> Set of distinct game ids tipped this period(s)
-  let combinedFines = 0;
-  for(const mk of monthKeys){
-    const data = allMonths[mk] || {};
-    Object.entries(data.losses || {}).forEach(([uid, v]) => { combinedLosses[uid] = (combinedLosses[uid] || 0) + (Number(v) || 0); });
-    Object.entries(data.playCounts || {}).forEach(([uid, v]) => { combinedPlayCounts[uid] = (combinedPlayCounts[uid] || 0) + (Number(v) || 0); });
-    Object.entries(data.tippingGames || {}).forEach(([uid, games]) => {
-      if(!combinedTippingGames[uid]) combinedTippingGames[uid] = new Set();
-      Object.keys(games || {}).forEach(gameId => combinedTippingGames[uid].add(gameId));
-    });
-    combinedFines += Number(data.fines) || 0;
+  const closed = Object.keys(allMonths).filter(k => k !== nowKey).sort();
+  if(closed.length === 0) return { skipped: true, reason: 'nothing open' };
+  const periods = [];
+  for(let i = 0; i < closed.length; i++){
+    const mk = closed[i];
+    const intoKey = closed[i + 1] || nowKey;
+    // Re-read: an earlier period in this loop may just have rolled into it.
+    const data = (await dbGet(`/casinoPot/months/${mk}`, secret)) || {};
+    try{ periods.push(await distributeOnePeriod(mk, data, intoKey, secret)); }
+    catch(e){ periods.push({ period: mk, skipped: true, error: e.message }); break; } // stop: never roll past a period we couldn't settle
   }
-  // Fines (Group Multi leg losses from the Ledger, AFL Tipping misses from
-  // casino-pot-tipping-fines-scheduled.js) reduce the pot directly — this
-  // is the actual "burn" mechanism those two features rely on. Floored at
-  // 0 so fines can never make the pot go negative even in an edge case
-  // where fines somehow exceeded the losses collected this period.
-  const rawPot = Object.values(combinedLosses).reduce((s, v) => s + v, 0);
-  const totalPot = Math.max(0, rawPot - combinedFines);
-  const label = monthKeys.length === 1 ? monthKeys[0] : `${monthKeys[0]}..${monthKeys[monthKeys.length - 1]}`;
-
-  const allUids = new Set([...Object.keys(combinedLosses), ...Object.keys(combinedPlayCounts)]);
-  const eligible = [];
-  for(const uid of allUids){
-    const ok = await isEligibleForProportional(uid, label, combinedPlayCounts[uid] || 0, secret);
-    if(ok) eligible.push(uid);
-  }
-
-  if(totalPot <= 0 || eligible.length === 0){
-    // Nothing to distribute (or no one qualifies) — return before ever
-    // attempting a claim, so this label stays open for a future run to
-    // try again once conditions actually allow a real distribution
-    // (claiming here and then bailing out would leave a permanent
-    // "claiming: true" placeholder blocking this label forever, since
-    // nothing later would ever overwrite it with a real history entry).
-    return { skipped: true, reason: 'no eligible / empty pot', totalPot };
-  }
-
-  // Atomic claim — see claimDistributionLabel's own comment for the full
-  // reasoning. This is the actual mechanism preventing this exact label
-  // from ever being credited twice, whether that's two overlapping
-  // scheduled runs or this same logic's separate client-side admin-tool
-  // copy racing against it. Placed here — as close as possible to the
-  // real crediting below, after eligibility is already confirmed — so
-  // the claim only ever happens when a distribution is genuinely about
-  // to occur, never earlier.
-  const claimed = await claimDistributionLabel(label, secret);
-  if(!claimed){
-    return { skipped: true, reason: 'already distributed or claimed by another invocation', label };
-  }
-
-  // Hard cap per request — the burn rate alone trims a PERCENTAGE, which
-  // can't actually stop the absolute number spiraling once a few people
-  // are staking amounts that dwarf everyone else's (the custom-bet chip
-  // makes that trivially possible). A percentage burn scales WITH the
-  // problem; a cap is the only thing that actually bounds it. Applied
-  // BEFORE the burn — i.e. it caps what enters that pipeline, rather than
-  // being a second, separate burn concept bolted on top — so everything
-  // below this line (the 75/25 split math, the eligibility logic) is
-  // completely unchanged and still just operates on "the pot," whatever
-  // that turned out to be this period.
-  // capBurnedAmount is logged separately from the regular burn in
-  // history, purely for admin visibility into how often/how hard the
-  // cap is actually being hit — worth watching to see if this needs
-  // retuning once a few real weekly periods have gone through it.
-  // Rescaled from 250M down for the move from twice-monthly to weekly
-  // periods (roughly 2.17x more frequent — ~4.33 weekly periods/month vs
-  // 2 twice-monthly ones) — keeps roughly the same effective monthly cap
-  // rate rather than accidentally quadrupling how much can flow through
-  // in a month just because periods got shorter and more frequent.
-  const CASINO_POT_CAP = 120000000;
-  const cappedPot = Math.min(totalPot, CASINO_POT_CAP);
-  const capBurnedAmount = totalPot - cappedPot; // always >= 0; 0 in a normal period that never reaches the cap
-
-  // 30% burned outright per request (raised from 20%) — otherwise the pot
-  // is a pure wash: 100% of what's collected gets redistributed straight
-  // back to players, so nothing ever actually leaves the XP economy
-  // through it, and the numbers involved only ever grow. The remaining
-  // 70% still splits at the existing 75/25 ratio, unchanged — burnedAmount
-  // is logged in the distribution history for a real audit trail rather
-  // than just quietly vanishing with no record. Single named constant,
-  // easy to retune.
-  const CASINO_POT_BURN_RATE = 0.30;
-  const regularBurnedAmount = Math.floor(cappedPot * CASINO_POT_BURN_RATE);
-  const burnedAmount = capBurnedAmount + regularBurnedAmount; // combined figure — what players see as "burned" is one honest number, not two to reconcile
-  const distributable = cappedPot - regularBurnedAmount;
-  const proportionalPool = Math.floor(distributable * 0.75);
-  const jackpotPool = distributable - proportionalPool;
-
-  // Split evenly across everyone eligible — NOT weighted by how much each
-  // person lost. Changed per request (previous behaviour rewarded the
-  // biggest losers with the biggest share of this pool, which is the
-  // opposite of what an even split should do).
-  const proportional = {};
-  if(eligible.length > 0){
-    const share = Math.floor(proportionalPool / eligible.length);
-    eligible.forEach(uid => { proportional[uid] = share; });
-  }
-  // Jackpot: pure equal-chance draw among anyone who played at all this
-  // month — deliberately NOT weighted by losses, play count, or anything
-  // else, and deliberately a separate pool from the proportional
-  // eligibility above. Tipping-only accounts have no casino play at all
-  // to qualify via, so per request they get their own equivalent path in:
-  // 50+ DISTINCT games tipped within the period(s) being distributed
-  // (tracked as a set client-side specifically to prevent re-saving/
-  // editing an already-picked game from inflating the count). Same
-  // jackpot, same odds, same random draw — just a different, parallel
-  // route to the same candidate pool, not a separate or lesser prize.
-  const TIPPING_JACKPOT_GAME_THRESHOLD = 50;
-  const jackpotCandidates = new Set(Object.keys(combinedPlayCounts).filter(uid => (combinedPlayCounts[uid] || 0) > 0));
-  Object.entries(combinedTippingGames).forEach(([uid, gameSet]) => {
-    if(gameSet.size >= TIPPING_JACKPOT_GAME_THRESHOLD) jackpotCandidates.add(uid);
-  });
-  const jackpotPoolCandidates = jackpotCandidates.size > 0 ? [...jackpotCandidates] : eligible;
-  const jackpotWinner = jackpotPoolCandidates[Math.floor(Math.random() * jackpotPoolCandidates.length)];
-
-  for(const uid of Object.keys(proportional)){
-    await creditPotXP(uid, proportional[uid], `Casino Pot – Even Split (${label})`, secret);
-  }
-  await creditPotXP(jackpotWinner, jackpotPool, `Casino Pot – Jackpot (${label})`, secret);
-
-  const historyEntry = {
-    month: label, totalPot, rawPot, finesApplied: combinedFines, cappedPot, capBurnedAmount, proportional, jackpotWinner, jackpotAmount: jackpotPool,
-    burnedAmount, participants: jackpotPoolCandidates, distributedAt: Date.now()
-  };
-  await dbPut(`/casinoPot/history/${label.replace(/\./g, '_')}`, secret, historyEntry);
-  for(const mk of monthKeys){
-    await dbDelete(`/casinoPot/months/${mk}`, secret);
-  }
-  return historyEntry;
+  // Push notification only for periods that actually paid out.
+  const paid = periods.filter(r => !r.skipped);
+  return paid.length ? Object.assign({ periods }, paid[paid.length - 1]) : { skipped: true, periods };
 }
 
 export const config = { schedule: '0 * * * *' }; // hourly — self-gates on isDistributionTime() below
