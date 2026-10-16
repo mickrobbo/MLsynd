@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-16.178",
+  "version": "2026-10-16.179",
   "date": "2026-10-16",
   "changes": [
     "A cleaner, calmer look across the whole app, with this week's multi as a real-looking bet slip on Home",
-    "The Board is now easy-to-read rows instead of a table you had to scroll sideways",
-    "The tab bar tucks away while you scroll down and comes back when you scroll up, and Syndy now lives at the top of the screen"
+    "The Board is now easy-to-read rows, and the Form guide and individual bets on Home are proper cards",
+    "The tab bar tucks away while you scroll down, and Syndy now lives at the top of the screen"
   ]
 }
