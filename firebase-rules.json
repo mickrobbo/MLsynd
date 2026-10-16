@@ -184,7 +184,9 @@
       },
       "feed": {
         ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
-        ".indexOn": ["ts"],
+        ".indexOn": [
+          "ts"
+        ],
         "$entryId": {
           ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
         }
@@ -474,6 +476,13 @@
         ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
       },
       ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+    },
+    "slipImages": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && root.child('users').child(auth.uid).child('role').val() !== 'tipping'",
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+      "$imageId": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && root.child('users').child(auth.uid).child('role').val() !== 'tipping'"
+      }
     }
   }
 }
