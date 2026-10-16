@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=166">
+<link rel="stylesheet" href="dashboard.css?v=170">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -3947,7 +3947,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-08.168"; // v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-16.170"; // v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14100,6 +14100,10 @@ function roastTierForName(name){
   if(pctile < 0.67) return MULTI_ROAST_MEDIUM;
   return MULTI_ROAST_MILD;
 }
+// v170: a leg counts as "in" once it has odds OR a result. Bets are entered
+// when they're placed, days before any result exists — Home used to ignore
+// every leg without a result, so a freshly entered multi never appeared.
+function groupLegIsIn(e){ return !!(e && (e.result || (e.odds != null && e.odds !== '' && !isNaN(Number(e.odds)) && Number(e.odds) > 0))); }
 function renderGroupMultiChart(state){
   const area = document.getElementById('groupMultiArea');
 
@@ -14115,13 +14119,13 @@ function renderGroupMultiChart(state){
   // Ledger.
   const draft = state.groupEntryDraft || {};
   let source = draft;
-  const draftHasEntries = Object.values(draft).some(e => e && e.result);
+  const draftHasEntries = Object.values(draft).some(groupLegIsIn);
   if(!draftHasEntries){
     const lastWeek = (state.history && state.history.length > 0) ? state.history[state.history.length - 1] : null;
     source = (lastWeek && lastWeek.groupEntries) ? lastWeek.groupEntries : {};
   }
 
-  const entries = Object.entries(source).filter(([, e]) => e && e.result);
+  const entries = Object.entries(source).filter(([, e]) => groupLegIsIn(e));
   if(entries.length === 0){
     area.innerHTML = polishedEmptyState('🍳', 'Nobody\'s cooked anything yet this week — the kitchen\'s still cold.');
     return;
@@ -14129,8 +14133,8 @@ function renderGroupMultiChart(state){
   const losers = entries.filter(([, e]) => e.result === 'Loss');
   let html = '';
   entries.forEach(([name, e]) => {
-    const icon = e.result === 'Win' ? '✅' : (e.result === 'Loss' ? '❌' : (e.result === 'MIA' ? '❓' : '➖'));
-    const resultCls = e.result === 'Win' ? 'result-win' : (e.result === 'Loss' ? 'result-loss' : (e.result === 'MIA' ? 'result-mia' : 'result-void'));
+    const icon = !e.result ? '⏳' : e.result === 'Win' ? '✅' : (e.result === 'Loss' ? '❌' : (e.result === 'MIA' ? '❓' : '➖'));
+    const resultCls = !e.result ? 'result-pending' : e.result === 'Win' ? 'result-win' : (e.result === 'Loss' ? 'result-loss' : (e.result === 'MIA' ? 'result-mia' : 'result-void'));
     let roastHtml = '';
     if(e.result === 'Loss'){
       const pool = roastTierForName(name);
@@ -14148,10 +14152,14 @@ function renderGroupMultiChart(state){
       ${roastHtml}
     </div>`;
   });
-  const summary = losers.length === 0
-    ? '🎉 Clean sweep so far — nobody let the side down yet.'
-    : `💀 ${losers.length} leg${losers.length === 1 ? '' : 's'} down so far. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.`;
-  area.innerHTML = `<div class="multi-summary-banner${losers.length === 0 ? ' clean' : ''}">${summary}</div>` + html;
+  const pending = entries.filter(([, e]) => !e.result).length;
+  const pendingNote = pending ? ` · ⏳ ${pending} still running` : '';
+  const summary = pending === entries.length
+    ? `🎟️ ${entries.length} leg${entries.length === 1 ? '' : 's'} in — waiting on results.`
+    : losers.length === 0
+    ? '🎉 Clean sweep so far — nobody let the side down yet.' + pendingNote
+    : `💀 ${losers.length} leg${losers.length === 1 ? '' : 's'} down so far. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.` + pendingNote;
+  area.innerHTML = `<div class="multi-summary-banner${losers.length === 0 ? ' clean' : ''}${pending === entries.length ? ' pending' : ''}">${summary}</div>` + html;
 }
 
 // ---- Weekly outstanding-items reminder (Thursday 8am AEST) ----
@@ -14212,7 +14220,7 @@ async function computeWeeklyOutstandingItems(){
   try{
     const cleared = !!(currentState && currentState.groupMultiCleared);
     const draft = (currentState && currentState.groupEntryDraft) || {};
-    const hasAnyResult = Object.values(draft).some(e => e && e.result);
+    const hasAnyResult = Object.values(draft).some(groupLegIsIn);
     result.multiOutstanding = cleared || !hasAnyResult;
   }catch(e){}
   return result;
@@ -15925,6 +15933,7 @@ async function refresh(){
         // Never let a poll that raced an edit clobber unsaved group-draft
         // rows with the stale server copy (the cause of entered group bets
         // "disappearing" and of stale full-draft PUTs wiping other rows).
+        try{ groupDraftGuardCheck(remote); }catch(e){}
         if(currentState && (groupDraftHasLocalChanges() || adminGroupDraftLastWriteAt > fetchStartedAt)){
           remote.groupEntryDraft = Object.assign({}, remote.groupEntryDraft || {}, currentState.groupEntryDraft || {});
           if(currentState.groupMultiCleared === false) remote.groupMultiCleared = false;
@@ -20148,6 +20157,60 @@ const GROUP_DRAFT_LS_KEY = 'mlsynd-groupdraft-pending';
 let adminGroupDraftDirty = new Set();
 let adminGroupDraftInFlight = 0;
 let adminGroupDraftLastWriteAt = 0;
+// ---- Ledger clobber guard (v169) ----
+// ROOT CAUSE of the long-running "group bets don't save / vanish from Home":
+// the Ledger app's saveState() PUT its whole, stale copy of /state.json on
+// almost every action (adding a slip, a badge tick, saving individual
+// bets...), wiping anything the Dashboard had saved since that Ledger tab
+// was opened — group multi rows included, and groupMultiCleared flipped
+// back to true. The Ledger is fixed too, but an already-open Ledger tab
+// keeps running its old code until it's reloaded, so the Dashboard also
+// watches for it: if the Ledger did a full save (only it writes
+// lastSavedAt), no week was saved (history length unchanged) and rows that
+// had results are now missing, those rows are put straight back.
+const GROUP_DRAFT_GUARD_KEY = 'mlsynd-groupdraft-guard';
+function groupDraftGuardGet(){ try{ return JSON.parse(localStorage.getItem(GROUP_DRAFT_GUARD_KEY) || 'null'); }catch(e){ return null; } }
+function groupDraftGuardSet(st){
+  try{
+    localStorage.setItem(GROUP_DRAFT_GUARD_KEY, JSON.stringify({
+      draft: (st && st.groupEntryDraft) || {}, cleared: !!(st && st.groupMultiCleared),
+      lastSavedAt: (st && st.lastSavedAt) || 0, historyLen: (st && Array.isArray(st.history)) ? st.history.length : 0,
+      clearedAt: (st && st.groupDraftClearedAt) || 0
+    }));
+  }catch(e){}
+}
+function groupDraftGuardCheck(remote){
+  const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const g = groupDraftGuardGet();
+  const histLen = Array.isArray(remote.history) ? remote.history.length : 0;
+  // groupDraftClearedAt is stamped by every deliberate clear (Save Week,
+  // Clear Entry Inputs) in both apps, so an intentional clear is never undone.
+  const deliberateClear = (remote.groupDraftClearedAt || 0) > (g ? g.clearedAt || 0 : 0);
+  if(isAdmin && g && (remote.lastSavedAt || 0) > (g.lastSavedAt || 0) && histLen < g.historyLen){
+    try{ logOpsError('ledger-clobber', `Saved weeks went from ${g.historyLen} to ${histLen} after a Ledger save by ${remote.lastSavedBy || '?'}`); }catch(e){}
+    showToast(`⚠️ A Ledger save just removed ${g.historyLen - histLen} saved week(s). Reload every open Ledger tab, then check Season History.`);
+  }
+  if(isAdmin && g && !deliberateClear && (remote.lastSavedAt || 0) > (g.lastSavedAt || 0) && histLen === g.historyLen){
+    const rd = remote.groupEntryDraft || {};
+    const lost = {};
+    Object.entries(g.draft || {}).forEach(([name, row]) => {
+      if(groupLegIsIn(row) && !groupLegIsIn(rd[name])) lost[name] = row;
+    });
+    const names = Object.keys(lost);
+    if(names.length){
+      remote.groupEntryDraft = Object.assign({}, rd, lost);
+      const restoreCleared = g.cleared === false && remote.groupMultiCleared;
+      if(restoreCleared) remote.groupMultiCleared = false;
+      groupEntryUngatedFetch('/state/groupEntryDraft.json', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lost) })
+        .then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); })
+        .then(() => restoreCleared ? groupEntryUngatedFetch('/state/groupMultiCleared.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: 'false' }) : null)
+        .then(() => showToast(`♻️ The Ledger app overwrote ${names.length} group multi row(s) — put back. Reload any open Ledger tab.`))
+        .catch(e => showToast('⚠️ Group multi was overwritten by the Ledger and could not be restored: ' + e.message));
+      try{ logOpsError('ledger-clobber', `Restored group multi rows: ${names.join(', ')} (Ledger save by ${remote.lastSavedBy || '?'})`); }catch(e){}
+    }
+  }
+  groupDraftGuardSet(remote);
+}
 function groupDraftHasLocalChanges(){
   return !!adminGroupDraftSaveTimer || adminGroupDraftInFlight > 0 || adminGroupDraftDirty.size > 0;
 }
@@ -20231,7 +20294,7 @@ function scheduleAdminGroupDraftSave(){
   clearTimeout(adminGroupDraftSaveTimer);
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
   if(statusEl){ statusEl.textContent = 'Saving…'; statusEl.className = 'status-msg'; }
-  adminGroupDraftSaveTimer = setTimeout(() => { adminGroupDraftSaveRetries = 0; saveAdminGroupEntryDraft(); }, 800);
+  adminGroupDraftSaveTimer = setTimeout(() => { adminGroupDraftSaveTimer = null; adminGroupDraftSaveRetries = 0; saveAdminGroupEntryDraft(); }, 800); // BUG FIX v169: the id was never cleared after firing, so groupDraftHasLocalChanges() stayed true for the rest of the session and every refresh kept the local draft over the server's
 }
 async function saveAdminGroupEntryDraft(){
   const statusEl = document.getElementById('adminGroupDraftSaveStatus');
@@ -20239,7 +20302,7 @@ async function saveAdminGroupEntryDraft(){
     // Matches the Ledger's own groupMultiCleared reset exactly (see its
     // renderGroupEntryTable: "if(resultEl.value && state.groupMultiCleared)").
     const draft = currentState.groupEntryDraft || {};
-    const hasRealEntry = Object.values(draft).some(e => e && e.result);
+    const hasRealEntry = Object.values(draft).some(groupLegIsIn); // odds alone now count (v170)
     // FIXED — real bug, this is the actual cause of "the group multi
     // isn't showing on the main page" even after the Push button
     // claimed a confirmed save. renderGroupMultiChart on Home hard-
@@ -20299,6 +20362,7 @@ async function saveAdminGroupEntryDraft(){
       if(JSON.stringify((currentState.groupEntryDraft || {})[n] || null) === JSON.stringify(JSON.parse(sentSnapshot)[k])) adminGroupDraftDirty.delete(n);
     });
     groupDraftMirrorWrite();
+    groupDraftGuardSet(currentState);
     // Matches the Slips admin tool's established pattern (update
     // currentState, then render(currentState)) — reflects immediately
     // without waiting for the next poll.
@@ -20365,7 +20429,7 @@ document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', asy
     // groupMultiCleared should be false/missing whenever there's a real
     // entry — if it's still true, Home will show the empty state
     // regardless of how correct the draft itself is.
-    const hasRealEntry = Object.values(localDraft).some(e => e && e.result);
+    const hasRealEntry = Object.values(localDraft).some(groupLegIsIn);
     const clearedOk = !hasRealEntry || !serverCleared;
     if(statusEl){
       // FIXED — real issue, reported live as "again didn't save or push
@@ -20383,7 +20447,7 @@ document.getElementById('adminPushMultiToHomeBtn').addEventListener('click', asy
       // one person has an actual result — claiming otherwise here is
       // what sent someone looking for a save bug that didn't exist.
       if(!hasRealEntry){
-        statusEl.textContent = 'Draft saved — but nobody has a result picked yet (odds alone don\'t count). Home will keep showing the empty state until at least one person has Win/Loss/Void/MIA selected, not just odds.';
+        statusEl.textContent = 'Draft saved — but nobody has odds or a result entered yet. Home will keep showing the empty state until at least one person has Win/Loss/Void/MIA selected, not just odds.';
         statusEl.className = 'status-msg';
       } else if(draftMatches && clearedOk){
         statusEl.textContent = '✓ Confirmed on Firebase — genuinely saved AND will show on Home.';
@@ -20431,7 +20495,7 @@ function renderAdminGroupEntry(){
       <span class="admin-entry-col-name">${escapeHtml(m.name)}</span>
       <input type="number" class="adminWkOdds admin-entry-col-odds" data-name="${escapeHtml(m.name)}" step="0.01" placeholder="Odds" value="${oddsVal}">
       <select class="adminWkResult admin-entry-col-result" data-name="${escapeHtml(m.name)}">
-        <option value=""${!d.result ? ' selected' : ''}>No bet</option>
+        <option value=""${!d.result ? ' selected' : ''}>${d.odds != null ? '⏳ Pending' : 'No bet'}</option>
         <option value="Win"${d.result === 'Win' ? ' selected' : ''}>Win</option>
         <option value="Loss"${d.result === 'Loss' ? ' selected' : ''}>Loss</option>
         <option value="Void"${d.result === 'Void' ? ' selected' : ''}>Void</option>
@@ -21141,6 +21205,14 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
     // saved with every row still on "No bet". Catch that before it's
     // committed to history (and before drafts are cleared below).
     const withResult = Object.values(groupEntries).filter(e => e.result).length;
+    const stillPending = Object.entries(groupEntries).filter(([, e]) => !e.result && e.odds != null && e.odds > 0).map(([n]) => n);
+    if(stillPending.length && withResult > 0){
+      if(!confirm(`${stillPending.join(', ')} ${stillPending.length === 1 ? 'has' : 'have'} odds but no result yet. Saving now records ${stillPending.length === 1 ? 'that leg' : 'those legs'} as not played. Save anyway?`)){
+        status.className = 'status-msg error';
+        status.textContent = 'Save cancelled — pick Win/Loss/Void/MIA for every leg with odds first.';
+        return;
+      }
+    }
     if(Object.keys(groupEntries).length > 0 && withResult === 0){
       if(!confirm('Nobody in the Group Multi table has a result picked (everyone is on "No bet"). Saving will record this week with no group multi at all. Save anyway?')){
         status.className = 'status-msg error';
@@ -21359,6 +21431,7 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
     await Promise.all([
       authedFetch('/state/individualBetDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(adminIndDraftRows) }),
       authedFetch('/state/groupEntryDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }),
+      authedFetch('/state/groupDraftClearedAt.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now()) }),
       authedFetch('/state/weekLabelDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(null) }),
     ].map(p => p.then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); }).catch(e => { showToast('Week saved, but clearing a draft field failed (' + e.message + ') — check the Entry tab'); })));
 

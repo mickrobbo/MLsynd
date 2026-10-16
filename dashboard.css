@@ -3514,6 +3514,10 @@
   .multi-leg-block.result-loss{ background:rgba(193,96,74,.16); border-color:rgba(193,96,74,.45); }
   .multi-leg-block.result-void{ background:rgba(91,141,190,.14); border-color:rgba(91,141,190,.4); }
   .multi-leg-block.result-mia{ background:rgba(224,185,59,.16); border-color:rgba(224,185,59,.45); }
+  /* v170: leg entered (odds in), result not in yet */
+  .multi-leg-block.result-pending{ background:rgba(239,234,216,.06); border-color:rgba(239,234,216,.22); border-style:dashed; }
+  .multi-leg-block.result-pending .multi-leg-result{ opacity:.85; }
+  .multi-summary-banner.pending{ background:rgba(203,177,102,.12); border-color:rgba(203,177,102,.4); color:var(--brass-light); }
   .multi-leg-row{ display:flex; justify-content:space-between; align-items:center; font-size:13.5px; gap:8px; }
   .multi-leg-name{ color:var(--chalk); font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sgm-badge{ display:inline-block; margin-top:6px; padding:3px 9px; border-radius:20px; font-family:'IBM Plex Mono', monospace; font-size:9.5px; font-weight:700; letter-spacing:.3px; }

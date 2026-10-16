@@ -1,7 +1,11 @@
 {
-  "version": "2026-10-08.168",
-  "date": "2026-10-08",
+  "version": "2026-10-16.170",
+  "date": "2026-10-16",
   "changes": [
+    "Group multi shows on Home as soon as the bets are entered \u2014 legs without a result yet show as \u23f3 Pending (Home used to wait until someone had a Win/Loss)",
+    "Save Week warns if any leg has odds but no result",
+    "Group multi entries no longer disappear: the real cause was the Ledger app overwriting the whole shared data on most of its actions. The Dashboard now spots that and puts the rows straight back",
+    "Fixed the Dashboard holding onto its own copy of the group multi for the rest of a session after any edit",
     "Footy Tipping now only shows the current season set in Archive & start new season \u2014 last season's games and ladder no longer carry over",
     "Round names come from the fixture: no Opening Round from 2027, Gather Round detected automatically, finals named from the feed",
     "Admin submissions tracker no longer counts last season's picks for the same round number",
