@@ -1,7 +1,8 @@
 {
-  "version": "2026-10-16.170",
+  "version": "2026-10-16.171",
   "date": "2026-10-16",
   "changes": [
+    "Casino Pot: closed weeks are settled by the server only (the in-app catch-up could never finish under the database rules); health check explains what the server will do",
     "Group multi shows on Home as soon as the bets are entered \u2014 legs without a result yet show as \u23f3 Pending (Home used to wait until someone had a Win/Loss)",
     "Save Week warns if any leg has odds but no result",
     "Group multi entries no longer disappear: the real cause was the Ledger app overwriting the whole shared data on most of its actions. The Dashboard now spots that and puts the rows straight back",

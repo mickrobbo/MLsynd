@@ -3947,7 +3947,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-16.170"; // v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-16.171"; // v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -9946,6 +9946,14 @@ async function autoCheckCasinoPotRollover(){
   casinoPotAutoCheckDone = true;
   const isAdmin = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   if(!isAdmin) return;
+  // DISABLED v171: the Firebase rules only let each player write their OWN
+  // pot losses and nobody (admin included) delete a period or write pot
+  // history — so this client-side catch-up could never complete. Worse, the
+  // v167 carry-forward could add the admin's own losses into this week
+  // before hitting the first permission error, once per session. Settling
+  // closed periods is now entirely the server's job
+  // (casino-pot-distribute-scheduled.js, which retries hourly).
+  if(true) return;
   try{
     const stale = await findStaleCasinoPotMonths();
     if(stale.length > 0){
@@ -18650,10 +18658,10 @@ async function runFullHealthCheck(){
       try{ const hr = await authedFetch(`/casinoPot/history/${k}.json`); h = hr.ok ? await hr.json() : null; }catch(e){}
       let reason;
       if(h && h.claiming) reason = 'payout crashed part-way — needs a manual check';
-      else if(h && h.totalPot != null) reason = 'already paid, bucket not cleaned up — next admin open removes it';
-      else if(pot <= 0) reason = `pot is ${pot.toLocaleString()} XP after fines — next admin open carries it forward`;
-      else if(players === 0) reason = `${pot.toLocaleString()} XP but nobody played — next admin open carries it forward`;
-      else reason = `${pot.toLocaleString()} XP, ${players} player(s) — never attempted; next admin open pays it`;
+      else if(h && h.totalPot != null) reason = 'already paid, bucket not cleaned up — the server removes it on its next hourly run';
+      else if(pot <= 0) reason = `pot is ${pot.toLocaleString()} XP after fines — the server carries it into the next week on its next hourly run`;
+      else if(players === 0) reason = `${pot.toLocaleString()} XP but nobody played — the server carries it forward on its next hourly run`;
+      else reason = `${pot.toLocaleString()} XP, ${players} player(s) — the server settles it on its next hourly run (needs the updated casino-pot-distribute-scheduled.js)`;
       why.push(`${k}: ${reason}`);
     }
     check('Casino Pot overdue distribution', stale.length === 0 ? 'pass' : 'fail',
@@ -18677,8 +18685,8 @@ async function runFullHealthCheck(){
     // Monday that starts the week.
     const isMondayKey = (k) => /^\d{4}-\d{2}-\d{2}$/.test(k) && new Date(k + 'T00:00:00Z').getUTCDay() === 1;
     const legacy = Object.keys(all).filter(k => !isMondayKey(k));
-    check('Casino Pot key format', legacy.length === 0 ? 'pass' : 'fail',
-      legacy.length === 0 ? 'All bucket keys use the current period format' : `Old-format bucket(s) found, invisible to current distribution logic: ${legacy.join(', ')}`);
+    check('Casino Pot key format', legacy.length === 0 ? 'pass' : 'warn',
+      legacy.length === 0 ? 'All bucket keys use the current period format' : `Old-format bucket(s) found: ${legacy.join(', ')} — written by the tipping-fines job before its fix; the updated server function carries them into the next week automatically`);
   }catch(e){
     check('Casino Pot key format', 'fail', e.message);
   }
