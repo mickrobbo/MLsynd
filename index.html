@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>MLSynd Dashboard</title>
-<meta name="theme-color" content="#0B2B22">
+<meta name="theme-color" content="#121413">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,8 +15,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=179">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css?v=182">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -84,7 +84,7 @@
 </div>
 <div class="wrap">
   <header>
-    <img src="/banner.png" alt="MLSynd" class="header-banner header-banner-default">
+    <img src="/banner-clear.png" alt="MLSynd" class="header-banner header-banner-default">
     <img src="/banner-gold.png" alt="MLSynd" class="header-banner header-banner-maxines" loading="lazy" decoding="async">
     <button type="button" id="syndyFabBtn" class="syndy-fab header-syndy-btn" title="Ask Syndy" style="display:none;">
   <img src="syndy-icon.png" alt="Syndy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🤖',style:'font-size:26px;'}))">
@@ -111,13 +111,16 @@
       <div class="home-greet-sub" id="homeGreetSub"></div>
     </div>
 
-    <section class="home-slip" aria-label="This week's group multi">
-      <div class="home-slip-head">
-        <span class="home-slip-brand">MLSYND GROUP MULTI</span>
-        <span class="home-slip-week" id="homeSlipWeek"></span>
+    <section class="home-multi" aria-label="This week's group multi">
+      <div class="hm-head">
+        <span class="hm-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M14.5 8.5c-.4-.9-1.4-1.3-2.5-1.3-1.4 0-2.3.7-2.3 1.7 0 2.4 5 1.3 5 3.8 0 1.1-1.1 1.8-2.6 1.8-1.2 0-2.2-.5-2.6-1.4M12 6v1.2M12 14.5v1.3"/></svg></span>
+        <div class="hm-title">
+          <div class="hm-odds" id="homeMultiOdds">Group multi</div>
+          <div class="hm-sub" id="homeSlipWeek"></div>
+        </div>
+        <span class="hm-status" id="homeMultiStatus"></span>
       </div>
       <div id="groupMultiArea"></div>
-      <div class="home-slip-tear" aria-hidden="true"></div>
       <div class="home-slip-foot" id="homeSlipFoot"></div>
     </section>
 
@@ -255,7 +258,7 @@
       <div id="pulseLastFailuresArea" style="margin-top:8px;"></div>
     </div>
     <div class="panel">
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">Recent Errors</h3>
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:0 0 6px;">Recent Errors</h3>
       <div class="hint">Failed tip saves, failed health-check internals, and sampled client errors — across all linked members, not just this device.</div>
       <div id="pulseErrorsArea" style="margin-top:8px;"><div class="empty">Loading…</div></div>
       <button type="button" id="clearMyErrorsBtn" class="pill-btn" style="margin-top:10px; font-size:11px; padding:6px 12px;">🧹 Clear my errors</button>
@@ -278,7 +281,7 @@
       <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
     <div class="panel">
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">This Device — API Calls</h3>
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:0 0 6px;">This Device — API Calls</h3>
       <div class="hint">Tracks calls made from this device/browser only (localStorage) — not a shared count across all members, since instrumenting the actual Netlify functions server-side would need touching each one's own source directly.</div>
       <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
       <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">🔄 Reset stats</button>
@@ -392,8 +395,8 @@
 
     <div class="diag-submode active" data-submode-panel="entry">
     <div class="panel" style="text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px;">Last saved week</span>
-      <div id="adminLastSavedWeekIndicator" style="font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:15px; color:var(--brass-light); margin-top:2px;">—</div>
+      <span style="font-size:11px; color:var(--muted); text-transform:none; letter-spacing:0;">Last saved week</span>
+      <div id="adminLastSavedWeekIndicator" style="font-family:'Manrope', sans-serif; font-weight:700; font-size:15px; color:var(--brass-light); margin-top:2px;">—</div>
     </div>
     <div class="panel weekly-checklist" id="adminWeeklyChecklist">
       <h2>✅ This week</h2>
@@ -426,23 +429,23 @@
       <div class="hint">Outlays prefilled at your fixed rates, just enter returns. Every field here auto-saves as a draft the moment you type — nothing commits to the bank balance yet, that still only happens via Save Week below.</div>
       <div class="admin-fin-header-row" style="margin-top:10px;"><span></span><span class="admin-fin-col-lbl">Outlay</span><span class="admin-fin-col-lbl">Return</span></div>
       <div class="admin-fin-row-entry">
-        <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">Group</span>
+        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Group</span>
         <input type="number" id="adminGMultiOut" step="0.01" value="12.50">
         <input type="number" id="adminGMultiRet" step="0.01">
       </div>
       <div id="adminFinIndRows"></div>
       <div class="admin-fin-row-entry">
-        <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">SGM bonus win</span>
+        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">SGM bonus win</span>
         <input type="number" id="adminGSgmWin" step="0.01" placeholder="0.00">
       </div>
       <div class="hint" style="margin-top:-6px; margin-bottom:10px;">If someone's SGM bonus bet wins, the winnings go straight to the bank — not tied to a person's individual stats since it wasn't real money staked. Leave blank most weeks.</div>
       <div class="admin-fin-row-entry">
-        <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">Lotto</span>
+        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Lotto</span>
         <input type="number" id="adminGLottoOut" step="0.01" value="80.50">
         <input type="number" id="adminGLottoRet" step="0.01">
       </div>
       <div class="admin-fin-row-entry">
-        <span style="flex:0 0 76px; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:12px; color:var(--chalk);">Bonus pot</span>
+        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Bonus pot</span>
         <input type="number" id="adminGBonus" step="0.01" value="10">
       </div>
     </div>
@@ -497,7 +500,7 @@
       <button type="button" id="adminGenGuestLinkBtn" style="margin-top:10px;">🔗 Generate guest link (2h)</button>
       <div class="status-msg" id="adminGuestLinkStatus"></div>
       <div id="adminGuestLinkResultWrap" style="display:none; margin-top:8px;">
-        <input type="text" id="adminGuestLinkResultInput" readonly style="width:100%; margin-bottom:6px; font-family:'IBM Plex Mono', monospace; font-size:11px;">
+        <input type="text" id="adminGuestLinkResultInput" readonly style="width:100%; margin-bottom:6px; font-family:'Manrope', sans-serif; font-size:11px;">
         <button type="button" id="adminGuestLinkCopyBtn" class="small">📋 Copy link</button>
         <div class="hint" id="adminGuestLinkExpiryHint" style="margin-top:6px;"></div>
       </div>
@@ -540,7 +543,7 @@
       <div id="adminTippingSubmissionsArea"><div class="empty">Pick a round above.</div></div>
     </div>
     <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">⚠️ Season Setup</span>
+      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:0; text-transform:none;">⚠️ Season Setup</span>
       <div class="hint" style="margin-top:4px; margin-bottom:0;">Archives the current season's final ladder, prize pot, and Joker picks under that year, then resets first round/prize pot/Jokers/round-lock times for the new season in one go. Use this once, at the actual end of the season — not the boxes above, which are for mid-season tweaks.</div>
     </div>
     <div class="panel">
@@ -559,7 +562,7 @@
 
     <div class="diag-submode" data-submode-panel="repair">
     <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:.5px; text-transform:uppercase;">⚠️ Maintenance</span>
+      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:0; text-transform:none;">⚠️ Maintenance</span>
       <div class="hint" style="margin-top:4px; margin-bottom:0;">Repair tools for data that's drifted or gone missing, season history, and backup/restore — all the "not every week" admin actions live here together. Everything's safe to run when genuinely needed, but nothing here is something to reach for casually.</div>
     </div>
     <div class="panel">
@@ -647,7 +650,7 @@
       <h2>⏱ Time Spent by Section</h2>
       <div class="hint">Best-effort, not a precise stopwatch — flushed every time you switch tabs, plus every 60s while sitting on one. A locked or backgrounded phone stops accruing time and won't show as online (see visibilitychange handling) — only genuinely active time counts. Across all members, last 7 days.</div>
       <div id="timeSpentTabsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">By casino game</h3>
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:14px 0 6px;">By casino game</h3>
       <div id="timeSpentGamesArea"><div class="empty">Loading…</div></div>
     </div>
     </div>
@@ -737,10 +740,10 @@
   </div>
 
   <div class="tab-panel" id="tab-tipping">
-    <div style="text-align:center; font-family:'Barlow Condensed', sans-serif; font-size:13px; font-weight:700; letter-spacing:1px; color:var(--brass-light); text-transform:uppercase; margin-bottom:10px;">MLSynd Footy Tipping Comp</div>
+    <div style="text-align:center; font-family:'Manrope', sans-serif; font-size:13px; font-weight:700; letter-spacing:0; color:var(--brass-light); text-transform:none; margin-bottom:10px;">MLSynd Footy Tipping Comp</div>
     <div class="panel" id="tippingPrizePotPanel" style="text-align:center;">
-      <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">Prize Pot</div>
-      <div id="tippingPrizePotVal" style="font-family:'IBM Plex Mono', monospace; font-size:26px; font-weight:700; color:var(--brass);">$0</div>
+      <div style="font-family:'Manrope', sans-serif; font-size:11px; letter-spacing:0; text-transform:none; color:var(--muted);">Prize Pot</div>
+      <div id="tippingPrizePotVal" style="font-family:'Manrope', sans-serif; font-size:26px; font-weight:700; color:var(--brass);">$0</div>
       <div class="prize-split-row">
         <div class="prize-split-cell"><span class="lbl">1st · 70%</span><span class="val" id="prizeSplit1">$0</span></div>
         <div class="prize-split-cell"><span class="lbl">2nd · 20%</span><span class="val" id="prizeSplit2">$0</span></div>
@@ -887,7 +890,7 @@
       <div id="holdemTableActions" style="margin-top:12px;"></div>
       <div class="status-msg" id="holdemTableActionStatus" style="margin-top:8px;"></div>
       <details style="margin-top:16px;">
-        <summary style="cursor:pointer; font-family:'Barlow Condensed', sans-serif; font-size:12px; letter-spacing:.5px; text-transform:uppercase; color:var(--brass); padding:6px 0;">Recent hands</summary>
+        <summary style="cursor:pointer; font-family:'Manrope', sans-serif; font-size:12px; letter-spacing:0; text-transform:none; color:var(--brass); padding:6px 0;">Recent hands</summary>
         <div id="holdemHistoryArea" style="margin-top:6px;"><div class="empty">Loading…</div></div>
       </details>
       <div class="holdem-chat-box">
@@ -1432,7 +1435,7 @@
       </div>
       <div id="bjPPOutcomeMsg" style="text-align:center; font-size:12.5px; color:var(--brass-light); margin-top:8px; min-height:16px;"></div>
       <div id="bjInsuranceOutcomeMsg" style="text-align:center; font-size:12.5px; margin-top:4px; min-height:16px;"></div>
-      <div id="bjOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
+      <div id="bjOutcomeMsg" style="text-align:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
       <div class="croupier-caption" id="bjCroupierMsg"></div>
       <div class="roulette-history" id="bjHistory"></div>
       <div id="bjInsurancePanel" style="display:none; text-align:center; margin-top:10px; padding:10px; border:1px solid var(--brass-dim); border-radius:12px; background:rgba(0,0,0,.15);">
@@ -1529,7 +1532,7 @@
         <div id="bacPlayerTotal" style="font-size:12px; color:var(--muted); margin-top:6px; text-align:center;"></div>
       </div>
       <div id="bacPPOutcomeMsg" style="text-align:center; font-size:12.5px; color:var(--brass-light); margin-top:8px; min-height:16px;"></div>
-      <div id="bacOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:14px; min-height:24px;"></div>
+      <div id="bacOutcomeMsg" style="text-align:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:18px; margin-top:14px; min-height:24px;"></div>
       <div id="bacStreakBanner" class="bac-streak-banner" style="display:none;"></div>
       <div class="hint" style="margin-top:8px; margin-bottom:2px; text-align:center;">Big Road</div>
       <div class="bac-bigroad-scroll"><div id="bacHistory" class="bac-bigroad"></div></div>
@@ -1563,7 +1566,7 @@
         <button type="button" id="rouletteSameBetTopBtn" class="pill-btn pill-btn-action" disabled>🔁 Same Bet</button>
         <button type="button" id="rouletteSpinTopBtn" class="pill-btn pill-btn-primary">Spin</button>
       </div>
-      <div id="rouletteResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:20px; margin-top:6px; min-height:26px;"></div>
+      <div id="rouletteResultMsg" style="text-align:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:20px; margin-top:6px; min-height:26px;"></div>
       <div class="croupier-caption" id="rouletteCroupierMsg"></div>
       <div class="hint" style="margin-top:8px; margin-bottom:2px;">Recent spins</div>
       <div class="roulette-history" id="rouletteHistory"></div>
@@ -1666,7 +1669,7 @@
         <div id="warPlayerCards" class="bj-hand-row"></div>
       </div>
       <div id="warPPOutcomeMsg" style="text-align:center; font-size:12.5px; color:var(--brass-light); margin-top:8px; min-height:16px;"></div>
-      <div id="warOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
+      <div id="warOutcomeMsg" style="text-align:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:18px; margin-top:6px; min-height:24px;"></div>
       <div class="roulette-history" id="warHistory"></div>
       <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
         <button type="button" id="warGoBtn" class="pill-btn" style="padding:8px 18px; display:none;">Go to War</button>
@@ -1828,7 +1831,7 @@
           <svg class="slots-lines-overlay" id="slotsLinesOverlay"></svg>
         </div>
       </div>
-      <div id="slotsResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
+      <div id="slotsResultMsg" style="text-align:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
       <div id="slotsGambleArea" class="slots-gamble-area" style="display:none;">
         <div class="don-coin-wrap"><div class="playing-card pc-back slots-gamble-card" id="slotsGambleCard"><span class="slots-gamble-card-face" id="slotsGambleCardFace"></span></div></div>
         <div class="slots-gamble-pot">Pot: <span id="slotsGamblePotVal">0</span> XP <span class="hint" id="slotsGambleRoundHint"></span></div>
@@ -1910,11 +1913,11 @@
       <div id="vpDealerArea" style="display:none; margin-bottom:10px;">
         <div class="hint" style="text-align:center; margin-bottom:4px;">Dealer</div>
         <div class="vp-hand-row" id="vpDealerHandRow" style="justify-content:center;"></div>
-        <div id="vpDealerResult" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; margin-top:6px; min-height:18px; color:var(--muted);"></div>
+        <div id="vpDealerResult" style="text-align:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:13px; margin-top:6px; min-height:18px; color:var(--muted);"></div>
       </div>
       <div class="vp-hand-row" id="vpHandRow"></div>
       <div id="vpMultiHandsArea" class="vp-multi-hands-area"></div>
-      <div id="vpOutcomeMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
+      <div id="vpOutcomeMsg" style="text-align:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:18px; margin-top:10px; min-height:24px;"></div>
       <table class="vp-paytable" id="vpPaytable"></table>
       </div>
     </div>
@@ -1985,7 +1988,7 @@
         <div class="dailyspin-pointer"></div>
         <div class="dailyspin-hub">🎁</div>
       </div>
-      <div id="dailySpinResultMsg" style="text-align:center; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:20px; margin-top:10px; min-height:26px;"></div>
+      <div id="dailySpinResultMsg" style="text-align:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:20px; margin-top:10px; min-height:26px;"></div>
       <button type="button" id="dailySpinBtn" class="pill-btn pill-btn-primary" style="margin-top:12px;">Spin the Wheel</button>
       <div id="dailySpinCooldownMsg" class="hint" style="margin-top:10px;"></div>
     </div>
@@ -2508,34 +2511,18 @@
 
   <div class="account-bar">
     <span id="accountName"></span>
-    <span id="guestBadge" style="display:none; width:100%; text-align:center; margin-bottom:4px; font-family:'IBM Plex Mono', monospace; font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:#9cc2e6;">👀 Guest view — read-only</span>
+    <span id="guestBadge" style="display:none; width:100%; text-align:center; margin-bottom:4px; font-family:'Manrope', sans-serif; font-size:10px; font-weight:700; letter-spacing:0; text-transform:none; color:#9cc2e6;">👀 Guest view — read-only</span>
     <button type="button" class="pill-btn" id="pushToggleBtn" title="Get notified when a tip's about to lock">🔔 Notify me</button>
     <button type="button" class="pill-btn" id="mainSignOutBtn" title="Sign out">Sign out</button>
   </div>
 </div>
 
 <nav class="tabbar">
-  <button class="tab-btn active" data-tab="balance"><span class="icon">🏠</span>Home</button>
-  <button class="tab-btn" data-tab="board"><span class="icon">🏆</span>Board</button>
-  <button class="tab-btn tab-btn-coin" data-tab="casino">
-    <span class="coin-disc-wrap">
-      <span class="coin-glow"></span>
-      <span class="coin-laurel coin-laurel-l">🌿</span>
-      <span class="coin-laurel coin-laurel-r">🌿</span>
-      <span class="coin-disc">
-        <span class="coin-shine"></span>
-        <span class="coin-sparkle coin-sparkle-1"></span>
-        <span class="coin-sparkle coin-sparkle-2"></span>
-        <span class="coin-face">
-          <span class="coin-crown">♛</span>
-          <span class="coin-spade">♠</span>
-        </span>
-      </span>
-    </span>
-    <span class="coin-label">Casino</span>
-  </button>
-  <button class="tab-btn" data-tab="tipping"><span class="icon">🏉</span>Tipping</button>
-  <button class="tab-btn" data-tab="afl"><span class="icon">⚽</span>Sport</button>
+  <button class="tab-btn active" data-tab="balance" aria-label="Home"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 3.5l8.5 7V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/></svg><span class="tab-label">Home</span></button>
+  <button class="tab-btn" data-tab="board" aria-label="Board"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 6h3v1.5A3.5 3.5 0 0 1 16.5 11M7 6H4v1.5A3.5 3.5 0 0 0 7.5 11"/></svg><span class="tab-label">Board</span></button>
+  <button class="tab-btn tab-btn-coin" data-tab="casino" aria-label="Casino"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2.6 3.6-7 5.8-7 9.9A3.9 3.9 0 0 0 11.1 16L10 21h4l-1.1-5A3.9 3.9 0 0 0 19 12.9C19 8.8 14.6 6.6 12 3z" fill="currentColor" stroke="none"/></svg><span class="tab-label">Casino</span></button>
+  <button class="tab-btn" data-tab="tipping" aria-label="Tipping"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9.5" ry="5.6" transform="rotate(-38 12 12)"/><path d="M9.6 14.4l4.8-4.8M10.4 11.6l1 1M11.6 10.4l1 1M12.6 12.6l1 1"/></svg><span class="tab-label">Tipping</span></button>
+  <button class="tab-btn" data-tab="afl" aria-label="Sport"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 5 12 2.5-6h4"/></svg><span class="tab-label">Sport</span></button>
 </nav>
 
 <!-- Syndy floating button — fixed above the tab bar, visible on every tab.
@@ -3368,16 +3355,16 @@ function updateProfileRadar(forName){
   // only "loud" thing on the chart.
   const gridRings = [33, 66, 100].map(pct => {
     const pts = axes.map((a, i) => pointFor(i, pct).join(',')).join(' ');
-    return `<polygon points="${pts}" fill="none" stroke="rgba(239,234,216,.12)" stroke-width="1"/>`;
+    return `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>`;
   }).join('');
   const spokes = axes.map((a, i) => {
     const [x, y] = pointFor(i, 100);
-    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(239,234,216,.12)" stroke-width="1"/>`;
+    return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,.12)" stroke-width="1"/>`;
   }).join('');
   // 50% "par" reference — dashed, so it reads as a baseline to compare
   // against rather than competing visually with the real data polygon.
   const parPts = axes.map((a, i) => pointFor(i, 50).join(',')).join(' ');
-  const parRing = `<polygon points="${parPts}" fill="none" stroke="rgba(203,177,102,.4)" stroke-width="1" stroke-dasharray="3,3"/>`;
+  const parRing = `<polygon points="${parPts}" fill="none" stroke="rgba(205,244,100,.4)" stroke-width="1" stroke-dasharray="3,3"/>`;
 
   // Data polygon — axes with no value yet plot at 0 (center), same as a
   // genuinely low score would, since there's no way to visually distinguish
@@ -3385,7 +3372,7 @@ function updateProfileRadar(forName){
   // language. The per-axis label row below the chart is what actually
   // tells the difference (a real "—" instead of "0%").
   const dataPts = axes.map((a, i) => pointFor(i, a.value || 0).join(',')).join(' ');
-  const dataPolygon = `<polygon points="${dataPts}" fill="rgba(203,177,102,.28)" stroke="var(--brass-light)" stroke-width="2" stroke-linejoin="round" class="profile-radar-data"/>`;
+  const dataPolygon = `<polygon points="${dataPts}" fill="rgba(205,244,100,.28)" stroke="var(--brass-light)" stroke-width="2" stroke-linejoin="round" class="profile-radar-data"/>`;
   const dataDots = axes.map((a, i) => {
     if(a.value == null) return '';
     const [x, y] = pointFor(i, a.value);
@@ -4009,7 +3996,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-16.179"; // v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-17.182"; // v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -4017,7 +4004,7 @@ function showUpdateBanner(){
   const el = document.createElement('div');
   el.id = 'updateBanner';
   el.style.cssText = 'position:fixed; bottom:0; left:0; right:0; z-index:9999; display:flex; align-items:center; justify-content:center; gap:14px; background:var(--felt-2); border-top:1px solid var(--brass-dim); padding:12px 16px; padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px)); font-size:12.5px; color:var(--chalk); font-weight:600; font-family:\'IBM Plex Sans\', sans-serif; box-shadow:0 -8px 24px rgba(0,0,0,.35);';
-  el.innerHTML = '<span>🔄 A new version is available</span><button type="button" style="background:var(--brass); border:none; border-radius:8px; padding:6px 14px; color:#0E1A16; font-size:12px; font-weight:700; cursor:pointer;">Reload</button>';
+  el.innerHTML = '<span>🔄 A new version is available</span><button type="button" style="background:var(--brass); border:none; border-radius:8px; padding:6px 14px; color:#121413; font-size:12px; font-weight:700; cursor:pointer;">Reload</button>';
   el.querySelector('button').addEventListener('click', () => location.reload());
   document.body.appendChild(el);
 }
@@ -4197,7 +4184,7 @@ function dailySpinBuildWheel(){
     let col;
     if(seg.label === 'JACKPOT') col = '#e0b23e';
     else if(seg.label === 'Zero') col = '#171b16';
-    else col = i % 2 === 0 ? '#123626' : '#5a1a1f';
+    else col = i % 2 === 0 ? '#171917' : '#5a1a1f';
     return `${col} ${(i * anglePer).toFixed(3)}deg ${((i + 1) * anglePer).toFixed(3)}deg`;
   });
   wheel.style.background = `conic-gradient(${stops.join(',')})`;
@@ -4931,7 +4918,7 @@ async function renderChallengesList(){
       .slice(0, 10);
 
     let html = '';
-    const section = (title, rows) => rows.length > 0 ? `<div class="hint" style="margin:14px 0 6px; text-transform:uppercase; letter-spacing:.5px; font-size:10.5px; text-align:left;">${title}</div>${rows.join('')}` : '';
+    const section = (title, rows) => rows.length > 0 ? `<div class="hint" style="margin:14px 0 6px; text-transform:none; letter-spacing:0; font-size:10.5px; text-align:left;">${title}</div>${rows.join('')}` : '';
 
     html += section('Needs your response', incoming.map(([id, c]) => `
       <div class="challenge-row">
@@ -6925,7 +6912,7 @@ function avatarHtml(name, dataUri, sizePx){
     return `<img src="${dataUri}" alt="" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:1px solid var(--brass-dim); flex-shrink:0; vertical-align:middle; margin-right:6px;">`;
   }
   const initial = (name || '?').trim().charAt(0).toUpperCase();
-  return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--brass-dim); display:inline-flex; align-items:center; justify-content:center; font-family:'Barlow Condensed', sans-serif; font-weight:700; font-size:${Math.round(size*0.45)}px; color:var(--brass-light); flex-shrink:0; vertical-align:middle; margin-right:6px;">${escapeHtml(initial)}</div>`;
+  return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(165deg, var(--felt-3), var(--felt)); border:1px solid var(--brass-dim); display:inline-flex; align-items:center; justify-content:center; font-family:'Manrope', sans-serif; font-weight:700; font-size:${Math.round(size*0.45)}px; color:var(--brass-light); flex-shrink:0; vertical-align:middle; margin-right:6px;">${escapeHtml(initial)}</div>`;
 }
 
 // The "rank card" avatar treatment — a squircle photo with the tier's
@@ -7685,7 +7672,7 @@ function renderHoldemRaiseBuilder(hand, betLabel){
   const sliderMax = Math.min(range.max, CASINO_MAX_BET_PER_HAND); // UI-level clamp so the slider never visually offers more than the cap — sendHoldemAction is still the actual enforcement point, this just avoids the confusing "drag to X, get rejected" round trip
   return `
     <div id="holdemRaiseBuilder" style="display:none; margin-top:10px; padding:12px; background:rgba(0,0,0,.2); border-radius:14px; border:1px solid var(--brass-dim);">
-      <div class="hint" style="margin-bottom:8px; text-align:center;">${betLabel} to <b id="holdemRaiseAmountDisplay" style="color:var(--brass-light); font-family:'IBM Plex Mono', monospace;">${range.min.toLocaleString()}</b> XP</div>
+      <div class="hint" style="margin-bottom:8px; text-align:center;">${betLabel} to <b id="holdemRaiseAmountDisplay" style="color:var(--brass-light); font-family:'Manrope', sans-serif;">${range.min.toLocaleString()}</b> XP</div>
       <div class="chip-rail" id="holdemRaiseChipRail">
         <div class="table-chip chip-10" data-preset="min">Min</div>
         <div class="table-chip chip-25" data-preset="half">½ Pot</div>
@@ -10010,7 +9997,7 @@ function spawnPotConfetti(){
   if(!layer) return;
   // A tighter, mostly-gold palette with only a whisper of cream/bronze
   // reads as elegant rather than a busy multicolour burst.
-  const colors = ['#CBB166', '#CBB166', '#F5E8A8', '#7d6a34', '#EFEAD8'];
+  const colors = ['#CDF464', '#CDF464', '#E2F99B', '#3B4622', '#F3F4F0'];
   for(let i = 0; i < 22; i++){
     const el = document.createElement('div');
     el.className = 'pot-confetti-piece';
@@ -11511,7 +11498,7 @@ async function renderXPLeaderboard(){
       const primaryRaw = isThisMonth ? r.monthEarned : r.balance;
       const isNegativeBalance = primaryRaw != null && primaryRaw < 0;
       const negativeRowBg = isNegativeBalance ? 'background:linear-gradient(90deg, rgba(193,96,74,.38), rgba(193,96,74,.08)); border-radius:10px; box-shadow:inset 0 0 20px rgba(193,96,74,.28); border-left:3px solid var(--loss);' : null;
-      const bg = tierRowBg || negativeRowBg || (isMe ? 'background:rgba(203,177,102,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : ''));
+      const bg = tierRowBg || negativeRowBg || (isMe ? 'background:rgba(205,244,100,.16); border-radius:10px;' : (isTop3 ? `background:${topTint[i]}; border-radius:10px;` : ''));
       // A streak of 1 or 2 is just a normal win — only 3+ in a row reads
       // as an actual "heater" worth calling out on the board.
       const streakBadge = r.streak >= 3 ? `<span class="lb-streak-badge">🔥${r.streak}</span>` : '';
@@ -11531,7 +11518,7 @@ async function renderXPLeaderboard(){
         ${avatarRankCardHtml(r.name, r.avatar, tierKey, isTop3 ? 44 : 40, isTippingCat)}
         <span style="flex:1; font-size:${isTop3 ? '14px' : '13px'}; ${isMe ? 'font-weight:700; color:var(--brass-light);' : (isTop3 ? 'font-weight:700; color:var(--chalk);' : 'color:var(--chalk);')}">${escapeHtml(r.name)}${isMe ? ' <span class="my-row-badge">You</span>' : ''}${hrBadge}${streakBadge}</span>
         <span style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
-          <span style="font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:${isNegativeBalance ? '#FF6B5B' : 'var(--brass)'}; ${isNegativeBalance ? 'text-shadow:0 0 8px rgba(255,107,91,.5);' : ''}">${primaryVal}</span>
+          <span style="font-family:'Manrope',sans-serif; font-weight:700; font-size:${isTop3 ? '15px' : '13px'}; color:${isNegativeBalance ? '#FF6B5B' : 'var(--brass)'}; ${isNegativeBalance ? 'text-shadow:0 0 8px rgba(255,107,91,.5);' : ''}">${primaryVal}</span>
           <span class="lb-lifetime-telly">${secondaryLabel}</span>
         </span>
       </div>`;
@@ -12271,7 +12258,7 @@ const BADGE_DEFS = {
     desc: 'Here when the dashboard first launched',
     icon: `<g transform="translate(70,72) rotate(-40)">
       <path d="M0,-26 C7,-16 7,4 0,14 C-7,4 -7,-16 0,-26 Z" fill="#3a2e0f"/>
-      <circle cx="0" cy="-10" r="3.2" fill="#F5E8A8"/>
+      <circle cx="0" cy="-10" r="3.2" fill="#E2F99B"/>
       <path d="M-7,6 L-13,18 L-3,12 Z" fill="#3a2e0f"/>
       <path d="M7,6 L13,18 L3,12 Z" fill="#3a2e0f"/>
       <path d="M-3,14 L0,26 L3,14 Z" fill="#c1604a"/>
@@ -12398,13 +12385,13 @@ function badgeSvg(badgeId, size){
   // additive. Used for Sovereign/Immortal so even the small badge icon
   // reads as visibly different from the standard achievement gold, not
   // just a bigger number in the same circle.
-  const ring = def.ringFill || '#7d6a34';
-  const inner = def.innerFill || '#CBB166';
+  const ring = def.ringFill || '#3B4622';
+  const inner = def.innerFill || '#CDF464';
   const iconFillDefault = def.innerFill ? '#fff6d8' : '#3a2e0f'; // dark icon on gold, light icon on a dark/rich inner fill
   return `<svg width="${s}" height="${s}" viewBox="0 0 140 140">
-    <circle cx="70" cy="70" r="66" fill="#0B2B22" stroke="${ring}" stroke-width="1.5"/>
+    <circle cx="70" cy="70" r="66" fill="#121413" stroke="${ring}" stroke-width="1.5"/>
     <circle cx="70" cy="70" r="58" fill="${inner}" stroke="#3a2e0f" stroke-width="1.5"/>
-    <ellipse cx="52" cy="48" rx="30" ry="20" fill="#F5E8A8" opacity="0.35"/>
+    <ellipse cx="52" cy="48" rx="30" ry="20" fill="#E2F99B" opacity="0.35"/>
     ${(def.icon || '').replace('__ICONFILL__', iconFillDefault)}
   </svg>`;
 }
@@ -12796,37 +12783,37 @@ async function drawSeasonShareCard(m){
   // canvas drawing happens.
   try{
     await Promise.all([
-      document.fonts.load('700 52px "Barlow Condensed"'),
-      document.fonts.load('700 22px "Barlow Condensed"'),
+      document.fonts.load('700 52px "Manrope"'),
+      document.fonts.load('700 22px "Manrope"'),
       document.fonts.load('700 34px "IBM Plex Mono"'),
     ]);
   }catch(e){}
 
   const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-  bgGrad.addColorStop(0, '#17402D');
-  bgGrad.addColorStop(1, '#08130F');
+  bgGrad.addColorStop(0, '#202321');
+  bgGrad.addColorStop(1, '#0B0C0B');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(203,177,102,0.4)';
+  ctx.strokeStyle = 'rgba(205,244,100,0.4)';
   ctx.lineWidth = 3;
   ctx.strokeRect(6, 6, W - 12, H - 12);
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#CBB166';
-  ctx.font = '700 22px "Barlow Condensed", sans-serif';
+  ctx.fillStyle = '#CDF464';
+  ctx.font = '700 22px "Manrope", sans-serif';
   ctx.fillText('MLSYND — SEASON CARD', W / 2, 70);
 
-  ctx.fillStyle = '#F5E8A8';
-  ctx.font = '700 52px "Barlow Condensed", sans-serif';
+  ctx.fillStyle = '#E2F99B';
+  ctx.font = '700 52px "Manrope", sans-serif';
   ctx.fillText(m.name.toUpperCase(), W / 2, 140);
 
   const pl = m.pl || 0;
   const plText = `${pl < 0 ? '-' : '+'}$${Math.abs(pl).toFixed(2)}`;
   ctx.fillStyle = pl >= 0 ? '#6FA98A' : '#C1604A';
-  ctx.font = '700 76px "Barlow Condensed", sans-serif';
+  ctx.font = '700 76px "Manrope", sans-serif';
   ctx.fillText(plText, W / 2, 205);
-  ctx.fillStyle = '#93a89c';
-  ctx.font = '400 16px "IBM Plex Sans", sans-serif';
+  ctx.fillStyle = '#8F9590';
+  ctx.font = '400 16px "Manrope", sans-serif';
   // Real bug caught by actually rendering this layout (via a Python/PIL
   // replica, checked against a deliberately long name and a large
   // 4-digit negative P/L) rather than just trusting the coordinates on
@@ -12844,7 +12831,7 @@ async function drawSeasonShareCard(m){
   ];
   const gridTop = 385; // pushed down from 360 to stay proportional after the label above moved
   const cellW = W / 2, cellH = 130;
-  ctx.strokeStyle = 'rgba(239,234,216,0.1)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(W / 2, gridTop - 45); ctx.lineTo(W / 2, gridTop + cellH + 15); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(60, gridTop + cellH / 2 - 20); ctx.lineTo(W - 60, gridTop + cellH / 2 - 20); ctx.stroke();
@@ -12852,15 +12839,15 @@ async function drawSeasonShareCard(m){
     const col = i % 2, row = Math.floor(i / 2);
     const cx = cellW * col + cellW / 2;
     const cy = gridTop + row * cellH;
-    ctx.fillStyle = '#EFEAD8';
+    ctx.fillStyle = '#F3F4F0';
     ctx.font = '700 34px "IBM Plex Mono", monospace';
     ctx.fillText(s.value, cx, cy);
-    ctx.fillStyle = '#93a89c';
-    ctx.font = '400 13px "IBM Plex Sans", sans-serif';
+    ctx.fillStyle = '#8F9590';
+    ctx.font = '400 13px "Manrope", sans-serif';
     ctx.fillText(s.label, cx, cy + 26);
   });
 
-  ctx.fillStyle = '#7d6a34';
+  ctx.fillStyle = '#3B4622';
   ctx.font = '400 13px "IBM Plex Mono", monospace';
   ctx.fillText('mlsynddash.netlify.app', W / 2, H - 30);
 }
@@ -13923,7 +13910,7 @@ function buildChart(history){
   const labelIdxs = points.length > 1 ? [0, Math.floor((points.length-1)/2), points.length-1] : [0];
   const labels = [...new Set(labelIdxs)].map(i => {
     const c = coords[i];
-    return `<text x="${c[0].toFixed(1)}" y="${chartH + 12}" font-size="8" fill="var(--muted)" text-anchor="middle" font-family="'IBM Plex Mono', monospace">${escapeHtml(shortWeekLabel(points[i].label))}</text>`;
+    return `<text x="${c[0].toFixed(1)}" y="${chartH + 12}" font-size="8" fill="var(--muted)" text-anchor="middle" font-family="'Manrope', sans-serif">${escapeHtml(shortWeekLabel(points[i].label))}</text>`;
   }).join('');
 
   // stash point data on the container so the tap handler can read it without re-parsing the DOM
@@ -14010,7 +13997,7 @@ function buildTipPointsChart(seriesPoints){
   const labelIdxs = seriesPoints.length > 1 ? [0, Math.floor((seriesPoints.length-1)/2), seriesPoints.length-1] : [0];
   const labels = [...new Set(labelIdxs)].map(i => {
     const c = coords[i];
-    return `<text x="${c[0].toFixed(1)}" y="${chartH + 12}" font-size="8" fill="var(--muted)" text-anchor="middle" font-family="'IBM Plex Mono', monospace">R${seriesPoints[i].round}</text>`;
+    return `<text x="${c[0].toFixed(1)}" y="${chartH + 12}" font-size="8" fill="var(--muted)" text-anchor="middle" font-family="'Manrope', sans-serif">R${seriesPoints[i].round}</text>`;
   }).join('');
 
   window.__tipChartPoints = seriesPoints;
@@ -14153,20 +14140,27 @@ function roastTierForName(name){
 // every leg without a result, so a freshly entered multi never appeared.
 function groupLegIsIn(e){ return !!(e && (e.result || (e.odds != null && e.odds !== '' && !isNaN(Number(e.odds)) && Number(e.odds) > 0))); }
 function renderGroupMultiChart(state){
-  // v176: rendered as a printed bet slip on Home. Same data rules as before:
-  // this week's draft if any leg is in (odds or result), otherwise last
+  // v181: the group multi as a bookie-style card. One small round photo per
+  // leg with a status badge (tick, cross, gold ? for MIA, blue dash for
+  // void); tap a face to see that leg. Same data rules as before: this
+  // week's draft if any leg is in (odds or result), otherwise the last
   // saved week; nothing if the admin cleared it.
   const area = document.getElementById('groupMultiArea');
   const weekEl = document.getElementById('homeSlipWeek');
   const footEl = document.getElementById('homeSlipFoot');
+  const oddsEl = document.getElementById('homeMultiOdds');
+  const statusEl = document.getElementById('homeMultiStatus');
   const setFoot = (html) => { if(footEl) footEl.innerHTML = html; };
-  const emptySlip = (msg) => {
-    area.innerHTML = `<div class="slip-empty">${msg}</div>`;
+  const setStatus = (txt, cls) => { if(statusEl){ statusEl.textContent = txt || ''; statusEl.className = 'hm-status' + (cls ? ' ' + cls : ''); } };
+  const emptyCard = (msg) => {
+    area.innerHTML = `<div class="hm-empty">${msg}</div>`;
+    if(oddsEl) oddsEl.textContent = 'Group multi';
     if(weekEl) weekEl.textContent = state.weekLabelDraft || '';
-    setFoot('');
+    setStatus('', ''); setFoot('');
+    window.__hmLegs = [];
     renderHomeGreeting(state, { legs: 0, pending: 0, losers: 0 });
   };
-  if(state.groupMultiCleared){ emptySlip('Blank slip for now. Each leg prints here as soon as its odds go in.'); return; }
+  if(state.groupMultiCleared){ emptyCard('No legs yet. Each person shows up here as soon as their odds go in.'); return; }
 
   const draft = state.groupEntryDraft || {};
   let source = draft;
@@ -14175,51 +14169,85 @@ function renderGroupMultiChart(state){
   if(!draftHasEntries){
     const lastWeek = (state.history && state.history.length > 0) ? state.history[state.history.length - 1] : null;
     source = (lastWeek && lastWeek.groupEntries) ? lastWeek.groupEntries : {};
-    weekLabel = lastWeek && lastWeek.label ? `${lastWeek.label} (saved)` : '';
+    weekLabel = lastWeek && lastWeek.label ? `${lastWeek.label}, saved` : '';
   }
-
   const entries = Object.entries(source).filter(([, e]) => groupLegIsIn(e));
-  if(entries.length === 0){ emptySlip('Blank slip for now. Each leg prints here as soon as its odds go in.'); return; }
-  if(weekEl) weekEl.textContent = weekLabel;
+  if(entries.length === 0){ emptyCard('No legs yet. Each person shows up here as soon as their odds go in.'); return; }
 
   const losers = entries.filter(([, e]) => e.result === 'Loss');
   const pending = entries.filter(([, e]) => !e.result).length;
-  const STAMP = { Win: 'Won', Loss: 'Lost', Void: 'Void', MIA: 'MIA' };
-  let html = '';
-  entries.forEach(([name, e]) => {
-    const cls = !e.result ? 'result-pending' : e.result === 'Win' ? 'result-win' : (e.result === 'Loss' ? 'result-loss' : (e.result === 'MIA' ? 'result-mia' : 'result-void'));
-    let note = '';
-    if(e.result === 'Loss'){
-      const pool = roastTierForName(name);
-      const roast = pool[hashStr(name + 'live-draft') % pool.length];
-      note = `<div class="slip-note">${escapeHtml(name)} ${roast}.</div>`;
-    } else if(e.result === 'MIA'){
-      note = `<div class="slip-note">${escapeHtml(name)} was MIA this week, no leg placed.</div>`;
-    }
-    html += `<div class="slip-leg ${cls}">
-      <div class="slip-line">
-        <span class="slip-name">${escapeHtml(name)}</span>
-        <span class="slip-leader" aria-hidden="true"></span>
-        <span class="slip-odds">${e.odds != null ? Number(e.odds).toFixed(2) : '—'}</span>
-        <span class="slip-stamp">${e.result ? STAMP[e.result] || e.result : 'Running'}</span>
-      </div>
-      ${note}
-    </div>`;
-  });
-  area.innerHTML = html;
-  // The slip "prints" in once per app open, on the first real data only.
-  try{ if(!window.__slipPrinted && !currentStateFromCache){ window.__slipPrinted = true; const sl = document.querySelector('.home-slip'); if(sl){ sl.classList.add('slip-print'); } } }catch(e){}
-
-  // Combined odds of the legs still counting (void/MIA legs drop out, like a real multi).
-  const counting = entries.filter(([, e]) => e.result !== 'Void' && e.result !== 'MIA' && e.odds != null && Number(e.odds) > 0);
+  const withOdds = entries.filter(([, e]) => e.odds != null && Number(e.odds) > 0);
+  const counting = withOdds.filter(([, e]) => e.result !== 'Void' && e.result !== 'MIA');
   const combined = counting.reduce((m, [, e]) => m * Number(e.odds), 1);
-  let status;
-  if(losers.length) status = `<span class="slip-foot-status lost">Multi's gone. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.</span>`;
-  else if(pending === 0) status = `<span class="slip-foot-status won">Every leg got up.</span>`;
-  else status = `<span class="slip-foot-status">${pending} of ${entries.length} still running</span>`;
-  setFoot(`${status}<span class="slip-foot-odds"><span>Combined odds</span><b>${counting.length ? combined.toFixed(2) : '—'}</b></span>`);
+  const full = withOdds.reduce((m, [, e]) => m * Number(e.odds), 1);
+  if(oddsEl) oddsEl.innerHTML = counting.length
+    ? `Multi @ ${combined.toFixed(2)}${full.toFixed(2) !== combined.toFixed(2) ? ` <s>${full.toFixed(2)}</s>` : ''}`
+    : 'Group multi';
+  if(weekEl) weekEl.textContent = `${entries.length} leg${entries.length === 1 ? '' : 's'}${weekLabel ? ' · ' + weekLabel : ''}`;
+  if(losers.length) setStatus('Lost', 'lost');
+  else if(pending === 0) setStatus('Won', 'won');
+  else setStatus(`${pending} running`, 'running');
+
+  const members = state.members || [];
+  window.__hmLegs = entries.map(([name, e]) => {
+    const m = members.find(mm => mm.name === name) || {};
+    let note = '';
+    if(e.result === 'Loss'){ const pool = roastTierForName(name); note = `${name} ${pool[hashStr(name + 'live-draft') % pool.length]}.`; }
+    else if(e.result === 'MIA') note = `${name} was MIA this week, no leg placed.`;
+    else if(e.result === 'Void') note = 'Leg voided, it drops out of the multi.';
+    return { name, odds: e.odds, result: e.result || null, uid: m.linkedUid || '', note };
+  });
+  if(!window.__hmLegs.some(l => l.name === window.__hmSel)) window.__hmSel = null;
+  const BADGE = {
+    Win: '<path d="M7 12.5l3.2 3.2L17 9" />',
+    Loss: '<path d="M8.5 8.5l7 7M15.5 8.5l-7 7" />',
+    Void: '<path d="M8 12h8" />',
+    MIA: '<path d="M9.6 9.4a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4M12 16.6v.2" />',
+  };
+  const resCls = r => !r ? 'pending' : r === 'Win' ? 'win' : r === 'Loss' ? 'loss' : r === 'MIA' ? 'mia' : 'void';
+  const label = r => !r ? 'Running' : r === 'Win' ? 'Won' : r === 'Loss' ? 'Lost' : r;
+  area.innerHTML = `<div class="hm-legs">${window.__hmLegs.map(l => `
+      <button type="button" class="hm-leg result-${resCls(l.result)}${window.__hmSel === l.name ? ' sel' : ''}" data-leg="${escapeHtml(l.name)}" aria-label="${escapeHtml(l.name)}, ${l.odds != null ? Number(l.odds).toFixed(2) : 'no odds'}, ${label(l.result)}">
+        ${l.result
+          ? `<span class="hm-av hm-av-result"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">${BADGE[l.result] || ''}</svg></span>`
+          : `<span class="hm-av" data-hm-uid="${escapeHtml(l.uid)}">${escapeHtml(String(l.name).trim().charAt(0).toUpperCase())}</span>`}
+        <span class="hm-name">${escapeHtml(String(l.name).split(' ')[0])}</span>
+      </button>`).join('')}</div>
+    <div class="hm-detail" id="homeMultiDetail"></div>`;
+  renderHomeMultiDetail();
+  area.querySelectorAll('[data-hm-uid]').forEach(el => {
+    const uid = el.dataset.hmUid;
+    if(!uid || typeof getAvatarDataUri !== 'function') return;
+    getAvatarDataUri(uid).then(src => { if(src){ el.style.backgroundImage = `url("${src}")`; el.textContent = ''; el.classList.add('has-photo'); } }).catch(() => {});
+  });
+
+  let foot = '';
+  if(losers.length) foot = `<span class="slip-foot-status lost">Multi's gone. ${escapeHtml(losers.map(([n]) => n).join(' & '))} ${losers.length === 1 ? 'owes' : 'owe'} the boys a beer.</span>`;
+  else if(pending === 0) foot = `<span class="slip-foot-status won">Every leg got up.</span>`;
+  setFoot(foot);
   renderHomeGreeting(state, { legs: entries.length, pending, losers: losers.length, saved: !draftHasEntries });
 }
+function renderHomeMultiDetail(){
+  const box = document.getElementById('homeMultiDetail');
+  if(!box) return;
+  const leg = (window.__hmLegs || []).find(l => l.name === window.__hmSel);
+  if(!leg){ box.innerHTML = '<div class="hm-hint">Tap a face to see their leg</div>'; box.className = 'hm-detail'; return; }
+  const cls = !leg.result ? 'pending' : leg.result === 'Win' ? 'win' : leg.result === 'Loss' ? 'loss' : leg.result === 'MIA' ? 'mia' : 'void';
+  const label = !leg.result ? 'Running' : leg.result === 'Win' ? 'Won' : leg.result === 'Loss' ? 'Lost' : leg.result;
+  box.className = 'hm-detail open result-' + cls;
+  box.innerHTML = `<div class="hm-detail-row">
+      <span class="hm-detail-name">${escapeHtml(leg.name)}</span>
+      <span class="hm-detail-odds">${leg.odds != null ? '@ ' + Number(leg.odds).toFixed(2) : 'No odds yet'}</span>
+      <span class="hm-chip">${label}</span>
+    </div>${leg.note ? `<div class="hm-detail-note">${escapeHtml(leg.note)}</div>` : ''}`;
+}
+document.getElementById('groupMultiArea').addEventListener('click', (e) => {
+  const btn = e.target.closest('.hm-leg');
+  if(!btn) return;
+  window.__hmSel = window.__hmSel === btn.dataset.leg ? null : btn.dataset.leg;
+  document.querySelectorAll('#groupMultiArea .hm-leg').forEach(b => b.classList.toggle('sel', b.dataset.leg === window.__hmSel));
+  renderHomeMultiDetail();
+});
 
 // Podium, card meta and swipe dots on Home (v176).
 function renderHomeExtras(state){
@@ -20519,7 +20547,7 @@ async function renderAdminTippingDues(){
       return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid var(--line);">
         <span style="color:var(--chalk); font-size:13px;">${escapeHtml(d.name)}${owed <= 0 && commitment > 0 ? ' ✅' : ''}</span>
         <div style="display:flex; align-items:center; gap:6px;">
-          <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass-light);">$<input type="number" class="adminTippingDuesOwedInput" data-uid="${uid}" value="${owed}" step="1" style="width:60px; background:none; border:none; color:inherit; font:inherit;"> / $${commitment}</span>
+          <span style="font-family:'Manrope',sans-serif; font-size:12px; color:var(--brass-light);">$<input type="number" class="adminTippingDuesOwedInput" data-uid="${uid}" value="${owed}" step="1" style="width:60px; background:none; border:none; color:inherit; font:inherit;"> / $${commitment}</span>
           <button type="button" class="small danger" data-admin-tipping-dues-remove="${uid}" data-name="${escapeHtml(d.name)}">✕</button>
         </div>
       </div>`;
@@ -21487,7 +21515,7 @@ function renderAdminBettorRotationPanel(){
   area.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:6px;">${order.map((name, i) => {
     const isActive = activeNames.includes(name);
     const isNextUp = i === nextUpIdx;
-    const bg = isActive ? 'rgba(111,169,138,.15)' : isNextUp ? 'rgba(199,162,72,.15)' : 'rgba(0,0,0,.2)';
+    const bg = isActive ? 'rgba(111,169,138,.15)' : isNextUp ? 'rgba(205,244,100,.15)' : 'rgba(0,0,0,.2)';
     const border = isActive ? 'rgba(111,169,138,.4)' : isNextUp ? 'var(--brass-dim)' : 'var(--line)';
     const color = isActive ? 'var(--win)' : isNextUp ? 'var(--brass-light)' : 'var(--muted)';
     return `<span style="padding:5px 10px; border-radius:20px; font-size:11px; font-weight:600; background:${bg}; border:1px solid ${border}; color:${color};">${escapeHtml(name)}${isNextUp ? ' (next up)' : ''}</span>`;
@@ -22332,7 +22360,7 @@ function renderAdminFixWeekEditorFromWorking(){
     <div class="admin-fin-header-row"><span></span><span class="admin-fin-col-lbl">W</span><span class="admin-fin-col-lbl">L</span><span class="admin-fin-col-lbl">P/L $</span></div>
     ${rowsHtml}
     <button type="button" id="adminFixwAddRowBtn" class="small" style="margin-top:4px;">➕ Add person</button>
-    <h3 style="margin-top:18px; font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px;">Group Multi</h3>
+    <h3 style="margin-top:18px; font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0;">Group Multi</h3>
     <div class="hint" style="margin-bottom:6px;">Each member's leg result and odds for this week — "No bet" if they weren't in. Only touch this if the health check flagged this week as missing groupEntries, or you know a result here is wrong; leave everyone else exactly as shown.</div>
     <div class="admin-fin-header-row"><span></span><span class="admin-fin-col-lbl">Odds</span><span class="admin-fin-col-lbl">Result</span></div>
     ${groupRowsHtml}
@@ -22735,7 +22763,7 @@ function renderAdminDues(){
       <span style="color:var(--chalk); font-size:13px;">${escapeHtml(m.name)}</span>
       <div style="display:flex; align-items:center; gap:6px;">
         <button type="button" class="small adminDuesMinus" data-idx="${idx}" ${owed<=0?'disabled':''}>−</button>
-        <span style="font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--brass-light);">$<input type="number" class="adminDuesOwedInput" data-idx="${idx}" value="${owed}" step="1" style="width:60px; background:none; border:none; color:inherit; font:inherit;"> / $${commitment}</span>
+        <span style="font-family:'Manrope',sans-serif; font-size:12px; color:var(--brass-light);">$<input type="number" class="adminDuesOwedInput" data-idx="${idx}" value="${owed}" step="1" style="width:60px; background:none; border:none; color:inherit; font:inherit;"> / $${commitment}</span>
         <button type="button" class="small adminDuesPlus" data-idx="${idx}" ${owed>=commitment?'disabled':''}>+</button>
       </div>
     </div>`;
@@ -23285,13 +23313,13 @@ function renderDashboardDump(){
   area.innerHTML = '<div class="empty">Loading…</div>';
   Promise.all([computeTippingDiagnostics(), computeDashboardHealthChecks(), computeCasinoDiagnostics()]).then(([tip, health, casino]) => {
     let html = '<div class="panel" style="margin:0; padding:0; border:none; background:none;">';
-    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px;">Dashboard Health</h3>';
+    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:0 0 6px;">Dashboard Health</h3>';
     html += `<div style="font-size:11px; color:var(--muted); line-height:1.7;">
       Members linked to a Tipping account: ${health.linkedMembers} / ${health.totalMembers}<br>
       Prize pot (config): ${health.prizePot != null ? '$' + health.prizePot : 'not set'}<br>
       Commence-time sync run this session: ${health.commenceTimesSynced ? 'yes' : 'not yet'}
     </div>`;
-    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">🎰 Casino</h3>';
+    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:14px 0 6px;">🎰 Casino</h3>';
     if(!casino.ok){
       html += `<div style="font-size:11px; color:var(--loss);">Could not run: ${escapeHtml(casino.error)}</div>`;
     } else {
@@ -23302,7 +23330,7 @@ function renderDashboardDump(){
         Your unlocked milestone badges: ${casino.unlockedMilestones} / ${XP_MILESTONE_BADGES.length}
       </div>`;
     }
-    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px;">Tipping — Ladder Reads</h3>';
+    html += '<h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:14px 0 6px;">Tipping — Ladder Reads</h3>';
     if(!tip.ok){
       html += `<div style="font-size:11px; color:var(--loss);">Could not run: ${escapeHtml(tip.error)}</div>`;
     } else {
@@ -23779,8 +23807,8 @@ function renderTippingHistoryYear(){
 
   let html = '';
   html += `<div class="panel" style="text-align:center;">
-    <div style="font-family:'Barlow Condensed', sans-serif; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted);">Final Prize Pot</div>
-    <div style="font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:700; color:var(--brass);">$${(record.prizePot || 0).toFixed ? record.prizePot.toFixed(0) : record.prizePot}</div>
+    <div style="font-family:'Manrope', sans-serif; font-size:11px; letter-spacing:0; text-transform:none; color:var(--muted);">Final Prize Pot</div>
+    <div style="font-family:'Manrope', sans-serif; font-size:22px; font-weight:700; color:var(--brass);">$${(record.prizePot || 0).toFixed ? record.prizePot.toFixed(0) : record.prizePot}</div>
   </div>`;
 
   html += '<div class="panel"><h2>Final Ladder</h2>';

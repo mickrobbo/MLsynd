@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-16.179",
-  "date": "2026-10-16",
+  "version": "2026-10-17.182",
+  "date": "2026-10-17",
   "changes": [
-    "A cleaner, calmer look across the whole app, with this week's multi as a real-looking bet slip on Home",
-    "The Board is now easy-to-read rows, and the Form guide and individual bets on Home are proper cards",
-    "The tab bar tucks away while you scroll down, and Syndy now lives at the top of the screen"
+    "A brand new look across the whole app: graphite and lime, bold numbers and rounder cards",
+    "New floating menu at the bottom: tap a tab and it opens into a lime pill",
+    "The group multi is now a card with everyone's photo: tap a face to see their leg, and it turns into a tick, cross, gold ? for MIA or blue dash for void once it's marked"
   ]
 }
