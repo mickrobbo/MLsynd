@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.191",
+  "version": "2026-10-17.192",
   "date": "2026-10-17",
   "changes": [
     "Spicier roasts on the group multi, aware of the odds you lost at and your losing streak",
-    "The group multi now shows a leg track, legs landed, what's still to land and what $10 pays",
-    "Tap a face to see their season record, last five legs and what their leg means for the multi"
+    "Tap a face to see their season record, last five legs and what their leg means for the multi",
+    "The group multi shows a leg track under the faces so you can see where it stands at a glance"
   ]
 }
