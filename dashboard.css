@@ -7232,3 +7232,25 @@ html.hint-ind-seen .ind-more{ display:none; }
 .home-quick-val-sm{ font-size:13px !important; }
 html.hint-leg-seen #homeMultiDetail:not(.open){ display:none; }
 #chartArea .ch-plot{ touch-action:pan-y; }
+
+/* ===================== v219: Season P/L card, more numbers ===================== */
+.ch-read-lbl{ white-space:normal; }
+.ch-read-chg{ font-size:12.5px; font-weight:800; font-variant-numeric:tabular-nums; }
+.ch-read-chg.pos{ color:#7FE3A2; } .ch-read-chg.neg{ color:#FF8A80; }
+#chartSvg .ch-bar.pos{ fill:#22A35A; } #chartSvg .ch-bar.neg{ fill:#E5484D; }
+.ch-stats{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:1px; margin-top:14px; border-radius:16px; overflow:hidden; background:rgba(255,255,255,.06); }
+.ch-stat{ display:flex; flex-direction:column; gap:1px; padding:11px 13px; background:var(--surface); min-width:0; }
+.ch-stat-k{ font-size:11.5px; font-weight:700; color:var(--muted); }
+.ch-stat-v{ font-size:18px; font-weight:800; letter-spacing:-.02em; color:var(--chalk); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.ch-stat-v.pos{ color:#7FE3A2; } .ch-stat-v.neg{ color:#FF8A80; }
+.ch-stat-s{ font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ch-split{ grid-column:1 / -1; padding:12px 13px 13px; background:var(--surface); }
+.ch-split-head{ font-size:11.5px; font-weight:700; color:var(--muted); margin-bottom:8px; }
+.ch-split-bar{ display:flex; height:8px; border-radius:999px; overflow:hidden; background:var(--surface-2); gap:2px; }
+.ch-split-bar span{ display:block; height:100%; }
+.ch-split-bar .pos{ background:#22A35A; } .ch-split-bar .neg{ background:#E5484D; }
+.ch-split-bar .alt{ opacity:.55; }
+.ch-split-keys{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 12px; margin-top:8px; font-size:12px; color:var(--muted); }
+.ch-split-keys b{ font-weight:800; margin-left:4px; } .ch-split-keys b.pos{ color:#7FE3A2; } .ch-split-keys b.neg{ color:#FF8A80; }
+.ch-split-keys i{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px; vertical-align:0; background:var(--chalk); }
+.ch-split-keys i.k2{ opacity:.55; }
