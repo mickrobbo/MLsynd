@@ -1,10 +1,10 @@
 {
-  "version": "2026-10-18.216",
+  "version": "2026-10-18.217",
   "date": "2026-10-18",
   "changes": [
+    "Tidier Home: each number shown once, the multi's faces on one row, a compact form guide strip, hints that go once used",
     "Opening a bet shows a fact about what was backed: ladder position and record for teams, barrier, jockey and form for horses",
     "Open a bet on Home for a quick stat about it; tap the person's photo or name for their profile",
-    "Tip fines are no longer charged for games outside the comp; Admin \u2192 Tools can refund the ones charged after the season",
-    "No more sideways slide when changing tabs"
+    "Tip fines are no longer charged for games outside the comp; Admin \u2192 Tools can refund the ones charged after the season"
   ]
 }

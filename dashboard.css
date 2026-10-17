@@ -7207,3 +7207,27 @@ button.hm-detail-av{ padding:0 !important; border:0 !important; cursor:pointer; 
 .ind-fact{ display:flex; flex-direction:column; margin-top:3px; }
 .ind-fact span{ font-size:11.5px; color:var(--chalk); opacity:.85; white-space:normal; line-height:1.3; }
 .ind-fact span + span{ color:var(--muted); opacity:1; }
+
+/* ===================== v217: tidier Home ===================== */
+/* each number once: Season P/L lives on the chart, the bonus pot in its own card */
+#balPlOverallCell{ display:none !important; }
+#balBankCell .home-money-meta{ display:none; }
+#balPlWeeklyCell{ grid-column:1 / -1; }
+/* the multi's faces always fit one row, however many legs */
+.hm-legs{ grid-template-columns:repeat(var(--n, 9), minmax(0, 34px)) !important; justify-content:space-between !important; gap:10px 3px !important; }
+/* form guide as one swipeable strip */
+#formGuidePanel .fg-grid{ display:flex !important; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding:2px 2px 4px; margin:0 -2px; grid-template-columns:none; }
+#formGuidePanel .fg-grid::-webkit-scrollbar{ display:none; }
+#formGuidePanel .fg-card{ flex:0 0 auto; min-width:148px; max-width:190px; scroll-snap-align:start; padding:11px 13px !important; border-radius:16px !important; grid-column:auto !important; }
+#formGuidePanel .fg-fig{ font-size:19px !important; line-height:1.15; }
+#formGuidePanel .fg-lbl{ font-size:11.5px; }
+#formGuidePanel .fg-who{ font-size:12.5px; margin-top:3px; }
+/* hints only until first used */
+html.hint-leg-seen #homeMultiDetail .hm-hint{ display:none; }
+html.hint-ind-seen .ind-more{ display:none; }
+/* casino and activity as one slim row */
+.home-quick{ gap:8px !important; }
+.home-quick-btn{ flex-direction:row !important; align-items:center !important; justify-content:space-between !important; gap:8px; padding:11px 14px !important; border-radius:16px !important; min-height:0 !important; }
+.home-quick-val{ font-size:15px !important; }
+.home-quick-val-sm{ font-size:13px !important; }
+html.hint-leg-seen #homeMultiDetail:not(.open){ display:none; }
