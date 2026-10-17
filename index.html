@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=195">
+<link rel="stylesheet" href="dashboard.css?v=196">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -240,67 +240,115 @@
 
     <div id="homeSubview-diag" class="home-subview" style="display:none;">
 
-    <div class="admin-submode-grid" id="diagSubmodeRow">
-      <button type="button" class="admin-submode-btn active" data-submode="entry"><span class="admin-submode-icon">📝</span><span class="admin-submode-label">Entry</span></button>
-      <button type="button" class="admin-submode-btn" data-submode="money"><span class="admin-submode-icon">💰</span><span class="admin-submode-label">Money</span></button>
-      <button type="button" class="admin-submode-btn" data-submode="tipping"><span class="admin-submode-icon">🏉</span><span class="admin-submode-label">Tipping</span></button>
-      <button type="button" class="admin-submode-btn" data-submode="squad"><span class="admin-submode-icon">👥</span><span class="admin-submode-label">Squad</span></button>
-      <button type="button" class="admin-submode-btn" data-submode="access" style="position:relative;"><span class="admin-submode-icon">🔐</span><span class="admin-submode-label">Access</span><span class="admin-submode-badge" id="adminAccessBadge" style="display:none;"></span></button>
-      <button type="button" class="admin-submode-btn" data-submode="pulse"><span class="admin-submode-icon">🩺</span><span class="admin-submode-label">Pulse</span></button>
-      <button type="button" class="admin-submode-btn" data-submode="play"><span class="admin-submode-icon">🎲</span><span class="admin-submode-label">Play</span></button>
-      <button type="button" class="admin-submode-btn" data-submode="repair"><span class="admin-submode-icon">🔧</span><span class="admin-submode-label">Maintenance</span></button>
+    <div class="admin-submode-grid adm-tabs6" id="diagSubmodeRow">
+      <button type="button" class="admin-submode-btn active" data-submode="entry"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></span><span class="admin-submode-label">Week</span></button>
+      <button type="button" class="admin-submode-btn" data-submode="money"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/></svg></span><span class="admin-submode-label">Money</span></button>
+      <button type="button" class="admin-submode-btn" data-submode="tipping"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)"/><path d="M9.2 14.8l5.6-5.6M10.4 11.6l2 2M11.9 10.1l2 2"/></svg></span><span class="admin-submode-label">Tipping</span></button>
+      <button type="button" class="admin-submode-btn" data-submode="squad" style="position:relative;"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.5 13.9c1.9.6 3.1 2.4 3.5 5.1"/></svg></span><span class="admin-submode-label">People</span><span class="admin-submode-badge" id="adminAccessBadge" style="display:none;"></span></button>
+      <button type="button" class="admin-submode-btn" data-submode="pulse"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg></span><span class="admin-submode-label">Insights</span></button>
+      <button type="button" class="admin-submode-btn" data-submode="repair"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6z"/></svg></span><span class="admin-submode-label">Tools</span></button>
     </div>
 
-    <div class="diag-submode" data-submode-panel="pulse">
-    <div class="panel">
-      <h2>📊 Snapshot</h2>
-      <div class="balance-grid" id="pulseToteCells">
-        <div class="toteboard-cell" id="pulseHealthCell"><span class="lbl">Health</span><span class="val">—</span></div>
-        <div class="toteboard-cell" id="pulseOnlineCell"><span class="lbl">Online</span><span class="val">—</span></div>
-        <div class="toteboard-cell" id="pulseSyndyCell"><span class="lbl">Syndy $ (mo)</span><span class="val">—</span></div>
-        <div class="toteboard-cell" id="pulseRoundsCell"><span class="lbl">Rounds (7d)</span><span class="val">—</span></div>
+    <div class="diag-submode active" data-submode-panel="entry">
+    <div class="panel weekly-checklist" id="adminWeeklyChecklist">
+      <h2>This week</h2>
+      <div class="adm-lastsaved">Last saved <b id="adminLastSavedWeekIndicator">—</b></div>
+      <div id="adminWeeklyChecklistRows"></div>
+    </div>
+    <div class="panel" id="adminPanelWeek">
+      <h2>Week</h2>
+      <div class="hint">Pick the week you're entering. It saves as a draft straight away.</div>
+      <select id="adminWeekLabel" style="width:100%; margin-top:10px;"><option value="">Select week</option></select>
+    </div>
+    <div class="panel" id="adminPanelMulti">
+      <h2>Group multi</h2>
+      <div class="hint">One row per person not on an individual bet. Odds and results save as a draft as you type.</div>
+      <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
+      <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <div class="adm-sub">
+        <div class="hint">Home keeps showing last week's multi until new legs go in. Clear it early here if you need to.</div>
+        <button type="button" id="adminClearWhoCookingBtn" class="small" style="margin-top:10px;">Clear the multi on Home</button>
+        <div class="status-msg" id="adminClearWhoCookingStatus"></div>
       </div>
-      <div class="hint" id="pulseLastRunHint" style="margin-top:10px; text-align:center;">Health score is from the last full check you ran — this fast view doesn't re-run it automatically.</div>
-      <div id="pulseLastFailuresArea" style="margin-top:8px;"></div>
+    </div>
+    <div class="panel" id="adminPanelInd">
+      <h2>Individual bets</h2>
+      <div class="hint">Who's on an individual bet this week, shown on Home for everyone. An amount here only counts at Save week if that person is left blank in Returns, so nothing is entered twice.</div>
+      <div id="adminWeeklyIndividualBetsEntry" style="margin-top:10px;"></div>
+      <button type="button" id="adminSaveWeeklyBetsBtn" class="small" style="margin-top:8px;">💾 Save</button>
+      <div class="status-msg" id="adminWeeklyBetsStatus"></div>
+    </div>
+    <div class="panel" id="adminPanelSlips">
+      <h2>Bet slips</h2>
+      <div class="hint">Upload one or more screenshots, or paste a link. They show on everyone's Slips tab straight away.</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input type="file" id="adminSlipFileInput" accept="image/*" multiple style="display:none;">
+        <button type="button" id="adminSlipUploadBtn" class="small">📷 Upload screenshot(s)</button>
+      </div>
+      <div id="adminSlipUploadStatus" class="status-msg"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminSlipLabel" placeholder="Label (e.g. Week 30 multi)" style="flex:1;">
+      </div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminSlipUrl" placeholder="…or paste a link https://…" style="flex:1;">
+        <button type="button" id="adminAddSlipBtn" class="small">Add</button>
+      </div>
+      <div id="adminSlipsArea" style="margin-top:12px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel" id="adminPanelFin">
+      <h2>Returns</h2>
+      <div class="hint">Outlays are prefilled at your fixed rates, so just enter the returns. Saves as a draft; nothing reaches the bank until Save week.</div>
+      <div class="admin-fin-header-row" style="margin-top:10px;"><span></span><span class="admin-fin-col-lbl">Outlay</span><span class="admin-fin-col-lbl">Return</span></div>
+      <div class="admin-fin-row-entry">
+        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Group</span>
+        <input type="number" id="adminGMultiOut" step="0.01" value="12.50">
+        <input type="number" id="adminGMultiRet" step="0.01">
+      </div>
+      <div id="adminFinIndRows"></div>
+      <div class="admin-fin-row-entry">
+        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">SGM bonus win</span>
+        <input type="number" id="adminGSgmWin" step="0.01" placeholder="0.00">
+      </div>
+      <div class="hint" style="margin-top:-6px; margin-bottom:10px;">Only if an SGM bonus bet wins. It goes straight to the bank.</div>
+      <div class="admin-fin-row-entry">
+        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Lotto</span>
+        <input type="number" id="adminGLottoOut" step="0.01" value="80.50">
+        <input type="number" id="adminGLottoRet" step="0.01">
+      </div>
+      <div class="admin-fin-row-entry">
+        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Bonus pot</span>
+        <input type="number" id="adminGBonus" step="0.01" value="10">
+      </div>
+    </div>
+    <div class="panel" id="adminPanelSave" style="border-color:var(--brass);">
+      <h2>Save week</h2>
+      <div class="hint">Commits everything above to the season: stats, XP, fines and this week's history.</div>
+      <button type="button" id="adminSaveWeekBtn" class="small danger" style="margin-top:10px;">💾 Save week</button>
+      <div class="status-msg" id="adminEntryStatus"></div>
+      <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
+        <div class="hint">Undo puts back the most recently saved week exactly as it was, one week at a time.</div>
+        <button type="button" id="adminUndoWeekBtn" class="small danger" style="margin-top:10px;">↩️ Undo last saved week</button>
+        <div class="status-msg" id="adminUndoWeekStatus"></div>
+      </div>
     </div>
     <div class="panel">
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:0 0 6px;">Recent Errors</h3>
-      <div class="hint">Failed tip saves, failed health-check internals, and sampled client errors — across all linked members, not just this device.</div>
-      <div id="pulseErrorsArea" style="margin-top:8px;"><div class="empty">Loading…</div></div>
-      <button type="button" id="clearMyErrorsBtn" class="pill-btn" style="margin-top:10px; font-size:11px; padding:6px 12px;">🧹 Clear my errors</button>
-      <div class="status-msg" id="clearMyErrorsStatus" style="margin-top:6px;"></div>
-    </div>
-    <div class="panel">
-      <h2>🩺 Run Full System Check</h2>
-      <button type="button" id="runHealthCheckBtn">🩺 Run now</button>
-      <div class="hint" style="margin-top:6px;">Checks Firebase connectivity, auth, roster data (including duplicate account links), season history, tipping reads, Joker validity, Casino XP/badge integrity, Casino Pot distribution health (stuck locks, overdue payouts, legacy data), dues consistency, individual bet drafts, and browser storage. Anything flagged ⚠️ or ❌ is worth pasting back into chat.</div>
-      <div id="healthCheckResults" style="margin-top:10px;"></div>
-      <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
-    </div>
-    <div class="panel" id="diagTabAreaPanel" style="display:none;">
-      <h2>📋 Full Check Details</h2>
-      <div id="diagTabArea">Loading…</div>
-    </div>
-    <div class="panel">
-      <h2>🟢 Who's Online</h2>
-      <div class="hint">Based on a heartbeat each device sends every 60s while the app's open — not instant, but "active in the last few minutes" is a reasonable read on it. Won't show anyone until they've opened the app at least once since this shipped. A locked/backgrounded phone stops sending these and won't show as online.</div>
-      <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:0 0 6px;">This Device — API Calls</h3>
-      <div class="hint">Tracks calls made from this device/browser only (localStorage) — not a shared count across all members, since instrumenting the actual Netlify functions server-side would need touching each one's own source directly.</div>
-      <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
-      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">🔄 Reset stats</button>
-    </div>
-    <div class="panel">
-      <h2>🔔 Test Push Notification</h2>
-      <div class="hint">Sends a real test push straight to your own device, right now — no waiting for the 30-min scheduled check. You need to have tapped "🔔 Notify me" in the account bar first.</div>
-      <button type="button" id="testPushBtn">🔔 Send test notification</button>
-      <div class="status-msg" id="testPushStatus"></div>
+      <h2>Bettor rotation</h2>
+      <div class="hint">Win your bet and you go again next week, plus a second bet at your own stake. Lose it and the next person takes over. Press Set up next week once this week is saved.</div>
+      <div id="adminRotationOrderEntry" style="margin-top:10px;"></div>
+      <div id="adminRotationStatusArea"></div>
+      <button type="button" id="adminRotationSetupNextBtn" class="small" style="margin-top:8px;">🔀 Set up next week's bettors →</button>
+      <div class="status-msg" id="adminRotationStatus"></div>
     </div>
     </div>
-
     <div class="diag-submode" data-submode-panel="money">
+    <div class="panel">
+      <h2>Dues</h2>
+      <div class="hint">$840 a season each. Tap + or − $70 as people pay. It feeds the bank, and every $2 paid earns 1 Casino XP.</div>
+      <div id="adminDuesArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <button type="button" id="adminDuesXPBackpayBtn" style="margin-top:10px;">🎰 Back-pay Casino XP for dues already paid</button>
+      <div class="hint" style="margin-top:6px;">One-off: awards XP for dues already paid this season. It switches off once it's been run.</div>
+      <div id="adminDuesXPBackpayStatus" class="status-msg" style="margin-top:6px;"></div>
+    </div>
     <div class="panel" id="adminPayPanel">
       <h2>Banking details</h2>
       <div class="hint">Shown to members when they tap Settle up, with a copy button for each. Only the admin account can change these.</div>
@@ -322,13 +370,8 @@
       <div class="status-msg" id="adminSeasonEndStatus"></div>
     </div>
     <div class="panel">
-      <h2>🔮 Syndy Usage (all members)</h2>
-      <div class="hint">Real shared total — incremented server-side every time syndy-chat.js actually calls Perplexity, from any member's device. Cost figures are the exact per-call amount Perplexity's own response reports, not an estimate.</div>
-      <div id="syndyUsageArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>💰 Estimated Monthly Running Costs</h2>
-      <div class="hint">Perplexity spend above is real tracked data. Netlify, domain, and anything else below is manually entered — there's no billing API wired up for those, so these numbers are only as accurate as what's typed in. For gauging total cost / splitting with the group, not a live invoice.</div>
+      <h2>Running costs</h2>
+      <div class="hint">Syndy spend is tracked automatically. Netlify, the domain and anything else are whatever you enter below.</div>
       <div id="runningCostsArea" style="margin-top:10px;"></div>
       <div id="runningCostsAdmin" style="display:none; margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
         <div style="display:flex; flex-direction:column; gap:8px;">
@@ -353,16 +396,42 @@
       </div>
     </div>
     <div class="panel">
-      <h2>💵 Money Owed</h2>
-      <div class="hint">Membership dues, $840/season each. Tap +/− $70 as people pay you a month — it feeds the bank balance automatically. Every real payment also earns that person 1 Casino XP per $2 paid.</div>
-      <div id="adminDuesArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-      <button type="button" id="adminDuesXPBackpayBtn" style="margin-top:10px;">🎰 Back-pay Casino XP for dues already paid</button>
-      <div class="hint" style="margin-top:6px;">One-time only — awards 1 XP per $2 of what everyone's ALREADY paid so far this season (based on the numbers above right now), so early payers aren't short-changed versus people who pay later. Disabled automatically after it's been run once.</div>
-      <div id="adminDuesXPBackpayStatus" class="status-msg" style="margin-top:6px;"></div>
+      <h2>Syndy usage</h2>
+      <div class="hint">Every Syndy chat call across all members, with its real cost.</div>
+      <div id="syndyUsageArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    </div>
+    <div class="diag-submode" data-submode-panel="tipping">
+    <div class="panel">
+      <h2>Tipping squad</h2>
+      <div class="hint">Tap a name to add or remove them from the comp. This is separate from their app access.</div>
+      <div id="adminTippingSquadArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
     <div class="panel">
-      <h2>💵 Tipping Dues</h2>
-      <div class="hint">A separate, one-off fee for whoever wants to play the Tipping competition — completely independent of Board dues, and works for genuinely Tipping-only accounts too (no Board membership needed). Same rule as Board dues: 1 Casino XP per $2 paid, real money only.</div>
+      <h2>Who's tipped</h2>
+      <div class="hint">Shows who has tipped for a round, not what they picked.</div>
+      <select id="adminSubmissionsRoundSelect" style="width:100%; margin-top:10px; margin-bottom:10px;"><option value="">Loading rounds…</option></select>
+      <div id="adminTippingSubmissionsArea"><div class="empty">Pick a round above.</div></div>
+    </div>
+    <div class="panel">
+      <h2>Comp settings</h2>
+      <div class="adm-field-lbl">Prize pot ($), shown above the ladder</div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+        <input type="number" id="adminPrizePotInput" step="1" min="0" placeholder="0" style="flex:1;">
+        <button type="button" id="adminSavePrizePotBtn" class="small">💾 Save</button>
+      </div>
+      <div class="status-msg" id="adminPrizePotStatus"></div>
+      <div class="adm-field-lbl" style="margin-top:14px;">Starts from round</div>
+      <div class="hint">The ladder only scores from this round on. Use 1 for a full season.</div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+        <input type="number" id="adminFirstRoundInput" step="1" min="1" placeholder="1" style="flex:1;">
+        <button type="button" id="adminSaveFirstRoundBtn" class="small">💾 Save</button>
+      </div>
+      <div class="status-msg" id="adminFirstRoundStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>Tipping fees</h2>
+      <div class="hint">A one-off entry fee for the comp, separate from Board dues. Every $2 paid earns 1 Casino XP.</div>
       <div style="display:flex; align-items:center; gap:8px; margin:10px 0;">
         <label style="font-size:12px; color:var(--muted); flex-shrink:0;">Default fee per person ($)</label>
         <input type="number" id="adminTippingDuesDefaultFee" min="0" step="1" style="width:80px;" placeholder="TBD">
@@ -376,8 +445,63 @@
       <div id="adminTippingDuesArea"><div class="empty">Loading…</div></div>
     </div>
     <div class="panel">
-      <h2>🎁 Give Bonus XP</h2>
-      <div class="hint">Awards Casino XP either to every approved account (Full, Dashboard, and Tipping — everyone, regardless of role) or to one specific person. Reads the live approved-users list each time. Not a one-off — use it whenever you want to hand out a bonus.</div>
+      <h2>Start a new tipping season</h2>
+      <div class="hint" id="adminTippingSeasonYearHint">Current season: —</div>
+      <div class="hint" style="margin-top:6px;">Use once, at the real end of the season. Open the Tipping tab first so the ladder is current. It saves the final ladder, prize pot and Jokers under this year, then resets the round, pot and Jokers. Picks and results are kept.</div>
+      <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
+        <label style="flex:1; font-size:11px; color:var(--muted);">New season year<input type="number" id="adminNewSeasonYearInput" step="1" min="2020" style="width:100%; margin-top:4px;"></label>
+        <label style="flex:1; font-size:11px; color:var(--muted);">New first round<input type="number" id="adminNewSeasonFirstRoundInput" step="1" min="1" value="1" style="width:100%; margin-top:4px;"></label>
+        <label style="flex:1; font-size:11px; color:var(--muted);">New prize pot ($)<input type="number" id="adminNewSeasonPrizePotInput" step="1" min="0" value="0" style="width:100%; margin-top:4px;"></label>
+      </div>
+      <button type="button" id="adminArchiveResetSeasonBtn" class="small danger" style="margin-top:10px;">🏁 Archive season &amp; start new one</button>
+      <div class="status-msg" id="adminArchiveResetSeasonStatus"></div>
+    </div>
+    </div>
+    <div class="diag-submode" data-submode-panel="squad">
+    <div class="panel">
+      <h2>Approvals</h2>
+      <div class="hint">New sign-ups waiting on you. Pick an access level to approve them.</div>
+      <div style="display:flex; align-items:center; gap:8px; margin:10px 0;">
+        <button type="button" id="adminCopyTippingInviteBtn" class="small">🏉 Copy Tipping invite link</button>
+        <span class="status-msg" id="adminCopyTippingInviteStatus"></span>
+      </div>
+      <div class="hint" style="margin-bottom:10px;">A reusable link that opens sign-up with a Tipping banner. You still approve each person.</div>
+      <div id="adminPendingUsersArea"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Access levels</h2>
+      <div class="hint">Dashboard only can use the app but not Admin. Full access gets both.</div>
+      <div id="adminApprovedUsersArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Roster</h2>
+      <div class="hint">Removing someone hides them from new weeks. Their season totals stay.</div>
+      <div id="adminRosterRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="adminNewMemberName" placeholder="Add name" style="flex:1;">
+        <button type="button" id="adminAddMemberBtn" class="small">Add</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Rename a member</h2>
+      <div class="hint">Changes their Board name, Tipping profile and past picks in one go. Members can also do this themselves.</div>
+      <select id="adminRenameMemberSelect" style="width:100%; margin-top:10px; margin-bottom:8px;"><option value="">Pick a member…</option></select>
+      <div id="adminRenameLinkStatus" class="hint" style="margin-bottom:8px;"></div>
+      <div id="adminRenameManualLinkWrap" style="display:none; margin-bottom:8px;">
+        <select id="adminRenameManualLinkSelect" style="width:100%;"><option value="">Pick their account by email…</option></select>
+      </div>
+      <input type="text" id="adminRenameNewName" placeholder="New name" style="width:100%; margin-bottom:8px;">
+      <button type="button" id="adminRenameSaveBtn" class="small" disabled>✏️ Rename everywhere</button>
+      <div class="status-msg" id="adminRenameStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>Badges</h2>
+      <div class="hint">Tick to award a badge. It shows on their profile.</div>
+      <div id="adminBadgeAwardRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Bonus XP</h2>
+      <div class="hint">Give Casino XP to everyone approved, or to one person.</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
         <select id="adminBonusTarget" style="flex:1; min-width:0;"><option value="everyone">🌐 Everyone (all approved accounts)</option></select>
       </div>
@@ -388,141 +512,9 @@
       <div class="status-msg" id="adminBonusStatus"></div>
       <div class="hint" id="adminBonusHistory" style="margin-top:6px;"></div>
     </div>
-    </div>
-
-    <div class="diag-submode" data-submode-panel="squad">
     <div class="panel">
-      <h2>👥 Roster</h2>
-      <div class="hint">Removing someone here does not delete their season totals — it just hides them from new weekly entries.</div>
-      <div id="adminRosterRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-      <div style="display:flex; gap:8px; margin-top:8px;">
-        <input type="text" id="adminNewMemberName" placeholder="Add name" style="flex:1;">
-        <button type="button" id="adminAddMemberBtn" class="small">Add</button>
-      </div>
-    </div>
-    <div class="panel">
-      <h2>🏅 Badges</h2>
-      <div class="hint">Tick a box to award that badge — shows on their profile on the dashboard (tap their name on the Board).</div>
-      <div id="adminBadgeAwardRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>✏️ Rename a Member — Everywhere</h2>
-      <div class="hint">Renames someone's Board name, Tipping profile, and sweeps their past picks, all in one go. Only needed if you're renaming someone on their behalf — if they can do it themselves, their own Edit Name does the same thing.</div>
-      <select id="adminRenameMemberSelect" style="width:100%; margin-top:10px; margin-bottom:8px;"><option value="">Pick a member…</option></select>
-      <div id="adminRenameLinkStatus" class="hint" style="margin-bottom:8px;"></div>
-      <div id="adminRenameManualLinkWrap" style="display:none; margin-bottom:8px;">
-        <select id="adminRenameManualLinkSelect" style="width:100%;"><option value="">Pick their account by email…</option></select>
-      </div>
-      <input type="text" id="adminRenameNewName" placeholder="New name" style="width:100%; margin-bottom:8px;">
-      <button type="button" id="adminRenameSaveBtn" class="small" disabled>✏️ Rename everywhere</button>
-      <div class="status-msg" id="adminRenameStatus"></div>
-    </div>
-    </div>
-
-    <div class="diag-submode active" data-submode-panel="entry">
-    <div class="panel" style="text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--muted); text-transform:none; letter-spacing:0;">Last saved week</span>
-      <div id="adminLastSavedWeekIndicator" style="font-family:'Manrope', sans-serif; font-weight:700; font-size:15px; color:var(--brass-light); margin-top:2px;">—</div>
-    </div>
-    <div class="panel weekly-checklist" id="adminWeeklyChecklist">
-      <h2>✅ This week</h2>
-      <div id="adminWeeklyChecklistRows"></div>
-    </div>
-    <div class="panel" id="adminPanelSlips">
-      <h2>📎 Bet Slips</h2>
-      <div class="hint">Upload a screenshot of the lotto ticket or bet slip each week — or paste a link instead. Select more than one at once if a bet needs a few (cropped sections, multiple tickets, etc) — they'll all get added together. Shows up on everyone's Slips tab immediately.</div>
-      <div style="display:flex; gap:8px; margin-top:10px;">
-        <input type="file" id="adminSlipFileInput" accept="image/*" multiple style="display:none;">
-        <button type="button" id="adminSlipUploadBtn" class="small">📷 Upload screenshot(s)</button>
-      </div>
-      <div id="adminSlipUploadStatus" class="status-msg"></div>
-      <div style="display:flex; gap:8px; margin-top:8px;">
-        <input type="text" id="adminSlipLabel" placeholder="Label (e.g. Week 30 multi)" style="flex:1;">
-      </div>
-      <div style="display:flex; gap:8px; margin-top:8px;">
-        <input type="text" id="adminSlipUrl" placeholder="…or paste a link https://…" style="flex:1;">
-        <button type="button" id="adminAddSlipBtn" class="small">Add</button>
-      </div>
-      <div id="adminSlipsArea" style="margin-top:12px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel" id="adminPanelWeek">
-      <h2>📅 Week Label</h2>
-      <div class="hint">Which week this entry belongs to — auto-saves as a draft the moment you pick one.</div>
-      <select id="adminWeekLabel" style="width:100%; margin-top:10px;"><option value="">Select week</option></select>
-    </div>
-    <div class="panel" id="adminPanelFin">
-      <h2>💰 This Week's Financials</h2>
-      <div class="hint">Outlays prefilled at your fixed rates, just enter returns. Every field here auto-saves as a draft the moment you type — nothing commits to the bank balance yet, that still only happens via Save Week below.</div>
-      <div class="admin-fin-header-row" style="margin-top:10px;"><span></span><span class="admin-fin-col-lbl">Outlay</span><span class="admin-fin-col-lbl">Return</span></div>
-      <div class="admin-fin-row-entry">
-        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Group</span>
-        <input type="number" id="adminGMultiOut" step="0.01" value="12.50">
-        <input type="number" id="adminGMultiRet" step="0.01">
-      </div>
-      <div id="adminFinIndRows"></div>
-      <div class="admin-fin-row-entry">
-        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">SGM bonus win</span>
-        <input type="number" id="adminGSgmWin" step="0.01" placeholder="0.00">
-      </div>
-      <div class="hint" style="margin-top:-6px; margin-bottom:10px;">If someone's SGM bonus bet wins, the winnings go straight to the bank — not tied to a person's individual stats since it wasn't real money staked. Leave blank most weeks.</div>
-      <div class="admin-fin-row-entry">
-        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Lotto</span>
-        <input type="number" id="adminGLottoOut" step="0.01" value="80.50">
-        <input type="number" id="adminGLottoRet" step="0.01">
-      </div>
-      <div class="admin-fin-row-entry">
-        <span style="flex:0 0 76px; font-family:'Manrope',sans-serif; font-weight:600; font-size:12px; color:var(--chalk);">Bonus pot</span>
-        <input type="number" id="adminGBonus" step="0.01" value="10">
-      </div>
-    </div>
-    <div class="panel" id="adminPanelMulti">
-      <h2>🎯 Group Multi Entry</h2>
-      <div class="hint">One row per member not already on an individual bet this week. Odds and results auto-save as a draft the moment you type — nothing here commits to season totals yet, that still only happens via Save Week below.</div>
-      <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
-      <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>🎲 Bettor Rotation</h2>
-      <div class="hint">Win your first bet → locked in again next week, plus a genuine second bet this weekend at your own stake (a normal row below, not the SGM checkbox). Lose it → the next person in the order takes over. Doesn't touch Save Week or season totals on its own — press "Set up next week" when you're ready to roll over.</div>
-      <div id="adminRotationOrderEntry" style="margin-top:10px;"></div>
-      <div id="adminRotationStatusArea"></div>
-      <button type="button" id="adminRotationSetupNextBtn" class="small" style="margin-top:8px;">🔀 Set up next week's bettors →</button>
-      <div class="status-msg" id="adminRotationStatus"></div>
-    </div>
-    <div class="panel" id="adminPanelInd">
-      <h2>🎫 This Week's Individual Bets</h2>
-      <div class="hint">Shows on the dashboard, in a box above Highlights, so everyone knows who's up for an individual bet this week. The $ amount here feeds real season totals at Save Week too — but only for anyone left blank in the detailed table above, so you're never entering the same bet twice.</div>
-      <div id="adminWeeklyIndividualBetsEntry" style="margin-top:10px;"></div>
-      <button type="button" id="adminSaveWeeklyBetsBtn" class="small" style="margin-top:8px;">💾 Save</button>
-      <div class="status-msg" id="adminWeeklyBetsStatus"></div>
-    </div>
-    <div class="panel" id="adminPanelSave" style="border-color:var(--brass);">
-      <h2>💾 Save Week</h2>
-      <div class="hint">Commits everything above to real season totals — every member's stats, real XP awards, real fines, and this week's history record, all in one action.</div>
-      <button type="button" id="adminSaveWeekBtn" class="small danger" style="margin-top:10px;">💾 Save week</button>
-      <div class="status-msg" id="adminEntryStatus"></div>
-      <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line);">
-        <div class="hint">Reverses the single most recently saved week — everyone's stats, XP, and fines back to exactly how they were before it, using the amounts actually stored on that week's own history record, not recomputed. Only ever undoes one week at a time, always the last one.</div>
-        <button type="button" id="adminUndoWeekBtn" class="small danger" style="margin-top:10px;">↩️ Undo last saved week</button>
-        <div class="status-msg" id="adminUndoWeekStatus"></div>
-      </div>
-    </div>
-    </div>
-
-    <div class="diag-submode" data-submode-panel="access">
-    <div class="panel">
-      <h2>✅ Approvals</h2>
-      <div class="hint">People who've signed up but aren't approved yet. Choose their access level to approve them.</div>
-      <div style="display:flex; align-items:center; gap:8px; margin:10px 0;">
-        <button type="button" id="adminCopyTippingInviteBtn" class="small">🏉 Copy Tipping invite link</button>
-        <span class="status-msg" id="adminCopyTippingInviteStatus"></span>
-      </div>
-      <div class="hint" style="margin-bottom:10px;">A permanent link (doesn't expire, reusable by anyone) that opens the signup form with a "you're joining Tipping" banner and tags their request so it shows below — approval and role are still entirely up to you, this is just a hint.</div>
-      <div id="adminPendingUsersArea"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>🔗 Guest Link</h2>
-      <div class="hint">Generates a 2-hour link that opens the Dashboard signed in as the read-only guest — no password needed, no signup, expires automatically. Requires the read-only guest account to already exist (approve one as "Read-only" above first).</div>
+      <h2>Guest link</h2>
+      <div class="hint">A read-only link to the Dashboard that expires after 2 hours. Needs a Read-only account approved first.</div>
       <button type="button" id="adminGenGuestLinkBtn" style="margin-top:10px;">🔗 Generate guest link (2h)</button>
       <div class="status-msg" id="adminGuestLinkStatus"></div>
       <div id="adminGuestLinkResultWrap" style="display:none; margin-top:8px;">
@@ -531,91 +523,116 @@
         <div class="hint" id="adminGuestLinkExpiryHint" style="margin-top:6px;"></div>
       </div>
     </div>
-    <div class="panel">
-      <h2>👁️ Access Levels</h2>
-      <div class="hint">Dashboard only can view the app but not the Admin tab. Full access can use both.</div>
-      <div id="adminApprovedUsersArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
-    </div>
-
-    <div class="diag-submode" data-submode-panel="tipping">
+    <div class="diag-submode" data-submode-panel="pulse">
     <div class="panel">
-      <h2>🏉 Tipping Squad</h2>
-      <div class="hint">Everyone with tipping access, whether they want in or not — tap a name's button to add or remove them from the tipping squad specifically, separate from their app access.</div>
-      <div id="adminTippingSquadArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>🏆 Prize Pot</h2>
-      <div class="hint">Shown on the Dashboard's Tipping tab, above the ladder.</div>
-      <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
-        <input type="number" id="adminPrizePotInput" step="1" min="0" placeholder="0" style="flex:1;">
-        <button type="button" id="adminSavePrizePotBtn" class="small">💾 Save</button>
+      <h2>Snapshot</h2>
+      <div class="balance-grid" id="pulseToteCells">
+        <div class="toteboard-cell" id="pulseHealthCell"><span class="lbl">Health</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseOnlineCell"><span class="lbl">Online</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseSyndyCell"><span class="lbl">Syndy $ (mo)</span><span class="val">—</span></div>
+        <div class="toteboard-cell" id="pulseRoundsCell"><span class="lbl">Rounds (7d)</span><span class="val">—</span></div>
       </div>
-      <div class="status-msg" id="adminPrizePotStatus"></div>
+      <div class="hint" id="pulseLastRunHint" style="margin-top:10px; text-align:center;">Health is from the last system check you ran.</div>
+      <div id="pulseLastFailuresArea" style="margin-top:8px;"></div>
     </div>
     <div class="panel">
-      <h2>🚦 Competition Starts From Round</h2>
-      <div class="hint">The ladder only scores this round onward — everything before it is ignored entirely (no auto-tip penalty, nothing). Set to 1 for a normal full season.</div>
-      <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
-        <input type="number" id="adminFirstRoundInput" step="1" min="1" placeholder="1" style="flex:1;">
-        <button type="button" id="adminSaveFirstRoundBtn" class="small">💾 Save</button>
-      </div>
-      <div class="status-msg" id="adminFirstRoundStatus"></div>
+      <h2>System check</h2>
+      <button type="button" id="runHealthCheckBtn">🩺 Run now</button>
+      <div class="hint" style="margin-top:6px;">Checks the database, accounts, season history, tipping, casino and dues for problems.</div>
+      <div id="healthCheckResults" style="margin-top:10px;"></div>
+      <button type="button" id="copyHealthReportBtn" style="display:none; width:100%; margin-top:10px;" class="btn-secondary">📋 Copy Report</button>
+    </div>
+    <div class="panel" id="diagTabAreaPanel" style="display:none;">
+      <h2>Check details</h2>
+      <div id="diagTabArea">Loading…</div>
     </div>
     <div class="panel">
-      <h2>📝 Who's Submitted</h2>
-      <div class="hint">Doesn't show what anyone picked — just whether they've tipped for a round yet.</div>
-      <select id="adminSubmissionsRoundSelect" style="width:100%; margin-top:10px; margin-bottom:10px;"><option value="">Loading rounds…</option></select>
-      <div id="adminTippingSubmissionsArea"><div class="empty">Pick a round above.</div></div>
-    </div>
-    <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:0; text-transform:none;">⚠️ Season Setup</span>
-      <div class="hint" style="margin-top:4px; margin-bottom:0;">Archives the current season's final ladder, prize pot, and Joker picks under that year, then resets first round/prize pot/Jokers/round-lock times for the new season in one go. Use this once, at the actual end of the season — not the boxes above, which are for mid-season tweaks.</div>
+      <h2>Recent errors</h2>
+      <div class="hint">Failed saves and app errors from every member's device.</div>
+      <div id="pulseErrorsArea" style="margin-top:8px;"><div class="empty">Loading…</div></div>
+      <button type="button" id="clearMyErrorsBtn" class="pill-btn" style="margin-top:10px; font-size:11px; padding:6px 12px;">🧹 Clear my errors</button>
+      <div class="status-msg" id="clearMyErrorsStatus" style="margin-top:6px;"></div>
     </div>
     <div class="panel">
-      <h2>🏁 Archive Season &amp; Start New One</h2>
-      <div class="hint" id="adminTippingSeasonYearHint">Current season: —</div>
-      <div class="hint" style="margin-top:6px;"><b>Before running this, open the Dashboard's Tipping tab once yourself</b> so the ladder snapshot this reads from is fully up to date. Picks/results history is kept, never touched — only the live config resets.</div>
-      <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
-        <label style="flex:1; font-size:11px; color:var(--muted);">New season year<input type="number" id="adminNewSeasonYearInput" step="1" min="2020" style="width:100%; margin-top:4px;"></label>
-        <label style="flex:1; font-size:11px; color:var(--muted);">New first round<input type="number" id="adminNewSeasonFirstRoundInput" step="1" min="1" value="1" style="width:100%; margin-top:4px;"></label>
-        <label style="flex:1; font-size:11px; color:var(--muted);">New prize pot ($)<input type="number" id="adminNewSeasonPrizePotInput" step="1" min="0" value="0" style="width:100%; margin-top:4px;"></label>
-      </div>
-      <button type="button" id="adminArchiveResetSeasonBtn" class="small danger" style="margin-top:10px;">🏁 Archive season &amp; start new one</button>
-      <div class="status-msg" id="adminArchiveResetSeasonStatus"></div>
+      <h2>Who's online</h2>
+      <div class="hint">Anyone with the app open in the last few minutes.</div>
+      <div id="presenceArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Casino activity</h2>
+      <div class="hint">Who played what, most recent first.</div>
+      <div id="activityFeedArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Rounds played, last 14 days</h2>
+      <div class="hint">Casino rounds per day across everyone.</div>
+      <div id="activityGraphArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Time spent</h2>
+      <div class="hint">A rough guide to where people spend their time, by section and by casino game.</div>
+      <div id="timeSpentTabsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+      <h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:14px 0 6px;">By casino game</h3>
+      <div id="timeSpentGamesArea"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>API calls on this device</h2>
+      <div class="hint">Counted on this device only.</div>
+      <div id="apiCallTrackerArea" style="margin-top:10px;"></div>
+      <button type="button" id="resetApiCallStatsBtn" class="btn-secondary" style="width:100%; margin-top:10px;">🔄 Reset stats</button>
+    </div>
+    <div class="panel">
+      <h2>Test notification</h2>
+      <div class="hint">Sends a push to your own phone now. Turn on Notify me first.</div>
+      <button type="button" id="testPushBtn">🔔 Send test notification</button>
+      <div class="status-msg" id="testPushStatus"></div>
     </div>
     </div>
-
     <div class="diag-submode" data-submode-panel="repair">
-    <div class="panel" style="background:rgba(0,0,0,.15); border-color:var(--brass-dim); text-align:center; padding:10px;">
-      <span style="font-size:11px; color:var(--brass); font-weight:700; letter-spacing:0; text-transform:none;">⚠️ Maintenance</span>
-      <div class="hint" style="margin-top:4px; margin-bottom:0;">Repair tools for data that's drifted or gone missing, season history, and backup/restore — all the "not every week" admin actions live here together. Everything's safe to run when genuinely needed, but nothing here is something to reach for casually.</div>
+    <div class="panel">
+      <h2>Backup and restore</h2>
+      <div class="hint">Downloads everything (Board, money, history, slips, Tipping and accounts) as a file. Do it weekly.</div>
+      <button type="button" id="adminBackupBtn" class="small" style="margin-top:10px;">💾 Download backup</button>
+      <div class="status-msg" id="adminBackupStatus"></div>
+      <div class="hint" id="adminLastBackupHint" style="margin-top:6px;"></div>
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
+        <div class="hint" style="color:var(--loss); font-weight:600;">Restore replaces everything live with the file you pick. It shows you what's in the file before anything is written, and can only be undone by restoring a newer backup.</div>
+        <input type="file" id="adminRestoreFile" accept="application/json" style="display:none;">
+        <button type="button" id="adminRestoreBtn" class="small danger" style="margin-top:8px;">📂 Choose backup file to restore</button>
+        <div id="adminRestorePreview" style="display:none; margin-top:10px;"></div>
+        <div class="status-msg" id="adminRestoreStatus"></div>
+      </div>
     </div>
     <div class="panel">
-      <h2>🔄 Recalculate Balances From History</h2>
-      <div class="hint">Rebuilds the bank total and every member's stats from scratch by re-summing saved history — use if a save/undo ever leaves numbers looking off. Doesn't touch saved weeks or dues owed. Safe to run — nothing changes unless the numbers genuinely didn't match.</div>
+      <h2>Season history</h2>
+      <div class="hint">Every saved week, most recent first.</div>
+      <div id="adminHistoryArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Recalculate totals</h2>
+      <div class="hint">Rebuilds the bank and everyone's stats from the saved weeks. Safe to run; it only changes numbers that don't match.</div>
       <button type="button" id="adminRecalcBtn" class="small" style="margin-top:10px;">🔄 Recalculate now</button>
       <div class="status-msg" id="adminRecalcStatus"></div>
     </div>
     <div class="panel">
-      <h2>🧹 Clear "Missing groupEntries" Warning</h2>
-      <div class="hint">For weeks where nobody had a group multi leg on purpose — the health check can't tell that apart from a genuine data-loss bug, so it warns on both. Marks those weeks as "genuinely empty" to clear the warning, without inventing any leg data or touching stats/bank.</div>
-      <div id="adminClearGroupWarnList" class="hint" style="margin:10px 0;"></div>
-      <button type="button" id="adminClearGroupWarnBtn" class="small">🧹 Clear for all flagged weeks</button>
-      <div class="status-msg" id="adminClearGroupWarnStatus"></div>
-    </div>
-    <div class="panel">
-      <h2>🛠️ Fix a Saved Week</h2>
-      <div class="hint">Edits an already-saved week's individual bet numbers directly (Recalculate above only re-sums what's already stored — it can't fix a wrong number that was saved in the first place). Automatically recalculates everyone's totals afterward so the fix ripples through.</div>
+      <h2>Fix a saved week</h2>
+      <div class="hint">Correct an individual bet number in a saved week. Totals recalculate afterwards.</div>
       <select id="adminFixWeekSelect" style="width:100%; margin-top:10px; margin-bottom:8px;"><option value="">Pick a saved week…</option></select>
       <div id="adminFixWeekEditor"></div>
       <button type="button" id="adminFixWeekSaveBtn" class="small danger" style="margin-top:8px; display:none;">💾 Save correction &amp; recalculate</button>
       <div class="status-msg" id="adminFixWeekStatus"></div>
     </div>
     <div class="panel">
-      <h2>🧮 Reconcile Casino Pot From Source</h2>
-      <div class="hint">For every Casino Pot period, works out the correct end state from scratch — one share per eligible person for an Even Split, exactly one winner for a Jackpot — and compares that to what everyone's log actually nets out to. Safe to run more than once: a second run finds nothing left to fix for anything already corrected. Can both credit AND debit accounts — read each line carefully. Nothing changes until you review the results and type RECONCILE.</div>
-      <div class="hint" style="opacity:.55; font-size:11px; margin-top:2px;">Replaces two earlier tools that depended on matching exact reversal wording, which could miss corrections done outside those tools.</div>
+      <h2>Weeks with no multi</h2>
+      <div class="hint">Marks weeks that had no group multi on purpose, so the system check stops flagging them.</div>
+      <div id="adminClearGroupWarnList" class="hint" style="margin:10px 0;"></div>
+      <button type="button" id="adminClearGroupWarnBtn" class="small">🧹 Clear for all flagged weeks</button>
+      <div class="status-msg" id="adminClearGroupWarnStatus"></div>
+    </div>
+    <div class="panel">
+      <h2>Reconcile Casino Pot</h2>
+      <div class="hint">Works out what every Casino Pot payout should have been and fixes any balance that's out. Safe to run more than once.</div>
       <button type="button" id="adminReconcilePotScanBtn" class="small" style="margin-top:10px;">🔍 Scan for out-of-sync accounts</button>
       <div class="status-msg" id="adminReconcilePotScanStatus"></div>
       <div id="adminReconcilePotResults" style="display:none; margin-top:10px;"></div>
@@ -626,58 +643,14 @@
         <div class="status-msg" id="adminReconcilePotStatus"></div>
       </div>
     </div>
-    <div class="panel">
-      <h2>🍳 Clear "This Week's Multi" Display</h2>
-      <div class="hint">The Home tab's "This Week's Multi" section keeps showing last week's results until this is cleared. Real activity next week automatically un-clears it, so there's nothing to remember to toggle back.</div>
-      <button type="button" id="adminClearWhoCookingBtn" class="small" style="margin-top:10px;">🧹 Clear it now</button>
-      <div class="status-msg" id="adminClearWhoCookingStatus"></div>
-    </div>
-    <div class="panel">
-      <h2>💣 Reset Season</h2>
-      <div class="hint">Zeroes every member's stats, dues, and group financials back to a clean slate, and clears saved-week history. Use this if you're going to re-enter the season from Week 1 so the graph and totals build up correctly. Names and bet slips are kept. Lifetime stats are archived first, so profile history isn't lost.</div>
-      <div class="hint" style="margin-top:6px; color:var(--loss); font-weight:600;">This cannot be undone except by restoring a backup. Type RESET below to enable the button.</div>
+    <div class="adm-zone-lbl">Danger zone</div>
+    <div class="panel adm-danger">
+      <h2>Reset season</h2>
+      <div class="hint">Zeroes every member's stats, dues and group money and clears saved weeks. Names and slips stay, and lifetime stats are archived first.</div>
+      <div class="hint" style="margin-top:6px; color:var(--loss); font-weight:600;">This can only be undone by restoring a backup. Type RESET to enable the button.</div>
       <input type="text" id="adminResetSeasonConfirmInput" placeholder="Type RESET to confirm" style="width:100%; margin-top:10px;">
       <button type="button" id="adminResetSeasonBtn" class="small danger" style="margin-top:8px;" disabled>💣 Reset season to zero</button>
       <div class="status-msg" id="adminResetSeasonStatus"></div>
-    </div>
-    <div class="panel">
-      <h2>📜 Season History</h2>
-      <div class="hint">Every week saved so far, most recent first.</div>
-      <div id="adminHistoryArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>💾 Backup</h2>
-      <div class="hint">Downloads everything — members, dues, financials, history, slips, plus Tipping and account data — as a file to your phone/computer. This is a real backup independent of browser storage or the internet. Do this regularly, or at least weekly.</div>
-      <button type="button" id="adminBackupBtn" class="small" style="margin-top:10px;">💾 Download backup</button>
-      <div class="status-msg" id="adminBackupStatus"></div>
-      <div class="hint" id="adminLastBackupHint" style="margin-top:6px;"></div>
-      <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--line);">
-        <div class="hint" style="color:var(--loss); font-weight:600;">Restore replaces EVERYTHING currently live and shared with what's in the file you pick — members, financials, history, all of it. This cannot be undone except by restoring a newer backup. Shows exactly what's in the file before anything is written.</div>
-        <input type="file" id="adminRestoreFile" accept="application/json" style="display:none;">
-        <button type="button" id="adminRestoreBtn" class="small danger" style="margin-top:8px;">📂 Choose backup file to restore</button>
-        <div id="adminRestorePreview" style="display:none; margin-top:10px;"></div>
-        <div class="status-msg" id="adminRestoreStatus"></div>
-      </div>
-    </div>
-    </div>
-
-    <div class="diag-submode" data-submode-panel="play">
-    <div class="panel">
-      <h2>🎲 Recent Casino Activity</h2>
-      <div class="hint">Who played what, pulled from a small per-day index written the moment each game resolves (see awardXP) — not everyone's full XP log. History only exists from the day this shipped; older casino rounds aren't backfilled into it.</div>
-      <div id="activityFeedArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>📈 Activity — Last 14 Days</h2>
-      <div class="hint">Count of casino rounds played per day across everyone, same source as the feed above.</div>
-      <div id="activityGraphArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-    </div>
-    <div class="panel">
-      <h2>⏱ Time Spent by Section</h2>
-      <div class="hint">Best-effort, not a precise stopwatch — flushed every time you switch tabs, plus every 60s while sitting on one. A locked or backgrounded phone stops accruing time and won't show as online (see visibilitychange handling) — only genuinely active time counts. Across all members, last 7 days.</div>
-      <div id="timeSpentTabsArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
-      <h3 style="font-size:12px; color:var(--brass-light); text-transform:none; letter-spacing:0; margin:14px 0 6px;">By casino game</h3>
-      <div id="timeSpentGamesArea"><div class="empty">Loading…</div></div>
     </div>
     </div>
     </div>
@@ -4033,7 +4006,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-17.195"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-17.196"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -21338,9 +21311,9 @@ function weeklyChecklistSteps(){
   return [
     { key: 'week', icon: '📅', label: 'Pick the week', done: !!(weekSel && weekSel.value), detail: weekSel && weekSel.value ? weekSel.value : 'Not picked yet', target: 'adminPanelWeek' },
     { key: 'legs', icon: '🎯', label: 'Enter the multi legs', done: legs.length > 0, detail: legs.length ? `${legs.length} leg${legs.length === 1 ? '' : 's'} in` : 'No odds entered yet', target: 'adminPanelMulti' },
-    { key: 'slip', icon: '📎', label: 'Upload the bet slip', done: slipsThisWeek > 0, detail: slipsThisWeek ? `${slipsThisWeek} uploaded` : 'None this week', target: 'adminPanelSlips' },
     { key: 'results', icon: '✅', label: 'Mark the results', done: legs.length > 0 && legsWithResult.length === legs.length, detail: legs.length ? `${legsWithResult.length} of ${legs.length}` : 'Waiting on legs', target: 'adminPanelMulti' },
     { key: 'ind', icon: '🎫', label: 'Individual bet results', done: bets.length === 0 || betsDone.length === bets.length, detail: bets.length ? `${betsDone.length} of ${bets.length}` : 'None this week', target: 'adminPanelInd' },
+    { key: 'slip', icon: '📎', label: 'Upload the bet slip', done: slipsThisWeek > 0, detail: slipsThisWeek ? `${slipsThisWeek} uploaded` : 'None this week', target: 'adminPanelSlips' },
     { key: 'fin', icon: '💰', label: 'Enter the returns', done: !!(ret && ret.value !== ''), detail: ret && ret.value !== '' ? `Group return $${ret.value}` : 'Group return blank', target: 'adminPanelFin' },
   ];
 }
@@ -21365,6 +21338,7 @@ document.getElementById('adminWeeklyChecklist').addEventListener('click', (e) =>
   if(!b) return;
   const panel = document.getElementById(b.dataset.wclTarget);
   if(!panel) return;
+  panel.classList.remove('admin-panel-collapsed');
   panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
   panel.classList.remove('wcl-flash'); void panel.offsetWidth; panel.classList.add('wcl-flash');
 });
@@ -21488,7 +21462,7 @@ function renderAdminLastSavedWeekIndicator(){
   if(!last.savedAt){ el.textContent = last.label || '—'; return; }
   const daysAgo = Math.floor((Date.now() - last.savedAt) / 86400000);
   const whenText = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo} days ago`;
-  el.textContent = `${last.label} — saved ${whenText}`;
+  el.textContent = `${last.label}, ${whenText}`;
 }
 function populateAdminWeekLabel(){
   const sel = document.getElementById('adminWeekLabel');
@@ -23469,7 +23443,16 @@ document.getElementById('adminRestoreFile').addEventListener('change', async (e)
 // modals etc, which also use <h2> inside .panel elsewhere in this file)
 // is affected. Idempotent via data-collapsible-init, since renderDiagTab
 // runs every time this tab opens, not just once.
+// v196: remembers which panels you've folded away on this device. A few
+// rarely used ones start folded so each tab opens on what matters.
+const ADMIN_FOLD_KEY = 'mlsynd-admin-folded';
+const ADMIN_FOLD_DEFAULT = ['Running costs', 'Syndy usage', 'Time spent', 'API calls on this device', 'Test notification', 'Guest link', 'Weeks with no multi', 'Reconcile Casino Pot', 'Reset season'];
+function adminFoldState(){
+  try{ const v = JSON.parse(localStorage.getItem(ADMIN_FOLD_KEY)); if(v && typeof v === 'object') return v; }catch(e){}
+  return {};
+}
 function initAdminCollapsiblePanels(){
+  const fold = adminFoldState();
   document.querySelectorAll('#homeSubview-diag .panel').forEach(panel => {
     try{
       // Accepts h2 OR h3 as the existing header to use as the toggle —
@@ -23490,11 +23473,18 @@ function initAdminCollapsiblePanels(){
       toMove.forEach(node => body.appendChild(node));
       panel.appendChild(body);
       h2.classList.add('admin-panel-toggle-header');
+      const foldKey = h2.textContent.trim();
+      const folded = foldKey in fold ? !!fold[foldKey] : ADMIN_FOLD_DEFAULT.includes(foldKey);
+      if(folded) panel.classList.add('admin-panel-collapsed');
       const chevron = document.createElement('span');
       chevron.className = 'admin-panel-toggle-chevron';
       chevron.textContent = '▾';
       h2.appendChild(chevron);
-      h2.addEventListener('click', () => panel.classList.toggle('admin-panel-collapsed'));
+      h2.addEventListener('click', () => {
+        const now = panel.classList.toggle('admin-panel-collapsed');
+        const st = adminFoldState(); st[foldKey] = now;
+        try{ localStorage.setItem(ADMIN_FOLD_KEY, JSON.stringify(st)); }catch(e){}
+      });
     }catch(e){
       // One malformed panel must never silently stop every panel after
       // it in DOM order from becoming collapsible too — this is exactly
@@ -23574,19 +23564,18 @@ document.querySelectorAll('#diagSubmodeRow .admin-submode-btn').forEach(btn => {
     }
     if(target === 'money' && !diagMoneyLoaded){
       diagMoneyLoaded = true;
-      renderApiCallTracker();
       renderSyndyUsage().then(renderRunningCosts); // running costs reads window._syndyTotalCostUsd, set by renderSyndyUsage — sequenced, not parallel, to avoid reading it before it's set
       renderAdminDues();
-      populateAdminBonusTargetSelect();
-      renderAdminBonusHistory();
-      populateAdminTippingDuesAddSelect();
-      renderAdminTippingDues();
     }
     if(target === 'squad' && !diagSquadLoaded){
       diagSquadLoaded = true;
+      // v196: People = the old Squad + Access tabs, plus Bonus XP
       renderAdminRoster();
       renderAdminBadges();
       renderAdminRenamePanel();
+      if(!diagAccessLoaded){ diagAccessLoaded = true; renderAdminUsers(); }
+      populateAdminBonusTargetSelect();
+      renderAdminBonusHistory();
     }
     if(target === 'entry' && !diagEntryLoaded){
       diagEntryLoaded = true;
@@ -23612,6 +23601,8 @@ document.querySelectorAll('#diagSubmodeRow .admin-submode-btn').forEach(btn => {
       loadAdminFirstRound();
       loadAdminSubmissionsRounds();
       loadAdminTippingSeasonYear();
+      populateAdminTippingDuesAddSelect();
+      renderAdminTippingDues();
     }
     if(target === 'repair' && !diagRepairLoaded){
       diagRepairLoaded = true;
@@ -23620,7 +23611,9 @@ document.querySelectorAll('#diagSubmodeRow .admin-submode-btn').forEach(btn => {
       renderAdminHistory();
       renderAdminLastBackupHint();
     }
-    if(target === 'play' && !diagPlayLoaded){
+    // v196: Insights = the old Pulse + Play tabs
+    if(target === 'pulse' && !diagPlayLoaded){
+      try{ renderApiCallTracker(); }catch(e){}
       diagPlayLoaded = true;
       const activityPromise = loadActivityData();
       const timeSpentPromise = loadTimeSpentData(7);

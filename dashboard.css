@@ -6730,3 +6730,21 @@
 .pay-admin-grid{ display:grid; gap:10px; margin-top:10px; }
 .pay-admin-grid label{ display:flex; flex-direction:column; gap:4px; font-size:12px; color:var(--muted); }
 .pay-admin-grid input{ width:100%; }
+
+/* v196: streamlined admin. Six tabs, calmer panels, a danger zone in Tools. */
+#diagSubmodeRow.adm-tabs6{ display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:4px; padding:4px; margin:0 0 16px; border-radius:18px; background:var(--surface); box-shadow:inset 0 0 0 1px rgba(255,255,255,.05); position:sticky; top:8px; z-index:20; }
+#diagSubmodeRow.adm-tabs6 .admin-submode-btn{ flex:none; width:auto; gap:4px; padding:9px 2px 8px; border:none; border-radius:14px; background:none; box-shadow:none; color:var(--muted); }
+#diagSubmodeRow.adm-tabs6 .admin-submode-icon{ display:flex; width:20px; height:20px; font-size:0; }
+#diagSubmodeRow.adm-tabs6 .admin-submode-icon svg{ width:20px; height:20px; }
+#diagSubmodeRow.adm-tabs6 .admin-submode-label{ font-size:10.5px; font-weight:700; white-space:nowrap; }
+#diagSubmodeRow.adm-tabs6 .admin-submode-btn.active{ background:var(--accent); color:var(--accent-ink, #0B0C0B); box-shadow:none; }
+#diagSubmodeRow.adm-tabs6 .admin-submode-badge{ top:3px; right:6px; }
+#homeSubview-diag .panel .hint{ line-height:1.45; }
+.adm-lastsaved{ margin:-2px 0 12px; font-size:12.5px; color:var(--muted); }
+.adm-lastsaved b{ color:var(--chalk); font-weight:700; margin-left:4px; }
+.adm-sub{ margin-top:14px; padding-top:12px; box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
+.adm-sub button{ margin-top:8px; }
+.adm-field-lbl{ font-size:12px; font-weight:700; color:var(--chalk); margin-top:4px; }
+.adm-zone-lbl{ margin:22px 4px 8px; font-size:13px; font-weight:800; color:#FF8A80; }
+.panel.adm-danger{ box-shadow:inset 0 0 0 1px rgba(229,72,77,.35) !important; }
+#pulseToteCells{ display:grid !important; grid-template-columns:repeat(4, minmax(0,1fr)) !important; gap:6px !important; } #pulseToteCells .toteboard-cell{ min-width:0; padding:10px 4px; } #pulseToteCells .lbl{ font-size:10.5px; white-space:nowrap; }

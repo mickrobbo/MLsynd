@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.195",
+  "version": "2026-10-17.196",
   "date": "2026-10-17",
   "changes": [
-    "Settle up opens the syndicate's banking details, with a copy button for the BSB, account number, amount and reference",
-    "The bonus pot now sits under Top of the Board, showing who's in line for it and how many weeks are left in the betting year",
-    "Spicier roasts on the group multi, aware of the odds you lost at and your losing streak"
+    "Admin is now six tabs (Week, Money, Tipping, People, Insights and Tools) with shorter, plainer help text",
+    "The Week tab runs in the order you actually do things, and rarely used panels start folded away",
+    "Settle up opens the syndicate's banking details, with a copy button for each one"
   ]
 }
