@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.189",
+  "version": "2026-10-17.191",
   "date": "2026-10-17",
   "changes": [
-    "Top of the Board is on its own lit stage, showing who leads and by how much",
-    "The season chart is smoother and clearer: drag along it to see any week, or switch to the last 10 weeks",
-    "Fresh chip rails on every casino table, and a new season every New Year with your all-time XP kept on your profile"
+    "Spicier roasts on the group multi, aware of the odds you lost at and your losing streak",
+    "The group multi now shows a leg track, legs landed, what's still to land and what $10 pays",
+    "Tap a face to see their season record, last five legs and what their leg means for the multi"
   ]
 }
