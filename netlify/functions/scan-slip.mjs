@@ -14,7 +14,20 @@
 // Needs ANTHROPIC_API_KEY (console.anthropic.com → API keys) and the
 // existing FIREBASE_WEB_API_KEY. SLIP_SCAN_MODEL can override the model.
 
+import { getFirebaseAccessToken } from './lib/firebase-token.mjs';
+
 const ADMIN_EMAIL = 'mlsynd00@gmail.com';
+const FIREBASE_URL = 'https://mlsynd-default-rtdb.firebaseio.com';
+// Anthropic list prices, USD per million tokens (platform.claude.com pricing
+// page, checked Oct 2026). Used to work out what each scan cost from the
+// token counts the API reports. Override with ANTHROPIC_PRICE_IN /
+// ANTHROPIC_PRICE_OUT if the prices change or a different model is used.
+const PRICES = {
+  'claude-sonnet-5-5': [2, 10],
+  'claude-opus-5-5': [4, 20],
+  'claude-haiku-5-5': [0.10, 0.50],
+  'claude-fable-5-1': [10, 50],
+};
 const DEFAULT_MODEL = 'claude-sonnet-5-5';
 const MAX_IMAGES = 4;
 const MAX_BODY_CHARS = 5_500_000; // Netlify's request limit is 6 MB
@@ -69,6 +82,38 @@ Rules:
 - A green tick or "Won" means won; a red cross or "Lost" means lost; "Void"/"Scratched"/"Refunded" means void; no mark on an open bet means pending.
 - If a value isn't visible, use null rather than guessing, and add a warning.
 - For a same game multi, list each selection inside it as a leg.`;
+
+// Adds this scan to the shared running-costs tally at /apiUsage/anthropic
+// (read by Admin → Running costs). Written with the service account, so
+// members can read it but nobody can edit it from the app.
+async function trackAnthropicUsage(model, usage){
+  try{
+    const inTok = (usage && (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0)) || 0;
+    const outTok = (usage && usage.output_tokens) || 0;
+    const [pin, pout] = PRICES[model] || PRICES[DEFAULT_MODEL];
+    const priceIn = Number(process.env.ANTHROPIC_PRICE_IN) || pin;
+    const priceOut = Number(process.env.ANTHROPIC_PRICE_OUT) || pout;
+    const cost = (inTok * priceIn + outTok * priceOut) / 1e6;
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
+    const monthKey = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
+    const token = await getFirebaseAccessToken();
+    const url = (path) => `${FIREBASE_URL}/apiUsage/anthropic${path}.json?access_token=${token}`;
+    const cur = await fetch(url('')).then(r => r.ok ? r.json() : null).catch(() => null) || {};
+    const m = (cur.byMonth && cur.byMonth[monthKey]) || {};
+    const patch = {
+      totalCalls: (cur.totalCalls || 0) + 1,
+      totalCostUsd: (cur.totalCostUsd || 0) + cost,
+      totalInputTokens: (cur.totalInputTokens || 0) + inTok,
+      totalOutputTokens: (cur.totalOutputTokens || 0) + outTok,
+      lastCallAt: Date.now(),
+      lastModel: model,
+      [`byMonth/${monthKey}`]: { calls: (m.calls || 0) + 1, costUsd: (m.costUsd || 0) + cost, inputTokens: (m.inputTokens || 0) + inTok, outputTokens: (m.outputTokens || 0) + outTok },
+    };
+    await fetch(url(''), { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+  }catch(e){
+    console.error('Anthropic usage tracking failed:', e.message);
+  }
+}
 
 function extractJson(text){
   const start = text.indexOf('{'), end = text.lastIndexOf('}');
@@ -125,11 +170,12 @@ export default async (req) => {
     { type: 'text', text: PROMPT },
   ];
   let res;
+  const model = process.env.SLIP_SCAN_MODEL || DEFAULT_MODEL;
   try{
     res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: process.env.SLIP_SCAN_MODEL || DEFAULT_MODEL, max_tokens: 3000, messages: [{ role: 'user', content }] }),
+      body: JSON.stringify({ model, max_tokens: 3000, messages: [{ role: 'user', content }] }),
     });
   }catch(e){ return json(502, { error: 'Could not reach the slip reader. Try again.' }); }
   const out = await res.json().catch(() => null);
@@ -137,6 +183,8 @@ export default async (req) => {
     const msg = out && out.error && out.error.message ? out.error.message : `HTTP ${res.status}`;
     return json(502, { error: 'The slip reader returned an error: ' + msg });
   }
+  // the call was billed whether or not the reply is usable, so count it now
+  await trackAnthropicUsage(model, out && out.usage);
   const text = (out && Array.isArray(out.content) ? out.content : []).filter(c => c.type === 'text').map(c => c.text).join('\n');
   const parsed = extractJson(text);
   if(!parsed) return json(502, { error: 'Couldn\'t make sense of that slip. Try a clearer or uncropped screenshot.' });

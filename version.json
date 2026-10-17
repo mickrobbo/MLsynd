@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.206",
+  "version": "2026-10-17.207",
   "date": "2026-10-17",
   "changes": [
+    "Running costs now include Anthropic (the slip reader): this month, all time and cost per scan, plus a this-month all-in total",
     "Tap someone's individual bet on Home to see the bet: each selection, the odds, stake and return",
-    "Stat sheets: Board \u2192 Stat sheet and a Picks section on every profile",
-    "Selections and Won / Lost / Void buttons on Home"
+    "Stat sheets: Board \u2192 Stat sheet and a Picks section on every profile"
   ]
 }
