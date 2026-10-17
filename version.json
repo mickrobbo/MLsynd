@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.205",
+  "version": "2026-10-17.206",
   "date": "2026-10-17",
   "changes": [
-    "New stat sheets: Board \u2192 Stat sheet shows each person's picks, the teams backed most and how each sport goes; tap a name for their full breakdown",
-    "Every leg read from a slip now records the sport, the team backed and the bet type",
+    "Tap someone's individual bet on Home to see the bet: each selection, the odds, stake and return",
+    "Stat sheets: Board \u2192 Stat sheet and a Picks section on every profile",
     "Selections and Won / Lost / Void buttons on Home"
   ]
 }
