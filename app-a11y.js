@@ -23,6 +23,11 @@
   const DIALOG_SEL = '.profile-modal, [id$="Modal"]';
   const lastOpener = new WeakMap();
   let lastFocus = null;
+  // Focus only jumps into a pop-up for keyboard and switch users; a tap
+  // shouldn't leave a focus ring sitting on the first button.
+  let keyboardUser = false;
+  document.addEventListener('keydown', (e) => { if(e.key === 'Tab' || e.key === 'Enter' || e.key === ' ' || e.key.startsWith('Arrow')) keyboardUser = true; }, true);
+  document.addEventListener('pointerdown', () => { keyboardUser = false; }, true);
   document.addEventListener('focusin', (e) => { if(!e.target.closest(DIALOG_SEL)) lastFocus = e.target; }, true);
   document.addEventListener('click', (e) => { const t = e.target.closest('button, a, [role=button], [tabindex]'); if(t && !t.closest(DIALOG_SEL)) lastFocus = t; }, true);
   const isOpen = (m) => m.classList.contains('open') || (m.style.display && m.style.display !== 'none' && getComputedStyle(m).display !== 'none');
@@ -51,7 +56,7 @@
       lastOpener.set(m, lastFocus);
       // move focus inside, after the open animation has a frame to start
       requestAnimationFrame(() => {
-        if(m.contains(document.activeElement)) return;
+        if(!keyboardUser || m.contains(document.activeElement)) return;
         const f = focusables(m);
         const target = f.find(el => !el.matches('.profile-close, [id$="CloseBtn"]')) || f[0];
         if(target) target.focus({ preventScroll: true });
@@ -59,7 +64,7 @@
       });
     } else {
       const back = lastOpener.get(m);
-      if(back && document.contains(back) && back.offsetParent !== null) back.focus({ preventScroll: true });
+      if(keyboardUser && back && document.contains(back) && back.offsetParent !== null) back.focus({ preventScroll: true });
     }
   }
   function topOpenDialog(){

@@ -66,6 +66,18 @@
   header{
     text-align:center; margin-bottom:16px; position:relative;
   }
+  /* The brown/gold header frame only belongs to Maxine's — per direct
+     correction, the main app (including the Home tab in the reported
+     screenshot) should keep its plain original header with the green
+     logo, not inherit the room's theme. Scoped the same way as every
+     other Maxine's-only element: off by default, on only under
+     body.maxines-lounge-active. */
+  body.maxines-lounge-active header{
+    padding:14px 10px; border-radius:16px;
+    background: linear-gradient(165deg, #1a1108, #0a0603);
+    border:1px solid #8a6620;
+    box-shadow: 0 6px 16px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,243,210,.08);
+  }
   header::before{
     content:''; position:absolute; top:-20px; left:50%; transform:translateX(-50%);
     width:220px; height:100px; background: radial-gradient(ellipse at center, rgba(205,244,100,.16), transparent 70%);
@@ -85,6 +97,11 @@
     border-radius:8px;
     filter: drop-shadow(0 0 22px rgba(205,244,100,.28));
   }
+  /* Two logo files, one shown at a time — green by default everywhere,
+     gold only inside Maxine's, same switch as everything else here. */
+  .header-banner-maxines{ display:none; }
+  body.maxines-lounge-active .header-banner-default{ display:none; }
+  body.maxines-lounge-active .header-banner-maxines{ display:inline-block; }
   .account-bar{
     display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;
     margin-top:20px; padding-top:16px; border-top:1px solid var(--line);
@@ -148,6 +165,20 @@
   .pc-suit-big{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:26px; z-index:1; text-shadow:0 1px 2px rgba(0,0,0,.12); }
   .playing-card.pc-red{ color:#B5342A; }
   .playing-card.pc-black{ color:#1c1c1c; }
+
+  /* Maxine's — a gold foil edge on every card, the one detail that
+     separates "same white card on a different-coloured table" from
+     "this deck actually belongs to a VIP room". Purely additive: the
+     face, pips and suit colours are untouched, only the border/shadow
+     change, cascading from the same .hr-mode-active scope as everything
+     else rather than a whole separate card skin. */
+  .hr-mode-active .playing-card:not(.pc-back){
+    border:1px solid #c9a24b;
+    box-shadow:0 4px 10px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,243,210,.5), 0 0 6px rgba(212,175,90,.25);
+  }
+  .hr-mode-active .playing-card:not(.pc-back)::before{
+    background: linear-gradient(135deg, rgba(255,243,210,.5) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 68%, rgba(212,175,90,.16) 100%);
+  }
 
   .playing-card.pc-back{
     background: repeating-linear-gradient(45deg, var(--brass-dim), var(--brass-dim) 4px, var(--felt-3) 4px, var(--felt-3) 8px);
@@ -406,14 +437,98 @@
     color:#2a2005; box-shadow:0 4px 12px rgba(0,0,0,.3); transition: transform .1s ease;
   }
   .game-bubble-wide:active{ transform:scale(.98); }
+
+  /* ---- High Rollers Room — deliberately distinct from the regular
+     green-felt/brass casino theme. Black lacquer + gold + deep crimson,
+     the "exclusive VIP room" look, not just another game tile. ---- */
+  .hr-room-banner{
+    display:flex; align-items:center; gap:12px; width:100%; margin-bottom:14px; padding:14px 16px;
+    border-radius:14px; cursor:pointer; text-align:left;
+    background: linear-gradient(165deg, #1a1108, #0a0603);
+    border:1px solid #c9a24b;
+    box-shadow: 0 6px 18px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,224,150,.15), 0 0 22px rgba(201,162,75,.25);
+    position:relative; overflow:hidden;
+  }
+  .hr-room-banner::before{
+    content:''; position:absolute; inset:0; opacity:.5;
+    background: radial-gradient(ellipse at 15% 0%, rgba(201,162,75,.3), transparent 55%);
+  }
+  .hr-room-banner-icon{ font-size:28px; filter: drop-shadow(0 0 8px rgba(255,224,150,.5)); position:relative; z-index:1; }
+  .hr-room-banner-text{ display:flex; flex-direction:column; gap:1px; position:relative; z-index:1; }
+  .hr-room-banner-title{
+    font-family:'Manrope',sans-serif; font-weight:800; font-size:16px; letter-spacing:1.5px;
+    background: linear-gradient(180deg, #fff3d2, #d4af5a);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .hr-room-banner-sub{ font-size:11px; color:rgba(230,210,160,.65); }
+  .hr-room-banner.hr-room-locked{ filter:grayscale(.6); opacity:.72; }
+  .hr-room-banner.hr-room-locked .hr-room-banner-title{
+    background:none; -webkit-text-fill-color:unset; color:rgba(230,210,160,.75);
+  }
+
+  /* Vault door entrance reveal — replaces the old instant panel swap on
+     first entering the room each session. A proper sequence now: the
+     lock wheel spins (unlocking), the crack lights up from behind, then
+     both panels — riveted, not flat slabs — slide apart with a sparkle
+     burst as they clear. Purely decorative throughout: it sits ON TOP
+     of the already-rendered room content for its ~1.3s runtime then
+     removes itself from layout, so it can never block a real
+     interaction if something goes wrong with the animation timing —
+     the room underneath is already fully functional the instant it's
+     shown, the door is just theatre layered over it. */
+  .hr-vault-door{
+    position:fixed; inset:0; z-index:50; pointer-events:none;
+    display:none; overflow:hidden;
+  }
+  .hr-vault-door.playing{ display:block; pointer-events:auto; }
+  .hr-vault-panel{
+    position:absolute; top:0; bottom:0; width:50%;
+    background: linear-gradient(165deg, #241a0c, #0a0603);
+    border-top:2px solid #8a6620; border-bottom:2px solid #8a6620;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.6);
+  }
+  .hr-vault-left{ left:0; border-right:1px solid #d4af5a; }
+  .hr-vault-right{ right:0; border-left:1px solid #d4af5a; }
+  .hr-vault-door.playing .hr-vault-left{ animation: hrVaultLeft 1.3s cubic-bezier(.7,0,.3,1) forwards; }
+  .hr-vault-door.playing .hr-vault-right{ animation: hrVaultRight 1.3s cubic-bezier(.7,0,.3,1) forwards; }
   @keyframes hrVaultLeft{ 0%,42%{ transform:translateX(0); } 100%{ transform:translateX(-100%); } }
   @keyframes hrVaultRight{ 0%,42%{ transform:translateX(0); } 100%{ transform:translateX(100%); } }
+  /* Rivets — small studded bolts along each panel, the one detail that
+     most separates "a flat gold rectangle" from an actual riveted door */
+  .hr-vault-rivet{
+    position:absolute; width:6px; height:6px; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #fff3d2, #8a6620 70%);
+    box-shadow: 0 1px 2px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.3);
+  }
+  /* Light beam — brightens down the seam as the doors start to part,
+     the "something bright is behind this" cue before you can see the
+     room itself */
+  .hr-vault-beam{
+    position:absolute; top:0; bottom:0; left:50%; width:6px; transform:translateX(-50%);
+    background: linear-gradient(90deg, transparent, rgba(255,224,150,.9), transparent);
+    opacity:0; filter: blur(2px);
+  }
+  .hr-vault-door.playing .hr-vault-beam{ animation: hrVaultBeam 1.3s ease-out forwards; }
   @keyframes hrVaultBeam{
     0%,30%{ opacity:0; width:6px; }
     45%{ opacity:1; width:14px; }
     65%{ opacity:.9; width:60px; }
     100%{ opacity:0; width:100vw; }
   }
+  /* Lock wheel — a real "unlocking" beat before the doors ever move:
+     four spokes spin hard, then the whole wheel flashes and scales
+     away right as the panels start to separate */
+  .hr-vault-wheel{
+    position:absolute; top:50%; left:50%; width:74px; height:74px;
+    transform:translate(-50%,-50%); z-index:2;
+  }
+  .hr-vault-wheel-inner{
+    position:relative; width:100%; height:100%; border-radius:50%;
+    background: radial-gradient(circle at 35% 30%, #fff3d2, #d4af5a 55%, #8a6620);
+    box-shadow: 0 0 0 3px #0a0603, 0 0 0 4.5px #8a6620, 0 0 25px rgba(255,224,150,.5);
+    opacity:0; transform:scale(.5) rotate(0deg);
+  }
+  .hr-vault-door.playing .hr-vault-wheel-inner{ animation: hrVaultWheel 1.3s cubic-bezier(.6,0,.3,1) forwards; }
   @keyframes hrVaultWheel{
     0%{ opacity:0; transform:scale(.5) rotate(0deg); }
     10%{ opacity:1; transform:scale(1) rotate(0deg); }
@@ -422,20 +537,251 @@
     58%{ opacity:0; transform:scale(1.6) rotate(580deg); }
     100%{ opacity:0; transform:scale(1.6) rotate(580deg); }
   }
+  .hr-vault-spoke{
+    position:absolute; top:50%; left:50%; width:64px; height:3px; margin-top:-1.5px; margin-left:-32px;
+    background: rgba(10,6,3,.5); border-radius:2px;
+  }
+  .hr-vault-crest{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:26px; color:#0a0603; line-height:1;
+  }
+  /* Personal entrance line — flashes as the doors finish parting, then
+     fades; doesn't linger, unlike the persistent nameplate tagline */
+  .hr-vault-entrance-line{
+    position:absolute; top:62%; left:50%; transform:translate(-50%,0); z-index:4;
+    font-family:'Manrope',sans-serif; font-style:italic; font-size:15px; color:#fdf0c8;
+    text-shadow:0 0 14px rgba(255,224,150,.6); text-align:center; width:80%; opacity:0; pointer-events:none;
+  }
+  .hr-vault-door.playing .hr-vault-entrance-line{ animation: hrEntranceLine 1.3s ease-out forwards; }
   @keyframes hrEntranceLine{
     0%,58%{ opacity:0; }
     68%{ opacity:1; }
     92%{ opacity:1; }
     100%{ opacity:0; }
   }
+
+  /* Sparkle burst — fires right as the doors clear, a handful of small
+     gold flecks flying outward from the centre */
+  .hr-vault-sparkle{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+  .hr-vault-sparkle span{
+    position:absolute; top:50%; left:50%; width:4px; height:4px; border-radius:50%;
+    background:#fff3d2; box-shadow:0 0 6px rgba(255,224,150,.9); opacity:0;
+  }
+  .hr-vault-sparkle.hr-sparkle-silver span{ background:#e8ecf0; box-shadow:0 0 6px rgba(200,215,230,.9); }
+  .hr-vault-sparkle.hr-sparkle-rose span{ background:#f5c9c9; box-shadow:0 0 6px rgba(230,150,150,.9); }
+  .hr-vault-door.playing .hr-vault-sparkle span{ animation: hrVaultSparkle 1.3s ease-out forwards; }
   @keyframes hrVaultSparkle{
     0%,52%{ opacity:0; transform:translate(-50%,-50%) translate(0,0) scale(1); }
     58%{ opacity:1; }
     100%{ opacity:0; transform:translate(-50%,-50%) translate(var(--sx,60px), var(--sy,-40px)) scale(.3); }
   }
+
+  .hr-hub-panel{
+    background: linear-gradient(165deg, #1a1108, #0a0603);
+    border:1px solid #c9a24b; border-radius:18px; padding:22px 16px 20px;
+    box-shadow: 0 10px 26px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,224,150,.12), 0 0 30px rgba(201,162,75,.18);
+    text-align:center; position:relative; overflow:hidden;
+    --maxines-mood: 0; /* -1 (cold, recent losses) to 1 (hot, recent wins) — set by JS from the live feed, see maxinesApplyMood */
+  }
+  /* Reactive Mood — the room's own glow now actually responds to how
+     it's been running lately (net of the last dozen feed entries, not
+     just a win/loss count, so one enormous win moves this more than
+     five small ones) rather than staying identically lit regardless of
+     what's happening. A 3s transition on the glow itself means this
+     drifts like atmosphere across a session rather than flickering on
+     every 15s poll. Intensity only — no colour category is ever
+     "wrong" or alarming, a cold stretch just dims rather than warns. */
+  .hr-hub-panel::before{
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(ellipse at 50% -10%, rgba(201,162,75, calc(0.22 + var(--maxines-mood) * 0.15)), transparent 55%);
+    transition: background 3s ease;
+  }
+  .hr-hub-header{ position:relative; z-index:1; margin-bottom:18px; }
+  .hr-hub-crest{
+    display:inline-block; font-size:26px; color:#0a0603; width:52px; height:52px; line-height:52px;
+    border-radius:50%; background: radial-gradient(circle at 35% 30%, #fff3d2, #d4af5a 55%, #8a6620);
+    box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6); margin-bottom:10px;
+  }
+  .hr-hub-title{
+    font-family:'Manrope',sans-serif; font-weight:800; font-size:22px; letter-spacing:3px;
+    background: linear-gradient(180deg, #fff3d2, #d4af5a);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow: 0 0 20px rgba(201,162,75,.3);
+  }
+  .hr-hub-sub{ font-size:12px; color:rgba(230,210,160,.6); margin-top:4px; font-style:italic; }
+  .hr-mood-caption{ font-size:11px; color:rgba(212,175,90,.7); margin-top:6px; min-height:14px; transition:opacity .4s ease; }
+  .hr-hub-balance-row{
+    display:flex; align-items:center; gap:14px; position:relative; z-index:1;
+    padding:12px 16px; border-radius:12px; margin-bottom:4px;
+    background:rgba(201,162,75,.08); border:1px solid rgba(201,162,75,.3);
+  }
+  /* Chip stack visual — three overlapping edge-marked discs standing in
+     for an actual stack of casino chips, replacing what used to be just
+     bold text with nothing behind it. Pure CSS, no image asset. */
+  .hr-chip-stack{ position:relative; width:34px; height:40px; flex-shrink:0; }
+  .hr-chip-stack span{
+    position:absolute; left:0; width:30px; height:9px; border-radius:50%;
+    background: radial-gradient(ellipse at 35% 30%, #fff3d2, #d4af5a 55%, #8a6620);
+    box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.25), 0 2px 3px rgba(0,0,0,.4);
+  }
+  .hr-chip-stack span::before{
+    content:''; position:absolute; inset:2px; border-radius:50%;
+    border:1.5px dashed rgba(0,0,0,.2);
+  }
+  .hr-chip-stack span:nth-child(1){ bottom:0; }
+  .hr-chip-stack span:nth-child(2){ bottom:7px; left:2px; }
+  .hr-chip-stack span:nth-child(3){ bottom:14px; left:1px; }
+  .hr-hub-balance-text{ display:flex; flex-direction:column; }
+  .hr-hub-balance-label{ font-size:11px; text-transform:none; letter-spacing:0; color:rgba(230,210,160,.65); }
+  .hr-hub-balance-val{ font-family:'Manrope',sans-serif; font-weight:800; font-size:22px; color:#fdf0c8; }
+  .hr-game-row{ display:flex; flex-wrap:wrap; justify-content:center; gap:10px; position:relative; z-index:1; margin-top:6px; }
+  .hr-game-tile{
+    flex:0 1 calc(33.333% - 7px); padding:18px 8px 16px; border-radius:14px; cursor:pointer;
+    background: linear-gradient(165deg, rgba(201,162,75,.16), rgba(201,162,75,.03));
+    border:1px solid #8a6620; color:#fdf0c8;
+    display:flex; flex-direction:column; align-items:center; gap:9px;
+    box-shadow: 0 4px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,243,210,.08);
+    transition: transform .1s ease, box-shadow .15s ease, border-color .15s ease;
+    position:relative; overflow:hidden;
+  }
+  .hr-game-tile::before{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.06) 50%, transparent 60%);
+    background-size:250% 250%; animation: hrShimmerSweep 7s ease-in-out infinite;
+  }
+  .hr-game-tile:active{
+    transform:scale(.95);
+    box-shadow: 0 2px 5px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,243,210,.08);
+    border-color:#d4af5a;
+  }
+  .hr-game-tile-icon{
+    font-size:28px; display:flex; align-items:center; justify-content:center;
+    width:46px; height:46px; border-radius:50%; position:relative; z-index:1;
+    background: radial-gradient(circle at 35% 30%, rgba(255,243,210,.14), rgba(0,0,0,.25) 70%);
+    box-shadow: inset 0 0 0 1px rgba(212,175,90,.3), 0 0 10px rgba(255,224,150,.12);
+  }
+  .hr-game-tile-icon svg{ display:block; filter: drop-shadow(0 0 4px rgba(255,224,150,.4)); }
+  .hr-game-tile-label{ position:relative; z-index:1; }
+  .hr-header-btn{
+    background: linear-gradient(165deg, #241a0c, #150e05); border:1px solid #8a6620; color:#fdf0c8;
+    box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  }
+  .hr-header-btn:active{ transform:scale(.97); }
+  /* "Now playing" equalizer bars — a small, honest indicator that music
+     is actually going, not just a static note icon */
+  .hr-eq-bars{ display:none; align-items:flex-end; gap:2px; height:11px; margin-left:5px; vertical-align:middle; }
+  .hr-eq-bars.playing{ display:inline-flex; }
+  .hr-eq-bars span{
+    width:2.5px; background:#d4af5a; border-radius:1px;
+    animation: hrEqBounce .9s ease-in-out infinite;
+  }
+  .hr-eq-bars span:nth-child(1){ height:5px; animation-delay:-.6s; }
+  .hr-eq-bars span:nth-child(2){ height:9px; animation-delay:-.3s; }
+  .hr-eq-bars span:nth-child(3){ height:6px; animation-delay:0s; }
   @keyframes hrEqBounce{
     0%,100%{ transform:scaleY(.4); }
     50%{ transform:scaleY(1); }
+  }
+  .hr-game-tile-label{ font-family:'Manrope',sans-serif; font-weight:700; font-size:13px; letter-spacing:.3px; }
+
+  /* Applied to a game panel's root when entered via the High Rollers
+     Room (see HR_MODE in each game's own file) — reskins the SAME
+     table to the black/gold VIP look instead of the regular green felt,
+     rather than duplicating the whole game for a visual difference. */
+  .hr-mode-active{
+    background: linear-gradient(165deg, #1a1108, #0a0603) !important;
+    border-color:#c9a24b !important;
+    /* This is the actual "own feel and tone" fix — reported live as
+       every game just being the regular table with a badge stuck on
+       top. Every game's felt, cards, chips, and text pull their colours
+       from these SAME shared variables (461 uses across the stylesheet),
+       so overriding them once here — rather than hand-reskinning five
+       different tables' worth of individual rules — cascades the
+       black-and-gold theme through everything inside this panel
+       automatically: Blackjack's felt, Roulette's wheel surround,
+       Slots' reel frame, every chip and card back, all of it. */
+    --ink: #0a0603;
+    --felt: #1a1108; --felt-2: #241a0c; --felt-3: #2e2210;
+    --line: rgba(212,175,90,.18);
+    --brass: #d4af5a; --brass-dim: #8a6620; --brass-light: #fff3d2;
+    --chalk: #fdf0c8; --muted: #b89968; --win: #8fd4ac; --loss: #e08a72;
+  }
+  .hr-mode-active .table-chip, .hr-mode-active .bj-chip{
+    box-shadow: 0 3px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,243,210,.35);
+  }
+  /* Body-level version of the same override — reported live: even the
+     header banner, the "Your XP" card, and the Slots Jackpot card
+     (everything ABOVE the room panel itself, shared page furniture
+     rather than anything Maxine's-specific) were still plain green,
+     which meant green was visible the instant you scrolled up even one
+     screen while inside the room. Toggled on document.body itself
+     while anywhere in Maxine's (the room or any of its games) precisely
+     because body's own background is var(--ink) — overriding these
+     variables at that scope recolours the page underneath everything,
+     not just the panels sitting on top of it, so there's no gap left
+     for green to show through. Removed the instant you leave. */
+  body.maxines-lounge-active{
+    --ink: #0a0603;
+    --felt: #1a1108; --felt-2: #241a0c; --felt-3: #2e2210;
+    --line: rgba(212,175,90,.18);
+    --brass: #d4af5a; --brass-dim: #8a6620; --brass-light: #fff3d2;
+    --chalk: #fdf0c8; --muted: #b89968; --win: #8fd4ac; --loss: #e08a72;
+  }
+  /* Vault Shop item — a purchased alternate palette, layered on TOP of
+     the gold default when both classes are present (this one loads
+     after it in the stylesheet, so it wins). Same structure, different
+     family entirely — deep crimson/black rather than gold, so it reads
+     as a genuinely different room, not a tinted copy. */
+  body.maxines-lounge-active.maxines-theme-crimson{
+    --ink: #0d0505;
+    --felt: #1f0d0d; --felt-2: #2b1212; --felt-3: #3a1717;
+    --line: rgba(196,90,90,.2);
+    --brass: #c45a5a; --brass-dim: #7a3030; --brass-light: #f5c9c9;
+    --chalk: #f5e5e0; --muted: #b58080; --win: #8fd4ac; --loss: #e08a72;
+  }
+  body.maxines-lounge-active.maxines-theme-emerald{
+    --ink: #050d08;
+    --felt: #0d1f14; --felt-2: #12291a; --felt-3: #173420;
+    --line: rgba(75,162,110,.2);
+    --brass: #4ba26e; --brass-dim: #245c39; --brass-light: #d8f0e2;
+    --chalk: #e5f5ec; --muted: #7fada0; --win: #8fd4ac; --loss: #e08a72;
+  }
+  body.maxines-lounge-active.maxines-theme-sapphire{
+    --ink: #05080d;
+    --felt: #0d1522; --felt-2: #121d2e; --felt-3: #17263a;
+    --line: rgba(74,126,196,.2);
+    --brass: #4a7ec4; --brass-dim: #254368; --brass-light: #d5e5f5;
+    --chalk: #e5edf7; --muted: #7f9bb5; --win: #8fd4ac; --loss: #e08a72;
+  }
+  .hr-mode-badge{
+    display:inline-block; margin:0 auto 8px; padding:4px 14px; border-radius:999px;
+    background: linear-gradient(180deg, #fff3d2, #d4af5a); color:#2a2005;
+    font-family:'Manrope',sans-serif; font-weight:800; font-size:11px; letter-spacing:1.5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  }
+  /* Balance made obvious in-game — was a bare inline text line ("Balance:
+     X · No limits"), which under-sold the one number that actually
+     matters while you're sitting at a table. Now its own bubble with a
+     pulsing gold dot, "No limits" split out as its own separate pill
+     rather than trailing text, so the two ideas don't compete for
+     attention in one run-on line. */
+  .hr-balance-pill-row{ display:flex; align-items:center; justify-content:center; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  .hr-balance-pill{
+    display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:999px;
+    background: linear-gradient(165deg, rgba(255,224,150,.16), rgba(0,0,0,.3));
+    border:1px solid rgba(212,175,90,.5);
+    font-family:'Manrope',sans-serif; font-weight:700; font-size:12px; color:#fdf0c8;
+    box-shadow: 0 2px 6px rgba(0,0,0,.35);
+  }
+  .hr-balance-pill-dot{
+    width:6px; height:6px; border-radius:50%; background:#d4af5a;
+    box-shadow:0 0 5px rgba(255,224,150,.8); animation: hrBadgePulse 2.4s ease-in-out infinite;
+  }
+  .hr-nolimits-pill{
+    display:inline-block; padding:4px 10px; border-radius:999px;
+    background:rgba(224,138,114,.12); border:1px solid rgba(224,138,114,.4);
+    font-family:'Manrope',sans-serif; font-weight:700; font-size:10.5px; letter-spacing:0;
+    color:#e08a72; text-transform:none;
   }
 
   /* ---- Further polish pass — shimmer, corner flourishes, suit
@@ -444,6 +790,224 @@
   @keyframes hrShimmerSweep{
     0%{ background-position: -60% -60%; }
     60%, 100%{ background-position: 160% 160%; }
+  }
+  .hr-room-banner, .hr-hub-panel{
+    background-size: 100% 100%, 100% 100%, 300% 300%;
+  }
+  .hr-room-banner::after, .hr-hub-panel::after{
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+    background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.09) 50%, transparent 58%);
+    background-size:300% 300%;
+    animation: hrShimmerSweep 6s ease-in-out infinite;
+  }
+  /* Corner flourishes — small HTML marks, not a pseudo-element (::before
+     and ::after are both already spoken for on these elements), the
+     kind of detail a real embossed VIP card/invitation carries. */
+  .hr-corner{ position:absolute; width:16px; height:16px; z-index:1; pointer-events:none; opacity:.55; }
+  .hr-corner-tl{ top:8px; left:8px; border-top:1.5px solid #d4af5a; border-left:1.5px solid #d4af5a; }
+  .hr-corner-tr{ top:8px; right:8px; border-top:1.5px solid #d4af5a; border-right:1.5px solid #d4af5a; }
+  .hr-corner-bl{ bottom:8px; left:8px; border-bottom:1.5px solid #d4af5a; border-left:1.5px solid #d4af5a; }
+  .hr-corner-br{ bottom:8px; right:8px; border-bottom:1.5px solid #d4af5a; border-right:1.5px solid #d4af5a; }
+  /* Faint oversized suit watermarks — real casino-card texture rather
+     than a flat black panel */
+  .hr-suit-watermark{
+    position:absolute; font-size:120px; color:rgba(201,162,75,.05); z-index:0; pointer-events:none;
+    font-family: Georgia, serif; line-height:1;
+  }
+  .hr-suit-watermark.wm-1{ top:-20px; left:-24px; transform:rotate(-12deg); }
+  .hr-suit-watermark.wm-2{ bottom:-30px; right:-20px; transform:rotate(8deg); font-size:100px; }
+  /* Everything inside these panels needs to sit above the shimmer/
+     watermark layers now that those are on ::after/::before at z-index:0 */
+  .hr-hub-header, .hr-hub-balance-row, .hr-game-row, .hr-lb-panel{ position:relative; z-index:1; }
+  .hr-room-banner-icon, .hr-room-banner-text{ z-index:2; }
+
+  /* Crest — a real chip-edge ring instead of a flat circle, the
+     alternating notch pattern a genuine casino chip has around its rim */
+  .hr-hub-crest{
+    position:relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.6),
+      0 0 0 3px #0a0603, 0 0 0 4.5px #8a6620;
+  }
+  .hr-hub-crest::before{
+    content:''; position:absolute; inset:-8px; border-radius:50%;
+    background: repeating-conic-gradient(#8a6620 0deg 9deg, transparent 9deg 18deg);
+    z-index:-1; opacity:.8;
+  }
+
+  .hr-lb-panel{ margin-top:18px; text-align:left; }
+  .hr-lb-title{
+    font-family:'Manrope',sans-serif; font-weight:700; font-size:12px; letter-spacing:0;
+    text-transform:none; color:rgba(230,210,160,.7); margin-bottom:8px; text-align:center;
+  }
+  /* Leaderboard rows upgraded — the plain flat rows read as leftover
+     default styling rather than something belonging to this room, so
+     each rank now gets its own weight (gold-ringed circle badge for the
+     rank number instead of bare text, a subtle background wash that
+     gets stronger the higher the rank) matching the room's own visual
+     language elsewhere (the crest, the chip-edge rim, etc). */
+  .hr-lb-row{
+    display:flex; align-items:center; gap:10px; padding:10px 8px;
+    border-bottom:1px solid rgba(201,162,75,.15);
+    background: linear-gradient(90deg, rgba(201,162,75,.05), transparent);
+  }
+  .hr-lb-row:last-child{ border-bottom:none; }
+  .hr-lb-row.hr-lb-me{ background:rgba(201,162,75,.12); border-radius:8px; }
+  .hr-lb-row.hr-lb-top1{ background:linear-gradient(90deg, rgba(255,224,150,.14), transparent); }
+  .hr-lb-rank{
+    width:26px; height:26px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    border-radius:50%; font-family:'Manrope',sans-serif; font-weight:800; font-size:12px; color:#d4af5a;
+    background: radial-gradient(circle at 35% 30%, rgba(255,243,210,.12), rgba(0,0,0,.3) 70%);
+    box-shadow: inset 0 0 0 1px rgba(212,175,90,.35);
+  }
+  .hr-lb-name{ flex:1; font-size:13px; color:#fdf0c8; }
+  .hr-lb-val{ font-family:'Manrope',sans-serif; font-weight:700; font-size:13px; color:#d4af5a; }
+
+  /* Live feed — a small dot instead of a rank medal (this isn't ranked,
+     it's chronological), coloured win/loss so the shape of the recent
+     action is readable at a glance before reading a single word */
+  .hr-feed-row{
+    display:flex; align-items:center; gap:8px; padding:7px 6px;
+    border-bottom:1px solid rgba(201,162,75,.12); font-size:12px;
+  }
+  .hr-feed-scroll{ max-height:280px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .hr-feed-row:last-child{ border-bottom:none; }
+  .hr-feed-dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .hr-feed-dot.hr-feed-win{ background:#8fd4ac; box-shadow:0 0 5px rgba(143,212,172,.6); }
+  .hr-feed-dot.hr-feed-loss{ background:#e08a72; box-shadow:0 0 5px rgba(224,138,114,.5); }
+  .hr-feed-text{ flex:1; color:rgba(230,210,160,.85); }
+  .hr-feed-text b{ color:#fdf0c8; }
+  .hr-feed-amt{ font-family:'Manrope',sans-serif; font-weight:700; flex-shrink:0; }
+  .hr-feed-amt.hr-feed-win{ color:#8fd4ac; }
+  .hr-feed-amt.hr-feed-loss{ color:#e08a72; }
+  /* Whale rows — a big bet should still read as one a few seconds
+     later when someone else's poll picks it up, not just blend into
+     the rest of the feed as an ordinary line */
+  .hr-feed-row.hr-feed-whale{
+    background:linear-gradient(90deg, rgba(255,224,150,.12), transparent);
+    border-radius:6px; margin:2px 0;
+  }
+  .hr-feed-row.hr-feed-whale .hr-feed-text{ font-weight:600; color:#fdf0c8; }
+  .hr-feed-row.hr-feed-whale .hr-feed-amt{ font-size:13px; text-shadow:0 0 8px currentColor; }
+
+  /* Spotlight card — the same icon+label+value language the main
+     lounge already uses (.casino-floor-spotlight), brought into
+     Maxine's with its own colours rather than reused wholesale: the
+     gold/black palette stays, only the layout pattern is borrowed —
+     an icon with its own glow, sitting beside a label/value stack,
+     instead of a card that's just centred text. */
+  .hr-spotlight-card{
+    display:flex; align-items:center; gap:12px; position:relative; z-index:1;
+    margin-top:14px; padding:12px 16px; border-radius:12px;
+    background:linear-gradient(165deg, rgba(255,224,150,.1), rgba(0,0,0,.28));
+    border:1px solid rgba(201,162,75,.3);
+    box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 3px 8px rgba(0,0,0,.3);
+  }
+  .hr-spotlight-icon{ font-size:24px; flex-shrink:0; filter:drop-shadow(0 0 6px rgba(255,224,150,.4)); }
+  .hr-spotlight-text{ display:flex; flex-direction:column; text-align:left; }
+  .hr-spotlight-label{
+    font-size:10px; text-transform:none; letter-spacing:0; color:rgba(230,210,160,.65);
+  }
+  .hr-spotlight-val{
+    font-family:'Manrope',sans-serif; font-weight:800; font-size:15px; color:#fdf0c8; margin-top:1px;
+  }
+
+  /* The House Comp card — a distinct crimson-leaning accent (not the
+     usual gold) specifically because this is a "your balance is nearly
+     gone" moment, not a celebratory one; the colour itself should
+     signal that before anyone reads a word of it */
+  .hr-comp-card{
+    position:relative; z-index:1; margin:2px 0 14px; padding:12px 16px; border-radius:12px;
+    background:rgba(224,138,114,.08); border:1px solid rgba(224,138,114,.35); text-align:center;
+  }
+  .hr-comp-title{
+    font-family:'Manrope',sans-serif; font-weight:800; font-size:14px; color:#e08a72; margin-bottom:4px;
+  }
+  .hr-comp-note{ font-size:11.5px; color:rgba(230,210,160,.75); line-height:1.5; }
+  #maxinesCompBtn:disabled{ opacity:.45; cursor:default; }
+  .hr-lb-comp-tag{
+    font-size:9.5px; color:rgba(224,138,114,.85); margin-left:4px; font-weight:600;
+  }
+  .hr-lb-achievements{ margin-left:4px; font-size:11px; }
+  .hr-lb-name-wrap{ flex:1; display:flex; flex-direction:column; min-width:0; }
+  .hr-lb-name-wrap .hr-lb-name{ flex:none; }
+  .hr-lb-tagline{ font-size:10px; font-style:italic; color:rgba(212,175,90,.6); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* FIXED — real problem, not just polish, seen live on a phone
+     screenshot: text options ("Brushed Gold", "None"/"Laurel"/"Crown")
+     were squeezed into fixed 26px squares as raw text with no wrapping
+     control, so labels ran directly into their neighbours and became
+     unreadable. And the price only ever lived in a hover `title`
+     attribute — which never fires on a touch screen, meaning it was
+     genuinely invisible on the only device this app is ever used on,
+     not just uninformative. Full rebuild: category label now sits on
+     its own line above the options instead of squeezed beside them,
+     each option is a proper auto-width pill that wraps naturally, and
+     locked pills show a real visible price badge inline. */
+  .hr-shop-cat{ padding:10px 0; border-bottom:1px solid rgba(201,162,75,.1); }
+  .hr-shop-cat:last-child{ border-bottom:none; }
+  .hr-shop-cat-label{ font-size:11.5px; color:rgba(230,210,160,.75); margin-bottom:8px; font-weight:600; }
+  .hr-shop-pills{ display:flex; gap:6px; flex-wrap:wrap; }
+  .hr-shop-pill{
+    display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(201,162,75,.35); background:rgba(0,0,0,.25); color:#fdf0c8;
+    font-size:11.5px; font-family:'Barlow',sans-serif; cursor:pointer; white-space:nowrap;
+  }
+  .hr-shop-pill:active{ transform:scale(.96); }
+  .hr-shop-pill-swatch{ width:14px; height:14px; border-radius:50%; flex-shrink:0; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25); }
+  .hr-shop-pill-label{ font-weight:600; }
+  .hr-shop-pill-price{
+    font-family:'Manrope',sans-serif; font-size:10px; font-weight:700; color:#d4af5a;
+    background:rgba(212,175,90,.12); padding:2px 6px; border-radius:999px;
+  }
+  .hr-shop-pill-check{ color:#8fd4ac; font-weight:800; font-size:12px; }
+  .hr-shop-pill-active{ border-color:#d4af5a; box-shadow:0 0 0 1px #d4af5a, 0 0 10px rgba(212,175,90,.4); background:rgba(212,175,90,.1); }
+  .hr-shop-pill-locked{ opacity:.55; }
+  .hr-shop-row{ display:flex; gap:8px; margin-bottom:8px; }
+  .hr-shop-row:last-child{ margin-bottom:0; }
+  .hr-shop-input{
+    flex:1; padding:8px 12px; border-radius:8px; border:1px solid rgba(201,162,75,.3);
+    background:rgba(0,0,0,.25); color:#fdf0c8; font-size:12px; min-width:0;
+  }
+  .hr-shop-input::placeholder{ color:rgba(230,210,160,.4); }
+
+  /* Personal row glow — independent of room theme, a signature on
+     THIS member's row specifically wherever they appear on the board */
+  .hr-lb-row.hr-glow-blue{ background:linear-gradient(90deg, rgba(90,155,212,.14), transparent) !important; }
+  .hr-lb-row.hr-glow-blue .avatar-rankcard img, .hr-lb-row.hr-glow-blue .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #5a9bd4, 0 0 10px rgba(90,155,212,.5) !important; }
+  .hr-lb-row.hr-glow-violet{ background:linear-gradient(90deg, rgba(163,116,212,.14), transparent) !important; }
+  .hr-lb-row.hr-glow-violet .avatar-rankcard img, .hr-lb-row.hr-glow-violet .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #a374d4, 0 0 10px rgba(163,116,212,.5) !important; }
+  .hr-lb-row.hr-glow-emerald{ background:linear-gradient(90deg, rgba(75,162,110,.14), transparent) !important; }
+  .hr-lb-row.hr-glow-emerald .avatar-rankcard img, .hr-lb-row.hr-glow-emerald .avatar-rankcard-fallback{ box-shadow:0 0 0 2px #4ba26e, 0 0 10px rgba(75,162,110,.5) !important; }
+
+  /* VIP avatar frame — layered ON TOP of the existing tier ring
+     (avatar-rankcard already sets its own box-shadow ring; this adds
+     an outer decoration around the whole wrapper, not a replacement) */
+  .hr-lb-row .avatar-rankcard.hr-frame-laurel{ position:relative; }
+  .hr-lb-row .avatar-rankcard.hr-frame-laurel::before, .hr-lb-row .avatar-rankcard.hr-frame-laurel::after{
+    content:''; position:absolute; top:50%; width:9px; height:16px; border:1.5px solid #d4af5a; border-radius:50% 50% 0 0/60% 60% 0 0;
+  }
+  .hr-lb-row .avatar-rankcard.hr-frame-laurel::before{ left:-9px; transform:translateY(-50%) rotate(-20deg); }
+  .hr-lb-row .avatar-rankcard.hr-frame-laurel::after{ right:-9px; transform:translateY(-50%) rotate(20deg) scaleX(-1); }
+  .hr-lb-row .avatar-rankcard.hr-frame-crown{ position:relative; }
+  .hr-lb-row .avatar-rankcard.hr-frame-crown::before{
+    content:'👑'; position:absolute; top:-10px; left:50%; transform:translateX(-50%); font-size:11px; line-height:1;
+  }
+
+  /* Vault door finish — texture overlays on the panels, independent of
+     which colour theme (gold/crimson/emerald/sapphire) is active */
+  .hr-vault-door.playing.hr-finish-marble .hr-vault-panel{
+    background-image: linear-gradient(165deg, var(--felt-2), var(--ink)),
+      repeating-linear-gradient(115deg, rgba(255,255,255,.08) 0px, transparent 2px, transparent 18px, rgba(255,255,255,.05) 20px);
+  }
+  .hr-vault-door.playing.hr-finish-obsidian .hr-vault-panel{
+    box-shadow: inset 0 0 40px rgba(0,0,0,.9), inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+
+  /* Inline badge shown next to a High Roller's name on the regular
+     Casino leaderboard too, not just inside the room itself */
+  .hr-lb-badge{
+    display:inline-block; font-size:12px; margin-left:3px;
+    filter: drop-shadow(0 0 4px rgba(255,224,150,.6));
+    animation: hrBadgePulse 2.4s ease-in-out infinite;
   }
   @keyframes hrBadgePulse{
     0%,100%{ opacity:.85; transform:scale(1); }
@@ -2420,6 +2984,7 @@
     -webkit-mask-image: linear-gradient(to top, black 50%, transparent 92%);
     mask-image: linear-gradient(to top, black 50%, transparent 92%);
   }
+  body.maxines-lounge-active .home-silhouette-bg{ display:block; }
   .tab-panel.active{ display:block; }
 
   .tabbar{
@@ -5058,6 +5623,7 @@
   /* Compact header on every tab: the logo was eating ~170px of a phone screen */
   header{ margin-bottom:10px; padding-top:2px; min-height:64px; display:flex; align-items:center; justify-content:center; }
   .header-banner{ width:auto; height:64px; max-width:64%; object-fit:contain; border-radius:6px; }
+  body.maxines-lounge-active header{ padding:8px 10px; }
   .header-admin-btn{ top:50%; transform:translateY(-50%); right:2px; }
   .header-admin-btn:active{ transform:translateY(-50%) scale(.94); }
 
@@ -5530,6 +6096,8 @@
   /* Primary actions in every game: the lime pill */
   .pill-btn.pill-btn-primary{ background:var(--accent) !important; border-color:var(--accent) !important; color:var(--accent-ink) !important; font-weight:800; box-shadow:0 6px 20px rgba(205,244,100,.22) !important; }
   .pill-btn.pill-btn-primary:disabled{ opacity:.45; box-shadow:none !important; }
+  /* Maxine's keeps its own gold room: the new accent follows that room's palette */
+  body.maxines-lounge-active, .hr-mode-active{ --accent:var(--brass); --accent-ink:#1a1206; --surface:var(--felt-2); --surface-2:var(--felt-3); }
 
   /* ===================== v181: group multi card ===================== */
   .home-multi{ position:relative; margin:0 2px 14px; padding:18px 16px 16px; background:var(--surface); border:1px solid rgba(255,255,255,.05); border-radius:24px; }
@@ -5922,6 +6490,10 @@
   .game-bubble.active .game-bubble-label{ color:var(--accent) !important; }
   /* Spin the Wheel: a clean outline action, not a slab of lime gradient */
   .game-bubble-wide{ background:var(--surface-2); border:1px solid rgba(205,244,100,.45); color:var(--accent); box-shadow:none; border-radius:18px; font-weight:800; }
+  /* Maxine's door: same VIP gold, without the stretched letter-spacing and heavy glow */
+  .hr-room-banner{ border-radius:20px; border-color:rgba(201,162,75,.55); box-shadow:0 6px 18px rgba(0,0,0,.45); }
+  .hr-room-banner-title{ letter-spacing:0; }
+  .hr-room-banner-icon{ filter:none; font-size:22px; }
   /* chip row helpers: quiet text buttons instead of a loud red pill */
   .chip-clear-btn{ height:34px; padding:0 14px; background:transparent; border:1px solid rgba(255,255,255,.12); color:var(--muted); font-size:12px; }
   .chip-clear-btn:active{ color:#FF8A80; border-color:rgba(255,122,102,.5); }
@@ -5954,6 +6526,7 @@
   .profile-radar-title{ color:var(--chalk) !important; font-weight:800; letter-spacing:0 !important; text-transform:none !important; }
   .tap-hint{ color:var(--muted) !important; opacity:.8; }
   #profileSheet .panel, #profileSheet [class*="radar"]{ border-color:rgba(255,255,255,.07) !important; }
+  #hrRoomBannerBtn, .hr-room-banner{ display:none !important; }
 
   /* ===================== v188: chip rails, redesigned ===================== */
   /* The stake: one clear pill ("250 XP") you can tap to type any amount */
@@ -6405,3 +6978,20 @@
 .lb-lifetime-telly{ color:#C9CCC8 !important; font-size:10.5px !important; }
 /* a skip-to-content style helper for screen-reader-only text */
 .sr-only{ position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+
+/* ===================== v201: visual pass ===================== */
+/* the old "Jump back in" row is folded into the games strip */
+#casinoRecentRow{ display:none !important; }
+.cz-tile-tag:not(.jp):not(.hot):not(.live){ background:rgba(0,0,0,.55); }
+/* casino sub-pages (Hold'em, Live Blackjack, Challenges, Bounties, XP, Badges, Book): no repeated wallet and jackpot cards */
+#tab-casino.cz-sub .casino-hero, #tab-casino.cz-sub #slotsJackpotLobbyPanel, #tab-casino.cz-sub #casinoTicker{ display:none !important; }
+#tab-casino.cz-sub .casino-view.active{ border-radius:24px; border:1px solid rgba(242,193,78,.14) !important; background:linear-gradient(180deg, rgba(22,22,25,.94), rgba(12,12,14,.94)) !important; }
+#tab-casino.cz-sub .casino-view.active > div:first-child:has(> .pill-btn){ flex-direction:row-reverse; justify-content:flex-end !important; gap:12px; margin-bottom:14px !important; }
+#tab-casino.cz-sub .casino-view.active > div:first-child > h2{ font-size:19px !important; color:#F6E3B0; }
+#tab-casino.cz-sub .casino-view.active > div:first-child > .pill-btn{ height:38px; padding:0 14px !important; border-radius:12px !important; background:rgba(255,255,255,.06) !important; border:1px solid rgba(242,193,78,.2) !important; color:#F6E3B0 !important; }
+/* only one main action per table: Clear is secondary, Spin/Roll stays gold */
+#tab-casino.cz-game #rouletteClearAllTopBtn, #tab-casino.cz-game #rouletteClearAllBtn, #tab-casino.cz-game #crapsClearStagedTopBtn, #tab-casino.cz-game #crapsClearStagedBtn, #tab-casino.cz-game #bigWheelClearBtn{
+  background:rgba(255,255,255,.06) !important; color:#F6E3B0 !important; border:1px solid rgba(242,193,78,.25) !important; box-shadow:none !important; font-size:14px !important; min-height:44px; }
+/* bar: keep the game's name readable */
+.cz-bar-bal{ padding:8px 10px; }
+.cz-bar-title{ font-size:15.5px; }

@@ -151,10 +151,10 @@
     const hub = $('casinoHubPanel'); if(!hub || $('czFeatured')) return;
     const wrap = document.createElement('div');
     wrap.id = 'czFeatured'; wrap.className = 'cz-featured';
-    const pick = ['slots', 'blackjack', 'roulette', 'crash', 'videopoker', 'mines', 'baccarat', 'plinko'];
     wrap.innerHTML = `<div class="cz-featured-head"><span>Popular games</span><button type="button" class="cz-link" id="czAllGames">All games</button></div>
-      <div class="cz-featured-row">${pick.map(g => `<button type="button" class="cz-ftile" data-cz-open="${g}">${tileHtml(GAMES[g])}</button>`).join('')}</div>`;
+      <div class="cz-featured-row" id="czFeaturedRow"></div>`;
     hub.insertBefore(wrap, hub.firstChild);
+    renderFeatured();
     const openGames = async (g) => {
       try{ if(typeof showCasinoView === 'function') await showCasinoView('casinoGamesView'); }catch(e){}
       if(g){ const b = document.querySelector(`.game-bubble[data-game="${g}"]`); b && b.click(); }
@@ -169,6 +169,21 @@
   function hubIcons(){
     const map = { hubGamesBtn: 'chip', hubXpBtn: 'coin', hubBadgesBtn: 'target', hubBookBtn: 'bac' };
     Object.entries(map).forEach(([id, ic]) => { const el = document.querySelector('#' + id + ' .casino-hub-icon'); if(el && !el.dataset.cz){ el.dataset.cz = '1'; el.innerHTML = iconSvg(ic, 'cz-hub-ic'); } });
+  }
+
+  // Recently played games lead the strip (tagged Recent), then the popular
+  // ones. This replaces the separate "Jump back in" row, which copied the
+  // lobby tiles without their sizing and could spill across the panel.
+  function renderFeatured(){
+    const row = $('czFeaturedRow'); if(!row) return;
+    let recent = [];
+    try{ recent = (JSON.parse(localStorage.getItem('mlsynd-recent-games') || '[]') || []).filter(g => GAMES[g]); }catch(e){}
+    const popular = ['slots', 'blackjack', 'roulette', 'crash', 'videopoker', 'mines', 'baccarat', 'plinko'].filter(g => !recent.includes(g));
+    row.innerHTML = [...recent.map(g => [g, true]), ...popular.map(g => [g, false])].map(([g, isRecent]) =>
+      `<button type="button" class="cz-ftile" data-cz-open="${g}">${tileHtml(isRecent ? { ...GAMES[g], tag: 'Recent' } : GAMES[g])}</button>`).join('');
+    const head = $('czFeatured') && $('czFeatured').querySelector('.cz-featured-head span');
+    if(head) head.textContent = recent.length ? 'Your games' : 'Popular games';
+    const old = $('casinoRecentRow'); if(old){ old.style.display = 'none'; old.innerHTML = ''; }
   }
 
   // ---------- full-screen game mode ----------
@@ -194,7 +209,11 @@
   }
   function syncBalance(){
     const src = $('xpBalanceDisplay'); const dst = $('czBarBal'); if(!src || !dst) return;
-    const b = dst.querySelector('b'); const v = src.textContent.trim();
+    const b = dst.querySelector('b'); const raw = src.textContent.trim();
+    const num = parseInt(raw.replace(/[^\d-]/g, ''), 10);
+    // big balances shortened so the game's name still fits in the bar
+    const v = !isNaN(num) && Math.abs(num) >= 100000 ? (Math.abs(num) >= 1e6 ? (num / 1e6).toFixed(num >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M' : Math.round(num / 1000) + 'K') : raw;
+    dst.title = raw + ' XP';
     if(b.textContent !== v){ b.textContent = v; dst.classList.remove('bump'); void dst.offsetWidth; dst.classList.add('bump'); }
   }
   const PANEL_TO_GAME = {};
@@ -203,6 +222,8 @@
   }
   function syncGameMode(){
     const view = $('casinoGamesView'), tab = $('tab-casino');
+    const activeView = tab && tab.querySelector('.casino-view.active');
+    if(tab) tab.classList.toggle('cz-sub', !!(activeView && activeView.id !== 'casinoGamesView'));
     const inGames = !!(view && view.classList.contains('active') && tab && tab.classList.contains('active'));
     const open = inGames ? [...view.querySelectorAll('.casino-game-panel')].find(p => p.style.display && p.style.display !== 'none') : null;
     if(tab) tab.classList.toggle('cz-lobby', inGames && !open);
@@ -306,12 +327,17 @@
     // one observer for every game panel's open/close, whatever opened it
     const mo = new MutationObserver(() => { syncGameMode(); });
     document.querySelectorAll('.casino-game-panel').forEach(p => mo.observe(p, { attributes: true, attributeFilter: ['style'] }));
-    const view = $('casinoGamesView'); if(view) mo.observe(view, { attributes: true, attributeFilter: ['class'] });
+    document.querySelectorAll('#tab-casino .casino-view').forEach(v => mo.observe(v, { attributes: true, attributeFilter: ['class'] }));
     const bal = $('xpBalanceDisplay');
     if(bal) new MutationObserver(syncBalance).observe(bal, { childList: true, characterData: true, subtree: true });
     // jackpot: follow the lobby/slots values when they change
     ['slotsJackpotLobbyVal', 'slotsJackpotVal'].forEach(id => { const el = $(id); if(el) new MutationObserver(() => { tickJackpot(); const cab = $('czCabJp'); if(cab) cab.textContent = fmt(jackpotNow()); }).observe(el, { childList: true, characterData: true, subtree: true }); });
     window.addEventListener('cp:win', (e) => burst((e.detail && e.detail.tier) || 'win'));
+    if(typeof window.renderCasinoRecentRow === 'function'){
+      const orig = window.renderCasinoRecentRow;
+      window.renderCasinoRecentRow = function(){ try{ renderFeatured(); }catch(e){ return orig.apply(this, arguments); } };
+    }
+    renderFeatured();
     // leaving the casino tab closes game mode visually
     const tab = $('tab-casino');
     let wasActive = tab && tab.classList.contains('active');
