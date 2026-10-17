@@ -1,10 +1,10 @@
 {
-  "version": "2026-10-18.219",
+  "version": "2026-10-18.220",
   "date": "2026-10-18",
   "changes": [
+    "Season P/L: weekly bars and stats tucked behind a More stats button",
     "Season P/L card: each week's result as bars under the line, plus winning weeks, best and worst week, average, current run, how often the multi landed, and group vs individual P/L",
     "Last week shows that week's money out and back (it was showing the season's)",
-    "Scrolling past the Season P/L chart no longer leaves it stuck on an old week",
-    "Tidier Home: each number shown once, the multi's faces on one row, a compact form guide strip, hints that go once used"
+    "Scrolling past the Season P/L chart no longer leaves it stuck on an old week"
   ]
 }

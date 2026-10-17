@@ -7254,3 +7254,4 @@ html.hint-leg-seen #homeMultiDetail:not(.open){ display:none; }
 .ch-split-keys b{ font-weight:800; margin-left:4px; } .ch-split-keys b.pos{ color:#7FE3A2; } .ch-split-keys b.neg{ color:#FF8A80; }
 .ch-split-keys i{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px; vertical-align:0; background:var(--chalk); }
 .ch-split-keys i.k2{ opacity:.55; }
+.ch-more-btn{ display:block; width:100%; margin-top:10px; height:38px; border-radius:12px !important; border:1px solid rgba(255,255,255,.08) !important; background:transparent !important; color:var(--accent) !important; font-size:13.5px !important; font-weight:800 !important; box-shadow:none !important; }
