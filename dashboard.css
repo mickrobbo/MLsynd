@@ -7173,3 +7173,13 @@
 .ao-err.open .ao-err-more{ display:block; }
 .ao-err-more pre{ white-space:pre-wrap; overflow-wrap:anywhere; font-size:10.5px; background:rgba(255,255,255,.04); border-radius:8px; padding:8px; margin:6px 0; max-height:220px; overflow:auto; }
 .ao-err-ua{ font-size:10.5px; opacity:.8; }
+
+/* ===================== v212: See all legs rows line up ===================== */
+/* fixed columns, so the odds and the status pills sit in straight lines
+   whatever the pill says, and long selections wrap instead of being cut off */
+.hm-all-row{ grid-template-columns:62px minmax(0,1fr) 50px 64px !important; gap:2px 8px !important; align-items:center; }
+.hm-all-sel b{ white-space:normal !important; overflow:visible !important; text-overflow:clip !important; line-height:1.25; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.hm-all-sel span{ white-space:normal !important; line-height:1.25; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
+.hm-all-odds{ text-align:right; font-size:14px; white-space:nowrap; }
+.hm-all-row .hm-chip-sm{ justify-self:stretch; text-align:center; padding:4px 0; }
+.hm-all-name{ font-size:12.5px; }
