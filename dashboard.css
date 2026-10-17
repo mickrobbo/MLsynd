@@ -7183,3 +7183,10 @@
 .hm-all-odds{ text-align:right; font-size:14px; white-space:nowrap; }
 .hm-all-row .hm-chip-sm{ justify-self:stretch; text-align:center; padding:4px 0; }
 .hm-all-name{ font-size:12.5px; }
+
+/* ===================== v214: no sideways slide when changing tabs ===================== */
+.tab-panel.active, .tab-panel.active.cp-in-fwd, .tab-panel.active.cp-in-back{ animation:none !important; transform:none !important; }
+/* and the page itself can never be dragged sideways, even if something on
+   a real phone ends up a few pixels too wide (clip, unlike hidden, keeps
+   the sticky headers working) */
+html, body{ overflow-x:clip; }

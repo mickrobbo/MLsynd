@@ -61,7 +61,8 @@
       if(changing){
         uiTick();
         const panel = document.querySelector('.tab-panel.active');
-        if(panel && from > -1 && to > -1 && !document.documentElement.classList.contains('cp-lite')){
+        // v214: no sideways slide between tabs; pages just switch
+        if(false && panel && from > -1 && to > -1 && !document.documentElement.classList.contains('cp-lite')){
           panel.classList.remove('cp-in-fwd', 'cp-in-back'); void panel.offsetWidth;
           panel.classList.add(to < from ? 'cp-in-back' : 'cp-in-fwd');
           setTimeout(() => panel.classList.remove('cp-in-fwd', 'cp-in-back'), 260);
