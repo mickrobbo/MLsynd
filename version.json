@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.200",
+  "version": "2026-10-17.201",
   "date": "2026-10-17",
   "changes": [
-    "The app opens faster: its code now loads as separate files your phone keeps between visits, and index.html is a fifth of the size",
-    "Better for screen readers and keyboards: pop-ups announce themselves and close with Escape, every tile can be reached by keyboard, and fields are labelled",
-    "Home is grouped into this week's bets, money and the Board"
+    "Fixed the Casino home: recently played games now lead the games strip instead of spilling across the page",
+    "Fixed a doubled logo in the header, and tidied the casino's other pages, bar and buttons",
+    "Pop-ups no longer leave a highlight box on the first button after a tap"
   ]
 }
