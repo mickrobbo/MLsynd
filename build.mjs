@@ -14,7 +14,7 @@ import { createHash } from 'crypto';
 
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, 'dist');
-const SKIP = new Set(['dist', 'node_modules', '.git', 'netlify', 'build.mjs', 'package.json', 'package-lock.json', 'netlify.toml', '.gitignore', 'README.md', 'firebase-rules.json']); // rules are pasted into the Firebase console, never needed on the live site
+const SKIP = new Set(['dist', 'node_modules', '.git', '.github', 'tests', 'netlify', 'build.mjs', 'package.json', 'package-lock.json', 'netlify.toml', '.gitignore', 'README.md', 'firebase-rules.json']); // rules are pasted into the Firebase console, never needed on the live site
 
 const jsOpts = { loader: 'js', minifyWhitespace: true, minifySyntax: false, minifyIdentifiers: false, legalComments: 'none', charset: 'utf8', target: 'es2020' };
 const cssOpts = { loader: 'css', minifyWhitespace: true, minifySyntax: false, legalComments: 'none', charset: 'utf8' };
@@ -81,6 +81,42 @@ async function walk(dir){
     }
   }
 }
+// v211: checks that stop a broken update going live. Any failure here
+// fails the Netlify build, so the site stays on the last good version.
+async function preflight(){
+  const problems = [];
+  const html = await fs.readFile(path.join(ROOT, 'index.html'), 'utf8');
+  // every local script and stylesheet the page loads must exist
+  for(const m of html.matchAll(/<(?:script[^>]*\ssrc|link[^>]*\shref)=["']([^"'#]+)["']/gi)){
+    const ref = m[1];
+    if(/^(https?:)?\/\//i.test(ref) || ref.startsWith('data:')) continue;
+    const file = ref.split('?')[0].replace(/^\//, '');
+    try{ await fs.access(path.join(ROOT, file)); }catch(e){ problems.push(`index.html loads ${file}, which doesn't exist`); }
+  }
+  // the version shown in the app and version.json must match
+  const v = (html.match(/APP_VERSION = "([^"]+)"/) || [])[1];
+  try{
+    const vj = JSON.parse(await fs.readFile(path.join(ROOT, 'version.json'), 'utf8'));
+    if(v && vj.version !== v) problems.push(`APP_VERSION is ${v} but version.json says ${vj.version}`);
+  }catch(e){ problems.push('version.json is not valid JSON: ' + e.message); }
+  for(const f of ['firebase-rules.json', 'dashboard-manifest.json']){
+    try{ JSON.parse(await fs.readFile(path.join(ROOT, f), 'utf8')); }catch(e){ if(e.code !== 'ENOENT') problems.push(`${f} is not valid JSON: ${e.message}`); }
+  }
+  // every server function must at least parse
+  const fnDir = path.join(ROOT, 'netlify', 'functions');
+  const walkFns = async (dir) => {
+    for(const ent of await fs.readdir(dir, { withFileTypes: true })){
+      const p = path.join(dir, ent.name);
+      if(ent.isDirectory()){ if(ent.name !== 'node_modules') await walkFns(p); continue; }
+      if(!/\.(mjs|js)$/.test(ent.name)) continue;
+      try{ await transform(await fs.readFile(p, 'utf8'), { loader: 'js', format: 'esm', target: 'es2022', logLevel: 'silent' }); }
+      catch(e){ problems.push(`${path.relative(ROOT, p)} has a syntax error: ${String(e.message).split('\n').slice(0, 3).join(' ')}`); }
+    }
+  };
+  try{ await walkFns(fnDir); }catch(e){}
+  if(problems.length) throw new Error('Pre-deploy checks failed:\n - ' + problems.join('\n - '));
+}
+await preflight();
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(OUT, { recursive: true });
 await walk(ROOT);

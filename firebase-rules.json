@@ -213,6 +213,9 @@
       },
       "otherCosts": {
         ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      },
+      "anthropic": {
+        ".write": false
       }
     },
     "guestLinks": {
@@ -495,6 +498,26 @@
     "payDetails": {
       ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
       ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+    },
+    "backups": {
+      ".read": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+    },
+    "backupIndex": {
+      ".read": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+    },
+    "slipScanCache": {
+      ".read": false,
+      ".write": false
+    },
+    "clientErrors": {
+      ".read": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+      "$id": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && !data.exists()",
+        ".validate": "newData.hasChildren(['msg', 'at']) && newData.child('msg').isString() && newData.child('msg').val().length <= 400 && (!newData.child('stack').exists() || newData.child('stack').val().length <= 1000)"
+      }
     }
   }
 }

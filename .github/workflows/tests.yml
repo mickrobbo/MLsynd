@@ -1,0 +1,29 @@
+# Runs the app's end-to-end tests (tests/run.cjs) on every push to main.
+# A red cross on the commit in GitHub means something broke; the GitHub app
+# emails you when a run fails. Netlify's own build also refuses to publish
+# code that doesn't parse or loads a missing file (see build.mjs).
+name: Tests
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run build
+      - run: npm install --no-save playwright@1.56.0
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/run.cjs
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-screenshots
+          path: test-fail-*.png
+          if-no-files-found: ignore

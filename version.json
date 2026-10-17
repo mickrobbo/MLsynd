@@ -1,9 +1,11 @@
 {
-  "version": "2026-10-17.210",
+  "version": "2026-10-17.211",
   "date": "2026-10-17",
   "changes": [
-    "Stat sheets now count group multi legs only",
-    "Payout figures use the real stakes: $12.50 on the group multi and $50 on each individual bet",
-    "Results are marked in Admin: each person's selection now shows next to their result box, and the $ amount fills in from the slip"
+    "Nightly backups of the season with Restore (Admin \u2192 Tools \u2192 Backups)",
+    "Stakes are set in Admin \u2192 Money \u2192 Stakes",
+    "A slip that's already been read costs nothing to read again",
+    "Errors on anyone's phone show in Admin \u2192 Tools \u2192 Errors",
+    "A bonus-bet slip fills the person's second bet instead of replacing their first"
   ]
 }

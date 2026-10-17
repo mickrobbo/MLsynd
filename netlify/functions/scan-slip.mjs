@@ -14,6 +14,7 @@
 // Needs ANTHROPIC_API_KEY (console.anthropic.com → API keys) and the
 // existing FIREBASE_WEB_API_KEY. SLIP_SCAN_MODEL can override the model.
 
+import crypto from 'crypto';
 import { getFirebaseAccessToken } from './lib/firebase-token.mjs';
 
 const ADMIN_EMAIL = 'mlsynd00@gmail.com';
@@ -86,6 +87,20 @@ Rules:
 // Adds this scan to the shared running-costs tally at /apiUsage/anthropic
 // (read by Admin → Running costs). Written with the service account, so
 // members can read it but nobody can edit it from the app.
+let fbToken = null;
+async function fbAuth(){ if(!fbToken) fbToken = await getFirebaseAccessToken(); return fbToken; }
+
+// v211: a slip that's already been read comes back from here for free
+// instead of being sent to Anthropic again. Keyed by a hash of the images.
+async function cacheGet(key){
+  try{ const t = await fbAuth(); const r = await fetch(`${FIREBASE_URL}/slipScanCache/${key}.json?access_token=${t}`); return r.ok ? await r.json() : null; }
+  catch(e){ return null; }
+}
+async function cachePut(key, result){
+  try{ const t = await fbAuth(); await fetch(`${FIREBASE_URL}/slipScanCache/${key}.json?access_token=${t}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ result, at: Date.now() }) }); }
+  catch(e){ console.error('Slip cache write failed:', e.message); }
+}
+
 async function trackAnthropicUsage(model, usage){
   try{
     const inTok = (usage && (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0)) || 0;
@@ -96,7 +111,7 @@ async function trackAnthropicUsage(model, usage){
     const cost = (inTok * priceIn + outTok * priceOut) / 1e6;
     const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit' }).formatToParts(new Date());
     const monthKey = `${parts.find(p => p.type === 'year').value}-${parts.find(p => p.type === 'month').value}`;
-    const token = await getFirebaseAccessToken();
+    const token = await fbAuth();
     const url = (path) => `${FIREBASE_URL}/apiUsage/anthropic${path}.json?access_token=${token}`;
     const cur = await fetch(url('')).then(r => r.ok ? r.json() : null).catch(() => null) || {};
     const m = (cur.byMonth && cur.byMonth[monthKey]) || {};
@@ -165,6 +180,12 @@ export default async (req) => {
     .filter(Boolean);
   if(!images.length) return json(400, { error: 'No slip images received.' });
 
+  const cacheKey = crypto.createHash('sha256').update(images.map(i => i.data).join('|')).digest('hex').slice(0, 40);
+  if(!body.force){
+    const hit = await cacheGet(cacheKey);
+    if(hit && hit.result && Array.isArray(hit.result.bets)) return json(200, { ...hit.result, cached: true, cachedAt: hit.at || null });
+  }
+
   const content = [
     ...images.map(img => ({ type: 'image', source: { type: 'base64', media_type: img.media_type, data: img.data } })),
     { type: 'text', text: PROMPT },
@@ -188,5 +209,7 @@ export default async (req) => {
   const text = (out && Array.isArray(out.content) ? out.content : []).filter(c => c.type === 'text').map(c => c.text).join('\n');
   const parsed = extractJson(text);
   if(!parsed) return json(502, { error: 'Couldn\'t make sense of that slip. Try a clearer or uncropped screenshot.' });
-  return json(200, clean(parsed));
+  const result = clean(parsed);
+  if(result.bets.length) await cachePut(cacheKey, result);
+  return json(200, result);
 };

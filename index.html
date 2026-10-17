@@ -16,7 +16,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=208">
+<link rel="stylesheet" href="dashboard.css?v=211">
+<script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -361,6 +362,16 @@
       </div>
       <button type="button" id="adminPaySaveBtn" class="small" style="margin-top:10px;">Save banking details</button>
       <div class="status-msg" id="adminPayStatus"></div>
+    </div>
+    <div class="panel" id="adminStakesPanel">
+      <h2>Stakes</h2>
+      <div class="hint">Used for every payout figure (what a bet pays, the $ won or lost when you mark a result) when a slip doesn't show the stake, and as the starting outlay each week.</div>
+      <div class="pay-admin-grid">
+        <label>Each individual bet ($)<input type="number" id="adminStakeInd" step="0.5" min="0" inputmode="decimal"></label>
+        <label>Group multi ($)<input type="number" id="adminStakeGroup" step="0.5" min="0" inputmode="decimal"></label>
+      </div>
+      <button type="button" id="adminStakesSaveBtn" class="small" style="margin-top:10px;">Save stakes</button>
+      <div class="status-msg" id="adminStakesStatus"></div>
     </div>
     <div class="panel" id="adminSeasonEndPanel">
       <h2>Last day of the betting year</h2>
@@ -4019,7 +4030,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-17.210"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-17.211"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14337,9 +14348,9 @@ function renderGroupMultiChart(state){
     : 'Group multi';
   // v209: what the $12.50 group stake pays (or paid) at the current price
   const payLine = counting.length
-    ? (losers.length ? ` · ${moneyAud(GROUP_MULTI_STAKE)} was paying ${moneyAud(combined * GROUP_MULTI_STAKE)}`
-      : pending === 0 ? ` · ${moneyAud(GROUP_MULTI_STAKE)} paid ${moneyAud(combined * GROUP_MULTI_STAKE)}`
-      : ` · ${moneyAud(GROUP_MULTI_STAKE)} pays ${moneyAud(combined * GROUP_MULTI_STAKE)}`)
+    ? (losers.length ? ` · ${moneyAud(groupStakeSetting())} was paying ${moneyAud(combined * groupStakeSetting())}`
+      : pending === 0 ? ` · ${moneyAud(groupStakeSetting())} paid ${moneyAud(combined * groupStakeSetting())}`
+      : ` · ${moneyAud(groupStakeSetting())} pays ${moneyAud(combined * groupStakeSetting())}`)
     : '';
   if(weekEl) weekEl.textContent = `${entries.length} leg${entries.length === 1 ? '' : 's'}${weekLabel ? ' · ' + weekLabel : ''}${payLine}`;
   if(losers.length) setStatus('Lost', 'lost');
@@ -14392,7 +14403,7 @@ function renderGroupMultiChart(state){
   const savedWeek = !draftHasEntries && hist.length ? hist[hist.length - 1] : null;
   const paidOut = savedWeek && savedWeek.group ? Number(savedWeek.group.multiRet) || 0 : 0;
   const money = v => '$' + Math.round(v).toLocaleString('en-AU');
-  const groupStake = GROUP_MULTI_STAKE;
+  const groupStake = groupStakeSetting();
   const per10 = counting.length ? moneyAud(combined * groupStake) : '–';
   const killer = losers.length ? String(losers[0][0]).split(' ')[0] + (losers.length > 1 ? ` +${losers.length - 1}` : '') : '';
   const stat = (k, v, cls = '') => `<div class="hm-stat${cls ? ' ' + cls : ''}"><span class="hm-stat-v">${v}</span><span class="hm-stat-k">${k}</span></div>`;
@@ -14445,7 +14456,7 @@ function renderHomeMultiDetail(){
     if(leg.result === 'Loss') impact = `Without this leg the rest were @${(m.combined / o).toFixed(2)}`;
     else if(!leg.result && !m.losers) impact = m.pending > 1
       ? `If this lands, @${(m.toLand / o).toFixed(2)} still to land`
-      : `Last leg standing, ${moneyAud(GROUP_MULTI_STAKE)} pays ${moneyAud(m.combined * GROUP_MULTI_STAKE)}`;
+      : `Last leg standing, ${moneyAud(groupStakeSetting())} pays ${moneyAud(m.combined * groupStakeSetting())}`;
   }
   const pip = r => `<span class="hm-pip result-${rc(r)}" title="${escapeHtml(r)}">${r === 'Win' ? 'W' : r === 'Loss' ? 'L' : r === 'Void' ? 'V' : 'M'}</span>`;
   box.className = 'hm-detail open result-' + cls;
@@ -14463,7 +14474,6 @@ function renderHomeMultiDetail(){
       ${impact ? `<span class="hm-impact">${impact}</span>` : ''}
     </div>` : ''}
     ${leg.pick && leg.pick.sel ? `<div class="hm-pick"><b>${escapeHtml(leg.pick.sel)}</b>${leg.pick.market || leg.pick.event ? `<span>${escapeHtml([leg.pick.market, leg.pick.event].filter(Boolean).join(' · '))}</span>` : ''}</div>` : (Number(leg.odds) > 0 ? `<div class="hm-pick hm-pick-none"><span>Selection shows here once the slip has been read</span></div>` : '')}
-    ${homeResultTicksHtml('g', leg.name, leg.result)}
     ${leg.note ? `<div class="hm-detail-note">${escapeHtml(leg.note)}</div>` : ''}`;
   const av = box.querySelector('.hm-detail-av');
   if(av && leg.uid && typeof getAvatarDataUri === 'function'){
@@ -14474,29 +14484,22 @@ function renderHomeMultiDetail(){
 // admin can mark results straight from Home: Win / Loss / Void buttons on
 // the live week's legs and individual bets. They write to the same draft
 // the Admin screens use, so Save week still commits as before.
-function homeIsAdmin(){ return !!(currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()); }
 // v209: the syndicate's standard stakes, used for payout figures whenever a
 // slip hasn't given us the exact stake. Two $50 individual bets a week, and
 // the group multi goes on at $12.50.
-const IND_BET_STAKE = 50;
-const GROUP_MULTI_STAKE = 12.5;
+// v211: set in Admin → Money → Stakes, stored at /state/stakeSettings.
+function stakeSetting(key, fallback){ const v = Number(typeof currentState !== 'undefined' && currentState && currentState.stakeSettings && currentState.stakeSettings[key]); return v > 0 ? v : fallback; }
+function indStakeSetting(){ return stakeSetting('individual', 50); }
+function groupStakeSetting(){ return stakeSetting('group', 12.5); }
 // A bet's stake: the slip's figure when we have one, $50 otherwise. A bonus
 // bet (free bet) has no stake of our own, so it stays empty.
 function indBetStake(b){
   if(!b) return 0;
   if(Number(b.stake) > 0) return Number(b.stake);
   if(b.bonus) return 0;
-  return IND_BET_STAKE;
+  return indStakeSetting();
 }
 function moneyAud(v){ const n = Number(v) || 0; return '$' + (Math.abs(n) < 100 && Math.round(n) !== n ? n.toFixed(2) : Math.round(n).toLocaleString('en-AU')); }
-function homeResultTicksHtml(kind, key, current){
-  // v208: results are marked in Admin only; Home looks the same for everyone
-  return '';
-  if(kind === 'g' && !(window.__hmMulti && window.__hmMulti.editable)) return '';
-  const opts = kind === 'g' ? [['Win', 'Won'], ['Loss', 'Lost'], ['Void', 'Void']] : [['Win', 'Won'], ['Loss', 'Lost'], ['Void', 'Void']];
-  return `<div class="hm-ticks" role="group" aria-label="Mark result for ${escapeHtml(key)}">${opts.map(([v, l]) =>
-    `<button type="button" class="hm-tick t-${v.toLowerCase()}${current === v ? ' on' : ''}" data-tick-kind="${kind}" data-tick-key="${escapeHtml(key)}" data-tick-val="${v}" aria-pressed="${current === v}">${l}</button>`).join('')}${current ? `<button type="button" class="hm-tick t-clear" data-tick-kind="${kind}" data-tick-key="${escapeHtml(key)}" data-tick-val="" aria-label="Clear result">Clear</button>` : ''}</div>`;
-}
 function homeMultiLegsListHtml(){
   const legs = window.__hmLegs || [];
   if(!legs.length || !legs.some(l => l.pick && l.pick.sel)) return '';
@@ -14509,51 +14512,9 @@ function homeMultiLegsListHtml(){
       <span class="hm-all-sel">${l.pick && l.pick.sel ? `<b>${escapeHtml(l.pick.sel)}</b>${l.pick.market ? `<span>${escapeHtml(l.pick.market)}</span>` : ''}` : '<span>No selection yet</span>'}</span>
       <span class="hm-all-odds">${Number(l.odds) > 0 ? '@' + Number(l.odds).toFixed(2) : ''}</span>
       <span class="hm-chip-sm">${lab(l.result)}</span>
-      ${homeResultTicksHtml('g', l.name, l.result)}
     </div>`).join('')}</div>`;
 }
-async function homeSetGroupResult(name, val){
-  if(!currentState.groupEntryDraft || !currentState.groupEntryDraft[name]) return;
-  currentState.groupEntryDraft[name].result = val || null;
-  adminGroupDraftDirty.add(name);
-  try{ groupDraftMirrorWrite(); }catch(e){}
-  try{ if(typeof diagEntryLoaded !== 'undefined' && diagEntryLoaded) renderAdminGroupEntry(); }catch(e){}
-  render(currentState);
-  scheduleAdminGroupDraftSave();
-  showToast(val ? `${name}: ${val === 'Win' ? 'won' : val === 'Loss' ? 'lost' : 'void'}` : `${name}: result cleared`);
-}
-async function homeSetIndResult(idx, val){
-  const bets = (currentState.weeklyIndividualBets || []).map(b => ({ ...b }));
-  const b = bets[idx]; if(!b) return;
-  b.result = val || null;
-  const stake = Number(b.stake), odds = Number(b.odds);
-  if(val === 'Win') b.pl = stake > 0 && odds > 1 ? Math.round(stake * (odds - 1) * 100) / 100 : (b.pl != null ? b.pl : null);
-  else if(val === 'Loss') b.pl = stake > 0 ? -stake : (b.pl != null ? b.pl : null);
-  else if(val === 'Void') b.pl = 0;
-  else b.pl = null;
-  try{
-    await authedWrite('/state/weeklyIndividualBets.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bets) });
-    currentState.weeklyIndividualBets = bets;
-    // keep the Returns table (what Save week uses) in step when we know the stake
-    if(stake > 0){
-      const rows = (Array.isArray(currentState.individualBetDraft) ? currentState.individualBetDraft : []).map(r => ({ ...r }));
-      const ret = val === 'Win' && odds > 1 ? Math.round(stake * odds * 100) / 100 : val === 'Loss' ? 0 : val === 'Void' ? stake : '';
-      let i = rows.findIndex(r => r.name === b.name);
-      if(i < 0 && val){ rows.push({ name: b.name, outlay: String(stake), ret: '' }); i = rows.length - 1; }
-      if(i >= 0){
-        rows[i].ret = ret === '' ? '' : String(ret);
-        await authedWrite('/state/individualBetDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rows) });
-        currentState.individualBetDraft = rows;
-        try{ if(typeof diagEntryLoaded !== 'undefined' && diagEntryLoaded){ adminIndDraftRows = rows; renderAdminFinIndRows(rows); renderAdminWeeklyIndividualBetsEntry(bets); } }catch(e){}
-      }
-    }
-    render(currentState);
-    showToast(val ? `${b.name}'s bet: ${val === 'Win' ? 'won' : val === 'Loss' ? 'lost' : 'void'}` : `${b.name}'s bet: result cleared`);
-  }catch(e){ showToast("Couldn't save that result. Check your connection."); }
-}
 document.getElementById('weeklyIndividualBetsArea').addEventListener('click', (e) => {
-  const t = e.target.closest('[data-tick-kind="i"]');
-  if(t){ e.stopPropagation(); homeSetIndResult(parseInt(t.dataset.tickKey, 10), t.dataset.tickVal); return; }
   const tile = e.target.closest('[data-ind-open]'); if(!tile) return;
   const d = tile.querySelector('.ind-detail'); if(!d) return;
   const open = d.hidden; d.hidden = !open; tile.classList.toggle('open', open); tile.setAttribute('aria-expanded', open);
@@ -14563,8 +14524,6 @@ document.getElementById('weeklyIndividualBetsArea').addEventListener('keydown', 
   if((e.key === 'Enter' || e.key === ' ') && e.target.matches('[data-ind-open]')){ e.preventDefault(); e.target.click(); }
 });
 document.getElementById('groupMultiArea').addEventListener('click', (e) => {
-  const tick = e.target.closest('[data-tick-kind="g"]');
-  if(tick){ e.stopPropagation(); homeSetGroupResult(tick.dataset.tickKey, tick.dataset.tickVal); return; }
   const tog = e.target.closest('[data-hm-all]');
   if(tog){
     const list = tog.nextElementSibling; const open = list.hidden;
@@ -16050,7 +16009,6 @@ function render(state){
         ${b.pick && b.pick.sel ? `<div class="ind-pick"><b>${indLegs.length > 1 ? `${indLegs.length}-leg multi` : escapeHtml(b.pick.sel)}</b>${Number(b.odds) > 0 ? ` <span>@${Number(b.odds).toFixed(2)}</span>` : ''}${stakeN > 0 ? `<span class="ind-stake">${moneyAud(stakeN)} stake${!b.result && potRet ? ` · pays ${moneyAud(potRet)}` : ''}</span>` : ''}</div>` : ''}
         ${indLegs.length ? `<div class="ind-more" aria-hidden="true"><span class="ind-more-closed">Tap to see the bet</span><span class="ind-more-open">Hide bet</span></div>` : ''}
         ${detailHtml}
-        ${homeResultTicksHtml('i', String(origIdx), b.result)}
         ${roastHtml}
       </div>`;
     }).join('') + '</div>';
@@ -17406,6 +17364,22 @@ document.querySelector('.admin-submode-btn[data-submode="money"]')?.addEventList
   loadAdminPayDetails();
   const inp = document.getElementById('adminSeasonEndInput');
   if(inp) inp.value = (currentState && currentState.seasonEndDate) || '';
+  const si = document.getElementById('adminStakeInd'), sg = document.getElementById('adminStakeGroup');
+  if(si) si.value = indStakeSetting(); if(sg) sg.value = groupStakeSetting().toFixed(2);
+});
+document.getElementById('adminStakesSaveBtn').addEventListener('click', async () => {
+  const st = document.getElementById('adminStakesStatus');
+  const ind = parseFloat(document.getElementById('adminStakeInd').value), grp = parseFloat(document.getElementById('adminStakeGroup').value);
+  if(!(ind > 0) || !(grp > 0)){ st.className = 'status-msg error'; st.textContent = 'Enter both stakes as dollar amounts above zero.'; return; }
+  try{
+    const val = { individual: Math.round(ind * 100) / 100, group: Math.round(grp * 100) / 100 };
+    const res = await authedFetch('/state/stakeSettings.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(val) });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    if(currentState) currentState.stakeSettings = val;
+    try{ render(currentState); }catch(e){}
+    st.className = 'status-msg ok'; st.textContent = `Saved: $${val.individual} per individual bet, $${val.group.toFixed(2)} on the group multi.`;
+    showToast('Stakes saved');
+  }catch(e){ st.className = 'status-msg error'; st.textContent = 'Could not save, try again.'; }
 });
 document.getElementById('adminSeasonEndSaveBtn').addEventListener('click', async () => {
   const st = document.getElementById('adminSeasonEndStatus');
@@ -21690,6 +21664,8 @@ async function saveAdminGroupFinancialsDraft(){
 }
 function restoreAdminGroupFinancialsDraft(){
   const draft = currentState.groupFinancialsDraft;
+  const goEl = document.getElementById('adminGMultiOut');
+  if(goEl && (!draft || draft.gMultiOut == null || draft.gMultiOut === '')) goEl.value = groupStakeSetting().toFixed(2);
   if(!draft || typeof draft !== 'object') return;
   ADMIN_GROUP_FINANCIALS_FIELD_IDS.forEach(id => {
     const key = ADMIN_TO_LEDGER_FIELD_KEY[id];
@@ -21763,7 +21739,7 @@ function renderAdminFinIndRows(preserve){
       const row = parseInt(btn.dataset.row, 10);
       const current = adminReadIndividualValues();
       current.splice(row, 1);
-      if(current.length === 0) current.push({ name: '', outlay: '50', ret: '' });
+      if(current.length === 0) current.push({ name: '', outlay: String(indStakeSetting()), ret: '' });
       renderAdminFinIndRows(current);
       renderAdminGroupEntry();
       scheduleAdminIndDraftSave();
@@ -21771,7 +21747,7 @@ function renderAdminFinIndRows(preserve){
   });
   document.getElementById('adminAddIndBetBtn').addEventListener('click', () => {
     const current = adminReadIndividualValues();
-    current.push({ name: '', outlay: '50', ret: '' });
+    current.push({ name: '', outlay: String(indStakeSetting()), ret: '' });
     renderAdminFinIndRows(current);
     renderAdminGroupEntry();
     scheduleAdminIndDraftSave();
@@ -21807,7 +21783,9 @@ function adminReadWeeklyBetValues(){
       sgmResult: sgmResultEl ? sgmResultEl.value : '',
       sgmAmount: sgmAmountEl && sgmAmountEl.value !== '' ? sgmAmountEl.value : '',
       cashedOut: cashOutEl ? cashOutEl.classList.contains('active') : false,
-      placed: placedEl ? placedEl.checked : false
+      placed: placedEl ? placedEl.checked : false,
+      // v211: the slip details shown on this row stay with this row
+      ...(() => { const x = (window.__adminWibInfo || [])[Number(row)]; if(!x) return {}; const o = {}; ['pick', 'stake', 'odds', 'ret', 'bonus'].forEach(k => { if(x[k] != null) o[k] = x[k]; }); return o; })()
     });
   });
   return rows;
@@ -21829,15 +21807,12 @@ function renderAdminWeeklyIndividualBetsEntry(preserve){
     return;
   }
   const existing = preserve || (Array.isArray(currentState.weeklyIndividualBets) && currentState.weeklyIndividualBets.length ? currentState.weeklyIndividualBets : [{}, {}]);
-  const slipByName = {}; (currentState.weeklyIndividualBets || []).forEach(b => { if(b && b.name && b.pick && !slipByName[b.name]) slipByName[b.name] = b; });
-  const seenName = {};
   window.__adminWibInfo = [];
   const rowsHtml = existing.map((v, row) => {
     v = v || {};
     const result = v.result || '';
-    // the bet read from the slip, for the first row of each person (a second row is their bonus bet)
-    const first = v.name && !seenName[v.name]; if(v.name) seenName[v.name] = true;
-    const info = v.pick ? v : (first ? ((window.slipIndExtras && window.slipIndExtras[v.name]) || slipByName[v.name] || null) : null);
+    // v211: every row carries its own slip details now (see adminReadWeeklyBetValues)
+    const info = v.pick ? v : null;
     window.__adminWibInfo[row] = info;
     const ipk = info && info.pick;
     const iLegs = ipk ? (Array.isArray(ipk.legs) && ipk.legs.length ? ipk.legs : [ipk]) : [];
@@ -22546,7 +22521,7 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
 
     // Clear this week's drafts for the next entry — same fields Clear
     // Entry Inputs resets in the Ledger.
-    adminIndDraftRows = [{ name: '', outlay: '50', ret: '' }, { name: '', outlay: '50', ret: '' }];
+    adminIndDraftRows = [{ name: '', outlay: String(indStakeSetting()), ret: '' }, { name: '', outlay: String(indStakeSetting()), ret: '' }];
     currentState.groupEntryDraft = {};
     adminGroupDraftDirty.clear(); groupDraftMirrorWrite();
     currentState.weekLabelDraft = null;
@@ -24877,7 +24852,8 @@ initAuthGate();
 <script src="casino-luxe.js?v=201"></script>
 <script src="app-premium.js?v=202"></script>
 <script src="app-a11y.js?v=201"></script>
-<script src="slip-scan.js?v=209"></script>
+<script src="slip-scan.js?v=211"></script>
+<script src="admin-ops.js?v=211"></script>
 <script src="pick-stats.js?v=210"></script>
 </body>
 </html>

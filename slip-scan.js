@@ -80,7 +80,9 @@
   }
   function setStatus(cls, txt){ const s = $('slipScanStatus'); if(s){ s.className = 'status-msg' + (cls ? ' ' + cls : ''); s.textContent = txt || ''; } }
 
-  async function scan(ids){
+  let lastIds = null;
+  async function scan(ids, force){
+    lastIds = ids;
     showOffer(false);
     const btn = $('slipScanBtn'); if(btn) btn.disabled = true;
     setStatus('', `Reading ${ids.length} screenshot${ids.length === 1 ? '' : 's'}… this takes about 10–20 seconds.`);
@@ -91,12 +93,19 @@
       if(!images.length) throw new Error("Couldn't load those screenshots. Check your connection.");
       const auth = await getValidAuth();
       if(!auth) throw new Error('Sign in again, then try.');
-      const res = await fetch('/.netlify/functions/scan-slip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: auth.idToken, images }) });
+      const res = await fetch('/.netlify/functions/scan-slip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: auth.idToken, images, force: !!force }) });
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || `The slip reader failed (HTTP ${res.status}).`);
       if(!data.bets || !data.bets.length) throw new Error("No bets found on those screenshots. Try a clearer, uncropped one.");
       setStatus('ok', `Found ${data.bets.length} bet${data.bets.length === 1 ? '' : 's'}. Check each one, choose where it goes, then Apply.`);
       render(data);
+      if(data.cached){
+        const note = document.createElement('div');
+        note.className = 'ss-cached';
+        note.innerHTML = `This slip was read before${data.cachedAt ? ' (' + new Date(data.cachedAt).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) + ')' : ''}, so this is the saved result and there was no charge. If the bet has settled since, <button type="button" class="ss-fresh">read it fresh</button>.`;
+        $('slipScanResults').prepend(note);
+        note.querySelector('.ss-fresh').addEventListener('click', () => scan(lastIds, true));
+      }
     }catch(e){
       setStatus('error', e.message || 'Something went wrong reading the slip.');
       $('slipScanResults').innerHTML = '';
@@ -243,20 +252,25 @@
     // the public "who's on an individual bet" list on Home
     if(typeof adminReadWeeklyBetValues === 'function' && typeof renderAdminWeeklyIndividualBetsEntry === 'function'){
       const rows = adminReadWeeklyBetValues();
-      let i = rows.findIndex(v => v.name === name);
-      if(i < 0) i = rows.findIndex(v => !v.name);
-      if(i < 0){ rows.push({}); i = rows.length - 1; }
-      const pl = r != null && b.stake != null ? Math.round((r - (b.bonus_bet ? 0 : b.stake)) * 100) / 100 : '';
-      rows[i] = { ...rows[i], name, result, pl: result ? pl : '', placed: true };
-      // v204: slip details travel with the bet so Home can show them and the
-      // Home result buttons can work out the P/L
+      // slip details travel with the bet so Home can show them
       const leg = b.legs[0] || {};
+      const pick = { sel: b.legs.length > 1 ? `${b.legs.length}-leg ${b.type === 'same_game_multi' ? 'same game multi' : 'multi'}` : (leg.selection || ''), market: b.legs.length > 1 ? b.legs.map(l => l.selection).filter(Boolean).join(', ').slice(0, 120) : (leg.market || null), event: leg.event || null };
+      if(b.legs.length === 1){ pick.sport = leg.sport || null; pick.team = leg.team || null; pick.kind = leg.kind || null; }
+      else pick.legs = b.legs.map(l => ({ sel: l.selection || '', market: l.market || null, event: l.event || null, sport: l.sport || null, team: l.team || null, kind: l.kind || null, odds: l.odds, result: l.result }));
+      const ex = { pick, stake: b.bonus_bet ? null : b.stake, bonus: !!b.bonus_bet, odds: b.combined_odds || leg.odds || null, ret: b.potential_return };
       window.slipIndExtras = window.slipIndExtras || {};
-      window.slipIndExtras[name] = { pick: { sel: b.legs.length > 1 ? `${b.legs.length}-leg ${b.type === 'same_game_multi' ? 'same game multi' : 'multi'}` : (leg.selection || ''), market: b.legs.length > 1 ? b.legs.map(l => l.selection).filter(Boolean).join(', ').slice(0, 120) : (leg.market || null), event: leg.event || null },
-        stake: b.bonus_bet ? null : b.stake, bonus: !!b.bonus_bet, odds: b.combined_odds || leg.odds || null, ret: b.potential_return };
-      const p0 = window.slipIndExtras[name].pick;
-      if(b.legs.length === 1){ p0.sport = leg.sport || null; p0.team = leg.team || null; p0.kind = leg.kind || null; }
-      else p0.legs = b.legs.map(l => ({ sel: l.selection || '', market: l.market || null, event: l.event || null, sport: l.sport || null, team: l.team || null, kind: l.kind || null, odds: l.odds, result: l.result }));
+      window.slipIndExtras[name] = ex;
+      // v211: which row this slip belongs on. The same bet read again (now
+      // settled) updates its own row; a different bet for someone who already
+      // has one (their bonus bet after a win) goes on their next row.
+      const same = (p) => p && p.sel === pick.sel && (p.market || null) === (pick.market || null);
+      const mine = rows.map((v, k) => ({ v, k })).filter(x => x.v.name === name);
+      let i = (mine.find(x => same(x.v.pick)) || mine.find(x => !x.v.pick) || {}).k;
+      if(i == null) i = rows.findIndex(v => !v.name);
+      if(i == null || i < 0){ rows.push({}); i = rows.length - 1; }
+      const pl = r != null && b.stake != null ? Math.round((r - (b.bonus_bet ? 0 : b.stake)) * 100) / 100 : '';
+      rows[i] = { ...rows[i], name, result, pl: result ? pl : '', placed: true, pick: ex.pick, odds: ex.odds, ret: ex.ret, bonus: ex.bonus };
+      if(ex.stake != null) rows[i].stake = ex.stake; else delete rows[i].stake;
       renderAdminWeeklyIndividualBetsEntry(rows);
       const save = $('adminSaveWeeklyBetsBtn'); if(save) save.click();
     }
