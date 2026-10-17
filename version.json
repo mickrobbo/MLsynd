@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.208",
+  "version": "2026-10-17.209",
   "date": "2026-10-17",
   "changes": [
+    "Payout figures use the real stakes: $12.50 on the group multi and $50 on each individual bet",
     "Results are marked in Admin: each person's selection now shows next to their result box, and the $ amount fills in from the slip",
-    "Running costs now include Anthropic (the slip reader): this month, all time and cost per scan, plus a this-month all-in total",
-    "Tap someone's individual bet on Home to see the bet: each selection, the odds, stake and return"
+    "Running costs now include Anthropic (the slip reader): this month, all time and cost per scan, plus a this-month all-in total"
   ]
 }
