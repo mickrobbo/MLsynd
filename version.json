@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.199",
+  "version": "2026-10-17.200",
   "date": "2026-10-17",
   "changes": [
-    "Home is now grouped: anything that needs you up top, then this week's bets (multi, individual bets and form guide together), then the money with the season chart, then the Board",
-    "Each section has a shortcut to its page: Bet slips for the bets, Cash for the money",
-    "The casino has a new lobby and every game opens full screen"
+    "The app opens faster: its code now loads as separate files your phone keeps between visits, and index.html is a fifth of the size",
+    "Better for screen readers and keyboards: pop-ups announce themselves and close with Escape, every tile can be reached by keyboard, and fields are labelled",
+    "Home is grouped into this week's bets, money and the Board"
   ]
 }

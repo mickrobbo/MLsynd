@@ -10,6 +10,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { transform } from 'esbuild';
+import { createHash } from 'crypto';
 
 const ROOT = process.cwd();
 const OUT = path.join(ROOT, 'dist');
@@ -26,7 +27,21 @@ async function minCss(code, label){
   try{ return (await transform(code, cssOpts)).code; }
   catch(e){ throw new Error(`CSS in ${label} failed to process: ${e.message}`); }
 }
-async function minHtml(html){
+// v200: big inline scripts in index.html are written out as their own
+// files, named by a hash of their contents. Same order, same globals, so
+// they run exactly as before, but the page itself is far smaller to parse,
+// the browser can download them in parallel, and the phone keeps a
+// compiled copy between opens (it can't do that for inline scripts).
+const EXTRACT_MIN = 4096;
+async function writeChunk(code, n){
+  const hash = createHash('sha256').update(code).digest('hex').slice(0, 10);
+  const name = `js/app-${n}.${hash}.js`;
+  await fs.mkdir(path.join(OUT, 'js'), { recursive: true });
+  await fs.writeFile(path.join(OUT, name), code);
+  extracted += code.length;
+  return name;
+}
+async function minHtml(html, extract){
   let out = '', i = 0, n = 0;
   const re = /<(script|style)(\s[^>]*)?>([\s\S]*?)<\/\1>/gi;
   let m;
@@ -34,7 +49,9 @@ async function minHtml(html){
     out += html.slice(i, m.index).replace(/<!--(?!\[if)[\s\S]*?-->/g, '');
     const [whole, tag, attrs = '', body] = m;
     if(tag.toLowerCase() === 'script' && !/\ssrc=/i.test(attrs) && !/type=["'](application\/(ld\+)?json|text\/template)/i.test(attrs) && body.trim()){
-      out += `<script${attrs}>${await minJs(body, `inline script #${++n}`)}</script>`;
+      const code = await minJs(body, `inline script #${++n}`);
+      if(extract && code.length >= EXTRACT_MIN){ out += `<script${attrs} src="${await writeChunk(code, n)}"></script>`; }
+      else out += `<script${attrs}>${code}</script>`;
     } else if(tag.toLowerCase() === 'style' && body.trim()){
       out += `<style${attrs}>${await minCss(body, 'inline style')}</style>`;
     } else out += whole;
@@ -44,7 +61,7 @@ async function minHtml(html){
   return out;
 }
 
-let saved = 0;
+let saved = 0, extracted = 0;
 async function walk(dir){
   for(const ent of await fs.readdir(dir, { withFileTypes: true })){
     const rel = path.relative(ROOT, path.join(dir, ent.name));
@@ -54,7 +71,7 @@ async function walk(dir){
     await fs.mkdir(path.dirname(dst), { recursive: true });
     const isRoot = dir === ROOT;
     if(isRoot && ent.name.endsWith('.html')){
-      const s = await fs.readFile(src, 'utf8'); const o = await minHtml(s); saved += s.length - o.length; await fs.writeFile(dst, o);
+      const s = await fs.readFile(src, 'utf8'); const o = await minHtml(s, ent.name === 'index.html'); saved += s.length - o.length; await fs.writeFile(dst, o);
     } else if(isRoot && ent.name.endsWith('.css')){
       const s = await fs.readFile(src, 'utf8'); const o = await minCss(s, ent.name); saved += s.length - o.length; await fs.writeFile(dst, o);
     } else if(isRoot && ent.name.endsWith('.js') && ent.name !== 'sw.js'){
@@ -67,4 +84,4 @@ async function walk(dir){
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(OUT, { recursive: true });
 await walk(ROOT);
-console.log(`MLSynd build: dist/ ready, ${Math.round(saved / 1024)} KB of comments/whitespace removed.`);
+console.log(`MLSynd build: dist/ ready, ${Math.round((saved - extracted) / 1024)} KB of comments/whitespace removed, ${Math.round(extracted / 1024)} KB of script moved out of index.html.`);

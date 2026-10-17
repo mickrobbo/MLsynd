@@ -10,3 +10,10 @@
 
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
+
+# v200: the app's script files are named by a hash of their contents, so a
+# phone can keep them for good; a new deploy always uses new names.
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
