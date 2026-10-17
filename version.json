@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-17.194",
+  "version": "2026-10-17.195",
   "date": "2026-10-17",
   "changes": [
     "Settle up opens the syndicate's banking details, with a copy button for the BSB, account number, amount and reference",
