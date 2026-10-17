@@ -486,6 +486,10 @@
       "$imageId": {
         ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && root.child('users').child(auth.uid).child('role').val() !== 'tipping'"
       }
+    },
+    "payDetails": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
     }
   }
 }

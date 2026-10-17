@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.192",
+  "version": "2026-10-17.194",
   "date": "2026-10-17",
   "changes": [
-    "Spicier roasts on the group multi, aware of the odds you lost at and your losing streak",
-    "Tap a face to see their season record, last five legs and what their leg means for the multi",
-    "The group multi shows a leg track under the faces so you can see where it stands at a glance"
+    "Settle up opens the syndicate's banking details, with a copy button for the BSB, account number, amount and reference",
+    "The bonus pot now sits under Top of the Board, showing who's in line for it and how many weeks are left in the betting year",
+    "Spicier roasts on the group multi, aware of the odds you lost at and your losing streak"
   ]
 }

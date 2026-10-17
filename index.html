@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=192">
+<link rel="stylesheet" href="dashboard.css?v=194">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -145,7 +145,7 @@
         <span class="home-money-meta home-money-meta-2"><span>Out <b id="balOutlay">$0</b></span><span>Back <b id="balReturn">$0</b></span></span>
       </button>
     </div>
-    <button type="button" class="home-owe" id="homeOweChip" data-goto="home:cash" style="display:none;"></button>
+    <button type="button" class="home-owe" id="homeOweChip" style="display:none;"></button>
 
     <div class="home-quick">
       <button type="button" class="home-quick-btn" id="homeCasinoTeaser" style="display:none;">
@@ -173,6 +173,7 @@
     <section class="home-sec home-podium-wrap" aria-label="Top of the Board">
       <div class="home-row-head"><span class="home-section-title">Top of the Board</span><button type="button" class="home-link" data-goto="board">Full board</button></div>
       <div class="home-podium" id="homePodium"></div>
+      <div class="podium-pot" id="homePodiumPot" style="display:none;"></div>
     </section>
 
     <section class="home-sec home-season">
@@ -214,6 +215,10 @@
       <div class="cash-hero-lbl">You owe</div>
       <div class="cash-hero-val" id="myDuesVal">$0</div>
     </div>
+    <button type="button" class="pay-open-btn" id="payOpenBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M19 10v8M9.5 10v8M14.5 10v8M3 20h18"/></svg>
+      <span><b>Banking details</b><span>Copy the BSB and account number to pay in</span></span>
+    </button>
     <div class="panel">
       <h2>Money owed</h2>
       <div id="owedArea"></div>
@@ -296,6 +301,26 @@
     </div>
 
     <div class="diag-submode" data-submode-panel="money">
+    <div class="panel" id="adminPayPanel">
+      <h2>Banking details</h2>
+      <div class="hint">Shown to members when they tap Settle up, with a copy button for each. Only the admin account can change these.</div>
+      <div class="pay-admin-grid">
+        <label>Account name<input type="text" id="adminPayName" autocomplete="off" placeholder="e.g. MLSynd"></label>
+        <label>BSB<input type="text" id="adminPayBsb" inputmode="numeric" autocomplete="off" placeholder="000-000"></label>
+        <label>Account number<input type="text" id="adminPayAcct" inputmode="numeric" autocomplete="off" placeholder="Account number"></label>
+      </div>
+      <button type="button" id="adminPaySaveBtn" class="small" style="margin-top:10px;">Save banking details</button>
+      <div class="status-msg" id="adminPayStatus"></div>
+    </div>
+    <div class="panel" id="adminSeasonEndPanel">
+      <h2>Last day of the betting year</h2>
+      <div class="hint">Whoever tops the Board on this day takes the bonus pot. Home counts down the weeks to it. Leave it empty to use 31 December.</div>
+      <div class="pay-admin-grid">
+        <label>Last day<input type="date" id="adminSeasonEndInput"></label>
+      </div>
+      <button type="button" id="adminSeasonEndSaveBtn" class="small" style="margin-top:10px;">Save date</button>
+      <div class="status-msg" id="adminSeasonEndStatus"></div>
+    </div>
     <div class="panel">
       <h2>🔮 Syndy Usage (all members)</h2>
       <div class="hint">Real shared total — incremented server-side every time syndy-chat.js actually calls Perplexity, from any member's device. Cost figures are the exact per-call amount Perplexity's own response reports, not an estimate.</div>
@@ -2702,6 +2727,16 @@
   </div>
 </div>
 
+<div id="payModal" class="profile-modal" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+  <div class="profile-sheet pay-sheet">
+    <button type="button" class="profile-close" id="payCloseBtn" aria-label="Close">✕</button>
+    <h2 id="payTitle" class="pay-title">Settle up</h2>
+    <div class="pay-owed" id="payOwed"></div>
+    <div id="payBody"><div class="pay-empty">Loading banking details…</div></div>
+    <button type="button" class="pay-link" id="payToCashBtn">See what's owed</button>
+  </div>
+</div>
+
 <div id="linkMemberModal" class="profile-modal">
   <div class="profile-sheet">
     <button type="button" class="profile-close" id="linkMemberCloseBtn">✕</button>
@@ -3998,7 +4033,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-17.192"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-17.194"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14444,6 +14479,32 @@ function renderHomeExtras(state){
       }
     }
   }catch(e){}
+  // v193: the bonus pot goes to whoever tops the Board at the end of the year
+  try{
+    const potEl = document.getElementById('homePodiumPot');
+    const ranked = rankedMembers(state.members || []);
+    if(potEl && ranked.length && (state.history || []).length){
+      const pot = (computeSeasonFinancials(state) || {}).bonusPot || 0;
+      const leader = ranked[0];
+      const tied = ranked[1] && Math.abs((ranked[1].pl || 0) - (leader.pl || 0)) < 0.005;
+      const me = leader.linkedUid && leader.linkedUid === currentUserUid;
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      const g = t => +parts.find(x => x.type === t).value;
+      const today = Date.UTC(g('year'), g('month') - 1, g('day'));
+      // v194: the admin sets the last day of the betting year; 31 December otherwise
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(state.seasonEndDate || '');
+      const end = m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : Date.UTC(g('year'), 11, 31);
+      const days = Math.round((end - today) / 864e5);
+      const weeks = Math.ceil(days / 7);
+      const when = days < 0 ? 'Season over' : days === 0 ? 'Decided today' : days < 7 ? 'Final week' : `${weeks} weeks to go`;
+      const endLabel = new Date(end).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+      const who = tied ? 'Dead heat at the top' : me ? "You're in line for it" : `${escapeHtml(String(leader.name))} is in line for it`;
+      potEl.innerHTML = `<svg class="podium-pot-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg>
+        <span class="podium-pot-txt"><b>${pot > 0 ? homeMoney(pot) + ' bonus pot' : 'Bonus pot'}</b><span>Top of the Board on ${endLabel} takes it. ${who}.</span></span>
+        <span class="podium-pot-days">${when}</span>`;
+      potEl.style.display = '';
+    } else if(potEl) potEl.style.display = 'none';
+  }catch(e){}
   try{ renderHomeCardDots(); }catch(e){}
 }
 function renderHomeCardDots(){
@@ -17093,9 +17154,120 @@ document.querySelectorAll('#homeMainSubnav .subnav-btn').forEach(btn => {
 
 // ---------- Home shortcuts (v175) ----------
 // Tap a Home card to jump to where that number lives.
+// v193: Settle up sheet. Banking details live at /payDetails (admin-only
+// writes in the rules, so a member can't swap the account), loaded on demand.
+let payDetailsCache = null;
+let payOwedNow = 0;
+async function loadPayDetails(force){
+  if(payDetailsCache && !force) return payDetailsCache;
+  const res = await authedFetch('/payDetails.json');
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  payDetailsCache = (await res.json()) || {};
+  return payDetailsCache;
+}
+function fmtBsb(v){ const d = String(v || '').replace(/\D/g, ''); return d.length === 6 ? d.slice(0, 3) + '-' + d.slice(3) : String(v || '').trim(); }
+async function copyText(txt){
+  try{ await navigator.clipboard.writeText(txt); return true; }
+  catch(e){
+    try{ const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok; }catch(e2){ return false; }
+  }
+}
+async function openPaySheet(){
+  const modal = document.getElementById('payModal');
+  const body = document.getElementById('payBody');
+  const owedEl = document.getElementById('payOwed');
+  owedEl.innerHTML = payOwedNow > 0 ? `You owe <b>$${payOwedNow}</b>` : 'Pay into the syndicate account';
+  modal.classList.add('open');
+  body.innerHTML = '<div class="pay-empty">Loading banking details…</div>';
+  let d;
+  try{ d = await loadPayDetails(true); }
+  catch(e){ body.innerHTML = `<div class="pay-empty">Couldn't load the banking details. Check your connection and try again.</div>`; return; }
+  const bsb = fmtBsb(d.bsb), acct = String(d.account || '').replace(/\s/g, '');
+  if(!bsb || !acct){
+    const isAdm = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    body.innerHTML = `<div class="pay-empty">${isAdm ? 'No banking details yet. Add them in Admin, under Money.' : 'Banking details haven\'t been added yet. Ask the admin.'}</div>`;
+    return;
+  }
+  const me = (currentState && currentState.members || []).find(m => m.linkedUid === currentUserUid);
+  const ref = me ? `${String(me.name).split(' ')[0]} dues`.toUpperCase().slice(0, 18) : '';
+  const row = (k, v, copyVal, big) => `<div class="pay-row${big ? ' big' : ''}">
+      <span class="pay-row-txt"><span class="pay-k">${k}</span><span class="pay-v">${escapeHtml(v)}</span></span>
+      ${copyVal != null ? `<button type="button" class="pay-copy" data-copy="${escapeHtml(copyVal)}" data-what="${k}">Copy</button>` : ''}
+    </div>`;
+  body.innerHTML = `<div class="pay-rows">
+      ${d.name ? row('Account name', String(d.name), String(d.name)) : ''}
+      ${row('BSB', bsb, bsb.replace(/\D/g, ''), true)}
+      ${row('Account number', acct, acct, true)}
+      ${payOwedNow > 0 ? row('Amount', '$' + payOwedNow, String(payOwedNow)) : ''}
+      ${ref ? row('Reference', ref, ref) : ''}
+    </div>
+    <div class="pay-note">Copy each one into your banking app.</div>`;
+}
+document.getElementById('payModal').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.pay-copy');
+  if(btn){
+    const ok = await copyText(btn.dataset.copy);
+    if(ok){
+      document.querySelectorAll('#payModal .pay-copy.done').forEach(b => { b.classList.remove('done'); b.textContent = 'Copy'; });
+      btn.classList.add('done'); btn.textContent = 'Copied';
+      if(navigator.vibrate) try{ navigator.vibrate(12); }catch(_){}
+    } else showToast('Copy didn\'t work, press and hold the number instead');
+    return;
+  }
+  if(e.target.id === 'payModal') e.currentTarget.classList.remove('open');
+});
+document.getElementById('payCloseBtn').addEventListener('click', () => document.getElementById('payModal').classList.remove('open'));
+document.getElementById('payToCashBtn').addEventListener('click', () => { document.getElementById('payModal').classList.remove('open'); navGoto('home:cash'); });
+document.getElementById('homeOweChip').addEventListener('click', (e) => { e.stopPropagation(); openPaySheet(); });
+document.getElementById('payOpenBtn').addEventListener('click', openPaySheet);
+async function loadAdminPayDetails(){
+  try{
+    const d = await loadPayDetails(true);
+    document.getElementById('adminPayName').value = d.name || '';
+    document.getElementById('adminPayBsb').value = d.bsb ? fmtBsb(d.bsb) : '';
+    document.getElementById('adminPayAcct').value = d.account || '';
+  }catch(e){}
+}
+document.getElementById('adminPaySaveBtn').addEventListener('click', async () => {
+  const st = document.getElementById('adminPayStatus');
+  const name = document.getElementById('adminPayName').value.trim();
+  const bsb = document.getElementById('adminPayBsb').value.replace(/\D/g, '');
+  const account = document.getElementById('adminPayAcct').value.replace(/\s/g, '');
+  if(bsb.length !== 6){ st.className = 'status-msg error'; st.textContent = 'BSB needs 6 digits.'; return; }
+  if(!/^\d{5,10}$/.test(account)){ st.className = 'status-msg error'; st.textContent = 'Account number should be 5 to 10 digits.'; return; }
+  try{
+    const res = await authedFetch('/payDetails.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, bsb, account, updatedAt: { '.sv': 'timestamp' } }) });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    payDetailsCache = null;
+    st.className = 'status-msg ok'; st.textContent = 'Saved. Members see these when they tap Settle up.';
+    showToast('Banking details saved');
+  }catch(e){
+    st.className = 'status-msg error';
+    st.textContent = String(e.message).includes('401') || String(e.message).includes('403') ? 'Not allowed. Make sure the latest Firebase rules are published.' : 'Could not save, try again.';
+  }
+});
+document.querySelector('.admin-submode-btn[data-submode="money"]')?.addEventListener('click', () => {
+  loadAdminPayDetails();
+  const inp = document.getElementById('adminSeasonEndInput');
+  if(inp) inp.value = (currentState && currentState.seasonEndDate) || '';
+});
+document.getElementById('adminSeasonEndSaveBtn').addEventListener('click', async () => {
+  const st = document.getElementById('adminSeasonEndStatus');
+  const v = document.getElementById('adminSeasonEndInput').value;
+  if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)){ st.className = 'status-msg error'; st.textContent = 'Pick a date.'; return; }
+  try{
+    const res = await authedFetch('/state/seasonEndDate.json', v ? { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(v) } : { method: 'DELETE' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    if(currentState){ if(v) currentState.seasonEndDate = v; else delete currentState.seasonEndDate; try{ renderHomeExtras(currentState); }catch(e){} }
+    st.className = 'status-msg ok';
+    st.textContent = v ? `Saved. The bonus pot goes to the leader on ${new Date(v + 'T00:00:00Z').toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}.` : 'Cleared. Using 31 December.';
+    showToast('Season end date saved');
+  }catch(e){ st.className = 'status-msg error'; st.textContent = 'Could not save, try again.'; }
+});
 function updateHomeOweChip(owed){
   const chip = document.getElementById('homeOweChip');
   if(!chip) return;
+  payOwedNow = owed > 0 ? owed : 0;
   if(owed > 0){ chip.innerHTML = `<span>You owe <b>$${owed}</b></span><span class="home-owe-go">Settle up</span>`; chip.style.display = ''; }
   else chip.style.display = 'none';
 }
