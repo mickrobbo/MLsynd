@@ -3,8 +3,8 @@
 // bet types each person backs, and how they go. Two views:
 //   - Board → Stat sheet: the whole group (people, teams, sports)
 //   - a person's profile: a Picks section with their own breakdown
-// Data comes from saved weeks (history groupEntries[].pick and
-// individualEntries[].picks) plus this week's live draft, so it grows on
+// Data comes from group multi legs only (history groupEntries[].pick)
+// plus this week's live draft, so it grows on
 // its own as slips are read. Nothing new is stored here.
 (function(){
   'use strict';
@@ -74,6 +74,8 @@
   }
 
   // ---------- gather every tracked leg ----------
+  // v210: group multi legs only. Individual bets (often multis themselves)
+  // are left out so the sheet stays one clean leg per person per week.
   function gather(){
     const s = st(); const out = [];
     const push = (name, p, extra) => {
@@ -82,22 +84,11 @@
     };
     (s.history || []).forEach(w => {
       Object.entries(w.groupEntries || {}).forEach(([name, e]) => { if(e && e.pick) push(name, e.pick, { odds: Number(e.odds) || null, result: e.result || null, week: w.label || '', src: 'multi' }); });
-      Object.entries(w.individualEntries || {}).forEach(([name, e]) => {
-        (e && Array.isArray(e.picks) ? e.picks : []).forEach(p => {
-          if(Array.isArray(p.legs) && p.legs.length) p.legs.forEach(l => push(name, l, { odds: Number(l.odds) || null, result: l.result === 'won' ? 'Win' : l.result === 'lost' ? 'Loss' : l.result === 'void' ? 'Void' : (p.result || null), week: w.label || '', src: 'individual' }));
-          else push(name, p, { odds: Number(p.odds) || null, result: p.result || null, week: w.label || '', src: 'individual' });
-        });
-      });
     });
     // this week, not saved yet
     const savedLabels = new Set((s.history || []).map(w => w.label));
     if(!savedLabels.has(s.weekLabelDraft)){
       Object.entries(s.groupEntryDraft || {}).forEach(([name, e]) => { if(e && e.pick) push(name, e.pick, { odds: Number(e.odds) || null, result: e.result || null, week: s.weekLabelDraft || 'This week', src: 'multi', live: true }); });
-      (s.weeklyIndividualBets || []).forEach(b => {
-        if(!b || !b.pick) return;
-        if(Array.isArray(b.pick.legs) && b.pick.legs.length) b.pick.legs.forEach(l => push(b.name, l, { odds: Number(l.odds) || null, result: l.result === 'won' ? 'Win' : l.result === 'lost' ? 'Loss' : l.result === 'void' ? 'Void' : (b.result || null), week: 'This week', src: 'individual', live: true }));
-        else push(b.name, b.pick, { odds: Number(b.odds) || null, result: b.result || null, week: 'This week', src: 'individual', live: true });
-      });
     }
     return out;
   }
@@ -132,7 +123,7 @@
   // ---------- profile section ----------
   function profileSection(name){
     const legs = gather().filter(l => l.name === name);
-    if(!legs.length) return `<div class="ps-sec"><div class="ps-h">Picks</div><div class="ps-empty">No tracked picks yet. Every leg read from a slip is counted here.</div></div>`;
+    if(!legs.length) return `<div class="ps-sec"><div class="ps-h">Picks</div><div class="ps-empty">No tracked picks yet. Every group multi leg read from a slip is counted here.</div></div>`;
     const s = summary(legs);
     const bar = s.sports.slice(0, 5);
     const total = bar.reduce((a, t) => a + t.n, 0) || 1;
@@ -192,8 +183,8 @@
   }
   function renderBody(view){
     const legs = gather(); const body = $('pickStatsBody');
-    $('pickStatsNote').textContent = legs.length ? `${legs.length} legs tracked from read slips${legs.some(l => l.live) ? ', including this week' : ''}.` : '';
-    if(!legs.length){ body.innerHTML = `<div class="ps-empty">Nothing tracked yet. Every leg read from a slip (Admin → Week → Bet slips → Read slips) is counted here, and it builds up week by week.</div>`; return; }
+    $('pickStatsNote').textContent = legs.length ? `${legs.length} group multi legs tracked from read slips${legs.some(l => l.live) ? ', including this week' : ''}.` : '';
+    if(!legs.length){ body.innerHTML = `<div class="ps-empty">Nothing tracked yet. Every group multi leg read from a slip (Admin → Week → Bet slips → Read slips) is counted here, and it builds up week by week.</div>`; return; }
     if(view === 'teams'){
       const t = tally(legs, l => l.team);
       body.innerHTML = `<div class="ps-table"><div class="ps-tr ps-th"><span>Team or player</span><span>Backed</span><span>W–L</span><span>Win %</span></div>${t.slice(0, 40).map(x => {

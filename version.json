@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.209",
+  "version": "2026-10-17.210",
   "date": "2026-10-17",
   "changes": [
+    "Stat sheets now count group multi legs only",
     "Payout figures use the real stakes: $12.50 on the group multi and $50 on each individual bet",
-    "Results are marked in Admin: each person's selection now shows next to their result box, and the $ amount fills in from the slip",
-    "Running costs now include Anthropic (the slip reader): this month, all time and cost per scan, plus a this-month all-in total"
+    "Results are marked in Admin: each person's selection now shows next to their result box, and the $ amount fills in from the slip"
   ]
 }
