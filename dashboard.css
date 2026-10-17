@@ -6995,3 +6995,17 @@
 /* bar: keep the game's name readable */
 .cz-bar-bal{ padding:8px 10px; }
 .cz-bar-title{ font-size:15.5px; }
+
+/* ===================== v202: no more blink on page changes ===================== */
+/* Two fade-ins used to run on every tab change (the original one and the
+   v186 slide), each starting from fully transparent, and the original one
+   restarted when the slide finished — a double flash. Now there's one
+   short slide that never hides the page. */
+.tab-panel.active{ animation:none !important; }
+.tab-panel.active.cp-in-fwd{ animation:cpTabFwd2 .2s cubic-bezier(.2,.8,.2,1) both !important; }
+.tab-panel.active.cp-in-back{ animation:cpTabBack2 .2s cubic-bezier(.2,.8,.2,1) both !important; }
+@keyframes cpTabFwd2{ from{ transform:translateX(10px); } to{ opacity:1; transform:none; } }
+@keyframes cpTabBack2{ from{ transform:translateX(-10px); } to{ opacity:1; transform:none; } }
+.casino-game-panel.cz-enter{ animation:czEnter2 .22s cubic-bezier(.2,.8,.2,1) both !important; }
+@keyframes czEnter2{ from{ transform:translateY(8px); } to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce){ .tab-panel.active.cp-in-fwd, .tab-panel.active.cp-in-back, .casino-game-panel.cz-enter{ animation:none !important; } }

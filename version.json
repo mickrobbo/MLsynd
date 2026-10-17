@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.201",
+  "version": "2026-10-17.202",
   "date": "2026-10-17",
   "changes": [
+    "Fixed the blink when changing tabs or pages: it now slides across quickly without the screen going dark",
     "Fixed the Casino home: recently played games now lead the games strip instead of spilling across the page",
-    "Fixed a doubled logo in the header, and tidied the casino's other pages, bar and buttons",
-    "Pop-ups no longer leave a highlight box on the first button after a tap"
+    "Fixed a doubled logo in the header, and tidied the casino's other pages, bar and buttons"
   ]
 }

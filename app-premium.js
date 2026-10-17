@@ -64,7 +64,7 @@
         if(panel && from > -1 && to > -1 && !document.documentElement.classList.contains('cp-lite')){
           panel.classList.remove('cp-in-fwd', 'cp-in-back'); void panel.offsetWidth;
           panel.classList.add(to < from ? 'cp-in-back' : 'cp-in-fwd');
-          setTimeout(() => panel.classList.remove('cp-in-fwd', 'cp-in-back'), 420);
+          setTimeout(() => panel.classList.remove('cp-in-fwd', 'cp-in-back'), 260);
         }
       }
       return r;
