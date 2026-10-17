@@ -7158,3 +7158,12 @@
 .ind-more{ margin-top:6px; font-size:11.5px; font-weight:700; color:var(--muted); }
 .ind-more-open, .ind-tile.open .ind-more-closed{ display:none; }
 .ind-tile.open .ind-more-open{ display:inline; }
+
+/* ===================== v208: picks shown in Admin where results are marked ===================== */
+.admin-entry-row.has-pick{ flex-wrap:wrap; }
+.admin-pick-line{ flex-basis:100%; font-size:11.5px; line-height:1.35; color:var(--muted); padding:0 2px; }
+.admin-pick-line b{ color:var(--chalk); font-weight:700; }
+#adminWeeklyIndividualBetsEntry > div > div{ flex-wrap:wrap; }
+#adminWeeklyIndividualBetsEntry .adminWibName{ flex:1 1 90px !important; min-width:0; }
+#adminWeeklyIndividualBetsEntry .adminWibResult{ flex:0 1 92px; min-width:0; }
+#adminWeeklyIndividualBetsEntry .adminWibAmount{ flex:0 1 80px; min-width:0; width:80px !important; }
