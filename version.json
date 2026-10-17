@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.203",
+  "version": "2026-10-17.204",
   "date": "2026-10-17",
   "changes": [
-    "Admin can now read Sportsbet slips: upload the screenshots, tap Read slips, check what it found, and it fills in the odds, results, stake and return",
-    "Fixed the blink when changing tabs or pages",
-    "Fixed the Casino home: recently played games now lead the games strip instead of spilling across the page"
+    "Each person's selection from a read slip now shows on Home: tap a face, or See all legs",
+    "The admin can mark legs and individual bets Won, Lost or Void straight from Home",
+    "Admin can read Sportsbet slips to fill in odds, results, stake and return"
   ]
 }

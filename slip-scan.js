@@ -203,8 +203,15 @@
       if(leg.odds != null){ odds.value = Number(leg.odds).toFixed(2); fire(odds); }
       const r = RESULT_TO_APP[leg.result];
       if(r){ result.value = r; fire(result); }
+      // v204: keep the selection so Home can show what each person picked
+      try{
+        const d = currentState.groupEntryDraft[name] || (currentState.groupEntryDraft[name] = {});
+        d.pick = { sel: leg.selection || '', market: leg.market || null, event: leg.event || null };
+        adminGroupDraftDirty.add(name);
+      }catch(e){}
       filled++;
     });
+    try{ scheduleAdminGroupDraftSave(); }catch(e){}
     const out = $('adminGMultiOut'), ret = $('adminGMultiRet');
     if(out && b.stake != null && !b.bonus_bet){ out.value = b.stake; fire(out); }
     const r = settledReturn(b);
@@ -241,6 +248,12 @@
       if(i < 0){ rows.push({}); i = rows.length - 1; }
       const pl = r != null && b.stake != null ? Math.round((r - (b.bonus_bet ? 0 : b.stake)) * 100) / 100 : '';
       rows[i] = { ...rows[i], name, result, pl: result ? pl : '', placed: true };
+      // v204: slip details travel with the bet so Home can show them and the
+      // Home result buttons can work out the P/L
+      const leg = b.legs[0] || {};
+      window.slipIndExtras = window.slipIndExtras || {};
+      window.slipIndExtras[name] = { pick: { sel: b.legs.length > 1 ? `${b.legs.length}-leg ${b.type === 'same_game_multi' ? 'same game multi' : 'multi'}` : (leg.selection || ''), market: b.legs.length > 1 ? b.legs.map(l => l.selection).filter(Boolean).join(', ').slice(0, 120) : (leg.market || null), event: leg.event || null },
+        stake: b.bonus_bet ? null : b.stake, odds: b.combined_odds || leg.odds || null, ret: b.potential_return };
       renderAdminWeeklyIndividualBetsEntry(rows);
       const save = $('adminSaveWeeklyBetsBtn'); if(save) save.click();
     }

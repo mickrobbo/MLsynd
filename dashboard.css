@@ -7057,3 +7057,38 @@
 .ss-ind-person[hidden]{ display:none; }
 .ss-apply-btn{ margin-left:auto; background:var(--accent) !important; color:var(--accent-ink, #0B0C0B) !important; border:none !important; font-weight:800; }
 @media (prefers-reduced-motion: reduce){ #slipScanBtn.ss-pulse, .ss-skel{ animation:none; } }
+
+/* ===================== v204: selections and result buttons on Home ===================== */
+.hm-pick{ margin-top:10px; display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.04); }
+.hm-pick b{ font-size:14.5px; font-weight:800; color:var(--chalk); }
+.hm-pick span{ font-size:12px; color:var(--muted); }
+.hm-ticks{ display:flex; gap:6px; margin-top:10px; }
+.hm-tick{ flex:1; height:38px; padding:0 8px !important; border-radius:12px !important; border:1px solid rgba(255,255,255,.12) !important; background:rgba(255,255,255,.04) !important; color:var(--chalk) !important; font-size:13px !important; font-weight:800 !important; box-shadow:none !important; }
+.hm-tick.t-clear{ flex:0 0 auto; color:var(--muted) !important; }
+.hm-tick.t-win.on{ background:#22A35A !important; border-color:#22A35A !important; color:#fff !important; }
+.hm-tick.t-loss.on{ background:#E5484D !important; border-color:#E5484D !important; color:#fff !important; }
+.hm-tick.t-void.on{ background:#7FA8D8 !important; border-color:#7FA8D8 !important; color:#0e1a2a !important; }
+.hm-tick:active{ transform:scale(.96); }
+.hm-all-toggle{ display:block; width:100%; margin-top:12px; height:38px; border-radius:12px !important; border:1px solid rgba(255,255,255,.08) !important; background:transparent !important; color:var(--accent) !important; font-size:13.5px !important; font-weight:800 !important; box-shadow:none !important; }
+.hm-all{ margin-top:6px; }
+.hm-all-row{ display:grid; grid-template-columns:62px minmax(0,1fr) auto auto; grid-template-areas:"name sel odds chip" "ticks ticks ticks ticks"; align-items:center; gap:4px 10px; padding:10px 2px; border-top:1px solid rgba(255,255,255,.06); }
+.hm-all-row .hm-ticks{ grid-area:ticks; margin-top:4px; }
+.hm-all-name{ grid-area:name; font-size:13px; font-weight:800; color:var(--chalk); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hm-all-sel{ grid-area:sel; min-width:0; display:flex; flex-direction:column; }
+.hm-all-sel b{ font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hm-all-sel span{ font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hm-all-odds{ grid-area:odds; font-weight:800; font-variant-numeric:tabular-nums; }
+.hm-chip-sm{ grid-area:chip; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:800; background:rgba(255,255,255,.07); color:var(--muted); }
+.hm-all-row.result-win .hm-chip-sm{ background:rgba(34,163,90,.2); color:#7FE3A2; }
+.hm-all-row.result-loss .hm-chip-sm{ background:rgba(229,72,77,.18); color:#FF8A80; }
+.hm-all-row.result-void .hm-chip-sm{ background:rgba(127,168,216,.18); color:#A9C6EA; }
+.hm-all-row.result-mia .hm-chip-sm{ background:rgba(226,178,60,.18); color:#F0CB6E; }
+.ind-pick{ margin-top:6px; font-size:12.5px; color:var(--muted); line-height:1.35; }
+.ind-pick b{ color:var(--chalk); font-weight:700; }
+.ind-pick .ind-stake{ display:block; font-size:11.5px; }
+.ind-tile .hm-ticks{ margin-top:8px; gap:4px; flex-wrap:wrap; }
+.ind-tile .hm-tick{ height:32px; font-size:12px !important; border-radius:10px !important; }
+.hm-all-row .hm-tick{ height:32px; font-size:12px !important; border-radius:10px !important; }
+.ind-tile .hm-ticks{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); }
+.ind-tile .hm-tick{ padding:0 4px !important; }
+.ind-tile .hm-tick.t-clear, .hm-all-row .hm-tick.t-clear{ grid-column:1 / -1; height:26px; background:none !important; border:none !important; font-size:11.5px !important; text-decoration:underline; }
