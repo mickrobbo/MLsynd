@@ -7198,3 +7198,12 @@ html, body{ overflow-x:clip; }
 .ind-detail .hm-insight{ margin:8px 0 2px; }
 button.hm-detail-av{ padding:0 !important; border:0 !important; cursor:pointer; font:inherit; font-weight:800; font-size:15px; color:var(--chalk) !important; min-height:0 !important; width:38px !important; height:38px !important; border-radius:50% !important; background-color:var(--surface) !important; background-size:cover; background-position:center; box-shadow:0 0 0 2px var(--ring, #565c57) !important; transform:none; }
 .hm-open-profile{ cursor:pointer; }
+
+/* ===================== v216: facts about what was backed ===================== */
+.hm-fact span{ color:var(--chalk) !important; }
+.hm-fact span + span{ color:var(--muted) !important; }
+.hm-odds-note{ background:none; padding:4px 2px 0; margin-top:6px; }
+.hm-odds-note span{ color:var(--muted); font-size:12px; }
+.ind-fact{ display:flex; flex-direction:column; margin-top:3px; }
+.ind-fact span{ font-size:11.5px; color:var(--chalk); opacity:.85; white-space:normal; line-height:1.3; }
+.ind-fact span + span{ color:var(--muted); opacity:1; }

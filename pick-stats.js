@@ -217,5 +217,5 @@
     const btn = $('pickStatsOpenBtn'); if(btn) btn.addEventListener('click', open);
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  window.pickStats = { gather, summary, open };
+  window.pickStats = { gather, summary, open, classify: (p) => ({ sport: guessSport(p || {}), kind: guessKind(p || {}), team: guessTeam(p || {}) }) };
 })();
