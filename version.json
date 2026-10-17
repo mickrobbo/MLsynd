@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.196",
+  "version": "2026-10-17.199",
   "date": "2026-10-17",
   "changes": [
-    "Admin is now six tabs (Week, Money, Tipping, People, Insights and Tools) with shorter, plainer help text",
-    "The Week tab runs in the order you actually do things, and rarely used panels start folded away",
-    "Settle up opens the syndicate's banking details, with a copy button for each one"
+    "Home is now grouped: anything that needs you up top, then this week's bets (multi, individual bets and form guide together), then the money with the season chart, then the Board",
+    "Each section has a shortcut to its page: Bet slips for the bets, Cash for the money",
+    "The casino has a new lobby and every game opens full screen"
   ]
 }

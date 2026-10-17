@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=196">
+<link rel="stylesheet" href="dashboard.css?v=199">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -112,6 +112,22 @@
       <div class="home-greet-sub" id="homeGreetSub"></div>
     </div>
 
+    <!-- v199 Home, in the order people use it: anything that needs you,
+         this week's bets, the money, the Board, then the extras. -->
+    <div class="home-top-slot" id="homeTopSlot">
+    <button type="button" class="home-owe" id="homeOweChip" style="display:none;"></button>
+    <details id="weeklyReminderPanel" class="home-todo" style="display:none;">
+      <summary><span class="home-todo-dot"></span><span id="weeklyReminderCount">Still to do this week</span><span class="home-todo-chev" aria-hidden="true"></span></summary>
+      <div id="weeklyReminderList"></div>
+      <div class="home-todo-actions">
+        <button type="button" class="home-link" id="weeklyReminderClearBtn">Hide until next week</button>
+      </div>
+    </details>
+    <div class="home-digest" id="homeDigestWidget" style="display:none;"></div>
+    </div>
+
+    <section class="home-sec home-group home-bets" aria-labelledby="homeBetsTitle">
+      <div class="home-row-head"><span class="home-section-title" id="homeBetsTitle">This week's bets</span><button type="button" class="home-link" data-goto="home:slips">Bet slips</button></div>
     <section class="home-multi" aria-label="This week's group multi">
       <div class="hm-head">
         <span class="hm-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M14.5 8.5c-.4-.9-1.4-1.3-2.5-1.3-1.4 0-2.3.7-2.3 1.7 0 2.4 5 1.3 5 3.8 0 1.1-1.1 1.8-2.6 1.8-1.2 0-2.2-.5-2.6-1.4M12 6v1.2M12 14.5v1.3"/></svg></span>
@@ -124,10 +140,19 @@
       <div id="groupMultiArea"></div>
       <div class="home-slip-foot" id="homeSlipFoot"></div>
     </section>
+    <div class="home-block home-ind" id="homeIndSection">
+      <div class="home-block-title">Individual bets</div>
+      <div id="weeklyIndividualBetsArea"></div>
+    </div>
+    <div class="home-block" id="formGuidePanel">
+      <div class="home-block-title">Form guide</div>
+      <div id="formGuideArea"><div class="empty">Loading…</div></div>
+    </div>
+    </section>
 
+    <section class="home-sec home-group home-moneysec" aria-labelledby="homeMoneyTitle">
+      <div class="home-row-head"><span class="home-section-title" id="homeMoneyTitle">Money</span><button type="button" class="home-link" data-goto="home:cash">Cash</button></div>
     <div class="offline-money-notice" id="moneyOfflineNoticeHome" style="display:none;"></div>
-
-    <!-- The money, in one block: bank on top, season and week underneath -->
     <div class="home-money" id="homeCards">
       <button type="button" class="home-money-cell home-money-bank toteboard-cell" id="balBankCell" data-goto="home:cash">
         <span class="home-money-lbl">Syndicate bank</span>
@@ -145,7 +170,17 @@
         <span class="home-money-meta home-money-meta-2"><span>Out <b id="balOutlay">$0</b></span><span>Back <b id="balReturn">$0</b></span></span>
       </button>
     </div>
-    <button type="button" class="home-owe" id="homeOweChip" style="display:none;"></button>
+      <div class="home-block home-season">
+        <div class="home-block-title">Season P/L by week<span class="pl-hero-val" id="plHeroVal" hidden>$0</span></div>
+        <div id="chartArea"></div>
+      </div>
+    </section>
+
+    <section class="home-sec home-podium-wrap" aria-label="Top of the Board">
+      <div class="home-row-head"><span class="home-section-title">Top of the Board</span><button type="button" class="home-link" data-goto="board">Full board</button></div>
+      <div class="home-podium" id="homePodium"></div>
+      <div class="podium-pot" id="homePodiumPot" style="display:none;"></div>
+    </section>
 
     <div class="home-quick">
       <button type="button" class="home-quick-btn" id="homeCasinoTeaser" style="display:none;">
@@ -160,39 +195,6 @@
       </button>
     </div>
     <div id="homeCardsDots" hidden></div>
-
-    <div class="home-digest" id="homeDigestWidget" style="display:none;"></div>
-    <details id="weeklyReminderPanel" class="home-todo" style="display:none;">
-      <summary><span class="home-todo-dot"></span><span id="weeklyReminderCount">Still to do this week</span><span class="home-todo-chev" aria-hidden="true"></span></summary>
-      <div id="weeklyReminderList"></div>
-      <div class="home-todo-actions">
-        <button type="button" class="home-link" id="weeklyReminderClearBtn">Hide until next week</button>
-      </div>
-    </details>
-
-    <section class="home-sec home-podium-wrap" aria-label="Top of the Board">
-      <div class="home-row-head"><span class="home-section-title">Top of the Board</span><button type="button" class="home-link" data-goto="board">Full board</button></div>
-      <div class="home-podium" id="homePodium"></div>
-      <div class="podium-pot" id="homePodiumPot" style="display:none;"></div>
-    </section>
-
-    <section class="home-sec home-season">
-      <div class="home-row-head">
-        <span class="home-section-title">The season so far</span>
-        <span class="pl-hero-val" id="plHeroVal" hidden>$0</span>
-      </div>
-      <div id="chartArea"></div>
-    </section>
-
-    <section class="home-sec home-ind" id="homeIndSection">
-      <div class="home-row-head"><span class="home-section-title">Individual bets</span></div>
-      <div id="weeklyIndividualBetsArea"></div>
-    </section>
-
-    <section class="home-sec" id="formGuidePanel">
-      <div class="home-row-head"><span class="home-section-title">Form guide</span></div>
-      <div id="formGuideArea"><div class="empty">Loading…</div></div>
-    </section>
 
     <section class="home-sec" id="onThisDayPanel" hidden>
       <div class="home-row-head"><span class="home-section-title">On this day</span></div>
@@ -1940,7 +1942,7 @@
       <div style="text-align:center; margin-top:2px;">
         <button type="button" id="vpPlayDealerBtn" class="small">🎩 Play the Dealer: Off</button>
       </div>
-      <div class="hint" style="text-align:center; margin-top:2px;">When on, a Dealer hand is dealt from the same deck after your draw — beat it for a bonus equal to your bet, on top of the paytable.</div>
+      <div class="hint" style="text-align:center; margin-top:2px;">A side bet of one extra bet per hand. The dealer draws too, ties go to the dealer, and beating the dealer pays 9 for every 10 bet.</div>
       <div style="display:flex; justify-content:center; margin-top:4px;">
         <div class="bj-chip" id="vpChipDisplay">50</div>
         <input type="number" id="vpBetInput" min="1" step="10" value="50" readonly style="width:0; opacity:0; position:absolute;">
@@ -4006,7 +4008,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-17.196"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-17.199"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -8047,6 +8049,41 @@ function renderActOfGodBanner(){
 }
 setInterval(() => { if(!document.hidden) pollActsOfGod(); }, 60000);
 
+// v197: unfinished-round guard for Slots and Video Poker. The stake is
+// recorded at /xp/{uid}/pendingRound/{game} before any result shows and
+// cleared when the round settles. If the app is refreshed or closed in
+// between, the stake is charged as a loss the next time it opens, so a
+// bad deal or a losing spin can no longer be dodged by reloading.
+const CASINO_PENDING_REASONS = { slots: 'Slots loss', videopoker: 'Video Poker loss' };
+async function casinoRoundStart(game, stake){
+  if(!currentUserUid || !(stake > 0) || currentUserRole === 'readonly') return;
+  try{
+    await authedFetch(`/xp/${currentUserUid}/pendingRound/${game}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stake: Math.round(stake), ts: { '.sv': 'timestamp' } }) });
+  }catch(e){}
+}
+function casinoRoundEnd(game){
+  if(!currentUserUid || currentUserRole === 'readonly') return;
+  authedFetch(`/xp/${currentUserUid}/pendingRound/${game}.json`, { method: 'DELETE' }).catch(() => {});
+}
+async function casinoSettleUnfinishedRounds(){
+  if(!currentUserUid || currentUserRole === 'readonly') return;
+  try{
+    const res = await authedFetch(`/xp/${currentUserUid}/pendingRound.json`);
+    if(!res.ok) return;
+    const pending = await res.json();
+    if(!pending || typeof pending !== 'object') return;
+    let total = 0;
+    for(const [game, p] of Object.entries(pending)){
+      const stake = Math.round(Number(p && p.stake) || 0);
+      // Clear first, so a second open can never charge the same round twice.
+      const del = await authedFetch(`/xp/${currentUserUid}/pendingRound/${game}.json`, { method: 'DELETE' });
+      if(!del.ok || stake <= 0) continue;
+      await awardXP(-stake, `${CASINO_PENDING_REASONS[game] || 'Casino loss'} (unfinished round)`, { silent: true });
+      total += stake;
+    }
+    if(total > 0 && typeof showToast === 'function') showToast(`An unfinished casino round was settled as a loss (−${total.toLocaleString()} XP)`);
+  }catch(e){}
+}
 async function awardXP(amount, reason, opts){
   if(!currentUserUid || !amount) return;
   // Double XP Hour — only wins get doubled, never losses (that'd be a
@@ -10353,6 +10390,8 @@ let casinoTickerSeeded = false; // first poll only seeds "already seen" silently
 let casinoTickerQueue = [];
 let casinoTickerShowing = false;
 async function pollCasinoTicker(){
+  // v198: nothing this updates is on screen while a game is open full screen
+  { const t = document.getElementById('tab-casino'); if(t && t.classList.contains('cz-game')) return; }
   refreshChallengesBadgeOnly(); // piggybacks on the same 8s tab-scoped interval — no separate poller needed for this
   refreshHoldemBadge();
   refreshBountiesBadgeOnly();
@@ -11837,9 +11876,10 @@ const CASINO_RULES = {
     <h3>Object</h3>
     <p>A real 5-reel, 3-row grid. Pick 1, 3, or 5 paylines (Middle only, or add Top+Bottom, or add both diagonals) and set your bet PER LINE — your total stake is bet-per-line × how many lines you've got active. Tap Spin — all five reels spin and stop in sequence, left to right. Each active payline pays on its own: matching symbols have to run unbroken starting from reel 1 along that line's path. Two matching pays a small 1:1 consolation, three/four/five pay escalating multipliers per the table below. A broken run (e.g. reels 1 and 3 match but not 2) pays nothing on that line. Winning lines are traced across the grid so you can see exactly what hit.</p>
     <h3>Odds</h3>
+    <p>A line needs three or more matching symbols in a row from reel 1 to pay. The machine returns about 93% of what's bet over the long run, and closing or refreshing mid-spin counts as a loss.</p>
     <p>Every cell on the grid picks independently from the same weighted set of symbols, so the rarer a symbol looks on the reel, the rarer it actually is — cherries turn up often for a small win, five 👑 in a row on a line is the real jackpot and genuinely rare.</p>
     <h3>Free Spins</h3>
-    <p>Land 3 or more 👑 anywhere on the grid — any row, any reel, doesn't need to be on a line you bet on — and you get 8 free spins at a 3x multiplier on every win. Your bet is locked at whatever triggered it for the whole bonus (the controls disable themselves), and free spins can retrigger for more on top of what's left. Free spins never cost you anything, even the ones that don't hit.</p>
+    <p>Land 3 or more 👑 anywhere on the grid — any row, any reel, doesn't need to be on a line you bet on — and you get 8 free spins at a 2x multiplier on every win (all five reels: 15 spins at 3x). Your bet is locked at whatever triggered it for the whole bonus (the controls disable themselves), and free spins can retrigger for more on top of what's left. Free spins never cost you anything, even the ones that don't hit.</p>
     <h3>Gamble</h3>
     <p>Win on a normal spin (not during Free Spins) and you can risk it before collecting: pick Red or Black for a clean 2x, or call the exact suit for 4x. Guess right and your pot grows, guess wrong and it's gone — but never more than the win itself, your balance never drops below what it was before that spin. Keep going for up to 5 rounds, or collect whenever you want to bank it.</p>
   `},
@@ -11869,11 +11909,13 @@ const CASINO_RULES = {
   `},
   videopoker: { title: '🂡 Video Poker Rules', body: `
     <h3>Object</h3>
-    <p>Tens or Better draw poker. Set your bet and Deal — you're shown 5 cards from a single 52-card deck.</p>
+    <p>Jacks or Better draw poker. Set your bet and Deal — you're shown 5 cards from a single 52-card deck. Your bet is locked once the cards are out, and closing or refreshing mid-hand counts as a loss.</p>
     <h3>Hold &amp; Draw</h3>
     <p>Tap Hold under any card you want to keep, then hit Draw — every card you didn't hold is replaced once. Your final 5-card hand is scored against the paytable below.</p>
-    <h3>Payouts (multiplier on your bet)</h3>
-    <p>Royal Flush 250:1 &middot; Straight Flush 50:1 &middot; Four of a Kind 25:1 &middot; Full House 9:1 &middot; Flush 6:1 &middot; Straight 4:1 &middot; Three of a Kind 3:1 &middot; Two Pair 2:1 &middot; Tens or Better (a pair of 10/J/Q/K/A) 1:1. Anything weaker than a pair of Tens returns nothing.</p>
+    <h3>Payouts (returned for each 1 bet, bet included)</h3>
+    <p>Royal Flush 250 &middot; Straight Flush 50 &middot; Four of a Kind 25 &middot; Full House 7 &middot; Flush 5 &middot; Straight 4 &middot; Three of a Kind 3 &middot; Two Pair 2 &middot; Jacks or Better (a pair of J/Q/K/A) gives your bet back. Anything weaker loses the bet.</p>
+    <h3>Play the Dealer</h3>
+    <p>An optional side bet of one extra bet per hand. The dealer draws too, ties go to the dealer, and beating the dealer pays 9 for every 10 bet.</p>
   `},
   casinopot: { title: '🏆 Casino Pot', body: `
     <h3>Where it comes from</h3>
@@ -12060,10 +12102,10 @@ document.getElementById('crapsRollTopBtn').addEventListener('click', crapsRoll);
 <script>
 
 </script>
-<script src="casino-slots.js"></script>
+<script src="casino-slots.js?v=197"></script>
 <script>
 </script>
-<script src="casino-videopoker.js"></script>
+<script src="casino-videopoker.js?v=197"></script>
 <script src="casino-crash.js"></script>
 <script src="casino-doubleornothing.js"></script>
 <script>
@@ -24569,6 +24611,7 @@ function startApp(){
     if(currentUserRole !== 'readonly') resolveMyMemberIndex(currentUserName).catch(() => {});
     if(currentUserRole !== 'readonly') groupDraftRecoverFromMirror();
     maybeResetSeasonPointsAfterArchive();
+    casinoSettleUnfinishedRounds(); // v197
     renderHomeDigest();
     pollActsOfGod();
     checkGroupChatUnread();
@@ -24631,7 +24674,8 @@ function startApp(){
 initAuthGate();
 </script>
 
-<script src="casino-premium.js?v=186"></script>
-<script src="app-premium.js?v=188"></script>
+<script src="casino-premium.js?v=198"></script>
+<script src="casino-luxe.js?v=198"></script>
+<script src="app-premium.js?v=199"></script>
 </body>
 </html>

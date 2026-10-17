@@ -250,7 +250,7 @@
     return bjBest(hand, up, vis('bjDoubleBtn'), vis('bjSplitBtn'));
   }
 
-  // Video Poker (Tens or Better): returns a held[] array
+  // Video Poker (Jacks or Better): returns a held[] array
   const VR = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
   const rv = (c) => VR.indexOf(c.rank) + 2;
   function vpBestHold(hand){
@@ -270,15 +270,15 @@
     // 4 to a straight flush
     for(const g of Object.values(bySuit)){ if(g.length >= 4){ const v = g.map(i => rv(hand[i])).sort((a, b) => a - b); for(let s = 0; s + 3 < v.length; s++){ if(v[s + 3] - v[s] <= 4) return hold(g); } } }
     if(groups[0].length === 2 && groups[1] && groups[1].length === 2) return hold(groups[0].concat(groups[1]));
-    if(groups[0].length === 2 && rv(hand[groups[0][0]]) >= 10) return hold(groups[0]);
+    if(groups[0].length === 2 && rv(hand[groups[0][0]]) >= 11) return hold(groups[0]); // v197: Jacks or Better
     for(const g of Object.values(bySuit)){ const r = g.filter(i => royal.includes(hand[i].rank)); if(r.length === 3) return hold(r); }
     for(const g of Object.values(bySuit)){ if(g.length === 4) return hold(g); }
     if(groups[0].length === 2) return hold(groups[0]);
     // 4 to an outside straight
     const uniqIdx = []; const seen = new Set(); hand.map((c, i) => [rv(c), i]).sort((a, b) => a[0] - b[0]).forEach(([v, i]) => { if(!seen.has(v)){ seen.add(v); uniqIdx.push([v, i]); } });
     for(let s = 0; s + 3 < uniqIdx.length; s++){ if(uniqIdx[s + 3][0] - uniqIdx[s][0] === 3 && uniqIdx[s][0] >= 2 && uniqIdx[s + 3][0] <= 13) return hold(uniqIdx.slice(s, s + 4).map(x => x[1])); }
-    const high = hand.map((c, i) => [rv(c), i]).filter(([v]) => v >= 10);
-    for(const g of Object.values(bySuit)){ const h = g.filter(i => rv(hand[i]) >= 10); if(h.length >= 2) return hold(h.slice(0, 2)); }
+    const high = hand.map((c, i) => [rv(c), i]).filter(([v]) => v >= 11);
+    for(const g of Object.values(bySuit)){ const h = g.filter(i => rv(hand[i]) >= 11); if(h.length >= 2) return hold(h.slice(0, 2)); }
     if(high.length >= 2){ high.sort((a, b) => a[0] - b[0]); return hold(high.slice(0, 2).map(x => x[1])); }
     if(high.length === 1) return hold([high[0][1]]);
     return none;
@@ -625,26 +625,39 @@
     if(!S.haptics) return;
     for(const m of muts){ for(const n of m.addedNodes){ if(n.nodeType === 1 && (n.classList.contains('pc-dealt') || (n.querySelector && n.querySelector('.pc-dealt')))){ buzz(6); return; } } }
   }).observe(document.body, { childList: true, subtree: true });
-  let trailRaf = null;
+  // v198: the trail loop only runs while a ball is actually dropping. It
+  // used to run every frame forever, on every tab, which kept the phone's
+  // CPU busy for nothing.
+  let trailRaf = null, trailStill = 0;
+  const trailReduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   function plinkoTrail(){
+    trailRaf = null;
     const wrap = $('plinkoBoardWrap');
-    if(wrap && currentGame === 'plinko'){
-      const balls = wrap.querySelectorAll('.plinko-ball');
-      if(balls.length){
-        const wr = wrap.getBoundingClientRect();
-        balls.forEach(b => {
-          const r = b.getBoundingClientRect(); if(!r.width) return;
-          const x = r.left - wr.left + r.width / 2, y = r.top - wr.top + r.height / 2;
-          if(b._lx != null && Math.hypot(x - b._lx, y - b._ly) < 3) return;
-          b._lx = x; b._ly = y;
-          const d = document.createElement('span'); d.className = 'cp-trail'; d.style.left = x + 'px'; d.style.top = y + 'px';
-          wrap.appendChild(d); setTimeout(() => d.remove(), 420);
-        });
-      }
-    }
+    if(!wrap || currentGame !== 'plinko') return;
+    const balls = wrap.querySelectorAll('.plinko-ball');
+    if(!balls.length) return;
+    const wr = wrap.getBoundingClientRect();
+    let moved = false;
+    balls.forEach(b => {
+      const r = b.getBoundingClientRect(); if(!r.width) return;
+      const x = r.left - wr.left + r.width / 2, y = r.top - wr.top + r.height / 2;
+      if(b._lx != null && Math.hypot(x - b._lx, y - b._ly) < 3) return;
+      moved = true;
+      b._lx = x; b._ly = y;
+      const d = document.createElement('span'); d.className = 'cp-trail'; d.style.left = x + 'px'; d.style.top = y + 'px';
+      wrap.appendChild(d); setTimeout(() => d.remove(), 420);
+    });
+    trailStill = moved ? 0 : trailStill + 1;
+    if(trailStill > 20){ trailStill = 0; return; } // every ball has landed and stopped
     trailRaf = requestAnimationFrame(plinkoTrail);
   }
-  if(!window.matchMedia || !matchMedia('(prefers-reduced-motion: reduce)').matches) trailRaf = requestAnimationFrame(plinkoTrail);
+  const plinkoWrapEl = $('plinkoBoardWrap');
+  if(plinkoWrapEl && !trailReduced){
+    new MutationObserver((muts) => {
+      if(trailRaf) return;
+      for(const m of muts) for(const nd of m.addedNodes){ if(nd.nodeType === 1 && (nd.classList.contains('plinko-ball') || (nd.querySelector && nd.querySelector('.plinko-ball')))){ trailRaf = requestAnimationFrame(plinkoTrail); return; } }
+    }).observe(plinkoWrapEl, { childList: true, subtree: true });
+  }
 
   // ---------- hide the old per-game auto controls (Auto Play covers every table now) ----------
   ['bacAutoPlayBtn', 'bacAutoPlayCountRow', 'slotsAutoSpinBtn', 'slotsAutoSpinCountRow'].forEach(id => {

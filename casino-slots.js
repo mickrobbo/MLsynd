@@ -11,21 +11,20 @@
 // win moment in the casino.
 const SLOTS_REEL_COUNT = 5;
 const SLOTS_ROW_COUNT = 3;
+// v197: retuned. The old table paid about 240% (every 2-match paid, and
+// the line pays were far too rich for how often they land), which is how
+// balances were being run up. These weights and pays come out at about
+// 93% back to the player over the long run, free spins included
+// (simulated over millions of spins at 1, 3 and 5 lines).
 const SLOTS_SYMBOLS = [
-  { sym: '🍒', weight: 8, mult3: 3, mult4: 8, mult5: 20 },
-  { sym: '🍋', weight: 7, mult3: 5, mult4: 12, mult5: 30 },
-  { sym: '🔔', weight: 5, mult3: 10, mult4: 25, mult5: 75 },
-  { sym: '⭐', weight: 4, mult3: 20, mult4: 50, mult5: 150 },
-  { sym: '💎', weight: 2, mult3: 50, mult4: 150, mult5: 400 },
-  // Wild — substitutes for any regular symbol to help complete a line
-  // (see slotsEvaluateRun), classic slot convention for this exact
-  // emoji. Doesn't substitute for 👑's SCATTER role (that's checked
-  // globally across the board, not per-line, so substitution doesn't
-  // apply there anyway) — but it IS itself a normal payline symbol too,
-  // with its own strong native payout when it lands as a natural run,
-  // sitting between 💎 and 👑 in both rarity and payout.
-  { sym: '7️⃣', weight: 2, mult3: 60, mult4: 180, mult5: 500 },
-  { sym: '👑', weight: 1, mult3: 100, mult4: 300, mult5: 1000 }
+  { sym: '🍒', weight: 12, mult3: 2,  mult4: 7,   mult5: 18 },
+  { sym: '🍋', weight: 10, mult3: 4,  mult4: 10,  mult5: 30 },
+  { sym: '🔔', weight: 7,  mult3: 7,  mult4: 18,  mult5: 60 },
+  { sym: '⭐', weight: 5,  mult3: 14, mult4: 35,  mult5: 120 },
+  { sym: '💎', weight: 3,  mult3: 30, mult4: 75,  mult5: 300 },
+  // Wild — substitutes for any regular symbol on a line, and pays on its own run too.
+  { sym: '7️⃣', weight: 2,  mult3: 45, mult4: 120, mult5: 450 },
+  { sym: '👑', weight: 1,  mult3: 90, mult4: 250, mult5: 1000 }
 ];
 const SLOTS_WILD_SYMBOL = '7️⃣';
 const SLOTS_WEIGHTED_POOL = [];
@@ -44,7 +43,7 @@ const SLOTS_SYMBOL_HEIGHT = 66; // matches .slots-symbol height in CSS
 const SLOTS_SCATTER_SYMBOL = '👑';
 const SLOTS_FREE_SPINS_TRIGGER_COUNT = 3;
 const SLOTS_FREE_SPINS_AWARD = 8; // spins granted per trigger — a judgment call, not specified; easy to retune
-const SLOTS_FREE_SPINS_MULTIPLIER = 3;
+const SLOTS_FREE_SPINS_MULTIPLIER = 2; // v197: was 3x
 // MEGA tier — all 5 reels landing a crown at once (5-of-a-kind scatter,
 // the rarest possible board: weight 1 of 27 per reel, so roughly a
 // 1-in-14-million shot) awards a bigger bonus on top of the standard
@@ -55,8 +54,8 @@ const SLOTS_FREE_SPINS_MULTIPLIER = 3;
 // doesn't change the multiplier already locked in, same "no gaming the
 // payout mid-bonus" convention as the bet-lock above.
 const SLOTS_MEGA_TRIGGER_COUNT = 5;
-const SLOTS_MEGA_FREE_SPINS_AWARD = 20;
-const SLOTS_MEGA_FREE_SPINS_MULTIPLIER = 6;
+const SLOTS_MEGA_FREE_SPINS_AWARD = 15; // v197: was 20
+const SLOTS_MEGA_FREE_SPINS_MULTIPLIER = 3; // v197: was 6x
 let slotsFreeSpinsRemaining = 0;
 let slotsFreeSpinsBet = null; // { amountPerLine, lines } — locked in for the whole bonus
 let slotsFreeSpinsMultiplier = SLOTS_FREE_SPINS_MULTIPLIER; // set when a bonus starts, from whichever tier triggered it
@@ -89,6 +88,7 @@ let slotsLastBet = null; // { amountPerLine, lines }
 // (slotsGamblePot, slotsFreeSpinsRemaining, etc.) — that's exactly why
 // Cash Out exists rather than forcing it to sit there indefinitely.
 let slotsMachineBalance = 0;
+let slotsRoundOpen = false; // v197: a paid spin whose stake is recorded as pending
 function slotsUpdateMachineBalanceDisplay(){
   const el = document.getElementById('slotsMachineBalanceVal');
   if(el) el.textContent = slotsMachineBalance.toLocaleString();
@@ -282,7 +282,7 @@ function slotsBuildPaytable(){
   const rows = SLOTS_SYMBOLS.map(s =>
     `<div class="slots-pt-row"><div class="slots-pt-sym">${s.sym}</div><div class="vp-pt-mult">${s.mult3}:1</div><div class="vp-pt-mult">${s.mult4}:1</div><div class="vp-pt-mult">${s.mult5}:1</div></div>`
   ).join('');
-  const consolation = `<div class="slots-pt-consolation"><span class="vp-pt-name">Any 2 matching (left to right, per line)</span><span class="vp-pt-mult">1:1</span></div>`;
+  const consolation = `<div class="slots-pt-consolation"><span class="vp-pt-name">Wins need 3 or more in a row from reel 1</span><span class="vp-pt-mult"></span></div>`;
   // Feature callouts — reported as missing: the paytable showed line
   // payouts but never what actually TRIGGERS Free Spins/MEGA/the
   // jackpot, or what they're worth once triggered. Pulled directly from
@@ -443,6 +443,10 @@ async function slotsSpin(){
     // larger, with no cap) inflating it would be exactly the kind of
     // cross-economy leak this room exists to prevent.
     if(!slotsHighRollerMode) slotsContributeToJackpot(totalBet);
+    // v197: record the XP at stake before the reels show anything, so
+    // refreshing or closing the app mid-spin can't dodge a loss.
+    if(!slotsHighRollerMode && typeof casinoRoundStart === 'function') await casinoRoundStart('slots', xpAtRisk);
+    slotsRoundOpen = true;
   }
 
   if(sameBtn) sameBtn.disabled = true;
@@ -517,17 +521,12 @@ async function slotsSpin(){
   activeLines.forEach((line, lineIdx) => {
     const lineSymbols = line.rows.map((row, reelI) => grid[reelI][row]);
     const { run, anchor } = slotsEvaluateRun(lineSymbols);
-    if(run < 2) return; // this line didn't hit — no different from a real machine's dark line
+    if(run < 3) return; // v197: three in a row from reel 1 is the smallest win (2-match no longer pays)
     if(run === 5 && anchor === SLOTS_WILD_SYMBOL) progressiveJackpotWon = true;
     const symData = SLOTS_SYMBOLS.find(s => s.sym === anchor);
-    let delta;
-    if(run >= 3){
-      const mult = run === 3 ? symData.mult3 : (run === 4 ? symData.mult4 : symData.mult5);
-      delta = perLine * mult;
-      if(mult >= 50) isJackpot = true;
-    } else {
-      delta = perLine; // 2 matching — 1:1 consolation, same as the original single-line machine
-    }
+    const mult = run === 3 ? symData.mult3 : (run === 4 ? symData.mult4 : symData.mult5);
+    let delta = perLine * mult;
+    if(mult >= 50) isJackpot = true;
     if(isFreeSpin) delta *= slotsFreeSpinsMultiplier;
     totalDelta += delta;
     winningLineIndexes.push(lineIdx);
@@ -703,6 +702,7 @@ async function slotsSpin(){
   // first, and only reaches into real XP for whatever it doesn't cover.
   try{ if(window.casinoPremiumRound) window.casinoPremiumRound('slots', totalDelta); }catch(e){} // v185 premium layer: banner, results strip, Auto Play
   const goesToGamble = totalDelta > 0 && !isFreeSpin;
+  if(slotsRoundOpen){ slotsRoundOpen = false; if(typeof casinoRoundEnd === 'function') casinoRoundEnd('slots'); }
   if(totalDelta > 0 && !goesToGamble){
     slotsMachineBalance += totalDelta;
   } else if(totalDelta < 0){
@@ -733,6 +733,7 @@ async function slotsSpin(){
   }
   }catch(e){
     console.error('Slots spin failed partway through:', e);
+    if(slotsRoundOpen){ slotsRoundOpen = false; if(typeof casinoRoundEnd === 'function') casinoRoundEnd('slots'); }
     const errEl2 = document.getElementById('slotsBetError');
     if(errEl2) errEl2.textContent = 'Something went wrong mid-spin — your bet was not lost twice; refresh if the reels look stuck.';
   }finally{

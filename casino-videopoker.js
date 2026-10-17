@@ -1,15 +1,26 @@
-// ---- Video Poker (Tens or Better) ----
+// ---- Video Poker (Jacks or Better) ----
+// v197: Jacks or Better. "pays" is what comes back for each 1 bet,
+// including the bet itself, the way real machines quote it (a pair of
+// Jacks gives your bet back). The old table paid every line on top of
+// keeping the bet, from a pair of Tens up, which worked out at about 146%
+// before the free Play the Dealer bonus. This one returns about 94.5%
+// with perfect play, less with ordinary play.
 const VP_PAYTABLE = [
-  { key:'royal',    label:'Royal Flush',      mult:250 },
-  { key:'straightf',label:'Straight Flush',   mult:40  },
-  { key:'quads',    label:'Four of a Kind',   mult:20  },
-  { key:'fullhouse',label:'Full House',       mult:6   },
-  { key:'flush',    label:'Flush',            mult:5   },
-  { key:'straight', label:'Straight',         mult:4   },
-  { key:'trips',    label:'Three of a Kind',  mult:3   },
-  { key:'twopair',  label:'Two Pair',         mult:2   },
-  { key:'jacks',    label:'Tens or Better',    mult:1   }
+  { key:'royal',    label:'Royal Flush',      pays:250 },
+  { key:'straightf',label:'Straight Flush',   pays:50  },
+  { key:'quads',    label:'Four of a Kind',   pays:25  },
+  { key:'fullhouse',label:'Full House',       pays:7   },
+  { key:'flush',    label:'Flush',            pays:5   },
+  { key:'straight', label:'Straight',         pays:4   },
+  { key:'trips',    label:'Three of a Kind',  pays:3   },
+  { key:'twopair',  label:'Two Pair',         pays:2   },
+  { key:'jacks',    label:'Jacks or Better',  pays:1   }
 ];
+VP_PAYTABLE.forEach(p => { p.mult = p.pays - 1; }); // profit on top of the bet, used by the settlement below
+// Play the Dealer is now a side bet: one extra bet per hand, the dealer
+// draws too (holding the obvious cards), ties go to the dealer, and a win
+// pays 9 for every 10 bet. Roughly 95% back, like the main game.
+const VP_DEALER_WIN_PAYS = 0.9;
 let vpBuilt = false;
 let vpDeck = [];
 let vpHand = [];
@@ -73,7 +84,8 @@ document.getElementById('vpPlayDealerBtn').addEventListener('click', () => {
   if(vpStage !== 'idle') return; // can't change mid-hand
   vpPlayDealer = !vpPlayDealer;
   const btn = document.getElementById('vpPlayDealerBtn');
-  btn.textContent = `🎩 Play the Dealer: ${vpPlayDealer ? 'On' : 'Off'}`;
+  btn.textContent = `Play the Dealer: ${vpPlayDealer ? 'On, +1 bet a hand' : 'Off'}`;
+  vpUpdateTotalBetHint();
   btn.classList.toggle('slots-auto-running', vpPlayDealer);
 });
 document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(btn => {
@@ -88,7 +100,8 @@ function vpUpdateTotalBetHint(){
   const el = document.getElementById('vpTotalBetHint');
   if(!el) return;
   const perHand = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
-  el.textContent = vpHandCount > 1 ? `${perHand} XP/hand × ${vpHandCount} hands — total bet ${perHand * vpHandCount} XP` : '';
+  const bets = vpHandCount * (vpPlayDealer ? 2 : 1);
+  el.textContent = bets > 1 ? `${perHand} XP × ${vpHandCount} hand${vpHandCount > 1 ? 's' : ''}${vpPlayDealer ? ' + dealer side bet' : ''}, total bet ${perHand * bets} XP` : '';
 }
 // Builds an independent deck for one additional hand — a fresh shuffle
 // with the currently-dealt 5 cards removed first, so its own
@@ -101,7 +114,7 @@ function vpBuildExtraHandDeck(dealtHand){
 }
 function vpBuildPaytable(){
   const table = document.getElementById('vpPaytable');
-  table.innerHTML = VP_PAYTABLE.map(p => `<tr id="vpPayRow_${p.key}"><td>${p.label}</td><td style="text-align:right;">${p.mult}:1</td></tr>`).join('');
+  table.innerHTML = VP_PAYTABLE.map(p => `<tr id="vpPayRow_${p.key}"><td>${p.label}</td><td style="text-align:right;">${p.pays === 1 ? 'Bet back' : p.pays + '×'}</td></tr>`).join('');
   vpBuilt = true;
 }
 function vpRenderIdleHand(){
@@ -185,9 +198,22 @@ function vpEvaluateHand(hand){
   if(countVals[0] === 2 && countVals[1] === 2) return { key:'twopair', label:'Two Pair' };
   if(countVals[0] === 2){
     const pairRank = Number(Object.keys(counts).find(r => counts[r] === 2));
-    if(pairRank >= 10) return { key:'jacks', label:'Tens or Better' };
+    if(pairRank >= 11) return { key:'jacks', label:'Jacks or Better' };
   }
   return null;
+}
+// v197: the dealer's draw for Play the Dealer: keeps any made hand, a pair
+// or better, four to a flush, otherwise its Jacks or higher.
+function vpDealerHold(hand){
+  const all = hand.map(() => true);
+  const r = vpEvaluateHand(hand);
+  if(r && ['royal','straightf','quads','fullhouse','flush','straight'].includes(r.key)) return all;
+  const counts = {}; hand.forEach(c => counts[c.rank] = (counts[c.rank] || 0) + 1);
+  if(Object.values(counts).some(n => n >= 2)) return hand.map(c => counts[c.rank] >= 2);
+  const bySuit = {}; hand.forEach((c, i) => (bySuit[c.suit] = bySuit[c.suit] || []).push(i));
+  const four = Object.values(bySuit).find(g => g.length === 4);
+  if(four) return hand.map((_, i) => four.includes(i));
+  return hand.map(c => vpRankValue(c.rank) >= 11);
 }
 // Distinct short tick for toggling Hold — pitched up when holding, down
 // when releasing, so the two states are audibly different at a glance.
@@ -284,13 +310,18 @@ async function vpDeal(){
   errEl.textContent = '';
   const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
   if(amount <= 0){ errEl.textContent = 'Add some chips first.'; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
-  const totalBet = amount * vpHandCount;
+  const totalBet = amount * vpHandCount * (vpPlayDealer ? 2 : 1); // v197: Play the Dealer is a side bet, one extra bet per hand
   // No limits in the High Rollers Room.
   if(!vpHighRollerMode && totalBet > CASINO_MAX_BET_PER_HAND){ errEl.textContent = `Maximum total bet is ${CASINO_MAX_BET_PER_HAND.toLocaleString()} XP (${amount.toLocaleString()} × ${vpHandCount} hands = ${totalBet.toLocaleString()}).`; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
   const balance = await vpGetBalance();
   if(balance == null){ errEl.textContent = vpHighRollerMode ? 'Could not check your chip balance — try again.' : 'Could not check your XP balance — try again.'; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
   if(totalBet > balance){ errEl.textContent = vpHighRollerMode ? `You only have ${balance.toLocaleString()} chips (total bet: ${totalBet.toLocaleString()}).` : `You only have ${balance} XP (total bet: ${totalBet}).`; dealBtn.disabled = false; if(dealBtnTop) dealBtnTop.disabled = false; return; }
 
+  // v197: the bet is locked for this hand (it used to be read again at
+  // Draw, so it could be raised after seeing the cards), and the stake is
+  // recorded before any card shows, so a refresh can't dodge a bad deal.
+  vpRound = { amount, hands: vpHandCount, dealer: vpPlayDealer, totalBet };
+  if(!vpHighRollerMode && typeof casinoRoundStart === 'function') await casinoRoundStart('videopoker', totalBet);
   vpDeck = bjFreshDeck();
   vpHand = vpDeck.splice(0, 5);
   vpHeld = [false, false, false, false, false];
@@ -320,10 +351,14 @@ async function vpDeal(){
   document.getElementById('vpChipRail').style.opacity = '.5';
   document.querySelectorAll('#vpHandCountRow .craps-winmode-btn').forEach(b => { b.disabled = true; });
 }
+let vpRound = null; // v197: { amount, hands, dealer, totalBet } locked at Deal
 async function vpDraw(){
+  if(vpStage !== 'dealt' || !vpRound) return;
+  vpStage = 'drawing';
   scrollIntoViewSmooth('vpTableRail');
-  const amount = parseInt(document.getElementById('vpBetInput').value, 10) || 0;
-  const totalBet = amount * vpHandCount;
+  const amount = vpRound.amount;
+  const totalBet = vpRound.totalBet;
+  const playDealer = vpRound.dealer;
   document.getElementById('vpDrawBtn').disabled = true;
   const drawBtnTop = document.getElementById('vpDrawTopBtn');
   if(drawBtnTop) drawBtnTop.disabled = true;
@@ -369,8 +404,9 @@ async function vpDraw(){
       const pay = VP_PAYTABLE.find(p => p.key === r.key);
       const delta = amount * pay.mult;
       totalDelta += delta;
-      extraLabels.push(`Hand ${hi + 2}: ${r.label} +${delta}`);
-      if(labelEl){ labelEl.textContent = `${r.label} +${delta}`; labelEl.style.color = 'var(--win)'; }
+      const amt = delta > 0 ? `+${delta}` : 'bet back';
+      extraLabels.push(`Hand ${hi + 2}: ${r.label} ${amt}`);
+      if(labelEl){ labelEl.textContent = `${r.label} ${amt}`; labelEl.style.color = 'var(--win)'; }
     } else {
       totalDelta -= amount;
       extraLabels.push(`Hand ${hi + 2}: No win`);
@@ -387,8 +423,11 @@ async function vpDraw(){
   // there's no additional risk for turning this on.
   const dealerArea = document.getElementById('vpDealerArea');
   let dealerBonusParts = [];
-  if(vpPlayDealer){
-    const dealerHand = vpDeck.splice(0, 5);
+  if(playDealer){
+    // v197: the dealer draws too, holding the obvious cards
+    let dealerHand = vpDeck.splice(0, 5);
+    const dHold = vpDealerHold(dealerHand);
+    dealerHand = dealerHand.map((c, i) => dHold[i] ? c : vpDeck.shift());
     const dealerRow = document.getElementById('vpDealerHandRow');
     if(dealerRow){
       dealerRow.innerHTML = dealerHand.map((c, i) => {
@@ -403,23 +442,19 @@ async function vpDraw(){
     const dealerResultEl = document.getElementById('vpDealerResult');
     if(dealerResultEl) dealerResultEl.textContent = `Dealer: ${dealerRank.label}`;
 
-    const baseRank = vpRankHandForCompare(vpHand);
-    if(vpCompareHands(baseRank, dealerRank) > 0){
-      totalDelta += amount;
-      dealerBonusParts.push(`Beat dealer (Hand 1) +${amount}`);
-    }
-    vpExtraHands.forEach((eh, hi) => {
-      const r = vpRankHandForCompare(eh.hand);
-      if(vpCompareHands(r, dealerRank) > 0){
-        totalDelta += amount;
-        dealerBonusParts.push(`Beat dealer (Hand ${hi + 2}) +${amount}`);
-      }
-    });
+    const dealerWin = Math.floor(amount * VP_DEALER_WIN_PAYS);
+    const settleVsDealer = (rank, label) => {
+      if(vpCompareHands(rank, dealerRank) > 0){ totalDelta += dealerWin; dealerBonusParts.push(`Beat dealer (${label}) +${dealerWin}`); }
+      else { totalDelta -= amount; dealerBonusParts.push(`Dealer wins (${label}) −${amount}`); }
+    };
+    settleVsDealer(vpRankHandForCompare(vpHand), 'Hand 1');
+    vpExtraHands.forEach((eh, hi) => settleVsDealer(vpRankHandForCompare(eh.hand), `Hand ${hi + 2}`));
   } else if(dealerArea){
     dealerArea.style.display = 'none';
   }
 
-  const baseLabel = result ? `${result.label} +${amount * VP_PAYTABLE.find(p => p.key === result.key).mult}` : 'No win';
+  const baseProfit = result ? amount * VP_PAYTABLE.find(p => p.key === result.key).mult : 0;
+  const baseLabel = result ? `${result.label} ${baseProfit > 0 ? '+' + baseProfit : 'bet back'}` : 'No win';
   const allParts = [vpHandCount > 1 ? `Hand 1: ${baseLabel}` : baseLabel, ...extraLabels, ...dealerBonusParts];
   outcomeEl.textContent = (vpHandCount > 1 || dealerBonusParts.length > 0 ? allParts.join(' · ') + ' — ' : '') + `Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`;
 
@@ -455,6 +490,8 @@ async function vpDraw(){
     panelEl.classList.add('pc-shake'); setTimeout(() => panelEl.classList.remove('pc-shake'), 700);
   }
 
+  if(!vpHighRollerMode && typeof casinoRoundEnd === 'function') casinoRoundEnd('videopoker');
+  vpRound = null;
   if(totalDelta > 0){
     // Offered instead of immediately awarding the win — collecting (or
     // busting) in the gamble screen is what actually credits it, same
@@ -501,6 +538,8 @@ document.getElementById('vpSameBetTopBtn').addEventListener('click', () => {
 document.getElementById('vpDrawBtn').addEventListener('click', vpDraw);
 document.getElementById('vpDrawTopBtn').addEventListener('click', vpDraw);
 document.getElementById('vpBetInput').addEventListener('input', (e) => {
+  // v197: mid-hand the bet is locked; put the dealt amount back
+  if(vpStage !== 'idle' && vpRound && String(e.target.value) !== String(vpRound.amount)){ e.target.value = vpRound.amount; }
   const chip = document.getElementById('vpChipDisplay');
   if(!chip) return;
   chip.textContent = e.target.value || '0';
@@ -513,6 +552,7 @@ document.getElementById('vpBetInput').addEventListener('input', (e) => {
 // in the first place, so this is exactly as free to edit as it already
 // was via the number input itself.
 document.getElementById('vpChipDisplay').addEventListener('click', async () => {
+  if(vpStage !== 'idle') return; // v197: no changing the bet mid-hand
   const input = document.getElementById('vpBetInput');
   const amount = await openChipAmountModal(input.value || '50', 'Bet amount (XP)');
   if(amount == null) return;

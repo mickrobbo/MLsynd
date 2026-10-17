@@ -205,7 +205,7 @@
     let card = $('cpWeekCard');
     if(!card){
       card = document.createElement('section'); card.id = 'cpWeekCard'; card.className = 'cp-week';
-      const anchor = document.querySelector('#homeSubview-overview .home-money') || document.querySelector('#homeSubview-overview .home-multi');
+      const anchor = document.getElementById('homeTopSlot') || document.querySelector('#homeSubview-overview .home-money'); // v199: sits up top with anything else that needs you
       if(!anchor) return; anchor.parentNode.insertBefore(card, anchor.nextSibling);
     }
     const legTxt = !leg ? 'No leg' : leg.result === 'Win' ? `Won @ ${Number(leg.odds || 0).toFixed(2)}` : leg.result === 'Loss' ? `Lost @ ${Number(leg.odds || 0).toFixed(2)}` : (leg.result || 'Running');
