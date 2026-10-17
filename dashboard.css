@@ -7231,3 +7231,4 @@ html.hint-ind-seen .ind-more{ display:none; }
 .home-quick-val{ font-size:15px !important; }
 .home-quick-val-sm{ font-size:13px !important; }
 html.hint-leg-seen #homeMultiDetail:not(.open){ display:none; }
+#chartArea .ch-plot{ touch-action:pan-y; }
