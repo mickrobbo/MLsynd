@@ -1,11 +1,11 @@
 {
-  "version": "2026-10-18.212",
+  "version": "2026-10-18.213",
   "date": "2026-10-18",
   "changes": [
+    "Group multi faces and legs list follow the slip's leg order",
     "See all legs: odds and results line up, and long selections wrap instead of being cut off",
     "Nightly backups of the season with Restore (Admin \u2192 Tools \u2192 Backups)",
     "Stakes are set in Admin \u2192 Money \u2192 Stakes",
-    "A slip that's already been read costs nothing to read again",
-    "Errors on anyone's phone show in Admin \u2192 Tools \u2192 Errors"
+    "A slip that's already been read costs nothing to read again"
   ]
 }

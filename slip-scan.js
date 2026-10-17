@@ -215,7 +215,7 @@
       // v204: keep the selection so Home can show what each person picked
       try{
         const d = currentState.groupEntryDraft[name] || (currentState.groupEntryDraft[name] = {});
-        d.pick = { sel: leg.selection || '', market: leg.market || null, event: leg.event || null, sport: leg.sport || null, team: leg.team || null, kind: leg.kind || null };
+        d.pick = { sel: leg.selection || '', market: leg.market || null, event: leg.event || null, sport: leg.sport || null, team: leg.team || null, kind: leg.kind || null, leg: b.legs.indexOf(leg) + 1 };
         adminGroupDraftDirty.add(name);
       }catch(e){}
       filled++;
