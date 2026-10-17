@@ -206,7 +206,7 @@
       // v204: keep the selection so Home can show what each person picked
       try{
         const d = currentState.groupEntryDraft[name] || (currentState.groupEntryDraft[name] = {});
-        d.pick = { sel: leg.selection || '', market: leg.market || null, event: leg.event || null };
+        d.pick = { sel: leg.selection || '', market: leg.market || null, event: leg.event || null, sport: leg.sport || null, team: leg.team || null, kind: leg.kind || null };
         adminGroupDraftDirty.add(name);
       }catch(e){}
       filled++;
@@ -254,6 +254,9 @@
       window.slipIndExtras = window.slipIndExtras || {};
       window.slipIndExtras[name] = { pick: { sel: b.legs.length > 1 ? `${b.legs.length}-leg ${b.type === 'same_game_multi' ? 'same game multi' : 'multi'}` : (leg.selection || ''), market: b.legs.length > 1 ? b.legs.map(l => l.selection).filter(Boolean).join(', ').slice(0, 120) : (leg.market || null), event: leg.event || null },
         stake: b.bonus_bet ? null : b.stake, odds: b.combined_odds || leg.odds || null, ret: b.potential_return };
+      const p0 = window.slipIndExtras[name].pick;
+      if(b.legs.length === 1){ p0.sport = leg.sport || null; p0.team = leg.team || null; p0.kind = leg.kind || null; }
+      else p0.legs = b.legs.map(l => ({ sel: l.selection || '', market: l.market || null, event: l.event || null, sport: l.sport || null, team: l.team || null, kind: l.kind || null, odds: l.odds, result: l.result }));
       renderAdminWeeklyIndividualBetsEntry(rows);
       const save = $('adminSaveWeeklyBetsBtn'); if(save) save.click();
     }

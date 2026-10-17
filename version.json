@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-17.204",
+  "version": "2026-10-17.205",
   "date": "2026-10-17",
   "changes": [
-    "Each person's selection from a read slip now shows on Home: tap a face, or See all legs",
-    "The admin can mark legs and individual bets Won, Lost or Void straight from Home",
-    "Admin can read Sportsbet slips to fill in odds, results, stake and return"
+    "New stat sheets: Board \u2192 Stat sheet shows each person's picks, the teams backed most and how each sport goes; tap a name for their full breakdown",
+    "Every leg read from a slip now records the sport, the team backed and the bet type",
+    "Selections and Won / Lost / Void buttons on Home"
   ]
 }

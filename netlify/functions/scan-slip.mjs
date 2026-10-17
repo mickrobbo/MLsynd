@@ -53,6 +53,9 @@ Return ONLY a JSON object, no other text, in exactly this shape:
           "market": string | null,       // e.g. "Head to Head", "Line", "Disposals"
           "event": string | null,        // e.g. "Collingwood v Carlton", or race name
           "odds": number | null,         // this leg's price
+          "sport": string | null,        // one of: "AFL", "NRL", "Horse racing", "Greyhounds", "Harness racing", "Soccer", "Basketball", "Cricket", "Tennis", "American football", "Baseball", "Ice hockey", "Rugby union", "Golf", "Motorsport", "Combat sports", "Other"
+          "team": string | null,         // the team, player or runner this leg is backing, cleanly named (e.g. "Collingwood", "Nick Daicos", "Winx"); null for totals/over-unders on a whole game
+          "kind": "head_to_head" | "line" | "total" | "player" | "racing" | "other",  // head_to_head = to win; line = handicap/margin; total = over/under; player = player stat or scorer; racing = win/place on a runner
           "result": "won" | "lost" | "void" | "pending" | null  // from ticks/crosses/labels; null if unclear
         }
       ]
@@ -89,6 +92,9 @@ function clean(data){
       event: l.event ? String(l.event).slice(0, 120) : null,
       odds: num(l.odds),
       result: RES.includes(l.result) ? l.result : null,
+      sport: l.sport ? String(l.sport).slice(0, 40) : null,
+      team: l.team ? String(l.team).slice(0, 80) : null,
+      kind: ['head_to_head', 'line', 'total', 'player', 'racing', 'other'].includes(l.kind) ? l.kind : null,
     })).filter(l => l.selection || l.odds),
   })).filter(b => b.legs.length || b.stake != null);
   const warnings = (Array.isArray(data && data.warnings) ? data.warnings : []).map(w => String(w).slice(0, 200)).slice(0, 10);
