@@ -7190,3 +7190,11 @@
    a real phone ends up a few pixels too wide (clip, unlike hidden, keeps
    the sticky headers working) */
 html, body{ overflow-x:clip; }
+
+/* ===================== v215: bet stat + profile from a bet ===================== */
+.hm-insight{ display:flex; flex-direction:column; gap:3px; margin-top:10px; padding:9px 12px; border-radius:12px; background:rgba(255,255,255,.04); }
+.hm-insight span{ font-size:12.5px; color:var(--chalk); line-height:1.35; }
+.hm-insight span + span{ color:var(--muted); }
+.ind-detail .hm-insight{ margin:8px 0 2px; }
+button.hm-detail-av{ padding:0 !important; border:0 !important; cursor:pointer; font:inherit; font-weight:800; font-size:15px; color:var(--chalk) !important; min-height:0 !important; width:38px !important; height:38px !important; border-radius:50% !important; background-color:var(--surface) !important; background-size:cover; background-position:center; box-shadow:0 0 0 2px var(--ring, #565c57) !important; transform:none; }
+.hm-open-profile{ cursor:pointer; }

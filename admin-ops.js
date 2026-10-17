@@ -29,6 +29,13 @@
         <div class="status-msg" id="aoBackupStatus"></div>
         <div id="aoBackupList" class="ao-list"><div class="empty">Open this tab to load backups.</div></div>
       </div>
+      <div class="panel" id="adminTipFineFixPanel">
+        <h2>Tip fines after the season</h2>
+        <div class="hint">After the 2026 comp was archived, the fines check went back over 2026 games from before the comp started and charged everyone Missed Tip fines. That check is fixed. This finds those fines (any tip fine charged after the season was archived), shows what each person lost, and gives it back.</div>
+        <div class="ao-row"><button type="button" id="aoTfCheck" class="small btn-secondary">Find them</button><button type="button" id="aoTfRefund" class="small" hidden>Refund everyone</button></div>
+        <div class="status-msg" id="aoTfStatus"></div>
+        <div id="aoTfList" class="ao-list"></div>
+      </div>
       <div class="panel" id="adminErrorsPanel">
         <h2>Errors</h2>
         <div class="hint">Anything that has gone wrong on someone's phone in the last 30 days. The same error is grouped, with how many times it happened, who saw it and on which version. Lost signal is ignored.</div>
@@ -42,6 +49,8 @@
     $('aoBackupList').addEventListener('click', onBackupClick);
     $('aoErrRefresh').addEventListener('click', loadErrors);
     $('aoErrClear').addEventListener('click', clearErrors);
+    $('aoTfCheck').addEventListener('click', findBadFines);
+    $('aoTfRefund').addEventListener('click', refundBadFines);
     $('aoErrList').addEventListener('click', (e) => { const r = e.target.closest('.ao-err'); if(r) r.classList.toggle('open'); });
     const btn = document.querySelector('#diagSubmodeRow .admin-submode-btn[data-submode="repair"]');
     if(btn) btn.addEventListener('click', () => { loadBackups(); loadErrors(); });
@@ -148,6 +157,91 @@
     clearTimeout(clearTimer); clearArmed = false; btn.textContent = 'Clear all';
     try{ const r = await authedFetch('/clientErrors.json', { method: 'DELETE' }); if(!r.ok) throw new Error('HTTP ' + r.status); loadErrors(); }
     catch(e){ $('aoErrStatus').className = 'status-msg error'; $('aoErrStatus').textContent = "Couldn't clear." + rulesHint(e); }
+  }
+
+  // ---------- refund tip fines charged after the season ----------
+  const FINE_PERSONAL_SHARE = 0.10; // matches casino-pot-tipping-fines-scheduled.js
+  const TIP_FINES = ['Missed Tip Fine', 'Wrong Tip Fine'];
+  let badFines = null;
+  function weekKeyFor(ts){
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' }).formatToParts(new Date(ts));
+    const g = (t) => parts.find(p => p.type === t).value;
+    const wd = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[g('weekday')];
+    const mon = new Date(Date.UTC(+g('year'), +g('month') - 1, +g('day')) - wd * 86400000);
+    return `${mon.getUTCFullYear()}-${String(mon.getUTCMonth() + 1).padStart(2, '0')}-${String(mon.getUTCDate()).padStart(2, '0')}`;
+  }
+  async function findBadFines(){
+    const st = $('aoTfStatus'), list = $('aoTfList'), btn = $('aoTfRefund');
+    btn.hidden = true; st.className = 'status-msg'; st.textContent = 'Looking…'; list.innerHTML = '';
+    try{
+      const done = await getJson('/casinoPot/offseasonRefund.json');
+      const archives = await getJson('/tippingArchive.json') || {};
+      const cutoff = Math.max(0, ...Object.values(archives).map(a => (a && a.archivedAt) || 0));
+      if(!cutoff){ st.textContent = 'No archived season found, so there is nothing to refund.'; return; }
+      const events = await getJson('/casinoPot/fineEvents.json') || {};
+      const hits = Object.entries(events).filter(([, e]) => e && TIP_FINES.includes(e.category) && e.ts >= cutoff - 60000);
+      if(!hits.length){ st.className = 'status-msg ok'; st.textContent = done ? `Already refunded on ${when(done.at)}. Nothing left to give back.` : 'No tip fines since the season was archived. Nothing to refund.'; return; }
+      const byUid = {};
+      hits.forEach(([key, e]) => {
+        const b = byUid[e.uid] || (byUid[e.uid] = { uid: e.uid, name: e.name || e.uid, missed: 0, wrong: 0, refund: 0, pot: 0, keys: [], weeks: {} });
+        if(e.category === 'Missed Tip Fine') b.missed++; else b.wrong++;
+        const amt = Number(e.amount) || 0, personal = amt - Math.round(amt * (1 - FINE_PERSONAL_SHARE));
+        b.refund += personal; b.pot += amt - personal; b.keys.push(key);
+        const wk = weekKeyFor(e.ts); b.weeks[wk] = (b.weeks[wk] || 0) + (amt - personal);
+      });
+      badFines = { cutoff, people: Object.values(byUid).sort((a, b) => b.refund - a.refund) };
+      const total = badFines.people.reduce((a, b) => a + b.refund, 0);
+      const fines = hits.length;
+      st.className = 'status-msg'; st.textContent = `${fines} fine${fines === 1 ? '' : 's'} charged since the season was archived (${when(cutoff)}). Refunding gives back ${total.toLocaleString()} XP in total.`;
+      list.innerHTML = badFines.people.map(b => `<div class="ao-bk"><div class="ao-bk-main"><b>${esc(b.name)}</b><span>${b.missed} missed${b.wrong ? `, ${b.wrong} wrong` : ''} · gets back ${b.refund.toLocaleString()} XP</span></div></div>`).join('');
+      btn.hidden = false;
+    }catch(e){ st.className = 'status-msg error'; st.textContent = "Couldn't check: " + (e.message || '') + rulesHint(e); }
+  }
+  let refundArmed = false, refundTimer = null;
+  async function refundBadFines(){
+    const st = $('aoTfStatus'), btn = $('aoTfRefund');
+    if(!badFines || !badFines.people.length) return;
+    if(!refundArmed){ refundArmed = true; btn.textContent = 'Tap again to refund'; refundTimer = setTimeout(() => { refundArmed = false; btn.textContent = 'Refund everyone'; }, 5000); return; }
+    clearTimeout(refundTimer); refundArmed = false; btn.disabled = true; btn.textContent = 'Refunding…';
+    let doneN = 0, total = 0;
+    try{
+      for(const b of badFines.people){
+        // give back what came off their balance, with a line in their history
+        const bal = Number(await getJson(`/xp/${b.uid}/balance.json`)) || 0;
+        const newBal = bal + b.refund;
+        await putJson(`/xp/${b.uid}/balance.json`, newBal);
+        await authedFetch(`/xp/${b.uid}/log.json`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: b.refund, reason: `Refund: ${b.missed + b.wrong} tip fines charged after the season ended`, balanceAfter: newBal, ts: Date.now() }) });
+        // fine counts on their profile
+        for(const [field, n] of [['missedTips', b.missed], ['wrongTips', b.wrong]]){
+          if(!n) continue;
+          const cur = Number(await getJson(`/casinoPot/fineHistory/${b.uid}/${field}.json`)) || 0;
+          await putJson(`/casinoPot/fineHistory/${b.uid}/${field}.json`, Math.max(0, cur - n));
+        }
+        // the fines list
+        const patch = {}; b.keys.forEach(k => { patch[k] = null; });
+        await authedFetch('/casinoPot/fineEvents.json', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+        doneN++; total += b.refund;
+        st.className = 'status-msg'; st.textContent = `Refunded ${doneN} of ${badFines.people.length}…`;
+      }
+      // take the pot's share back out of any week that hasn't paid out yet
+      const weeks = {};
+      badFines.people.forEach(b => Object.entries(b.weeks).forEach(([wk, v]) => { weeks[wk] = (weeks[wk] || 0) + v; }));
+      let potFixed = 0, potPaid = 0;
+      for(const [wk, v] of Object.entries(weeks)){
+        const cur = await getJson(`/casinoPot/months/${wk}/fines.json`);
+        if(cur == null){ potPaid += v; continue; }
+        await putJson(`/casinoPot/months/${wk}/fines.json`, Math.max(0, Number(cur) - v));
+        potFixed += Math.min(Number(cur), v);
+      }
+      await putJson('/casinoPot/offseasonRefund.json', { at: Date.now(), people: doneN, xp: total, potRemoved: potFixed, potAlreadyPaid: potPaid });
+      st.className = 'status-msg ok';
+      st.textContent = `Done. ${total.toLocaleString()} XP given back to ${doneN} people.` + (potFixed ? ` ${potFixed.toLocaleString()} XP taken back out of the pot.` : '') + (potPaid ? ` ${potPaid.toLocaleString()} XP from these fines had already gone into a pot that paid out, so it stays paid.` : '');
+      btn.hidden = true; $('aoTfList').innerHTML = ''; badFines = null;
+      if(typeof showToast === 'function') showToast('Tip fines refunded');
+    }catch(e){
+      st.className = 'status-msg error'; st.textContent = `Stopped after ${doneN} people: ${e.message || 'error'}. Tap Find them again; anyone already refunded won't show up twice.` + rulesHint(e);
+      btn.disabled = false; btn.textContent = 'Refund everyone';
+    }
   }
 
   function init(){ buildUi(); }

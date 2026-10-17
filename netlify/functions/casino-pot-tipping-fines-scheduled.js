@@ -186,9 +186,16 @@ async function applyFine(uid, amount, historyField, reasonLabel, secret){
 }
 
 async function runFines(secret){
-  const fixturesRes = await fetch(`${SITE_URL}/.netlify/functions/afl-fixtures`);
+  // v215: only the tipping season that's actually set up. Without a year
+  // this read the calendar year's fixtures, so after the 2026 comp was
+  // archived (start round back to 1, year 2027) it went back over every
+  // 2026 game from Round 1 and fined everyone for tips in rounds the comp
+  // never ran. Now it reads that season's fixtures only.
+  const seasonYear = Number(await dbGet('/tipping/config/year', secret).catch(() => null)) || new Date().getFullYear();
+  const fixturesRes = await fetch(`${SITE_URL}/.netlify/functions/afl-fixtures?year=${seasonYear}`);
   if(!fixturesRes.ok) throw new Error(`afl-fixtures fetch failed: ${fixturesRes.status}`);
   const fixturesData = await fixturesRes.json();
+  if(Number(fixturesData.year) && Number(fixturesData.year) !== seasonYear) return { skipped: `fixtures are for ${fixturesData.year}, tipping season is ${seasonYear}` };
   const games = fixturesData.games || [];
 
   const seasonStartRoundRaw = await dbGet('/tipping/config/firstRound', secret).catch(() => null);
@@ -255,7 +262,10 @@ async function runFines(secret){
     // uid is only ever processed by ONE of the two passes, never both,
     // and marking it checked either way correctly stops a future run
     // from re-processing it regardless of which branch handled it.
-    for(const uid of knownTipperUids){
+    // v215: a game nobody tipped wasn't part of the comp (before it
+    // started, or a round that wasn't open) so nobody is fined for it.
+    const anyoneTipped = Object.values(picks).some(p => p && p.pick);
+    for(const uid of (anyoneTipped ? knownTipperUids : [])){
       if(picks[uid] && picks[uid].pick) continue; // they did pick — already handled above
       if(alreadyChecked[`${g.id}_${uid}`] === true) continue;
       await applyFine(uid, MISSED_TIP_FINE, 'missedTips', 'Missed Tip Fine', secret);

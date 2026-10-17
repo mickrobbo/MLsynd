@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=214">
+<link rel="stylesheet" href="dashboard.css?v=215">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
@@ -4030,7 +4030,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-18.214"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-18.215"; // v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14442,6 +14442,56 @@ function renderGroupMultiChart(state){
   setFoot('');
   renderHomeGreeting(state, { legs: entries.length, pending, losers: losers.length, saved: !draftHasEntries });
 }
+// v215: one or two quick facts about a bet, shown when it's opened on Home.
+// Group legs use the stat sheet's history (earlier group legs only); an
+// individual bet uses the person's individual record from saved weeks.
+const SPORT_WORD = { 'Horse racing': 'the horses', Greyhounds: 'the dogs', 'Harness racing': 'the trots' };
+function homeLegInsight(leg){
+  const out = [];
+  const o = Number(leg.odds);
+  const legs = (window.__hmLegs || []).filter(l => Number(l.odds) > 0 && l.result !== 'Void' && l.result !== 'MIA');
+  if(o > 1){
+    const chance = Math.round(100 / o);
+    let rank = '';
+    if(legs.length > 2){
+      const sorted = legs.map(l => Number(l.odds)).sort((a, b) => b - a);
+      const i = sorted.indexOf(o);
+      rank = i === 0 ? ' · longest price in the multi' : i === sorted.length - 1 ? ' · safest leg in the multi' : '';
+    }
+    out.push(`${chance}% chance by the odds${rank}`);
+  }
+  try{
+    const ps = window.pickStats;
+    if(ps && leg.pick && leg.pick.sel){
+      const mine = ps.gather().filter(l => l.name === leg.name && !l.live && (l.result === 'Win' || l.result === 'Loss'));
+      const rec = (arr) => { const w = arr.filter(l => l.result === 'Win').length; return `${w}–${arr.length - w}`; };
+      const cur = ps.gather().find(l => l.name === leg.name && l.live) || null;
+      const team = cur && cur.team, sport = cur && cur.sport, kind = cur && cur.kind;
+      const sameTeam = team ? mine.filter(l => l.team === team) : [];
+      if(sameTeam.length) out.push(`Backed ${team} ${sameTeam.length} time${sameTeam.length === 1 ? '' : 's'} before, ${rec(sameTeam)}`);
+      else if(sport){
+        const sameSport = mine.filter(l => l.sport === sport);
+        if(sameSport.length >= 2) out.push(`${String(leg.name).split(' ')[0]} on ${SPORT_WORD[sport] || sport}: ${rec(sameSport)}`);
+        else if(mine.length >= 3){ const sameKind = mine.filter(l => l.kind === kind); if(sameKind.length >= 2) out.push(`This type of bet: ${rec(sameKind)}`); }
+      }
+    }
+  }catch(e){}
+  return out.slice(0, 2);
+}
+function homeIndInsight(b, legsCount){
+  const out = [];
+  const o = Number(b.odds);
+  if(o > 1) out.push(o >= 4 ? `About a 1 in ${Math.round(o)} chance by the odds` : `${Math.round(100 / o)}% chance by the odds`);
+  try{
+    let w = 0, l = 0, best = 0;
+    (currentState.history || []).forEach(h => (h.individualBets || []).forEach(x => {
+      if(!x || x.name !== b.name) return;
+      if(x.result === 'Win'){ w++; best = Math.max(best, Number(x.pl) || 0); } else if(x.result === 'Loss') l++;
+    }));
+    if(w + l) out.push(`${String(b.name).split(' ')[0]}'s individual bets: ${w}–${l}${best > 0 ? ` · best win +$${Math.round(best).toLocaleString('en-AU')}` : ''}`);
+  }catch(e){}
+  return out.slice(0, 2);
+}
 function renderHomeMultiDetail(){
   const box = document.getElementById('homeMultiDetail');
   if(!box) return;
@@ -14466,9 +14516,10 @@ function renderHomeMultiDetail(){
   }
   const pip = r => `<span class="hm-pip result-${rc(r)}" title="${escapeHtml(r)}">${r === 'Win' ? 'W' : r === 'Loss' ? 'L' : r === 'Void' ? 'V' : 'M'}</span>`;
   box.className = 'hm-detail open result-' + cls;
+  const insight = homeLegInsight(leg);
   box.innerHTML = `<div class="hm-detail-row">
-      <span class="hm-detail-av" data-hm-uid="${escapeHtml(leg.uid)}">${escapeHtml(String(leg.name).trim().charAt(0).toUpperCase())}</span>
-      <span class="hm-detail-id">
+      <button type="button" class="hm-detail-av hm-open-profile" data-profile="${escapeHtml(leg.name)}" data-hm-uid="${escapeHtml(leg.uid)}" aria-label="Open ${escapeHtml(leg.name)}'s profile">${escapeHtml(String(leg.name).trim().charAt(0).toUpperCase())}</button>
+      <span class="hm-detail-id hm-open-profile" data-profile="${escapeHtml(leg.name)}" role="button" tabindex="0">
         <span class="hm-detail-name">${escapeHtml(leg.name)}</span>
         <span class="hm-detail-sub">${decided ? `${leg.wins}–${leg.losses}, ${pct}` : pct}${streakTxt ? `<b class="hm-streak ${leg.streakType === 'Win' ? 'hot' : 'cold'}">${streakTxt}</b>` : ''}</span>
       </span>
@@ -14480,6 +14531,7 @@ function renderHomeMultiDetail(){
       ${impact ? `<span class="hm-impact">${impact}</span>` : ''}
     </div>` : ''}
     ${leg.pick && leg.pick.sel ? `<div class="hm-pick"><b>${escapeHtml(leg.pick.sel)}</b>${leg.pick.market || leg.pick.event ? `<span>${escapeHtml([leg.pick.market, leg.pick.event].filter(Boolean).join(' · '))}</span>` : ''}</div>` : (Number(leg.odds) > 0 ? `<div class="hm-pick hm-pick-none"><span>Selection shows here once the slip has been read</span></div>` : '')}
+    ${insight.length ? `<div class="hm-insight">${insight.map(t => `<span>${escapeHtml(t)}</span>`).join('')}</div>` : ''}
     ${leg.note ? `<div class="hm-detail-note">${escapeHtml(leg.note)}</div>` : ''}`;
   const av = box.querySelector('.hm-detail-av');
   if(av && leg.uid && typeof getAvatarDataUri === 'function'){
@@ -14520,6 +14572,13 @@ function homeMultiLegsListHtml(){
       <span class="hm-chip-sm">${lab(l.result)}</span>
     </div>`).join('')}</div>`;
 }
+// v215: tapping someone's photo or name on a bet opens their profile card
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('#groupMultiArea .hm-open-profile, #weeklyIndividualBetsArea .hm-open-profile');
+  if(!t || !t.dataset.profile) return;
+  e.stopPropagation(); e.preventDefault();
+  try{ openProfile(t.dataset.profile); }catch(err){}
+}, true);
 document.getElementById('weeklyIndividualBetsArea').addEventListener('click', (e) => {
   const tile = e.target.closest('[data-ind-open]'); if(!tile) return;
   const d = tile.querySelector('.ind-detail'); if(!d) return;
@@ -16005,10 +16064,11 @@ function render(state){
       const potRet = Number(b.ret) > 0 ? Number(b.ret) : (stakeN > 0 && oddsN > 1 ? stakeN * oddsN : null);
       const detailHtml = indLegs.length ? `<div class="ind-detail" hidden>
           ${indLegs.map(l => `<div class="ind-leg"><span class="ind-leg-main"><b>${escapeHtml(l.sel || '')}</b>${l.market || l.event ? `<small>${escapeHtml([l.market, l.event].filter(Boolean).join(' · '))}</small>` : ''}</span>${Number(l.odds || (indLegs.length === 1 ? b.odds : 0)) > 0 ? `<span class="ind-leg-odds">@${Number(l.odds || b.odds).toFixed(2)}</span>` : ''}${l.result && LEGRES[l.result] ? `<span class="hm-chip-sm ind-leg-res r-${String(l.result).toLowerCase()}">${LEGRES[l.result]}</span>` : ''}</div>`).join('')}
+          ${(() => { const ins = homeIndInsight(b, indLegs.length); return ins.length ? `<div class="hm-insight">${ins.map(t => `<span>${escapeHtml(t)}</span>`).join('')}</div>` : ''; })()}
           <div class="ind-detail-foot">${oddsN > 0 && indLegs.length > 1 ? `<span>Multi @${oddsN.toFixed(2)}</span>` : ''}${stakeN > 0 ? `<span>Stake ${moneyAud(stakeN)}</span>` : ''}${potRet ? `<span>${b.result === 'Win' ? 'Paid' : b.result ? 'Would have paid' : 'Pays'} ${moneyAud(potRet)}</span>` : ''}</div>
         </div>` : `<div class="ind-detail" hidden><div class="ind-detail-none">No slip read for this bet yet, so there's no selection to show.</div></div>`;
       return `<div class="ind-tile result-${res}" data-ind-open="${origIdx}" role="button" tabindex="0" aria-expanded="false" aria-label="${escapeHtml(b.name || '')}'s bet, show details">
-        <div class="ind-top"><span class="ind-av" data-hm-uid="${escapeHtml(mem.linkedUid || '')}" aria-hidden="true">${escapeHtml(String(b.name || '?').trim().charAt(0).toUpperCase())}</span><span class="ind-name">${escapeHtml(b.name || '')}</span><span class="slip-stamp ind-stamp">${IND_STAMP[b.result] || 'Running'}</span></div>
+        <div class="ind-top"><span class="ind-av hm-open-profile" data-profile="${escapeHtml(b.name || '')}" data-hm-uid="${escapeHtml(mem.linkedUid || '')}" role="button" aria-label="Open ${escapeHtml(b.name || '')}'s profile">${escapeHtml(String(b.name || '?').trim().charAt(0).toUpperCase())}</span><span class="ind-name">${escapeHtml(b.name || '')}</span><span class="slip-stamp ind-stamp">${IND_STAMP[b.result] || 'Running'}</span></div>
         <div class="ind-pl">${plHtml}</div>
         ${b.sgm ? `<div class="ind-badge ${b.sgmResult === 'Win' ? 'win' : (b.sgmResult === 'Loss' ? 'loss' : '')}">SGM bonus bet${b.sgmResult === 'Win' ? ' won' : b.sgmResult === 'Loss' ? ' lost' : ''}${(b.sgmResult === 'Win' && b.sgmAmount != null) ? ` +${homeMoney(b.sgmAmount)}` : ''}</div>` : ''}
         ${b.cashedOut ? `<div class="ind-badge">Cashed out early</div>` : ''}
@@ -24859,7 +24919,7 @@ initAuthGate();
 <script src="app-premium.js?v=214"></script>
 <script src="app-a11y.js?v=201"></script>
 <script src="slip-scan.js?v=213"></script>
-<script src="admin-ops.js?v=211"></script>
+<script src="admin-ops.js?v=215"></script>
 <script src="pick-stats.js?v=210"></script>
 </body>
 </html>
