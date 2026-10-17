@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=188">
+<link rel="stylesheet" href="dashboard.css?v=189">
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
      (board/pot/turn updates, seat changes). Nothing else in this app
      uses it; everywhere else talks to Firebase over plain REST, and
@@ -3998,7 +3998,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-17.188"; // v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-17.189"; // v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -13892,95 +13892,151 @@ function shortWeekLabel(label){
   return m ? 'W' + m[1] : (label || '').slice(0, 4);
 }
 
+// v189 season chart: smooth line, light grid with $ labels, a readout that
+// follows your finger (drag along the line to read any week), and a
+// Season / Last 10 switch. Rendered at the container's real width so the
+// line and dots stay crisp instead of being stretched.
+const CHART_RANGE_KEY = 'mlsynd-chart-range';
+function chartRange(){ try{ return localStorage.getItem(CHART_RANGE_KEY) === '10' ? 10 : 0; }catch(e){ return 0; } }
+function chartMoney(v, compact){
+  const a = Math.abs(v); const sign = v < 0 ? '-' : (v > 0 ? '+' : '');
+  if(compact && a >= 1000) return `${sign}$${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k`;
+  return `${sign}$${a.toLocaleString('en-AU', { minimumFractionDigits: a % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+}
+function smoothPath(pts){
+  // monotone cubic (no overshoot past the real values)
+  const n = pts.length; if(n < 2) return pts.length ? `M${pts[0][0]},${pts[0][1]}` : '';
+  const dx = [], dy = [], m = [];
+  for(let i = 0; i < n - 1; i++){ dx[i] = pts[i + 1][0] - pts[i][0]; dy[i] = pts[i + 1][1] - pts[i][1]; m[i] = dy[i] / (dx[i] || 1); }
+  const t = [m[0]];
+  for(let i = 1; i < n - 1; i++) t[i] = (m[i - 1] * m[i] <= 0) ? 0 : (m[i - 1] + m[i]) / 2;
+  t[n - 1] = m[n - 2];
+  for(let i = 0; i < n - 1; i++){ if(m[i] === 0){ t[i] = 0; t[i + 1] = 0; continue; } const a = t[i] / m[i], b = t[i + 1] / m[i], h = a * a + b * b; if(h > 9){ const k = 3 / Math.sqrt(h); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; } }
+  let d = `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for(let i = 0; i < n - 1; i++){
+    const x0 = pts[i][0], y0 = pts[i][1], x1 = pts[i + 1][0], y1 = pts[i + 1][1], h = dx[i] / 3;
+    d += ` C${(x0 + h).toFixed(1)},${(y0 + t[i] * h).toFixed(1)} ${(x1 - h).toFixed(1)},${(y1 - t[i + 1] * h).toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  return d;
+}
 function buildChart(history){
   if(!history || history.length === 0){
     return '<div class="empty">No weeks saved yet — this fills in as you save each week.</div>';
   }
-  // cumulative running P/L over the season, not per-week deltas
   let running = 0;
-  const points = history.map(h => { running += weekGroupPl(h); return { label: h.label, cum: running }; });
+  const all = history.map(h => { const wk = weekGroupPl(h); running += wk; return { label: h.label, cum: running, wk }; });
+  const range = chartRange();
+  const points = range && all.length > range ? all.slice(-range) : all;
 
-  const chartW = 320, chartH = 130, padX = 12, padY = 10;
+  const area = document.getElementById('chartArea');
+  const chartW = Math.max(280, Math.round((area && area.clientWidth) || Math.min(680, window.innerWidth - 40) || 340));
+  const chartH = 168, padL = 6, padR = 44, padT = 14, padB = 22;
   const values = points.map(p => p.cum);
-  const maxV = Math.max(0, ...values);
-  const minV = Math.min(0, ...values);
-  const range = Math.max(1, maxV - minV);
-  const stepX = points.length > 1 ? (chartW - padX*2) / (points.length - 1) : 0;
-  const yFor = v => chartH - padY - ((v - minV) / range) * (chartH - padY*2);
+  // Season view always includes $0; Last 10 zooms to the recent range so the trend is readable
+  let maxV = Math.max(0, ...values), minV = Math.min(0, ...values);
+  if(range){ const hi = Math.max(...values), lo = Math.min(...values), pad = Math.max(1, (hi - lo) * .12); maxV = hi + pad; minV = lo - pad; if(maxV > 0 && minV < 0){ maxV = Math.max(maxV, 0); minV = Math.min(minV, 0); } }
+  const span = Math.max(1, maxV - minV);
+  const plotW = chartW - padL - padR, plotH = chartH - padT - padB;
+  const stepX = points.length > 1 ? plotW / (points.length - 1) : 0;
+  const yFor = v => padT + plotH - ((v - minV) / span) * plotH;
   const zeroY = yFor(0);
+  const coords = points.map((p, i) => [padL + i * stepX, yFor(p.cum)]);
+  const linePath = smoothPath(coords);
+  const last = coords[coords.length - 1];
+  const finalPl = points[points.length - 1].cum;
+  const up = finalPl >= 0;
+  // fill toward $0, kept inside the plot when $0 is off-screen (zoomed Last 10 view)
+  const baseY = Math.max(padT, Math.min(padT + plotH, zeroY));
+  const areaPath = `${linePath} L${last[0].toFixed(1)},${baseY.toFixed(1)} L${coords[0][0].toFixed(1)},${baseY.toFixed(1)} Z`;
+  const col = up ? 'var(--win)' : 'var(--loss)';
 
-  const coords = points.map((p, i) => [padX + i*stepX, yFor(p.cum)]);
-  const linePath = coords.map((c, i) => (i===0 ? 'M' : 'L') + c[0].toFixed(1) + ',' + c[1].toFixed(1)).join(' ');
-  const areaPath = `${linePath} L${coords[coords.length-1][0].toFixed(1)},${zeroY.toFixed(1)} L${coords[0][0].toFixed(1)},${zeroY.toFixed(1)} Z`;
+  // grid: top, zero, bottom (deduped), labelled on the right
+  const gridVals = [...new Set([maxV, (minV <= 0 && maxV >= 0) ? 0 : (maxV + minV) / 2, minV].map(v => Math.round(v)))];
+  const grid = gridVals.map(v => { const y = yFor(v).toFixed(1); return `<line x1="${padL}" y1="${y}" x2="${chartW - padR + 4}" y2="${y}" class="${v === 0 ? 'ch-zero' : 'ch-grid'}"/><text x="${chartW - padR + 8}" y="${(+y + 3.5).toFixed(1)}" class="ch-ylab">${v === 0 ? '$0' : chartMoney(v, true)}</text>`; }).join('');
+  const labelIdxs = points.length > 1 ? [...new Set([0, Math.floor((points.length - 1) / 2), points.length - 1])] : [0];
+  const xlabs = labelIdxs.map(i => `<text x="${coords[i][0].toFixed(1)}" y="${chartH - 5}" class="ch-xlab" text-anchor="${i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}">${escapeHtml(shortWeekLabel(points[i].label))}</text>`).join('');
 
-  const finalPl = points[points.length-1].cum;
-  const lineColor = finalPl >= 0 ? 'var(--win)' : 'var(--loss)';
-  const dots = coords.map((c, i) => `<circle class="chart-dot" cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="2.5" fill="${lineColor}" data-idx="${i}"/>`).join('');
-  // invisible larger circles just for easier tapping on mobile
-  const hitTargets = coords.map((c, i) => `<circle class="chart-hit" cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="10" fill="transparent" data-idx="${i}" style="cursor:pointer;"/>`).join('');
-
-  // label first, middle, last week only, to avoid clutter
-  const labelIdxs = points.length > 1 ? [0, Math.floor((points.length-1)/2), points.length-1] : [0];
-  const labels = [...new Set(labelIdxs)].map(i => {
-    const c = coords[i];
-    return `<text x="${c[0].toFixed(1)}" y="${chartH + 12}" font-size="8" fill="var(--muted)" text-anchor="middle" font-family="'Manrope', sans-serif">${escapeHtml(shortWeekLabel(points[i].label))}</text>`;
-  }).join('');
-
-  // stash point data on the container so the tap handler can read it without re-parsing the DOM
   window.__chartPoints = points;
   window.__chartCoords = coords;
-  window.__chartGeom = { chartW, chartH, zeroY };
+  window.__chartGeom = { chartW, chartH, zeroY, padT, padB, padL, stepX };
+  setTimeout(() => { if(document.getElementById('chartSvg')) window.__chDrawn = true; }, 50); // the draw-in plays once per visit, not on every refresh
 
-  return `<div class="chart-wrap"><svg id="chartSvg" viewBox="0 0 ${chartW} ${chartH + 20}" width="100%" height="${chartH + 20}" preserveAspectRatio="none" style="min-width:280px;">
-    <line x1="${padX}" y1="${zeroY.toFixed(1)}" x2="${chartW-padX}" y2="${zeroY.toFixed(1)}" stroke="var(--line)" stroke-width="1"/>
-    <defs><linearGradient id="cpAreaG1" x1="0" y1="${finalPl >= 0 ? 0 : 1}" x2="0" y2="${finalPl >= 0 ? 1 : 0}"><stop offset="0" style="stop-color:${lineColor};stop-opacity:.24"/><stop offset="1" style="stop-color:${lineColor};stop-opacity:0"/></linearGradient></defs><path d="${areaPath}" fill="url(#cpAreaG1)" stroke="none"/>
-    <path d="${linePath}" fill="none" stroke="${lineColor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <line id="chartGuide" x1="0" y1="0" x2="0" y2="${chartH}" stroke="var(--brass)" stroke-width="1" stroke-dasharray="2,2" opacity="0"/>
-    ${dots}
-    <circle id="chartSelDot" r="4" fill="var(--brass)" stroke="#000" stroke-width="1" opacity="0"/>
-    ${hitTargets}
-    ${labels}
-  </svg>
-  <div id="chartTooltip" class="chart-tooltip"></div>
+  return `<div class="ch">
+    <div class="ch-head">
+      <div class="ch-read"><span class="ch-read-lbl" id="chReadLbl"></span><span class="ch-read-val" id="chReadVal"></span></div>
+      <div class="ch-range" role="group" aria-label="Chart range"><button type="button" data-range="0" class="${range ? '' : 'on'}">Season</button><button type="button" data-range="10" class="${range ? 'on' : ''}">Last 10</button></div>
+    </div>
+    <div class="ch-plot">
+    <svg id="chartSvg" viewBox="0 0 ${chartW} ${chartH}" width="100%" height="${chartH}" role="img" aria-label="Running syndicate P/L by week, ${chartMoney(finalPl)} now">
+      <defs><linearGradient id="cpAreaG1" x1="0" y1="${up ? 0 : 1}" x2="0" y2="${up ? 1 : 0}"><stop offset="0" style="stop-color:${col};stop-opacity:.30"/><stop offset="1" style="stop-color:${col};stop-opacity:0"/></linearGradient></defs>
+      ${grid}
+      <path d="${areaPath}" fill="url(#cpAreaG1)" stroke="none"/>
+      <path d="${linePath}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" pathLength="1" class="ch-line${window.__chDrawn ? '' : ' ch-draw'}"/>
+      <line id="chartGuide" x1="0" y1="${padT}" x2="0" y2="${chartH - padB}" class="ch-guide" opacity="0"/>
+      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="9" fill="${col}" class="ch-pulse"/>
+      <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5" fill="${col}"/>
+      <circle id="chartSelDot" r="5.5" fill="var(--ink)" stroke="${col}" stroke-width="2.5" opacity="0"/>
+      ${xlabs}
+      <rect class="ch-hit" x="0" y="0" width="${chartW}" height="${chartH}" fill="transparent"/>
+    </svg>
+    </div>
+    <div id="chartTooltip" class="chart-tooltip ch-hint">Drag along the line to see any week</div>
   </div>`;
 }
 
-function selectChartPoint(idx){
+function selectChartPoint(idx, live){
   const points = window.__chartPoints, coords = window.__chartCoords, geom = window.__chartGeom;
   if(!points || !points[idx]) return;
-  const p = points[idx];
-  const c = coords[idx];
+  const p = points[idx], c = coords[idx];
   const guide = document.getElementById('chartGuide');
   const selDot = document.getElementById('chartSelDot');
-  const tip = document.getElementById('chartTooltip');
-  if(guide){
-    guide.setAttribute('x1', c[0].toFixed(1));
-    guide.setAttribute('x2', c[0].toFixed(1));
-    guide.setAttribute('y2', geom.chartH.toFixed(1));
-    guide.setAttribute('opacity', '0.6');
-  }
-  if(selDot){
-    selDot.setAttribute('cx', c[0].toFixed(1));
-    selDot.setAttribute('cy', c[1].toFixed(1));
-    selDot.setAttribute('opacity', '1');
-  }
-  if(tip){
-    const sign = p.cum >= 0 ? '+' : '-';
-    tip.innerHTML = `<strong>${escapeHtml(p.label)}</strong> — running P/L: <span style="color:${p.cum>=0?'var(--win)':'var(--loss)'}">${sign}$${Math.abs(p.cum).toFixed(2)}</span>`;
-    tip.style.opacity = '1';
-  }
+  const isLast = idx === points.length - 1;
+  if(guide){ guide.setAttribute('x1', c[0].toFixed(1)); guide.setAttribute('x2', c[0].toFixed(1)); guide.setAttribute('opacity', live ? '1' : '0'); }
+  if(selDot){ selDot.setAttribute('cx', c[0].toFixed(1)); selDot.setAttribute('cy', c[1].toFixed(1)); selDot.setAttribute('opacity', live && !isLast ? '1' : (live ? '1' : '0')); }
+  const lbl = document.getElementById('chReadLbl'), val = document.getElementById('chReadVal');
+  if(lbl) lbl.innerHTML = `${escapeHtml(p.label)}${isLast && !live ? ' · latest' : ''} <b class="${p.wk >= 0 ? 'pos' : 'neg'}">${chartMoney(p.wk)} that week</b>`;
+  if(val){ val.textContent = chartMoney(p.cum); val.className = 'ch-read-val ' + (p.cum >= 0 ? 'pos' : 'neg'); }
+  window.__chartSel = idx;
 }
 
-// event delegation so this keeps working after every re-render (innerHTML is replaced each refresh)
-document.getElementById('chartArea').addEventListener('click', (e) => {
-  const idx = e.target && e.target.getAttribute && e.target.getAttribute('data-idx');
-  if(idx !== null && idx !== undefined) selectChartPoint(parseInt(idx, 10));
-});
-document.getElementById('chartArea').addEventListener('touchstart', (e) => {
-  const t = e.target;
-  const idx = t && t.getAttribute && t.getAttribute('data-idx');
-  if(idx !== null && idx !== undefined){ selectChartPoint(parseInt(idx, 10)); }
-}, { passive: true });
+// drag (or tap) anywhere on the chart to read a week; let go and it eases back to the latest
+(function(){
+  const host = document.getElementById('chartArea');
+  let active = false, resetT = null;
+  const idxAt = (e) => {
+    const svg = document.getElementById('chartSvg'); const g = window.__chartGeom; const pts = window.__chartPoints;
+    if(!svg || !g || !pts) return null;
+    const r = svg.getBoundingClientRect(); const x = (e.clientX - r.left) * (g.chartW / r.width);
+    return Math.max(0, Math.min(pts.length - 1, Math.round((x - g.padL) / (g.stepX || 1))));
+  };
+  const move = (e) => {
+    const i = idxAt(e); if(i == null) return;
+    if(i !== window.__chartSel){
+      selectChartPoint(i, true);
+      try{ const st = JSON.parse(localStorage.getItem('cp-settings') || '{}'); if(st.haptics !== false && navigator.vibrate) navigator.vibrate(4); }catch(err){}
+    }
+  };
+  host.addEventListener('pointerdown', (e) => {
+    if(e.target.closest('.ch-range')) return;
+    if(!e.target.closest('.ch-plot')) return;
+    active = true; clearTimeout(resetT); host.classList.add('ch-scrubbing'); move(e);
+  });
+  host.addEventListener('pointermove', (e) => { if(active) move(e); });
+  const end = () => {
+    if(!active) return; active = false; host.classList.remove('ch-scrubbing');
+    clearTimeout(resetT);
+    resetT = setTimeout(() => { const pts = window.__chartPoints; if(pts) selectChartPoint(pts.length - 1, false); }, 1600);
+  };
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => host.addEventListener(t, end));
+  host.addEventListener('click', (e) => {
+    const b = e.target.closest('.ch-range button'); if(!b) return;
+    try{ localStorage.setItem(CHART_RANGE_KEY, b.dataset.range); }catch(err){}
+    if(currentState){ host.innerHTML = buildChart(currentState.history || []); const pts = window.__chartPoints; if(pts) selectChartPoint(pts.length - 1, false); }
+  });
+  // redraw at the new width after a rotation / resize
+  let rw = null;
+  window.addEventListener('resize', () => { clearTimeout(rw); rw = setTimeout(() => { if(currentState && document.getElementById('chartSvg')){ host.innerHTML = buildChart(currentState.history || []); const pts = window.__chartPoints; if(pts) selectChartPoint(pts.length - 1, false); } }, 250); });
+})();
 
 // Tipping points chart — same hand-built SVG line-chart approach as the
 // money P/L chart above, but fully namespaced (separate window globals,
@@ -14280,11 +14336,15 @@ function renderHomeExtras(state){
           const m = ranked[i];
           const initials = escapeHtml(String(m.name || '?').trim().slice(0, 1).toUpperCase());
           const me = m.linkedUid && m.linkedUid === currentUserUid;
-          return `<button type="button" class="podium-spot podium-${i + 1}${me ? ' is-me' : ''}" data-profile-name="${escapeHtml(m.name)}">
+          // v189: the gap tells the story — leader shows the lead, the others how far back they are
+          const gap = i === 0 ? (ranked[1] ? (m.pl || 0) - (ranked[1].pl || 0) : 0) : (ranked[0].pl || 0) - (m.pl || 0);
+          const gapTxt = gap > 0.004 ? (i === 0 ? `Leads by ${homeMoney(gap)}` : `${homeMoney(gap)} back`) : '';
+          return `<button type="button" class="podium-spot podium-${i + 1}${me ? ' is-me' : ''}" data-profile-name="${escapeHtml(m.name)}" aria-label="${i + 1}${i === 0 ? 'st' : i === 1 ? 'nd' : 'rd'}: ${escapeHtml(m.name)}, ${m.pl > 0 ? '+' : ''}${homeMoney(m.pl || 0)}">
+            ${i === 0 ? '<svg class="podium-crown" viewBox="0 0 24 16" aria-hidden="true"><path d="M2 14 L4 4 L9 9 L12 2 L15 9 L20 4 L22 14 Z" fill="currentColor"/></svg>' : ''}
             <span class="podium-avatar" data-podium-uid="${escapeHtml(m.linkedUid || '')}">${initials}</span>
-            <span class="podium-name">${escapeHtml(m.name)}</span>
+            <span class="podium-name">${escapeHtml(m.name)}${me ? ' <i class="podium-you">You</i>' : ''}</span>
             <span class="podium-pl ${m.pl >= 0 ? 'pos' : 'neg'}">${m.pl > 0 ? '+' : ''}${homeMoney(m.pl || 0)}</span>
-            <span class="podium-step"><span>${i + 1}</span></span>
+            <span class="podium-step"><span class="podium-rank">${i + 1}</span>${gapTxt ? `<span class="podium-gap">${gapTxt}</span>` : ''}</span>
           </button>`;
         }).join('');
         wrap.querySelectorAll('[data-podium-uid]').forEach(el => {
@@ -15646,7 +15706,7 @@ function render(state){
   if(plHeroEl) plHeroEl.className = 'pl-hero-val ' + (fin.profitLoss >= 0 ? 'pos' : 'neg');
 
   document.getElementById('chartArea').innerHTML = buildChart(history);
-  if(history.length){ selectChartPoint(history.length - 1); }
+  if(history.length && window.__chartPoints){ selectChartPoint(window.__chartPoints.length - 1, false); }
 
   renderGroupMultiChart(state);
   renderHomeExtras(state);
