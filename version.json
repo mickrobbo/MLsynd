@@ -1,10 +1,10 @@
 {
-  "version": "2026-10-18.220",
+  "version": "2026-10-18.221",
   "date": "2026-10-18",
   "changes": [
+    "Individual bet tiles show each leg as a tick, cross or dash, like the group multi",
     "Season P/L: weekly bars and stats tucked behind a More stats button",
     "Season P/L card: each week's result as bars under the line, plus winning weeks, best and worst week, average, current run, how often the multi landed, and group vs individual P/L",
-    "Last week shows that week's money out and back (it was showing the season's)",
-    "Scrolling past the Season P/L chart no longer leaves it stuck on an old week"
+    "Last week shows that week's money out and back (it was showing the season's)"
   ]
 }

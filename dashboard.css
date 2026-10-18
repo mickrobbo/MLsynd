@@ -7255,3 +7255,18 @@ html.hint-leg-seen #homeMultiDetail:not(.open){ display:none; }
 .ch-split-keys i{ display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px; vertical-align:0; background:var(--chalk); }
 .ch-split-keys i.k2{ opacity:.55; }
 .ch-more-btn{ display:block; width:100%; margin-top:10px; height:38px; border-radius:12px !important; border:1px solid rgba(255,255,255,.08) !important; background:transparent !important; color:var(--accent) !important; font-size:13.5px !important; font-weight:800 !important; box-shadow:none !important; }
+
+/* ===================== v221: leg results on individual bet tiles ===================== */
+.ind-legs-row{ display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+.ind-legdot{ width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+.ind-legdot svg{ width:62%; height:62%; }
+.ind-legdot.r-win{ background:#22A35A; color:#fff; }
+.ind-legdot.r-loss{ background:#E5484D; color:#fff; }
+.ind-legdot.r-void{ background:#7FA8D8; color:#0e1a2a; }
+.ind-legdot.r-pending{ background:transparent; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22); }
+.ind-track{ margin-top:8px !important; height:4px !important; }
+.ind-legs-row{ display:grid !important; grid-template-columns:repeat(var(--n, 5), minmax(0, 22px)); gap:4px; }
+.ind-legdot{ width:100%; height:auto; aspect-ratio:1; max-width:22px; }
+/* a running stamp no longer squeezes the name to a letter */
+.ind-tile.result-pending .ind-stamp{ font-size:9.5px; padding:1px 5px; letter-spacing:.02em; }
+.ind-top .ind-name{ min-width:2.6em; }
