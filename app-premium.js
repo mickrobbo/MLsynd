@@ -226,7 +226,7 @@
     const g = x.createRadialGradient(540, 0, 50, 540, 300, 1100); g.addColorStop(0, '#1d2a1c'); g.addColorStop(1, '#0b0c0b');
     x.fillStyle = g; x.fillRect(0, 0, 1080, 1350);
     try{ await document.fonts.load('800 80px Manrope'); }catch(e){}
-    const logo = new Image(); logo.src = '/banner-clear.png';
+    const logo = new Image(); logo.src = '/banner-clear.webp';
     await new Promise(r => { logo.onload = r; logo.onerror = r; setTimeout(r, 1500); });
     if(logo.naturalWidth) x.drawImage(logo, 340, 70, 400, 400 * logo.naturalHeight / logo.naturalWidth);
     x.fillStyle = '#CDF464'; x.font = '800 44px Manrope, sans-serif'; x.fillText('MY WEEK', 90, 330);
@@ -406,7 +406,7 @@
   // Week card once data has arrived
   const weekTimer = setInterval(() => { if(safe(() => currentState && currentUserUid, false)){ clearInterval(weekTimer); renderWeekCard(false); } }, 1500);
   // Defer non-urgent warm-up work until the phone is idle
-  (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => { ['/banner-clear.png', '/icon-192.png'].forEach(src => { const i = new Image(); i.src = src; }); });
+  (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => { ['/banner-clear.webp', '/icon-192.png'].forEach(src => { const i = new Image(); i.src = src; }); });
 
   // ---------- polish: no emoji bullets in headings, buttons and labels ----------
   // Emoji in front of a heading or button label reads cheap next to the new

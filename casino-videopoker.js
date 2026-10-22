@@ -592,7 +592,7 @@ function polishedEmptyState(icon, message, cta){
 function fmtMoney(n){
   const v = Number(n) || 0;
   const sign = v > 0 ? '+' : (v < 0 ? '-' : '');
-  return sign + '$' + Math.abs(v).toFixed(2);
+  return sign + '$' + Math.abs(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // v222: thousands separators
 }
 function animateValue(id, newVal, formatFn){
   const el = document.getElementById(id);

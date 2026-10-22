@@ -139,7 +139,7 @@
        green felt table shows up in the app (Blackjack, and the Hold'em
        hand view's own board panel — both share this one class). */
     content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
-    background-image:url('/logo-icon.png');
+    background-image:url('/logo-icon.webp');
     /* Explicit two-dimensional size, same reasoning as the Hold'em oval's
        watermark fix — guarantees this never grows unexpectedly tall
        regardless of the source image's real aspect ratio. */
@@ -1235,7 +1235,7 @@
      seats or cards sitting on top. */
   .holdem-table-oval::after{
     content:''; position:absolute; inset:6%; border-radius:50%; pointer-events:none;
-    background-image:url('/logo-icon.png');
+    background-image:url('/logo-icon.webp');
     /* Explicit width AND height (not a single percentage, which only
        constrains width and lets height scale to the image's own native
        aspect ratio) — the previous two attempts at this kept getting
@@ -4609,7 +4609,7 @@
   }
   .auth-gate::before{
     content:""; position:absolute; inset:0;
-    background: url('/banner.png') center center / 55% no-repeat;
+    background: url('/banner.webp') center center / 55% no-repeat;
     opacity:.06; filter:blur(1.5px); pointer-events:none;
   }
   .auth-box{
@@ -7270,3 +7270,34 @@ html.hint-leg-seen #homeMultiDetail:not(.open){ display:none; }
 /* a running stamp no longer squeezes the name to a letter */
 .ind-tile.result-pending .ind-stamp{ font-size:9.5px; padding:1px 5px; letter-spacing:.02em; }
 .ind-top .ind-name{ min-width:2.6em; }
+
+/* ===================== v222: professional polish pass ===================== */
+/* native controls (date pickers, selects, scrollbars) drawn dark to match */
+:root{ color-scheme:dark; }
+input[type=date], input[type=time], input[type=datetime-local]{ background:var(--surface-2, #1f2120) !important; color:var(--chalk) !important; border:1px solid rgba(255,255,255,.1) !important; border-radius:12px !important; padding:10px 12px !important; min-height:42px; font:inherit; }
+input[type=date]::-webkit-calendar-picker-indicator{ filter:invert(.85); opacity:.8; cursor:pointer; }
+/* every styled select keeps its chevron */
+.form-select, select.form-select{ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23A6ABA8'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 14px center !important; padding-right:34px !important; }
+/* numbers line up in every list of money */
+.owed-row .amt, .lb-row-pl, .home-money-val, .ind-pl, .ch-read-val, .fg-fig{ font-variant-numeric:tabular-nums; }
+/* profile: the swipe hint no longer runs under the card */
+.profile-swipe-hint{ margin:2px 0 8px !important; opacity:.7; }
+/* casino hub: tiles all the same height, words never clipped */
+.casino-hub-row{ grid-auto-rows:1fr; }
+.casino-hub-bubble{ min-height:118px; height:auto !important; overflow:visible; }
+.casino-hub-sub{ display:block; max-width:100%; }
+/* tipping off-season: one card, not floating text */
+.offseason-wrap{ background:var(--surface); border:1px solid rgba(255,255,255,.05); border-radius:20px; padding:22px 18px 18px; margin-top:12px; }
+.offseason-note{ text-align:center; margin-top:12px !important; line-height:1.5; max-width:34ch; margin-left:auto !important; margin-right:auto !important; }
+/* admin: the main action looks like one; removing is quiet until pressed */
+button.adm-primary{ background:var(--accent) !important; color:var(--accent-ink, #111) !important; border:none !important; font-weight:800 !important; padding:10px 18px !important; box-shadow:0 6px 18px rgba(205,244,100,.18) !important; }
+button.adm-quiet-danger{ background:transparent !important; color:var(--muted) !important; border:1px solid rgba(255,255,255,.08) !important; box-shadow:none !important; }
+button.adm-quiet-danger:hover, button.adm-quiet-danger:active{ color:var(--loss) !important; border-color:rgba(229,72,77,.4) !important; }
+/* narrow admin selects show their words */
+.adminWkResult{ min-width:92px; }
+/* section headings on Home share one left edge */
+.home-v2 .home-row-head, .home-row-head{ padding-left:2px; padding-right:2px; }
+.panel.tip-offseason-head{ display:none !important; }
+.offseason-wrap{ margin-top:0; }
+.hint, .offseason-note, .hm-detail-note, .ind-roast{ text-wrap:pretty; }
+.profile-swipe-hint{ justify-content:center; text-align:center; }

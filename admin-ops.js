@@ -37,7 +37,7 @@
         <div id="aoTfList" class="ao-list"></div>
       </div>
       <div class="panel" id="adminErrorsPanel">
-        <h2>Errors</h2>
+        <h2>Phone errors</h2>
         <div class="hint">Anything that has gone wrong on someone's phone in the last 30 days. The same error is grouped, with how many times it happened, who saw it and on which version. Lost signal is ignored.</div>
         <div class="ao-row"><button type="button" id="aoErrRefresh" class="small btn-secondary">Refresh</button><button type="button" id="aoErrClear" class="small btn-secondary">Clear all</button></div>
         <div class="status-msg" id="aoErrStatus"></div>
