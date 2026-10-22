@@ -1,9 +1,8 @@
 {
-  "version": "2026-10-22.225",
+  "version": "2026-10-22.226",
   "date": "2026-10-22",
   "changes": [
-    "Match day: live scores on every multi leg, with alerts when a leg gets up or goes down",
-    "Admin Week on one screen: read slips, mark every leg and bet, accept results from the scoreboard, fill the return, save",
-    "Results still only count once the admin confirms them"
+    "Live game scores removed from the multi",
+    "Admin Week stays on one screen: read slips, mark every leg and bet, fill the return, save"
   ]
 }

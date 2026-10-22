@@ -1,9 +1,7 @@
 // admin-week.js (v225)
 // The whole week on one screen, at the top of Admin → Week. In order:
 //   1 Slips     read this week's slips (fills legs, odds and selections)
-//   2 Multi     every leg with Win / Loss / Void buttons; when the
-//               scoreboard has settled a leg (live-legs-scheduled.mjs) its
-//               result is offered, and "Accept" takes them all at once
+//   2 Multi     every leg with Win / Loss / Void buttons
 //   3 Bets      each individual bet with the same buttons, and the slip's
 //               own result offered when the slip says how it went
 //   4 Returns   the group return worked out from the legs, one tap to fill
@@ -26,10 +24,6 @@
       .filter(([, e]) => e && (e.result || Number(e.odds) > 0))
       .map(([name, e]) => ({ name, odds: Number(e.odds) || 0, result: e.result || null, pick: e.pick || null }))
       .sort((a, b) => ((a.pick && Number(a.pick.leg)) || 1e9) - ((b.pick && Number(b.pick.leg)) || 1e9));
-  }
-  function suggestionFor(name){
-    const L = window.liveLegs && window.liveLegs.legFor ? window.liveLegs.legFor(name) : null;
-    return L && L.suggest ? { result: L.suggest, why: `${L.home} ${L.hs}–${L.as} ${L.away}` } : null;
   }
   // individual bets as they stand in the editor below (what Save uses)
   function betsNow(){
@@ -69,7 +63,6 @@
     const stepDone = Object.fromEntries((steps || []).map(x => [x.key, x.done]));
     const doneCount = (steps || []).filter(x => x.done).length, total = (steps || []).length || 1;
 
-    const sugs = legs.filter(l => !l.result).map(l => ({ l, s: suggestionFor(l.name) })).filter(x => x.s);
     const marked = legs.filter(l => l.result).length;
     const betSugs = bets.filter(b => !b.result).map(b => ({ b, r: slipSays(b) })).filter(x => x.r);
     const gr = groupReturn(legs);
@@ -98,12 +91,10 @@
 
       <section class="awk-step">
         ${stepHead(2, 'Group multi', !!stepDone.results, legs.length ? `${marked} of ${legs.length} marked` : 'No legs in yet')}
-        ${sugs.length ? `<div class="awk-sugbar"><span>The scoreboard has settled ${sugs.length} leg${sugs.length === 1 ? '' : 's'}</span><button type="button" class="small adm-primary" data-awk-act="accept-legs">Accept ${sugs.length}</button></div>` : ''}
         ${legs.length ? `<div class="awk-rows">${legs.map(l => {
-          const sg = !l.result && suggestionFor(l.name);
           return `<div class="awk-row${l.result ? ' is-' + l.result.toLowerCase() : ''}">
-            <span class="awk-who"><b>${esc(l.name)}</b><span>${l.pick && l.pick.sel ? esc(l.pick.sel) : 'No selection'}${l.odds ? ` · @${l.odds.toFixed(2)}` : ''}</span>${sg ? `<em class="awk-sug awk-sug-${sg.result.toLowerCase()}">Scoreboard: ${sg.result === 'Win' ? 'won' : 'lost'} · ${esc(sg.why)}</em>` : ''}</span>
-            ${resBtns('leg', l.name, l.result, sg && sg.result)}
+            <span class="awk-who"><b>${esc(l.name)}</b><span>${l.pick && l.pick.sel ? esc(l.pick.sel) : 'No selection'}${l.odds ? ` · @${l.odds.toFixed(2)}` : ''}</span></span>
+            ${resBtns('leg', l.name, l.result, null)}
           </div>`;
         }).join('')}</div>` : `<div class="awk-empty">Read the multi slip, or type odds in Group multi below.</div>`}
       </section>
@@ -173,7 +164,6 @@
       e.stopPropagation();
       const act = a.dataset.awkAct;
       if(act === 'read'){ const b = $('slipScanBtn'); if(b){ b.click(); go('adminPanelSlips'); } else go('adminPanelSlips'); }
-      else if(act === 'accept-legs'){ legsNow().filter(l => !l.result).forEach(l => { const s = suggestionFor(l.name); if(s) setLeg(l.name, s.result); }); setTimeout(refresh, 60); }
       else if(act === 'accept-bets'){
         // one at a time: each result can re-draw the editor (a win adds a bonus row)
         const todo = betsNow().filter(b => !b.result).map(b => ({ name: b.name, row: b.row, r: slipSays(b) })).filter(x => x.r);

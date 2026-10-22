@@ -139,47 +139,15 @@ test('Running costs include Anthropic', async ({ page }) => {
 });
 
 
-// v225 match day + one-screen admin week
-const matchDay = (db) => {
-  const d = db.state.groupEntryDraft;
-  d.Mick.pick = { sel: 'Melbourne', team: 'Melbourne', event: 'Melbourne v Collingwood', sport: 'AFL', kind: 'head_to_head' };
-  d.Murph = { odds: 1.9, pick: { sel: 'North Melbourne +20.5', event: 'North Melbourne v Carlton', sport: 'AFL', kind: 'line' } };
-  db.liveLegs = { week: 'Week 32', updatedAt: Date.now() - 60e3, live: true, legs: {
-    Mick: { tracked: true, league: 'afl', home: 'Melbourne', away: 'Collingwood', side: 'home', hs: 62, as: 58, state: 'live', clock: 'Q3 12:04', verdict: 'winning', suggest: null, note: 'Up by 4' },
-    Murph: { tracked: true, league: 'afl', home: 'North Melbourne', away: 'Carlton', side: 'home', hs: 40, as: 81, state: 'final', clock: 'Full time', verdict: 'losing', suggest: 'Loss', note: 'Short with the +20.5 by 20.5' },
-    Billy: { tracked: false },
-  } };
-};
-const loadLive = async (page) => { await page.evaluate(() => window.liveLegs.poll()); await page.waitForTimeout(800); };
-
-test('Match day: live scores on Home, finished legs wait for the admin', async ({ page, errors }) => {
-  await goHome(page); await loadLive(page);
-  const panel = await text(page, '#hmLive');
-  assert.ok(panel, 'no match-day panel');
-  for(const s of ['Live', '62–58', 'Q3 12:04', 'Looks gone', 'waiting on admin']) assert.ok(panel.includes(s), `missing "${s}" in: ${panel}`);
-  assert.equal(await page.locator('#groupMultiArea .hm-leg[data-leg="Mick"].lv-on.lv-winning').count(), 1, 'no live ring on Mick');
-  assert.equal(await page.locator('#groupMultiArea .hm-leg[data-leg="Billy"].lv').count(), 0, 'a marked leg still shows live');
-  assert.match(await text(page, '#homeMultiStatus'), /1 in play/);
-  await page.click('#hmLive [data-live-leg="Mick"]'); await page.waitForTimeout(300);
-  assert.match(await text(page, '#homeMultiDetail .hm-live-line'), /Melbourne 62 – 58 Collingwood/);
-  assert.deepEqual(errors, []);
-}, { db: matchDay });
-
-test('Match day panel stays away when last week\'s data is old', async ({ page }) => {
-  await goHome(page); await loadLive(page);
-  assert.equal(await page.locator('#hmLive').count(), 0);
-  assert.equal(await page.locator('#groupMultiArea .hm-leg.lv').count(), 0);
-}, { db: (db) => { matchDay(db); db.liveLegs.week = 'Week 31'; } });
-
-test('Admin week on one screen: accept scoreboard results, mark bets, fill the return', async ({ page, db }) => {
-  await goAdmin(page, 'entry'); await loadLive(page);
+// v225/v226 one-screen admin week
+test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
+  await goAdmin(page, 'entry');
   await page.evaluate(() => { renderAdminWeeklyIndividualBetsEntry(); updateWeeklyChecklist(); });
   const desk = await text(page, '#adminWeeklyChecklistRows');
-  for(const s of ['Slips', 'Group multi', 'Individual bets', 'Returns', 'Accept 1', 'Scoreboard: lost']) assert.ok(desk.includes(s), `missing "${s}" in: ${desk}`);
-  await page.click('[data-awk-act="accept-legs"]'); await page.waitForTimeout(300);
-  await page.click('.awk-r[data-awk="leg"][data-id="Mick"][data-v="Win"]'); await page.waitForTimeout(2500);
-  assert.equal(db.state.groupEntryDraft.Murph.result, 'Loss', 'suggestion not accepted');
-  assert.equal(db.state.groupEntryDraft.Mick.result, 'Win', 'leg button did not mark');
+  for(const s of ['Slips', 'Group multi', 'Individual bets', 'Returns']) assert.ok(desk.includes(s), `missing "${s}" in: ${desk}`);
+  assert.ok(!/scoreboard/i.test(desk), 'scoreboard suggestions still shown');
+  await page.click('.awk-r[data-awk="leg"][data-id="Mick"][data-v="Loss"]'); await page.waitForTimeout(2500);
+  assert.equal(db.state.groupEntryDraft.Mick.result, 'Loss', 'leg button did not mark');
   await page.click('.awk-r[data-awk="bet"][data-id="1"][data-v="Win"]'); await page.waitForTimeout(2500);
   const zak = db.state.weeklyIndividualBets.find(b => b.name === 'Zak');
   assert.equal(zak.result, 'Win'); assert.equal(zak.pl, 70);
@@ -187,7 +155,7 @@ test('Admin week on one screen: accept scoreboard results, mark bets, fill the r
   await page.click('[data-awk-act="fill-return"]'); await page.waitForTimeout(1500);
   assert.equal(await page.evaluate(() => document.getElementById('adminGMultiRet').value), '0');
   assert.equal(db.state.groupFinancialsDraft.gMultiRet, '0');
-}, { db: matchDay });
+});
 
 // ---------------------------------------------------------------------------
 (async () => {

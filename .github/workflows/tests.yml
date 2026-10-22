@@ -17,7 +17,6 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: node tests/live-legs.test.mjs
       - run: npm run build
       - run: npm install --no-save playwright@1.56.0
       - run: npx playwright install --with-deps chromium

@@ -518,14 +518,6 @@
         ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && !data.exists()",
         ".validate": "newData.hasChildren(['msg', 'at']) && newData.child('msg').isString() && newData.child('msg').val().length <= 400 && (!newData.child('stack').exists() || newData.child('stack').val().length <= 1000)"
       }
-    },
-    "liveLegs": {
-      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
-      ".write": false
-    },
-    "liveLegsNotified": {
-      ".read": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
-      ".write": false
     }
   }
 }
