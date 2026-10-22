@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-22.224",
+  "version": "2026-10-22.225",
   "date": "2026-10-22",
   "changes": [
-    "Video poker lights up the paying hand, glass over the slot reels, crash multiplier glows as it climbs",
-    "Casino: real playing cards (pip layouts, framed court cards), clear win/loss banners in every game, the roulette number as a ball, rules printed on the felt, and table polish throughout",
-    "Faster loading: lighter images, cached for a week"
+    "Match day: live scores on every multi leg, with alerts when a leg gets up or goes down",
+    "Admin Week on one screen: read slips, mark every leg and bet, accept results from the scoreboard, fill the return, save",
+    "Results still only count once the admin confirms them"
   ]
 }
