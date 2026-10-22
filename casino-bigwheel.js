@@ -38,7 +38,7 @@ const BIG_WHEEL_SEGMENTS = buildBigWheelSegments();
 // bigWheelInit) so there's an actual visual link between "this wedge" and
 // "this is the spot to tap for it" — the wheel and the betting grid used
 // to share no colour language at all.
-const BIG_WHEEL_COLORS = { '1': '#1a4a33', '2': '#7a2a20', '5': '#2a5a8a', '10': '#6a3a9a', '20': '#b8862e', joker: '#e0b23e' };
+const BIG_WHEEL_COLORS = { '1': '#1d6a46', '2': '#9a2f26', '5': '#2c64a3', '10': '#6e3fa8', '20': '#c08a2c', joker: '#e7bd45' };
 let bigWheelBuilt = false;
 let bigWheelRotation = 0;
 let bigWheelSpinning = false;
@@ -52,7 +52,10 @@ function bigWheelBuildWheel(){
   const labelsLayer = document.getElementById('bigWheelLabelsLayer');
   const n = BIG_WHEEL_SEGMENTS.length;
   const anglePer = 360 / n;
-  const stops = BIG_WHEEL_SEGMENTS.map((val, i) => `${BIG_WHEEL_COLORS[val]} ${(i * anglePer).toFixed(3)}deg ${((i + 1) * anglePer).toFixed(3)}deg`);
+  // v223: a thin gold fret between every wedge, as on a real money wheel,
+  // so neighbouring wedges of the same colour still read as separate
+  const fret = 0.45, fretCol = '#c9a24b';
+  const stops = BIG_WHEEL_SEGMENTS.map((val, i) => `${fretCol} ${(i * anglePer).toFixed(3)}deg ${(i * anglePer + fret).toFixed(3)}deg, ${BIG_WHEEL_COLORS[val]} ${(i * anglePer + fret).toFixed(3)}deg ${((i + 1) * anglePer - fret).toFixed(3)}deg, ${fretCol} ${((i + 1) * anglePer - fret).toFixed(3)}deg ${((i + 1) * anglePer).toFixed(3)}deg`);
   wheel.style.background = `conic-gradient(${stops.join(',')})`;
   // Real text on every wedge now that there's actual room for it — same
   // counter-rotation technique as Daily Spin, so labels stay upright and

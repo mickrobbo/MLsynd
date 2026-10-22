@@ -593,8 +593,13 @@ async function rouletteSpinInner(){
   const wheel = document.getElementById('rouletteWheel');
   wheel.classList.remove('pc-winner-flash'); void wheel.offsetWidth; wheel.classList.add('pc-winner-flash');
 
-  const colorLabel = color === 'green' ? '\ud83d\udfe2 Green' : (color === 'red' ? '\ud83d\udd34 Red' : '\u26ab Black');
-  resultEl.textContent = `${winningPocket} \u2014 ${colorLabel}  |  ${parts.join('  \u00b7  ')}  \u2014  Total: ${totalDelta >= 0 ? '+' : ''}${totalDelta} XP`;
+  // v223: one clean line (the number shows as a ball above it); each bet's
+  // own result is kept in the tooltip
+  const colorWord = color === 'green' ? 'Green' : (color === 'red' ? 'Red' : 'Black');
+  const winsCount = rouletteActiveBets.filter(bet => rouletteEvaluate(bet, winningPocket) > 0).length;
+  const betsWord = rouletteActiveBets.length > 1 ? ` \u00b7 ${winsCount} of ${rouletteActiveBets.length} bets won` : '';
+  resultEl.textContent = `${winningPocket} ${colorWord} \u00b7 ${totalDelta > 0 ? '+' : ''}${totalDelta.toLocaleString('en-AU')} XP${betsWord}`;
+  resultEl.title = parts.join(' \u00b7 ');
   resultEl.style.color = isJackpot ? '' : (totalDelta > 0 ? 'var(--win)' : (totalDelta < 0 ? 'var(--loss)' : 'var(--muted)'));
   resultEl.classList.add(isJackpot ? 'bj-outcome-jackpot' : 'bj-outcome-pop');
   croupierSay('rouletteCroupierMsg', isJackpot ? CROUPIER_LINES.rouletteBigWin : (totalDelta > 0 ? CROUPIER_LINES.rouletteWin : (totalDelta < 0 ? CROUPIER_LINES.rouletteLoss : CROUPIER_LINES.rouletteNoBet)));
