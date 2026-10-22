@@ -23,6 +23,17 @@ VP_PAYTABLE.forEach(p => { p.mult = p.pays - 1; }); // profit on top of the bet,
 const VP_DEALER_WIN_PAYS = 0.9;
 let vpBuilt = false;
 let vpDeck = [];
+// v224: video poker is a single 52-card deck. It used to borrow the
+// blackjack shoe (several decks), which let the same card appear twice in
+// one hand and changed the odds the paytable is built on.
+function vpFreshDeck(){
+  const suits = ['\u2660', '\u2665', '\u2666', '\u2663'];
+  const ranks = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  const deck = [];
+  suits.forEach(s => ranks.forEach(r => deck.push({ rank: r, suit: s })));
+  for(let i = deck.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+  return deck;
+}
 let vpHand = [];
 let vpHeld = [false, false, false, false, false];
 let vpStage = 'idle'; // idle | dealt
@@ -109,7 +120,7 @@ function vpUpdateTotalBetHint(){
 // already showing in that same hand. Restored per direct request: one
 // full deck per hand (5 hands = 5 decks), not a single shared deck.
 function vpBuildExtraHandDeck(dealtHand){
-  const deck = bjFreshDeck();
+  const deck = vpFreshDeck();
   return deck.filter(c => !dealtHand.some(d => d.rank === c.rank && d.suit === c.suit));
 }
 function vpBuildPaytable(){
@@ -322,7 +333,7 @@ async function vpDeal(){
   // recorded before any card shows, so a refresh can't dodge a bad deal.
   vpRound = { amount, hands: vpHandCount, dealer: vpPlayDealer, totalBet };
   if(!vpHighRollerMode && typeof casinoRoundStart === 'function') await casinoRoundStart('videopoker', totalBet);
-  vpDeck = bjFreshDeck();
+  vpDeck = vpFreshDeck();
   vpHand = vpDeck.splice(0, 5);
   vpHeld = [false, false, false, false, false];
   vpStage = 'dealt';

@@ -1,9 +1,9 @@
 {
-  "version": "2026-10-22.223",
+  "version": "2026-10-22.224",
   "date": "2026-10-22",
   "changes": [
+    "Video poker lights up the paying hand, glass over the slot reels, crash multiplier glows as it climbs",
     "Casino: real playing cards (pip layouts, framed court cards), clear win/loss banners in every game, the roulette number as a ball, rules printed on the felt, and table polish throughout",
-    "Faster loading: lighter images, cached for a week",
-    "Polish across the app: dark date pickers and dropdowns, money with thousands separators, Australian dates, clearer dues and bank share, tidier admin"
+    "Faster loading: lighter images, cached for a week"
   ]
 }

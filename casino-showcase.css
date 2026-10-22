@@ -105,3 +105,18 @@
 
 @media (prefers-reduced-motion: reduce){ .cz-result.cz-pop, .cz-ball.cz-pop{ animation:none; } }
 .cz-pips-10{ left:39%; right:39%; }
+
+/* ---------- 9. video poker: the paying hand lights up its row ---------- */
+.vp-paytable tr.vp-hit td{ color:#2a1d00 !important; font-weight:800 !important; background:linear-gradient(180deg, #F4D27A, #D9A93E) !important; }
+.vp-paytable tr.vp-hit td:first-child{ border-radius:8px 0 0 8px; }
+.vp-paytable tr.vp-hit td:last-child{ border-radius:0 8px 8px 0; }
+
+/* ---------- 10. slots: glass over the reels ---------- */
+.slots-reel{ position:relative; }
+.slots-reel::after{ content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit; background:linear-gradient(180deg, rgba(0,0,0,.28) 0%, transparent 18%, transparent 82%, rgba(0,0,0,.28) 100%), linear-gradient(100deg, rgba(255,255,255,.18) 0%, transparent 35%); }
+
+/* ---------- 11. crash: the multiplier glows with the climb ---------- */
+.crash-multiplier{ font-variant-numeric:tabular-nums; text-shadow:0 0 24px rgba(74,222,128,.35); }
+.crash-multiplier.crash-mid{ text-shadow:0 0 26px rgba(233,196,106,.45); }
+.crash-multiplier.crash-hot{ text-shadow:0 0 30px rgba(255,138,92,.55); }
+.cz-pips-10 span{ font-size:10px; }
