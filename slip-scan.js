@@ -214,7 +214,8 @@
       if(r){ result.value = r; fire(result); }
       // v204: keep the selection so Home can show what each person picked
       try{
-        const d = currentState.groupEntryDraft[name] || (currentState.groupEntryDraft[name] = {});
+        const all = currentState.groupEntryDraft || (currentState.groupEntryDraft = {});
+        const d = all[name] || (all[name] = {});
         d.pick = { sel: leg.selection || '', market: leg.market || null, event: leg.event || null, sport: leg.sport || null, team: leg.team || null, kind: leg.kind || null, leg: b.legs.indexOf(leg) + 1 };
         adminGroupDraftDirty.add(name);
       }catch(e){}

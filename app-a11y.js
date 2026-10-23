@@ -26,7 +26,7 @@
   // Focus only jumps into a pop-up for keyboard and switch users; a tap
   // shouldn't leave a focus ring sitting on the first button.
   let keyboardUser = false;
-  document.addEventListener('keydown', (e) => { if(e.key === 'Tab' || e.key === 'Enter' || e.key === ' ' || e.key.startsWith('Arrow')) keyboardUser = true; }, true);
+  document.addEventListener('keydown', (e) => { if(e.key === 'Tab' || e.key === 'Enter' || e.key === ' ' || String(e.key || '').startsWith('Arrow')) keyboardUser = true; }, true);
   document.addEventListener('pointerdown', () => { keyboardUser = false; }, true);
   document.addEventListener('focusin', (e) => { if(!e.target.closest(DIALOG_SEL)) lastFocus = e.target; }, true);
   document.addEventListener('click', (e) => { const t = e.target.closest('button, a, [role=button], [tabindex]'); if(t && !t.closest(DIALOG_SEL)) lastFocus = t; }, true);

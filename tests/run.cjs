@@ -157,6 +157,33 @@ test('Admin week on one screen: mark legs and bets, fill the return', async ({ p
   assert.equal(db.state.groupFinancialsDraft.gMultiRet, '0');
 });
 
+
+test('Legs in the draft show on Home even if the multi was cleared', async ({ page }) => {
+  await goHome(page); await page.waitForTimeout(600);
+  assert.ok(await page.locator('#groupMultiArea .hm-leg').count() >= 3, 'multi hidden by the cleared flag');
+}, { db: (db) => { db.state.groupMultiCleared = true; } });
+
+test('Clear the multi, then new legs switch it back on for everyone', async ({ page, db }) => {
+  await goAdmin(page, 'entry');
+  await page.evaluate(() => document.getElementById('adminClearWhoCookingBtn').click()); await page.waitForTimeout(800);
+  assert.equal(db.state.groupMultiCleared, true);
+  await page.evaluate(() => { const el = document.querySelector('#adminGroupEntryRows .adminWkOdds[data-name="Zak"]'); el.value = '1.96'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.waitForTimeout(2500);
+  assert.equal(db.state.groupMultiCleared, false, 'flag left on, Home stays empty for everyone');
+  assert.equal(db.state.groupEntryDraft.Zak.odds, 1.96);
+}, { db: (db) => { db.state.weeklyIndividualBets = []; } });
+
+test('After Save week empties the draft, typing odds and reading a slip still save', async ({ page, db, errors }) => {
+  await goAdmin(page, 'entry');
+  await page.evaluate(() => { delete currentState.groupEntryDraft; });
+  await page.evaluate(() => { const el = document.querySelector('#adminGroupEntryRows .adminWkOdds[data-name="Zak"]'); el.value = '1.96'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.waitForTimeout(2500);
+  assert.equal(db.state.groupEntryDraft.Zak.odds, 1.96, 'odds not saved');
+  assert.deepEqual(errors, []);
+  await goHome(page); await page.waitForTimeout(600);
+  assert.ok(await page.locator('#groupMultiArea .hm-leg[data-leg="Zak"]').count() === 1, 'not on Home');
+}, { db: (db) => { delete db.state.groupEntryDraft; db.state.groupMultiCleared = true; db.state.weeklyIndividualBets = []; } });
+
 // ---------------------------------------------------------------------------
 (async () => {
   const srv = await serve();

@@ -1,8 +1,7 @@
 {
-  "version": "2026-10-22.226",
-  "date": "2026-10-22",
+  "version": "2026-10-24.227",
+  "date": "2026-10-24",
   "changes": [
-    "Live game scores removed from the multi",
-    "Admin Week stays on one screen: read slips, mark every leg and bet, fill the return, save"
+    "Fixed: the group multi not showing on Home after the slip was read"
   ]
 }

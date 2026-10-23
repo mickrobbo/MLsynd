@@ -4031,7 +4031,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-22.226"; // v226 live game scoring removed (match-day panel, live rings, leg alerts, live-legs function); one-screen Admin Week kept without scoreboard suggestions. v225 match day: live-legs-scheduled.mjs follows each multi leg's game (Squiggle/ESPN) every 3 min into /liveLegs, Home shows live rings, a Match day panel and "looks home/gone" until the admin confirms; pushes when a leg settles (deduped with the admin's result alert); Admin Week becomes one screen (admin-week.js): read slips, mark legs and bets with buttons, accept scoreboard/slip results, fill the group return, save. v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
+const APP_VERSION = "2026-10-24.227"; // v227 group multi missing from Home after a slip read: groupMultiCleared left on by "Clear the multi on Home" (local copy never updated, so the save skipped the un-clear); Home now shows any legs in the draft regardless, saves always confirm the flag is off, and the clear button updates the local copy. v226 v226 live game scoring removed (match-day panel, live rings, leg alerts, live-legs function); one-screen Admin Week kept without scoreboard suggestions. v225 match day: live-legs-scheduled.mjs follows each multi leg's game (Squiggle/ESPN) every 3 min into /liveLegs, Home shows live rings, a Match day panel and "looks home/gone" until the admin confirms; pushes when a leg settles (deduped with the admin's result alert); Admin Week becomes one screen (admin-week.js): read slips, mark legs and bets with buttons, accept scoreboard/slip results, fill the group return, save. v190 multi card footer line ("owe the boys a beer" / "every leg got up") removed. v189 podium on a lit stage (crown, rank colours, lead/back gap, steps rise in) and season chart rebuilt (smooth line, light $ grid, readout + weekly change, drag to read any week, Season/Last 10). v188 Maxine's removed (no entry, no badge), chip rails redesigned (stake pill, enamel chips, tools row), New Year season reset (season-reset-scheduled.mjs: archive per profile, balances to 10,000, tiers restart; badges and All-time XP count every season; profile Seasons section; New Year moment). v187 polish pass: emoji bullets stripped from headings/buttons/labels, header haze removed, quieter lobby tiles + Spin the Wheel + Clear Chips, segmented Sport toggle, cleaner tipping champion card, slim dues lines, podium steps fixed, chart gradient, form-guide clip-art removed, quieter footer. v186 app-premium.js: opening screen + skeletons, directional tab slides, pull to refresh, full-screen tier/badge celebrations, holographic profile card (device tilt), tier rings, Monday week card with share image, live presence + big-win ticker (needs presence rule), rolling numbers, one sound switch, install prompt, press feedback, app-icon badge, wake lock during Auto Play, lite mode for data saver. v185 premium casino: casino-premium.js adds Auto Play on every table with stop rules and bet progression, Crash auto cash-out, win banner, last-10 strip, haptics, half/double + remembered bets, BJ/VP best-move hints, richer session recap; tables restyled (glass bezel, new felt, crisp cards, steel wheels, graphite slots/mines), deal-from-shoe and slower spin finishes. v184 podium photo centred (background shorthand had reset cover/center). v183 multi row decluttered (small faces, no names under, no dashed rings), On this day centred. v182 multi card: nine faces across, a resulted leg turns into a solid tick/cross/?/dash circle. v181 group multi as a bookie-style card: round photo per leg with tick/cross/gold ?/blue dash badges, tap a face for that leg, combined odds with the full price struck through when legs void. v180 new look: graphite + lime palette, Manrope type, floating pill nav with SVG icons, charcoal cards, bet slip kept as the warm centrepiece; flows through every tab via the shared colour variables. v179 fixes from real-phone screenshots: doubled Board avatars (two renders racing), sticky sub-tabs no longer let content peek above/around them, Form guide as stat cards, individual bets as ticket tiles, What's happening as a quiet strip. v178 app-wide modernisation: Board as clean rows, Syndy moved into the header, quieter tab bar that tucks away on scroll, sticky sub-tabs, sentence-case panel headings, calmer Cash and empty states. v177 calmer Home: one money block instead of swipe cards, slim segmented sub-tabs on every tab, to-do collapses to one line, sections without boxes, empty sections hidden. v176 Home refresh: greeting, this week's multi as a printed bet slip with stamps and combined odds, compact money strip, Casino/Activity tiles, sentence-case section titles. v175 UX + navigation upgrade: 5s live updates, instant open from saved copy, push alerts for multi results, weekly admin checklist, readable text sizes, Admin in header, back gesture, tab badges, tap-to-top, remembered sub-views, Home shortcuts, Recently played, off-season Tipping; fixed Sport tab id bug (auto-refresh never ran). v174 streamlining: slip photos moved out of /state (loaded on demand), polls check a tiny /state/_rev marker before downloading, Push-to-Home button removed (auto-save covers it), Ledger wording updated. v173 2027 tipping prep: tipping-XP "already paid" markers now per season (were per round number, so 2027 would have paid nothing), season points reset after archive, fixture-feed errors no longer read as "no games". v172 Syndy Voice removed (footer toggle, big-win voice line, Google TTS health check). v171 Casino Pot: client catch-up disabled (rules never allowed it to finish, and it could re-add the admin's own losses each session), health check wording points at the server function, which now settles each closed week on its own and carries zero-pot weeks forward. v170 the actual everyday cause: Home (and the un-clear flag) only counted legs with a RESULT, so a multi entered when placed (odds, no results yet) never showed. Pending legs now show with ⏳, odds alone un-clear Home, Save Week warns about legs still pending. v169 ROOT CAUSE of group multi not saving: the Ledger app PUT its whole stale /state.json on most actions, wiping Dashboard-saved rows. Ledger fixed (diff PATCH, scoped drafts, live refresh); Dashboard now detects and restores rows wiped by an old open Ledger tab. v168 tipping new-season: everything tipping-related now scoped to /tipping/config/year (archived 2026 games/ladder no longer show for 2027), round names read from the fixture (no Opening Round from 2027, Gather Round auto-detected), admin submissions tracker season-aware, archive double-run guard. v167 health-check follow-up: Casino Pot stuck periods now carry forward / clean up instead of sitting forever, pot payouts ETag-safe and failures recorded, stale health checks corrected (weekly key format, ISO-week top-up marker, empty groupEntries), Save Week warns when nobody has a result. v166 perf+bug pass: Firebase SDK lazy-loaded, background timers pause when hidden, approval poll stops after approval, Mini Golf loop stops off-tab, Maxine's win ReferenceError fixed, profile log fetch limited, GPU-friendly animations. v164: group multi persistence — refresh() no longer clobbers unsaved/in-flight draft edits with stale server data, saves PATCH only edited rows instead of PUTting the whole draft, rows mirrored to localStorage and re-sent on next launch, flush on visibilitychange. Previous note: // Third report of "not saving" turned out to not be a save bug at all — a genuine screenshot this time showed the real state: odds typed in for several people, but every single result still on "No bet". renderGroupMultiChart filters entries by e.result specifically (by what looks like deliberate design — a "who's cooking it" roast needs to know who won or lost, not just what the odds were), and hasRealEntry already checked the same field for the same reason. Both writes were genuinely landing correctly. The actual gap was in my OWN verification message from two versions ago — it claimed "genuinely saved AND will show on Home" unconditionally whenever the writes matched, which is only true once at least one person has an actual result picked, not just odds. That overclaim is what sent the search toward a save bug that didn't exist. Now checks hasRealEntry first and says plainly that odds alone won't show on Home yet if that's genuinely all that's there, before ever getting to the confirmed-or-error branches. Remember to match this in version.json on deploy
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -13254,7 +13254,7 @@ async function loadProfileGameStats(linkedUid, forName){
     const perGame = {};
     entries.forEach(e => {
       const reason = e.reason || '';
-      const game = PROFILE_GAME_NAMES.find(g => reason.toLowerCase().startsWith(g.toLowerCase()));
+      const game = PROFILE_GAME_NAMES.find(g => String(reason || '').toLowerCase().startsWith(g.toLowerCase()));
       if(!game) return;
       if(!perGame[game]) perGame[game] = { count: 0, wins: 0, losses: 0, xp: 0 };
       perGame[game].count++;
@@ -14403,9 +14403,12 @@ function renderGroupMultiChart(state){
     window.__hmLegs = [];
     renderHomeGreeting(state, { legs: 0, pending: 0, losers: 0 });
   };
-  if(state.groupMultiCleared){ emptyCard('No legs yet. Each person shows up here as soon as their odds go in.'); return; }
-
+  // v227: "cleared" only hides last week's saved multi. Once this week's
+  // legs are in the draft they always show, even if the flag on the server
+  // never got switched back off.
   const draft = state.groupEntryDraft || {};
+  if(state.groupMultiCleared && !Object.values(draft).some(groupLegIsIn)){ emptyCard('No legs yet. Each person shows up here as soon as their odds go in.'); return; }
+
   let source = draft;
   let weekLabel = state.weekLabelDraft || 'This week';
   const draftHasEntries = Object.values(draft).some(groupLegIsIn);
@@ -14855,7 +14858,7 @@ async function computeWeeklyOutstandingItems(){
     const cleared = !!(currentState && currentState.groupMultiCleared);
     const draft = (currentState && currentState.groupEntryDraft) || {};
     const hasAnyResult = Object.values(draft).some(groupLegIsIn);
-    result.multiOutstanding = cleared || !hasAnyResult;
+    result.multiOutstanding = !hasAnyResult; // v227: legs in the draft count even if the Home flag is stale
   }catch(e){}
   return result;
 }
@@ -15327,7 +15330,7 @@ function renderMentionSuggestions(query){
   if(!box) return;
   const q = query.toLowerCase();
   const matches = groupChatMentionables
-    .filter(p => p.uid !== currentUserUid && p.name.toLowerCase().startsWith(q))
+    .filter(p => p.uid !== currentUserUid && String(p.name || '').toLowerCase().startsWith(q))
     .slice(0, 6);
   if(matches.length === 0){ box.style.display = 'none'; box.innerHTML = ''; return; }
   box.innerHTML = matches.map(p => {
@@ -16045,6 +16048,8 @@ async function sendGroupChatMessage(){
 }
 
 function render(state){
+  // v227: an empty draft isn't stored by Firebase, so make sure it's always an object
+  if(state && typeof state === 'object' && (!state.groupEntryDraft || typeof state.groupEntryDraft !== 'object')) state.groupEntryDraft = {};
   renderSyncStatusLine(state);
   renderHealthPill(state);
   if(!state || !state.members || state.members.length === 0){
@@ -21407,7 +21412,7 @@ function groupDraftRecoverFromMirror(){
     if(!saved || !saved.rows || Date.now() - saved.ts > 7*24*3600*1000){ localStorage.removeItem(GROUP_DRAFT_LS_KEY); return; }
     if(!currentState.groupEntryDraft) currentState.groupEntryDraft = {};
     Object.keys(saved.rows).forEach(n => {
-      currentState.groupEntryDraft[n] = saved.rows[n];
+      (currentState.groupEntryDraft || (currentState.groupEntryDraft = {}))[n] = saved.rows[n];
       adminGroupDraftDirty.add(n);
     });
     if(typeof renderAdminGroupEntry === 'function' && diagEntryLoaded) renderAdminGroupEntry();
@@ -21494,7 +21499,11 @@ async function saveAdminGroupEntryDraft(){
     // everything in THIS session look fine, right up until the next
     // fresh state read pulled the real (still-true) server value back
     // in. Now checked and surfaced exactly like the draft write is.
-    if(hasRealEntry && currentState.groupMultiCleared){
+    // v227: also when this session hasn't confirmed the server flag is off.
+    // "Clear the multi on Home" set it on the server without updating this
+    // phone's copy, so the check below used to skip the un-clear and Home
+    // stayed empty for everyone.
+    if(hasRealEntry && (currentState.groupMultiCleared || !window.__gmcOffConfirmed)){
       currentState.groupMultiCleared = false;
       const clearRes = await groupEntryUngatedFetch('/state/groupMultiCleared.json', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: 'false'
@@ -21504,6 +21513,7 @@ async function saveAdminGroupEntryDraft(){
         const bodyText = await clearRes.text().catch(() => '');
         throw new Error(`Firebase rejected clearing groupMultiCleared (HTTP ${clearRes.status}): ${bodyText || clearRes.statusText || 'no details'}`);
       }
+      window.__gmcOffConfirmed = true;
     }
     // PATCH only the rows edited since the last confirmed save (never a
     // whole-draft PUT of a possibly stale copy). A full PUT is used only
@@ -21713,6 +21723,7 @@ function renderAdminGroupEntry(){
     // <select> elements.
     const handler = () => {
       const name = el.dataset.name;
+      if(!currentState.groupEntryDraft) currentState.groupEntryDraft = {}; // v227: Firebase drops an empty draft, so after Save week it comes back missing
       if(!currentState.groupEntryDraft[name]) currentState.groupEntryDraft[name] = {};
       const oddsEl = wrap.querySelector(`.adminWkOdds[data-name="${CSS.escape(name)}"]`);
       const resultEl = wrap.querySelector(`.adminWkResult[data-name="${CSS.escape(name)}"]`);
@@ -23341,6 +23352,7 @@ document.getElementById('adminClearWhoCookingBtn').addEventListener('click', asy
     await authedWrite('/state/groupMultiCleared.json', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(true)
     });
+    currentState.groupMultiCleared = true; window.__gmcOffConfirmed = false; // v227: keep this phone's copy in step
     status.className = 'status-msg ok';
     status.textContent = 'Cleared — the Home tab will show it empty until new real activity starts.';
   }catch(e){
@@ -25002,8 +25014,8 @@ initAuthGate();
 <script src="casino-premium.js?v=198"></script>
 <script src="casino-luxe.js?v=201"></script>
 <script src="app-premium.js?v=222"></script>
-<script src="app-a11y.js?v=201"></script>
-<script src="slip-scan.js?v=213"></script>
+<script src="app-a11y.js?v=227"></script>
+<script src="slip-scan.js?v=227"></script>
 <script src="admin-ops.js?v=222"></script>
 <script src="casino-showcase.js?v=223"></script>
 <script src="pick-stats.js?v=216"></script>
