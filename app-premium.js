@@ -369,6 +369,9 @@
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; setTimeout(showInstall, 4000); });
   function showInstall(){
     if(standalone || $('cpInstall') || Date.now() < LS.get('cp-install-snooze', 0)) return;
+    // Don't cover the login screen's 'Forgot password?' link: wait until the person is signed in.
+    const gate = $('authGate');
+    if(gate && gate.getClientRects().length && getComputedStyle(gate).visibility !== 'hidden'){ setTimeout(showInstall, 3000); return; }
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
     if(!deferredPrompt && !ios) return;
     const bar = document.createElement('div'); bar.id = 'cpInstall'; bar.className = 'cp-install';

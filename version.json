@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-24.227",
+  "version": "2026-10-26.228",
   "date": "2026-10-24",
   "changes": [
     "Fixed: the group multi not showing on Home after the slip was read"
