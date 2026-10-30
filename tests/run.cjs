@@ -275,27 +275,65 @@ test('Rules differ for AFL and NRL', async ({ page }) => {
   await page.click('#tippingRulesBtn');
   t = await text(page, '#tippingRulesBody');
   assert.ok(t.includes('NRL regular season') && t.includes('State of Origin') && t.includes('kick-off'));
-  assert.ok(t.includes('Only people who have paid') && t.includes('top three paid entrants'));
+  assert.ok(!t.includes('Only people who have paid') && t.includes('no entry fee, no prize pot'));
   assert.match(await text(page, '#tippingRulesTitle'), /NRL/);
+  await page.evaluate(() => document.getElementById('tippingRulesModal').classList.remove('open'));
+  await page.click('#tab-tipping .tip-sport-btn[data-tipsport="efl"]'); await page.waitForTimeout(800);
+  await page.click('#tippingRulesBtn');
+  t = await text(page, '#tippingRulesBody');
+  assert.ok(t.includes('46 matchweeks') && t.includes('Tip a Draw') && t.includes('no entry fee, no prize pot'));
+  assert.match(await text(page, '#tippingRulesTitle'), /EFL/);
+  await page.evaluate(() => document.getElementById('tippingRulesModal').classList.remove('open'));
+  await page.click('#tab-tipping .tip-sport-btn[data-tipsport="afl"]'); await page.waitForTimeout(800);
+  await page.click('#tippingRulesBtn');
+  t = await text(page, '#tippingRulesBody');
+  assert.ok(t.includes('Only people who have paid') && t.includes('AFL is the only comp with a prize pot'));
 });
 
-test('Ladder shows everyone but only paid entrants take the prize places', async ({ page }) => {
+
+const ladderFx = () => { const t = Date.now() - 7 * 86400e3, st = (ms) => new Date(ms + 11 * 3600e3).toISOString().slice(0, 19).replace('T', ' ');
+  return { t, st }; };
+const ladderGames = (idf) => () => { const { t, st } = ladderFx();
+  const g = (id, h, a, hs, as, off) => ({ id, round: 1, roundname: 'Round 1', date: st(t + off), unixtime: Math.floor((t + off) / 1000), venue: 'V', hteam: h, ateam: a, hscore: hs, ascore: as, complete: 100, winner: hs > as ? h : a, margin: Math.abs(hs - as) });
+  return { year: Number(st(t).slice(0, 4)), games: [g(idf(1), 'Storm', 'Eels', 20, 10, 0), g(idf(2), 'Broncos', 'Roosters', 6, 18, 7200e3)] }; };
+const ladderDb = (root, dues, idf) => (db) => { const yr = Number(new Date(Date.now() - 7 * 86400e3 + 11 * 3600e3).toISOString().slice(0, 4));
+  db[root] = { config: { year: yr }, picks: {
+    [idf(1)]: { uA: { pick: 'home', name: 'Ann' }, uB: { pick: 'home', name: 'Bob' }, uC: { pick: 'away', name: 'Cat' } },
+    [idf(2)]: { uA: { pick: 'away', name: 'Ann' }, uB: { pick: 'home', name: 'Bob' }, uC: { pick: 'home', name: 'Cat' } } } };
+  db[dues] = { uB: { name: 'Bob', commitment: 50, owed: 0 }, uC: { name: 'Cat', commitment: 50, owed: 0 } }; };
+
+test('AFL ladder shows everyone but only paid entrants take the prize places', async ({ page }) => {
+  await page.evaluate(() => setActiveTab('tipping')); await page.waitForTimeout(600);
+  await page.click('#tab-tipping .subnav-btn[data-tipsub="ladder"]'); await page.waitForTimeout(3500);
+  const t = await text(page, '#tippingLadderArea');
+  assert.ok(/Ann/.test(t) && /Bob/.test(t) && /Cat/.test(t), 'everyone should be on the ladder: ' + t);
+  assert.ok(t.indexOf('Ann') < t.indexOf('Bob'), 'Ann (unpaid) leads the ladder on points');
+  assert.match(t, /Bob\s*💰 1st/); assert.match(t, /Cat\s*💰 2nd/); assert.ok(!/Ann\s*💰/.test(t), 'unpaid Ann must not carry a prize badge');
+}, { fns: { 'afl-fixtures': ladderGames((n) => 9100 + n) }, db: ladderDb('tipping', 'tippingDues', (n) => 9100 + n) });
+
+test('NRL is free: ladder has no prize badges, pot or fee panels', async ({ page }) => {
   await page.evaluate(() => setActiveTab('tipping')); await page.waitForTimeout(600);
   await page.click('#tab-tipping .tip-sport-btn[data-tipsport="nrl"]'); await page.waitForTimeout(1500);
   await page.click('#tab-tipping .subnav-btn[data-tipsub="ladder"]'); await page.waitForTimeout(3500);
   const t = await text(page, '#tippingLadderArea');
-  const row = (n) => (t.match(new RegExp(n + '[^A-Za-z]*[^0-9]*', 'i')) || [''])[0];
   assert.ok(/Ann/.test(t) && /Bob/.test(t) && /Cat/.test(t), 'everyone should be on the ladder: ' + t);
-  assert.ok(t.indexOf('Ann') < t.indexOf('Bob'), 'Ann (unpaid) leads the ladder on points');
-  assert.match(t, /Bob\s*💰 1st/); assert.match(t, /Cat\s*💰 2nd/); assert.ok(!/Ann\s*💰/.test(t), 'unpaid Ann must not carry a prize badge');
-}, { fns: { 'nrl-fixtures': () => { const t = Date.now() - 7 * 86400e3, st = (ms) => new Date(ms + 11 * 3600e3).toISOString().slice(0, 19).replace('T', ' ');
-    const g = (id, h, a, hs, as, off) => ({ id, round: 1, roundname: 'Round 1', date: st(t + off), unixtime: Math.floor((t + off) / 1000), venue: 'V', hteam: h, ateam: a, hscore: hs, ascore: as, complete: 100, winner: hs > as ? h : a, margin: Math.abs(hs - as) });
-    return { year: Number(st(t).slice(0, 4)), games: [g('n-g1', 'Storm', 'Eels', 20, 10, 0), g('n-g2', 'Broncos', 'Roosters', 6, 18, 7200e3)] }; } },
-  db: (db) => { const yr = Number(new Date(Date.now() - 7 * 86400e3 + 11 * 3600e3).toISOString().slice(0, 4));
-    db.tippingNrl = { config: { year: yr }, picks: {
-      'n-g1': { uA: { pick: 'home', name: 'Ann' }, uB: { pick: 'home', name: 'Bob' }, uC: { pick: 'away', name: 'Cat' } },
-      'n-g2': { uA: { pick: 'away', name: 'Ann' }, uB: { pick: 'home', name: 'Bob' }, uC: { pick: 'home', name: 'Cat' } } } };
-    db.tippingDuesNrl = { uB: { name: 'Bob', commitment: 50, owed: 0 }, uC: { name: 'Cat', commitment: 50, owed: 0 } }; } });
+  assert.ok(!t.includes('💰'), 'free comp must show no prize badge: ' + t);
+  assert.ok(await page.evaluate(() => document.body.classList.contains('tip-free')));
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('[data-tip-prize]')].filter(e => e.offsetParent !== null).length), 0, 'no prize element may be visible');
+}, { fns: { 'nrl-fixtures': ladderGames((n) => 'n-g' + n) }, db: ladderDb('tippingNrl', 'tippingDuesNrl', (n) => 'n-g' + n) });
+
+test('EFL tipping: third comp loads with Matchweek wording and saves under /tippingEfl', async ({ page, db }) => {
+  await page.evaluate(() => setActiveTab('tipping')); await page.waitForTimeout(800);
+  await page.click('#tab-tipping .tip-sport-btn[data-tipsport="efl"]'); await page.waitForTimeout(2500);
+  assert.match(await text(page, '#tippingRoundHeading'), /EFL Tipping — Matchweek 1/);
+  await page.click('#tipEntryBar [data-tipjoin="efl"]'); await page.waitForTimeout(2500);
+  assert.equal(db.tippingComps.adminUid.efl, true);
+  await page.evaluate(() => { document.querySelectorAll('.tip-game').forEach(g => g.querySelector('.tip-pick-btn[data-pick="home"]').click()); const m = document.querySelector('.tip-margin-input'); m.value = '1'; m.dispatchEvent(new Event('input')); });
+  await page.click('#tipSaveAllBtn'); await page.waitForTimeout(2500);
+  assert.equal(Object.keys(((db.tippingEfl || {}).picks) || {}).length, 2, JSON.stringify(db.tippingEfl));
+  assert.equal(Object.keys(((db.tipping || {}).picks) || {}).length, 0);
+}, { fns: { 'efl-fixtures': () => { const g = nrlGames(); g.games.forEach((x, i) => { x.id = 'e-' + (100 + i); x.roundname = 'Matchweek 1'; x.hteam = ['Leeds', 'Norwich'][i]; x.ateam = ['Hull', 'Derby'][i]; }); return g; } },
+  db: (db) => { db.tipping = { config: { year: 2027 } }; db.tippingEfl = { config: { year: Number(new Date(Date.now() + 3 * 86400e3 + 11 * 3600e3).toISOString().slice(0, 4)) } }; } });
 
 (async () => {
   const srv = await serve();

@@ -60,6 +60,7 @@ function kickoffMs(g) {
 const SPORTS = [
   { key: "afl", label: "AFL", fn: "afl-fixtures", root: "/tipping", jokerNotified: "/pushJokerLastChanceNotified" },
   { key: "nrl", label: "NRL", fn: "nrl-fixtures", root: "/tippingNrl", jokerNotified: "/pushJokerLastChanceNotifiedNrl" },
+  { key: "efl", label: "EFL", fn: "efl-fixtures", root: "/tippingEfl", jokerNotified: "/pushJokerLastChanceNotifiedEfl" },
 ];
 
 export default async (req) => {

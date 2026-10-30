@@ -7358,3 +7358,5 @@ button.adm-quiet-danger:hover, button.adm-quiet-danger:active{ color:var(--loss)
 .tip-entry-chip:focus-visible{ outline:2px solid var(--brass-light); outline-offset:2px; }
 .tip-entry-status{ margin:8px 0 0; font-size:12px; }
 .ladder-paid{ margin-left:6px; font-size:11px; color:var(--brass-light); white-space:nowrap; }
+/* Free comps (NRL, EFL): hide every prize pot and fee control */
+body.tip-free [data-tip-prize]{ display:none !important; }

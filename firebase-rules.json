@@ -619,6 +619,89 @@
           ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
         }
       }
+    },
+    "tippingEfl": {
+      "config": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        "firstRound": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        },
+        "prizePot": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        },
+        "year": {
+          ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+        }
+      },
+      "lastComputedLadder": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+      },
+      "meta": {
+        "$gameId": {
+          ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+          "commence_time_ms": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+          }
+        }
+      },
+      "picks": {
+        "$gameId": {
+          ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && now > (root.child('tippingEfl').child('meta').child($gameId).child('commence_time_ms').val() - 43200000)",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            "pick": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && now < root.child('tippingEfl').child('meta').child($gameId).child('commence_time_ms').val()"
+            },
+            "margin": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && now < root.child('tippingEfl').child('meta').child($gameId).child('commence_time_ms').val()"
+            },
+            "name": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+            }
+          }
+        }
+      },
+      "submissions": {
+        "$round": {
+          ".read": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+          }
+        }
+      },
+      "joker": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+        "$uid": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (!data.exists() || data.child('round').val() == null || !root.child('tippingEfl').child('roundLockTime').child(data.child('round').val() + '').exists() || now < root.child('tippingEfl').child('roundLockTime').child(data.child('round').val() + '').val()) && (newData.child('round').val() == null || !root.child('tippingEfl').child('roundLockTime').child(newData.child('round').val() + '').exists() || now < root.child('tippingEfl').child('roundLockTime').child(newData.child('round').val() + '').val())"
+        }
+      },
+      "roundLockTime": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'",
+        "$round": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'"
+        }
+      }
+    },
+    "tippingArchiveEfl": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+      "$year": {
+        ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+      }
+    },
+    "tippingStatsEfl": {
+      "$uid": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        "seasonPoints": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        }
+      }
+    },
+    "pushJokerLastChanceNotifiedEfl": {
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
     }
   }
 }

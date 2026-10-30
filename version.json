@@ -1,7 +1,9 @@
 {
-  "version": "2026-10-30.233",
+  "version": "2026-10-30.234",
   "date": "2026-10-30",
   "changes": [
-    "Fixed: long leg names in the Home group multi no longer overlap the line underneath"
+    "New: EFL (Championship) tipping, a free comp with its own ladder and Matchweek rounds",
+    "AFL is now the only tipping comp with a prize pot; NRL and EFL are free ladder-only comps",
+    "Rules, entry choice and ladder now follow each comp"
   ]
 }

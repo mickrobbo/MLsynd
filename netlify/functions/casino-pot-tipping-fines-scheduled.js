@@ -188,7 +188,7 @@ async function applyFine(uid, amount, historyField, reasonLabel, secret){
 // Each league is its own comp: own picks, season config and roster of tippers.
 const FINE_SPORTS = [
   { key: 'afl', fn: 'afl-fixtures', root: '/tipping', stats: '/tippingStats' },
-  { key: 'nrl', fn: 'nrl-fixtures', root: '/tippingNrl', stats: '/tippingStatsNrl' },
+  // NRL and EFL tipping are free ladder-only comps: no fines.
 ];
 
 async function runFines(secret){
