@@ -212,6 +212,14 @@ test('NRL tipping: switch comp, tip a round, picks land under /tippingNrl only',
   assert.match(await text(page, '#tippingRoundHeading'), /NRL Tipping — Round 1/);
   assert.equal(await page.locator('#tippingGamesArea .tip-game').count(), 2);
   assert.match(await text(page, '#tipCompTitle'), /NRL/);
+  // not in NRL yet: saving is refused until they join
+  await page.evaluate(() => { document.querySelectorAll('.tip-game').forEach(g => g.querySelector('.tip-pick-btn[data-pick="home"]').click()); const m = document.querySelector('.tip-margin-input'); m.value = '12'; m.dispatchEvent(new Event('input')); });
+  await page.click('#tipSaveAllBtn');
+  assert.match(await text(page, '#tipSaveAllStatus'), /not in NRL tipping yet/);
+  assert.equal(Object.keys(((db.tippingNrl || {}).picks) || {}).length, 0, 'no NRL pick may save before joining');
+  await page.click('#tipEntryBar [data-tipjoin="nrl"]');
+  await page.waitForTimeout(2500);
+  assert.equal(db.tippingComps.adminUid.nrl, true);
   await page.evaluate(() => { document.querySelectorAll('.tip-game').forEach(g => g.querySelector('.tip-pick-btn[data-pick="home"]').click()); const m = document.querySelector('.tip-margin-input'); m.value = '12'; m.dispatchEvent(new Event('input')); });
   await page.click('#tipSaveAllBtn');
   await page.waitForTimeout(2500);
@@ -256,6 +264,38 @@ test('Home multi keeps a leg whose price is missing and says the price is partia
   assert.match(head, /Multi @ 3\.00\+/);
   assert.ok((await page.evaluate(() => window.__hmLegs.map(l => l.name))).includes('Josh'));
 });
+
+test('Rules differ for AFL and NRL', async ({ page }) => {
+  await page.evaluate(() => setActiveTab('tipping')); await page.waitForTimeout(600);
+  await page.click('#tippingRulesBtn');
+  let t = await text(page, '#tippingRulesBody');
+  assert.ok(t.includes('AFL home-and-away') && t.includes('opening bounce') && !t.includes('State of Origin'));
+  await page.evaluate(() => document.getElementById('tippingRulesModal').classList.remove('open'));
+  await page.click('#tab-tipping .tip-sport-btn[data-tipsport="nrl"]'); await page.waitForTimeout(800);
+  await page.click('#tippingRulesBtn');
+  t = await text(page, '#tippingRulesBody');
+  assert.ok(t.includes('NRL regular season') && t.includes('State of Origin') && t.includes('kick-off'));
+  assert.ok(t.includes('Only people who have paid') && t.includes('top three paid entrants'));
+  assert.match(await text(page, '#tippingRulesTitle'), /NRL/);
+});
+
+test('Ladder shows everyone but only paid entrants take the prize places', async ({ page }) => {
+  await page.evaluate(() => setActiveTab('tipping')); await page.waitForTimeout(600);
+  await page.click('#tab-tipping .tip-sport-btn[data-tipsport="nrl"]'); await page.waitForTimeout(1500);
+  await page.click('#tab-tipping .subnav-btn[data-tipsub="ladder"]'); await page.waitForTimeout(3500);
+  const t = await text(page, '#tippingLadderArea');
+  const row = (n) => (t.match(new RegExp(n + '[^A-Za-z]*[^0-9]*', 'i')) || [''])[0];
+  assert.ok(/Ann/.test(t) && /Bob/.test(t) && /Cat/.test(t), 'everyone should be on the ladder: ' + t);
+  assert.ok(t.indexOf('Ann') < t.indexOf('Bob'), 'Ann (unpaid) leads the ladder on points');
+  assert.match(t, /Bob\s*💰 1st/); assert.match(t, /Cat\s*💰 2nd/); assert.ok(!/Ann\s*💰/.test(t), 'unpaid Ann must not carry a prize badge');
+}, { fns: { 'nrl-fixtures': () => { const t = Date.now() - 7 * 86400e3, st = (ms) => new Date(ms + 11 * 3600e3).toISOString().slice(0, 19).replace('T', ' ');
+    const g = (id, h, a, hs, as, off) => ({ id, round: 1, roundname: 'Round 1', date: st(t + off), unixtime: Math.floor((t + off) / 1000), venue: 'V', hteam: h, ateam: a, hscore: hs, ascore: as, complete: 100, winner: hs > as ? h : a, margin: Math.abs(hs - as) });
+    return { year: Number(st(t).slice(0, 4)), games: [g('n-g1', 'Storm', 'Eels', 20, 10, 0), g('n-g2', 'Broncos', 'Roosters', 6, 18, 7200e3)] }; } },
+  db: (db) => { const yr = Number(new Date(Date.now() - 7 * 86400e3 + 11 * 3600e3).toISOString().slice(0, 4));
+    db.tippingNrl = { config: { year: yr }, picks: {
+      'n-g1': { uA: { pick: 'home', name: 'Ann' }, uB: { pick: 'home', name: 'Bob' }, uC: { pick: 'away', name: 'Cat' } },
+      'n-g2': { uA: { pick: 'away', name: 'Ann' }, uB: { pick: 'home', name: 'Bob' }, uC: { pick: 'home', name: 'Cat' } } } };
+    db.tippingDuesNrl = { uB: { name: 'Bob', commitment: 50, owed: 0 }, uC: { name: 'Cat', commitment: 50, owed: 0 } }; } });
 
 (async () => {
   const srv = await serve();

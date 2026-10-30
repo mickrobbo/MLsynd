@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=230">
+<link rel="stylesheet" href="dashboard.css?v=232">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -767,6 +767,7 @@
       <button type="button" class="tip-sport-btn active" data-tipsport="afl" role="tab" aria-selected="true">🏉 AFL</button>
       <button type="button" class="tip-sport-btn" data-tipsport="nrl" role="tab" aria-selected="false">🏈 NRL</button>
     </div>
+    <div class="panel tip-entry-bar" id="tipEntryBar"></div>
     <div class="panel" id="tippingPrizePotPanel" style="text-align:center;">
       <div style="font-family:'Manrope', sans-serif; font-size:11px; letter-spacing:0; text-transform:none; color:var(--muted);">Prize Pot</div>
       <div id="tippingPrizePotVal" style="font-family:'Manrope', sans-serif; font-size:26px; font-weight:700; color:var(--brass);">$0</div>
@@ -2817,33 +2818,9 @@
   <div class="profile-sheet" style="text-align:left;">
     <button type="button" class="profile-close" id="tippingRulesCloseBtn">✕</button>
     <div class="profile-header" style="text-align:center;">
-      <h2 style="font-size:20px;">MLSynd Footy Tipping Competition Rules</h2>
+      <h2 style="font-size:20px;" id="tippingRulesTitle">MLSynd Footy Tipping Competition Rules</h2>
     </div>
-    <div class="rules-body">
-      <h3>1. Season</h3>
-      <p>The competition covers the full AFL home-and-away season plus the entire finals series (including the Grand Final).</p>
-
-      <h3>2. Scoring</h3>
-      <p>1 point is awarded for each correct tip.</p>
-      <p>Draws only score a point if the tipper specifically selected "Draw". Otherwise the tip scores zero.</p>
-      <p>A Perfect Round bonus of +2 points is awarded when a tipper correctly tips every game in a round (minimum 8 games). This applies in both the home-and-away season and finals.</p>
-      <p>If tips are not submitted, the Away team is automatically allocated for scoring purposes. No Perfect Round bonus can be earned on a round containing auto-tips.</p>
-
-      <h3>3. Joker Round</h3>
-      <p>Each tipper may nominate one round per season as their Joker Round.</p>
-      <p>In their chosen Joker Round, all points they score that round (including any Perfect Round bonus) are doubled.</p>
-      <p>Multiple tippers can choose the same round as their Joker — it's not limited to one person per round.</p>
-      <p>The Joker Round can be nominated or changed at any time, provided it's before the opening bounce of the first game in that round. Once that round has started, the Joker locks in and can't be changed.</p>
-      <p>If a tipper doesn't nominate a Joker Round, they simply forfeit the double-points opportunity.</p>
-
-      <h3>4. Deadlines</h3>
-      <p>Each game locks individually, 12 hours before its own opening bounce — not the whole round at once. You can freely change your pick for any game right up until that 12-hour window begins, even if earlier games in the same round have already started.</p>
-      <p>Once a game enters its lockout window, no changes are allowed for that game.</p>
-
-      <h3>5. Prize Distribution</h3>
-      <p>The total prize pool is split as follows:</p>
-      <p>1st place – 70%<br>2nd place – 20%<br>3rd place – 10%</p>
-    </div>
+    <div class="rules-body" id="tippingRulesBody"></div>
   </div>
 </div>
 
@@ -3943,6 +3920,7 @@ function initAuthGate(){
   document.getElementById('mainSignOutBtn').addEventListener('click', authSignOut);
 
   document.getElementById('tippingRulesBtn').addEventListener('click', () => {
+    renderTippingRules();
     document.getElementById('tippingRulesModal').classList.add('open');
   });
   document.getElementById('tippingRulesCloseBtn').addEventListener('click', () => {
@@ -4043,7 +4021,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-30.231"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-10-30.232"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -17990,6 +17968,106 @@ document.addEventListener('click', (e) => {
   if(b) setTipSport(b.dataset.tipsport);
 });
 
+// ---- Who is in which comp, and who shares the pot ----
+// Everyone approved can tip. Each person chooses AFL, NRL or both (stored at
+// /tippingComps/{uid}/{sport}). With no choice saved yet: AFL counts as "in"
+// (everyone who already tips), NRL counts as "in" only if the admin added
+// them to NRL dues. Only people who have PAID their entry fee share that
+// comp's prize pot; they are ranked among paid entrants only, wherever they
+// sit on the full ladder.
+let tippingCompsCache = null;      // my saved choices: { afl: bool, nrl: bool }
+let tippingMyDuesCache = {};       // sport -> my dues record or null
+// Rules are written per comp, so the AFL and NRL rule sets can differ.
+function renderTippingRules(){
+  const nrl = TIP_SPORT === 'nrl', L = TP.label;
+  const t = document.getElementById('tippingRulesTitle'), body = document.getElementById('tippingRulesBody');
+  if(!t || !body) return;
+  t.textContent = `MLSynd ${L} Tipping Competition Rules`;
+  const season = nrl
+    ? `The competition covers the full NRL regular season plus the entire finals series (including the Grand Final). State of Origin games are tipped too: each Origin game is added to the round that comes just before it.`
+    : `The competition covers the full AFL home-and-away season plus the entire finals series (including the Grand Final).`;
+  const start = nrl ? 'kick-off' : 'opening bounce';
+  body.innerHTML = `
+      <h3>1. Season</h3>
+      <p>${season}</p>
+      <p>${L} tipping is its own competition: its own picks, ladder, Joker, prize pot and fines. It is separate from ${nrl ? 'AFL' : 'NRL'} tipping.</p>
+
+      <h3>2. Scoring</h3>
+      <p>1 point is awarded for each correct tip.</p>
+      <p>Draws only score a point if the tipper specifically selected "Draw". Otherwise the tip scores zero.</p>
+      <p>A Perfect Round bonus of +2 points is awarded when a tipper correctly tips every game in a round (minimum 8 games). This applies in both the ${nrl ? 'regular season' : 'home-and-away season'} and finals.</p>
+      <p>If tips are not submitted, the Away team is automatically allocated for scoring purposes. No Perfect Round bonus can be earned on a round containing auto-tips.</p>
+      <p>The first game of each round also needs a margin. It is only used as a tiebreaker at the end of the season.</p>
+
+      <h3>3. Joker Round</h3>
+      <p>Each tipper may nominate one round per season as their Joker Round.</p>
+      <p>In their chosen Joker Round, all points they score that round (including any Perfect Round bonus) are doubled.</p>
+      <p>Multiple tippers can choose the same round as their Joker — it's not limited to one person per round.</p>
+      <p>The Joker Round can be nominated or changed at any time, provided it's before the ${start} of the first game in that round. Once that round has started, the Joker locks in and can't be changed. The Joker can't be used in finals.</p>
+      <p>If a tipper doesn't nominate a Joker Round, they simply forfeit the double-points opportunity.</p>
+
+      <h3>4. Deadlines</h3>
+      <p>Each game locks individually, 12 hours before its own ${start} — not the whole round at once. You can freely change your pick for any game right up until that 12-hour window begins, even if earlier games in the same round have already started.</p>
+      <p>Once a game enters its lockout window, no changes are allowed for that game.</p>
+
+      <h3>5. Joining and the entry fee</h3>
+      <p>Full members and tipping-only members can all tip. Under "I'm tipping in" at the top of Tipping, choose AFL, NRL or both. Each comp has its own entry fee.</p>
+      <p>Only people who have paid the ${L} entry fee in full share the ${L} prize pot. Everyone who tips is on the ladder, but if you haven't paid you can't win a share of the pot, however high you finish.</p>
+
+      <h3>6. Prize Distribution</h3>
+      <p>The ${L} prize pool is split as follows:</p>
+      <p>1st place – 70%<br>2nd place – 20%<br>3rd place – 10%</p>
+      <p>1st, 2nd and 3rd are the top three <b>paid</b> entrants on the ladder. If someone who hasn't paid finishes ahead of them, they are skipped and the next paid entrant moves up. Ties are broken by closest margin.</p>`;
+}
+function tipPaid(d){ return !!(d && Number(d.commitment) > 0 && Number(d.owed) <= 0); }
+function isMyCompOn(sport){
+  const v = tippingCompsCache && tippingCompsCache[sport];
+  if(v === true || v === false) return v;
+  return sport === 'afl' ? true : !!tippingMyDuesCache[sport];
+}
+async function loadMyTippingEntry(){
+  if(!currentUserUid) return;
+  try{
+    const res = await authedFetch(`/tippingComps/${currentUserUid}.json`);
+    tippingCompsCache = res.ok ? ((await res.json()) || {}) : (tippingCompsCache || {});
+  }catch(e){ tippingCompsCache = tippingCompsCache || {}; }
+  for(const sp of ['afl', 'nrl']){
+    try{
+      const res = await authedFetch(`${TIPNS[sp].D}/${currentUserUid}.json`);
+      tippingMyDuesCache[sp] = res.ok ? ((await res.json()) || null) : (tippingMyDuesCache[sp] || null);
+    }catch(e){}
+  }
+}
+function renderTippingEntryBar(){
+  const el = document.getElementById('tipEntryBar');
+  if(!el) return;
+  const chips = ['afl', 'nrl'].map(sp => {
+    const on = isMyCompOn(sp);
+    return `<button type="button" class="tip-entry-chip${on ? ' on' : ''}" data-tipjoin="${sp}" aria-pressed="${on}">${on ? '✓ ' : ''}${TIPNS[sp].label}</button>`;
+  }).join('');
+  const sp = TIP_SPORT, label = TIPNS[sp].label, d = tippingMyDuesCache[sp];
+  let status;
+  if(!isMyCompOn(sp)) status = `You're not in ${label} tipping. Turn it on above to make your picks.`;
+  else if(tipPaid(d)) status = `💰 Entry paid — you share the ${label} prize pot.`;
+  else if(d && Number(d.commitment) > 0) status = `Entry fee still owed ($${Math.round(d.owed)}). Only paid entrants share the ${label} pot.`;
+  else status = `You can tip for free, but only people who pay the ${label} entry fee share its pot.`;
+  el.innerHTML = `<div class="tip-entry-row"><span class="tip-entry-lbl">I'm tipping in</span><div class="tip-entry-chips">${chips}</div></div><div class="hint tip-entry-status">${status}</div>`;
+}
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest && e.target.closest('[data-tipjoin]');
+  if(!b || !currentUserUid) return;
+  const sp = b.dataset.tipjoin, next = !isMyCompOn(sp);
+  b.disabled = true;
+  try{
+    const res = await authedFetch(`/tippingComps/${currentUserUid}/${sp}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    tippingCompsCache = Object.assign({}, tippingCompsCache, { [sp]: next });
+    showToast(`${next ? 'You are in' : 'You are out of'} ${TIPNS[sp].label} tipping`);
+  }catch(err){ showToast('Could not save — try again'); }
+  renderTippingEntryBar();
+  if(sp === TIP_SPORT) refreshTipping();
+});
+
 // Single shared source of truth for the season-start-round config value,
 // replacing four independent copies of the same fetch+parse+default-to-1
 // pattern (checkAndAwardTippingXP, computeTippingDiagnostics,
@@ -18202,6 +18280,7 @@ async function syncRoundLockTime(games, round){
 }
 
 async function setMyJoker(auth, games, round){
+  if(!isMyCompOn(TIP_SPORT)) throw new Error(`Join ${TP.label} tipping first (tap ${TP.label} under "I'm tipping in" at the top).`);
   // Sync lock times for both the round being set AND whatever round is
   // being changed away from, if any — the rule needs both to correctly
   // enforce the lock, and neither is guaranteed to already be synced.
@@ -18388,6 +18467,8 @@ async function refreshTipping(isBackgroundPoll){
   const gamesArea = document.getElementById('tippingGamesArea');
   const roundSelectWrap = document.getElementById('tippingRoundSelectWrap');
   try{
+    await loadMyTippingEntry();
+    renderTippingEntryBar();
     const games = await fetchTippingFixtures();
     if(games.sport !== TIP_SPORT) return; // switched comp while loading
     if(games.length === 0){
@@ -18663,6 +18744,11 @@ async function renderTippingRound(games, currentRound){
 async function saveAllTippingPicks(auth){
   const statusEl = document.getElementById('tipSaveAllStatus');
   const btn = document.getElementById('tipSaveAllBtn');
+  if(!isMyCompOn(TIP_SPORT)){
+    statusEl.className = 'status-msg error';
+    statusEl.textContent = `You're not in ${TP.label} tipping yet. Tap ${TP.label} under "I'm tipping in" at the top first.`;
+    return;
+  }
   const missing = [];
   const toWrite = [];
   Object.entries(tippingRoundGameMeta).forEach(([gameId, meta]) => {
@@ -24444,6 +24530,16 @@ async function renderTippingLadder(games){
 
   const rows = Object.values(tally);
   rows.sort((a, b) => b.points - a.points || a.marginDiff - b.marginDiff);
+  // Prize places go to people who have paid their entry fee, ranked among
+  // themselves; everyone else still shows on the ladder.
+  let duesAll = {};
+  try{ const dr = await authedFetch(`${TP.D}.json`); duesAll = dr.ok ? ((await dr.json()) || {}) : {}; }catch(e){}
+  if(switched()) return;
+  let paidSoFar = 0;
+  rows.forEach(r => {
+    r.paid = tipPaid(duesAll[r.uid]);
+    r.prizeRank = r.paid && ++paidSoFar <= 3 ? paidSoFar : null;
+  });
   if(rows.length === 0){
     if(TIP_SPORT === 'afl') currentSeasonLeaders = new Set();
     if(TIP_SPORT === 'afl') currentSeasonTopScore = null;
@@ -24572,9 +24668,10 @@ async function renderTippingLadder(games){
     // meant this incorrectly badged every row. Fixed to match the Casino
     // ladder's fix.
     const isTippingCat = r.uid ? !(currentState.members || []).some(m => m.linkedUid === r.uid) : false;
-    html += `<tr class="${rowCls}"><td>${i+1}</td><td class="ladder-name-col" data-uid="${escapeHtml(r.uid)}" data-name="${escapeHtml(r.name)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${avatarRankCardHtml(r.name, avatarByUid[r.uid], tierKeyByUid[r.uid], 40, isTippingCat)}${escapeHtml(r.name)}${badge}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
+    html += `<tr class="${rowCls}"><td>${i+1}</td><td class="ladder-name-col" data-uid="${escapeHtml(r.uid)}" data-name="${escapeHtml(r.name)}"><span class="lb-joker-icon-slot">${boardJokerActiveByUid[r.uid] ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : ''}</span>${avatarRankCardHtml(r.name, avatarByUid[r.uid], tierKeyByUid[r.uid], 40, isTippingCat)}${escapeHtml(r.name)}${badge}${r.paid ? `<span class="ladder-paid" title="Paid entry — shares the pot">💰${r.prizeRank ? ' ' + ['1st', '2nd', '3rd'][r.prizeRank - 1] : ''}</span>` : ''}</td><td>${r.points} ${moveHtml}</td><td>${r.marginCount ? r.marginDiff : '—'}</td></tr>`;
   });
   html += '</tbody></table>';
+  html += `<div class="hint" style="margin-top:10px;">💰 = paid the ${TP.label} entry fee. Only paid entrants share the pot — 1st, 2nd and 3rd are the top three paid entrants, wherever they sit on the full ladder.</div>`;
   area.innerHTML = html;
   refreshJokerIconSlots();
   // Tapping a name opens their profile — Board members get their full

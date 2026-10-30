@@ -611,6 +611,14 @@
     },
     "pushJokerLastChanceNotifiedNrl": {
       ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+    },
+    "tippingComps": {
+      "$uid": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved'",
+        "$sport": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'approved' && (auth.uid === $uid || auth.token.email === 'mlsynd00@gmail.com')"
+        }
+      }
     }
   }
 }

@@ -1,7 +1,8 @@
 {
-  "version": "2026-10-30.231",
+  "version": "2026-10-30.232",
   "date": "2026-10-30",
   "changes": [
-    "Fixed: the group multi on Home now shows every leg, including ones whose price hasn't been read yet (it says how many prices are still to come)"
+    "New: AFL and NRL tipping have their own rules, and each person picks AFL, NRL or both under 'I'm tipping in'",
+    "New: only people who have paid the entry fee share a comp's prize pot. Everyone is on the ladder, paid entrants get a 💰 badge and the 1st, 2nd and 3rd prize places"
   ]
 }
