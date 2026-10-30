@@ -246,6 +246,17 @@ test('AFL tipping still saves picks under /tipping (not NRL)', async ({ page, db
   assert.equal(Object.keys(((db.tippingNrl || {}).picks) || {}).length, 0, 'NRL picks must stay empty');
 }, { fns: { 'afl-fixtures': () => { const g = nrlGames(); g.games.forEach((x, i) => { x.id = 9000 + i; x.hteam = ['Collingwood', 'Carlton'][i]; x.ateam = ['Essendon', 'Geelong'][i]; }); return g; } }, db: (db) => { db.tipping = { config: { year: Number(new Date(Date.now() + 3 * 86400e3 + 11 * 3600e3).toISOString().slice(0, 4)) } }; } });
 
+test('Home multi keeps a leg whose price is missing and says the price is partial', async ({ page }) => {
+  await page.evaluate(() => {
+    currentState.groupEntryDraft = { Billy: { odds: 2, pick: { sel: 'Collingwood' } }, Zak: { odds: 1.5, pick: { sel: 'Penrith' } }, Josh: { pick: { sel: 'Samoa', market: 'Head to Head' } } };
+    renderGroupMultiChart(currentState);
+  });
+  const sub = await text(page, '#homeSlipWeek'), head = await text(page, '#homeMultiOdds');
+  assert.match(sub, /^3 legs/); assert.match(sub, /1 price to come/);
+  assert.match(head, /Multi @ 3\.00\+/);
+  assert.ok((await page.evaluate(() => window.__hmLegs.map(l => l.name))).includes('Josh'));
+});
+
 (async () => {
   const srv = await serve();
   const port = srv.address().port;

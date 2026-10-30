@@ -4043,7 +4043,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-30.230"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-10-30.231"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14407,6 +14407,8 @@ function roastTierForName(name){
 // v170: a leg counts as "in" once it has odds OR a result. Bets are entered
 // when they're placed, days before any result exists — Home used to ignore
 // every leg without a result, so a freshly entered multi never appeared.
+// A leg also shows on Home when the slip gave a selection but no price, so nobody's leg goes missing from the multi.
+function groupLegShows(e){ return groupLegIsIn(e) || !!(e && e.pick && e.pick.sel); }
 function groupLegIsIn(e){ return !!(e && (e.result || (e.odds != null && e.odds !== '' && !isNaN(Number(e.odds)) && Number(e.odds) > 0))); }
 function renderGroupMultiChart(state){
   // v181: the group multi as a bookie-style card. One small round photo per
@@ -14433,11 +14435,11 @@ function renderGroupMultiChart(state){
   // legs are in the draft they always show, even if the flag on the server
   // never got switched back off.
   const draft = state.groupEntryDraft || {};
-  if(state.groupMultiCleared && !Object.values(draft).some(groupLegIsIn)){ emptyCard('No legs yet. Each person shows up here as soon as their odds go in.'); return; }
+  if(state.groupMultiCleared && !Object.values(draft).some(groupLegShows)){ emptyCard('No legs yet. Each person shows up here as soon as their odds go in.'); return; }
 
   let source = draft;
   let weekLabel = state.weekLabelDraft || 'This week';
-  const draftHasEntries = Object.values(draft).some(groupLegIsIn);
+  const draftHasEntries = Object.values(draft).some(groupLegShows);
   if(!draftHasEntries){
     const lastWeek = (state.history && state.history.length > 0) ? state.history[state.history.length - 1] : null;
     source = (lastWeek && lastWeek.groupEntries) ? lastWeek.groupEntries : {};
@@ -14445,7 +14447,7 @@ function renderGroupMultiChart(state){
   }
   // v213: legs in slip order (leg 1 first) once a slip has been read; any
   // leg without a slip position keeps its place after them
-  const entries = Object.entries(source).filter(([, e]) => groupLegIsIn(e))
+  const entries = Object.entries(source).filter(([, e]) => groupLegShows(e))
     .map((x, i) => [x, i]).sort(([a, ia], [b, ib]) => {
       const la = a[1] && a[1].pick && Number(a[1].pick.leg) || 1e9, lb = b[1] && b[1].pick && Number(b[1].pick.leg) || 1e9;
       return la - lb || ia - ib;
@@ -14458,11 +14460,15 @@ function renderGroupMultiChart(state){
   const counting = withOdds.filter(([, e]) => e.result !== 'Void' && e.result !== 'MIA');
   const combined = counting.reduce((m, [, e]) => m * Number(e.odds), 1);
   const full = withOdds.reduce((m, [, e]) => m * Number(e.odds), 1);
+  // Legs whose price isn't known yet: the price shown so far is only part of the multi, so say so.
+  const noPrice = entries.filter(([, e]) => !(e.odds != null && Number(e.odds) > 0) && e.result !== 'Void' && e.result !== 'MIA').length;
   if(oddsEl) oddsEl.innerHTML = counting.length
-    ? `Multi @ ${combined.toFixed(2)}${full.toFixed(2) !== combined.toFixed(2) ? ` <s>${full.toFixed(2)}</s>` : ''}`
+    ? `Multi @ ${combined.toFixed(2)}${noPrice ? '+' : ''}${full.toFixed(2) !== combined.toFixed(2) ? ` <s>${full.toFixed(2)}</s>` : ''}`
     : 'Group multi';
   // v209: what the $12.50 group stake pays (or paid) at the current price
-  const payLine = counting.length
+  const payLine = noPrice
+    ? ` · ${noPrice} price${noPrice === 1 ? '' : 's'} to come`
+    : counting.length
     ? (losers.length ? ` · was paying ${moneyAud(combined * groupStakeSetting())}`
       : pending === 0 ? ` · paid ${moneyAud(combined * groupStakeSetting())}`
       : ` · ${moneyAud(groupStakeSetting())} pays ${moneyAud(combined * groupStakeSetting())}`)

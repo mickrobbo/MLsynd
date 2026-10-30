@@ -1,8 +1,7 @@
 {
-  "version": "2026-10-30.230",
+  "version": "2026-10-30.231",
   "date": "2026-10-30",
   "changes": [
-    "New: NRL tipping, its own comp with its own picks, ladder, Joker, prize pot, fines and seasons, plus State of Origin. Switch between AFL and NRL at the top of Tipping",
-    "Fixed: tipping lock times were an hour late for games played in daylight-saving time (March and early April)"
+    "Fixed: the group multi on Home now shows every leg, including ones whose price hasn't been read yet (it says how many prices are still to come)"
   ]
 }
