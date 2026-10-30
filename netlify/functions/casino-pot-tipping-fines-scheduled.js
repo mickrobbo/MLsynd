@@ -185,20 +185,35 @@ async function applyFine(uid, amount, historyField, reasonLabel, secret){
   }catch(e){}
 }
 
+// Each league is its own comp: own picks, season config and roster of tippers.
+const FINE_SPORTS = [
+  { key: 'afl', fn: 'afl-fixtures', root: '/tipping', stats: '/tippingStats' },
+  { key: 'nrl', fn: 'nrl-fixtures', root: '/tippingNrl', stats: '/tippingStatsNrl' },
+];
+
 async function runFines(secret){
+  const out = {};
+  for(const sport of FINE_SPORTS){
+    try{ out[sport.key] = await runFinesFor(sport, secret); }
+    catch(e){ out[sport.key] = { error: e.message }; }
+  }
+  return out;
+}
+
+async function runFinesFor(sport, secret){
   // v215: only the tipping season that's actually set up. Without a year
   // this read the calendar year's fixtures, so after the 2026 comp was
   // archived (start round back to 1, year 2027) it went back over every
   // 2026 game from Round 1 and fined everyone for tips in rounds the comp
   // never ran. Now it reads that season's fixtures only.
-  const seasonYear = Number(await dbGet('/tipping/config/year', secret).catch(() => null)) || new Date().getFullYear();
-  const fixturesRes = await fetch(`${SITE_URL}/.netlify/functions/afl-fixtures?year=${seasonYear}`);
-  if(!fixturesRes.ok) throw new Error(`afl-fixtures fetch failed: ${fixturesRes.status}`);
+  const seasonYear = Number(await dbGet(`${sport.root}/config/year`, secret).catch(() => null)) || new Date().getFullYear();
+  const fixturesRes = await fetch(`${SITE_URL}/.netlify/functions/${sport.fn}?year=${seasonYear}`);
+  if(!fixturesRes.ok) throw new Error(`${sport.fn} fetch failed: ${fixturesRes.status}`);
   const fixturesData = await fixturesRes.json();
   if(Number(fixturesData.year) && Number(fixturesData.year) !== seasonYear) return { skipped: `fixtures are for ${fixturesData.year}, tipping season is ${seasonYear}` };
   const games = fixturesData.games || [];
 
-  const seasonStartRoundRaw = await dbGet('/tipping/config/firstRound', secret).catch(() => null);
+  const seasonStartRoundRaw = await dbGet(`${sport.root}/config/firstRound`, secret).catch(() => null);
   const seasonStartRound = seasonStartRoundRaw != null ? Number(seasonStartRoundRaw) : 1;
 
   const finishedGames = games.filter(g =>
@@ -224,7 +239,7 @@ async function runFines(secret){
   // a single fetch here rather than reconstructing "who tips" from every
   // game's picks all season, which would be a much bigger read for the
   // same answer.
-  const tippingStats = (await dbGet('/tippingStats', secret).catch(() => ({}))) || {};
+  const tippingStats = (await dbGet(sport.stats, secret).catch(() => ({}))) || {};
   const knownTipperUids = Object.keys(tippingStats);
 
   let checkedCount = 0;
@@ -235,7 +250,7 @@ async function runFines(secret){
   for(const g of finishedGames){
     if(alreadyChecked[g.id] === true) continue;
 
-    const picks = await dbGet(`/tipping/picks/${g.id}`, secret).catch(() => ({})) || {};
+    const picks = await dbGet(`${sport.root}/picks/${g.id}`, secret).catch(() => ({})) || {};
     const isDrawResult = g.hscore != null && g.ascore != null && Number(g.hscore) === Number(g.ascore);
 
     for(const [uid, p] of Object.entries(picks)){

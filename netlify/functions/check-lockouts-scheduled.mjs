@@ -38,14 +38,52 @@ async function dbPut(path, value) {
   });
 }
 
+// Real UTC kickoff of a game. Uses the feed's unix time when it has one,
+// otherwise reads the local time as Melbourne/Sydney time (AEST or AEDT as
+// the date requires) — a fixed +10:00 was an hour out from October to April.
+const tzFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Melbourne", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+function kickoffMs(g) {
+  if (g.unixtime) return Number(g.unixtime) * 1000;
+  const m = String(g.date || "").match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return NaN;
+  const asUtc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  let guess = asUtc - 10 * 3600e3;
+  for (let i = 0; i < 2; i++) {
+    const parts = tzFmt.formatToParts(new Date(guess));
+    const v = (t) => +parts.find((x) => x.type === t).value;
+    guess += asUtc - Date.UTC(v("year"), v("month") - 1, v("day"), v("hour"), v("minute"), v("second"));
+  }
+  return guess;
+}
+
+// Each league is its own comp with its own picks, Joker and reminders.
+const SPORTS = [
+  { key: "afl", label: "AFL", fn: "afl-fixtures", root: "/tipping", jokerNotified: "/pushJokerLastChanceNotified" },
+  { key: "nrl", label: "NRL", fn: "nrl-fixtures", root: "/tippingNrl", jokerNotified: "/pushJokerLastChanceNotifiedNrl" },
+];
+
 export default async (req) => {
   if (!DB_SECRET || !process.env.VAPID_PRIVATE_KEY) {
     console.log("Missing FIREBASE_DB_SECRET or VAPID keys — skipping run.");
     return new Response("Missing config", { status: 200 });
   }
 
-  try {
-    const fixturesRes = await fetch("https://mlsynddash.netlify.app/.netlify/functions/afl-fixtures");
+  let totalSent = 0, totalJoker = 0;
+  for (const sport of SPORTS) {
+    try {
+      const r = await runSport(sport);
+      totalSent += r.sent; totalJoker += r.jokerSent;
+    } catch (err) {
+      console.error(`check-lockouts-scheduled ${sport.label} error:`, err.message);
+    }
+  }
+  return new Response(`Sent ${totalSent}, joker ${totalJoker}`, { status: 200 });
+};
+
+async function runSport(sport) {
+  {
+    const fixturesRes = await fetch(`https://mlsynddash.netlify.app/.netlify/functions/${sport.fn}`);
+    if (!fixturesRes.ok) throw new Error(`${sport.fn} returned ${fixturesRes.status}`);
     const fixturesData = await fixturesRes.json();
     const games = fixturesData.games || [];
 
@@ -54,9 +92,8 @@ export default async (req) => {
     const windowEndMs = now + 75 * 60 * 1000;
 
     const lockingGames = games.filter((g) => {
-      if (!g.date) return false;
-      const kickoffMs = new Date(g.date.replace(" ", "T") + "+10:00").getTime();
-      const lockMs = kickoffMs - 12 * 60 * 60 * 1000;
+      if (!g.date && !g.unixtime) return false;
+      const lockMs = kickoffMs(g) - 12 * 60 * 60 * 1000;
       return lockMs > windowStartMs && lockMs <= windowEndMs;
     });
 
@@ -70,7 +107,7 @@ export default async (req) => {
 
     for (const g of lockingGames) {
       const [picks, notified] = await Promise.all([
-        dbGet(`/tipping/picks/${g.id}`),
+        dbGet(`${sport.root}/picks/${g.id}`),
         dbGet(`/pushNotified/${g.id}`),
       ]);
       const picked = picks || {};
@@ -86,7 +123,7 @@ export default async (req) => {
           await webpush.sendNotification(
             sub,
             JSON.stringify({
-              title: "Tip locking soon",
+              title: `${sport.label} tip locking soon`,
               body: `${g.hteam} v ${g.ateam} locks in under an hour — get your pick in.`,
               url: "/",
             })
@@ -123,7 +160,7 @@ export default async (req) => {
         const lastRegularRound = Math.max(...regularRounds);
         const lastRoundGames = games.filter((g) => g.round === lastRegularRound && g.date);
         const lastRoundKickoffTimes = lastRoundGames
-          .map((g) => new Date(g.date.replace(" ", "T") + "+10:00").getTime())
+          .map((g) => kickoffMs(g))
           .filter((t) => !isNaN(t));
 
         if (lastRoundKickoffTimes.length > 0) {
@@ -134,8 +171,8 @@ export default async (req) => {
           const jokerLockMs = Math.min(...lastRoundKickoffTimes);
           if (jokerLockMs > windowStartMs && jokerLockMs <= windowEndMs) {
             const [allJokers, jokerAlreadyNotified] = await Promise.all([
-              dbGet("/tipping/joker"),
-              dbGet("/pushJokerLastChanceNotified"),
+              dbGet(`${sport.root}/joker`),
+              dbGet(sport.jokerNotified),
             ]);
             const jokersByUid = allJokers || {};
             const alreadyNotified = jokerAlreadyNotified || {};
@@ -150,13 +187,13 @@ export default async (req) => {
                 await webpush.sendNotification(
                   sub,
                   JSON.stringify({
-                    title: "Last chance for your Joker",
-                    body: `Round ${lastRegularRound} locks in under an hour — it's the final home-and-away round, so this is your last chance to use your Joker this season.`,
+                    title: `Last chance for your ${sport.label} Joker`,
+                    body: `${sport.label} Round ${lastRegularRound} locks in under an hour — it's the final home-and-away round, so this is your last chance to use your Joker this season.`,
                     url: "/",
                   })
                 );
                 jokerSent++;
-                await dbPut(`/pushJokerLastChanceNotified/${uid}`, true);
+                await dbPut(`${sport.jokerNotified}/${uid}`, true);
               } catch (err) {
                 if (err.statusCode === 410 || err.statusCode === 404) {
                   await dbPut(`/pushSubscriptions/${uid}`, null);
@@ -170,14 +207,11 @@ export default async (req) => {
     } catch (err) {
       console.error("Joker last-chance check failed:", err.message);
     }
-    console.log(`Joker last-chance: sent ${jokerSent}, skipped ${jokerSkipped}.`);
+    console.log(`${sport.label} joker last-chance: sent ${jokerSent}, skipped ${jokerSkipped}.`);
 
-    return new Response(`Sent ${sent}, joker ${jokerSent}`, { status: 200 });
-  } catch (err) {
-    console.error("check-lockouts-scheduled error:", err.message);
-    return new Response(`Error: ${err.message}`, { status: 500 });
+    return { sent, jokerSent };
   }
-};
+}
 
 export const config = {
   schedule: "*/30 * * * *",

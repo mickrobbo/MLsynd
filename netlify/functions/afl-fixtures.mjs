@@ -24,6 +24,8 @@ export default async function (request) {
       round: g.round,
       roundname: g.roundname,
       date: g.date, // local AEST/AEDT, e.g. "2026-08-08 19:20:00"
+      unixtime: g.unixtime, // true UTC kickoff in seconds — apps use this so AEST/AEDT can never be guessed wrong
+      tz: g.tz,
       venue: g.venue,
       hteam: g.hteam,
       ateam: g.ateam,

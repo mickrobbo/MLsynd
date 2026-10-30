@@ -185,6 +185,67 @@ test('After Save week empties the draft, typing odds and reading a slip still sa
 }, { db: (db) => { delete db.state.groupEntryDraft; db.state.groupMultiCleared = true; db.state.weeklyIndividualBets = []; } });
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+test('Game start times use AEDT in March and AEST in July (and prefer unixtime)', async ({ page }) => {
+  const r = await page.evaluate(() => [
+    gameKickoffMs({ date: '2027-03-18 19:30:00' }),
+    gameKickoffMs({ date: '2027-07-10 19:30:00' }),
+    gameKickoffMs({ date: '2027-03-18 19:30:00', unixtime: 1234567890 }),
+  ]);
+  assert.equal(r[0], Date.UTC(2027, 2, 18, 8, 30), 'March should be +11:00');
+  assert.equal(r[1], Date.UTC(2027, 6, 10, 9, 30), 'July should be +10:00');
+  assert.equal(r[2], 1234567890000, 'unixtime should win');
+});
+
+const nrlGames = () => {
+  const t = Date.now() + 3 * 86400e3, stamp = (ms) => new Date(ms + 11 * 3600e3).toISOString().slice(0, 19).replace('T', ' ');
+  return { year: Number(stamp(t).slice(0, 4)), games: [
+    { id: 'n-r1-storm-v-eels', round: 1, roundname: 'Round 1', date: stamp(t), unixtime: Math.floor(t / 1000), venue: 'AAMI Park', hteam: 'Storm', ateam: 'Eels', hscore: null, ascore: null, complete: 0, winner: null, margin: null },
+    { id: 'n-r1-broncos-v-roosters', round: 1, roundname: 'Round 1', date: stamp(t + 7200e3), unixtime: Math.floor((t + 7200e3) / 1000), venue: 'Suncorp Stadium', hteam: 'Broncos', ateam: 'Roosters', hscore: null, ascore: null, complete: 0, winner: null, margin: null },
+  ] };
+};
+test('NRL tipping: switch comp, tip a round, picks land under /tippingNrl only', async ({ page, db }) => {
+  await page.evaluate(() => setActiveTab('tipping'));
+  await page.waitForTimeout(800);
+  await page.click('#tab-tipping .tip-sport-btn[data-tipsport="nrl"]');
+  await page.waitForTimeout(2500);
+  assert.match(await text(page, '#tippingRoundHeading'), /NRL Tipping — Round 1/);
+  assert.equal(await page.locator('#tippingGamesArea .tip-game').count(), 2);
+  assert.match(await text(page, '#tipCompTitle'), /NRL/);
+  await page.evaluate(() => { document.querySelectorAll('.tip-game').forEach(g => g.querySelector('.tip-pick-btn[data-pick="home"]').click()); const m = document.querySelector('.tip-margin-input'); m.value = '12'; m.dispatchEvent(new Event('input')); });
+  await page.click('#tipSaveAllBtn');
+  await page.waitForTimeout(2500);
+  const nrl = (db.tippingNrl || {}).picks || {};
+  assert.equal(Object.keys(nrl).length, 2, 'two NRL games should have picks: ' + JSON.stringify(db.tippingNrl));
+  assert.equal(Object.values(nrl)[0].adminUid.pick, 'home');
+  assert.equal(Object.keys(((db.tipping || {}).picks) || {}).length, 0, 'AFL picks must stay empty');
+  assert.ok(db.tippingNrl.meta && Object.keys(db.tippingNrl.meta).length === 2, 'kickoff times should be stored under NRL');
+}, { fns: { 'nrl-fixtures': () => nrlGames() }, db: (db) => { db.tipping = { config: { year: 2027 } }; db.tippingNrl = { config: { year: Number(new Date(Date.now() + 3 * 86400e3 + 11 * 3600e3).toISOString().slice(0, 4)) } }; } });
+
+test('NRL tipping: switching back to AFL shows the AFL comp again', async ({ page }) => {
+  await page.evaluate(() => setActiveTab('tipping'));
+  await page.waitForTimeout(600);
+  await page.click('#tab-tipping .tip-sport-btn[data-tipsport="nrl"]');
+  await page.waitForTimeout(1500);
+  await page.click('#tab-tipping .tip-sport-btn[data-tipsport="afl"]');
+  await page.waitForTimeout(1500);
+  assert.match(await text(page, '#tipCompTitle'), /AFL/);
+  assert.equal(await page.evaluate(() => TP.R), '/tipping');
+}, { fns: { 'nrl-fixtures': () => nrlGames() } });
+
+test('AFL tipping still saves picks under /tipping (not NRL)', async ({ page, db }) => {
+  await page.evaluate(() => setActiveTab('tipping'));
+  await page.waitForTimeout(2500);
+  assert.match(await text(page, '#tippingRoundHeading'), /AFL Tipping — Round 1/);
+  await page.evaluate(() => { document.querySelectorAll('.tip-game').forEach(g => g.querySelector('.tip-pick-btn[data-pick="away"]').click()); const m = document.querySelector('.tip-margin-input'); m.value = '5'; m.dispatchEvent(new Event('input')); });
+  await page.click('#tipSaveAllBtn');
+  await page.waitForTimeout(2500);
+  const afl = (db.tipping || {}).picks || {};
+  assert.equal(Object.keys(afl).length, 2, 'two AFL games should have picks');
+  assert.equal(Object.values(afl)[0].adminUid.pick, 'away');
+  assert.equal(Object.keys(((db.tippingNrl || {}).picks) || {}).length, 0, 'NRL picks must stay empty');
+}, { fns: { 'afl-fixtures': () => { const g = nrlGames(); g.games.forEach((x, i) => { x.id = 9000 + i; x.hteam = ['Collingwood', 'Carlton'][i]; x.ateam = ['Essendon', 'Geelong'][i]; }); return g; } }, db: (db) => { db.tipping = { config: { year: Number(new Date(Date.now() + 3 * 86400e3 + 11 * 3600e3).toISOString().slice(0, 4)) } }; } });
+
 (async () => {
   const srv = await serve();
   const port = srv.address().port;

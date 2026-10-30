@@ -1,7 +1,8 @@
 {
-  "version": "2026-10-30.229",
+  "version": "2026-10-30.230",
   "date": "2026-10-30",
   "changes": [
-    "Fixed: the 'Where the XP Goes' bars on profiles never showed, and the tier progress bar and those bars now grow in when a profile opens"
+    "New: NRL tipping, its own comp with its own picks, ladder, Joker, prize pot, fines and seasons, plus State of Origin. Switch between AFL and NRL at the top of Tipping",
+    "Fixed: tipping lock times were an hour late for games played in daylight-saving time (March and early April)"
   ]
 }

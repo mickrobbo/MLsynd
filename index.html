@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=229">
+<link rel="stylesheet" href="dashboard.css?v=230">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -422,6 +422,14 @@
       <div id="adminTippingSquadArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
     </div>
     <div class="panel">
+      <h2>Which comp</h2>
+      <div class="hint">Everything below (who's tipped, prize pot, first round, dues, archive) applies to the comp chosen here.</div>
+      <div class="tip-sport-switch tip-sport-switch-admin" role="tablist" aria-label="Admin tipping competition">
+        <button type="button" class="tip-sport-btn active" data-tipsport="afl" role="tab" aria-selected="true">🏉 AFL</button>
+        <button type="button" class="tip-sport-btn" data-tipsport="nrl" role="tab" aria-selected="false">🏈 NRL</button>
+      </div>
+    </div>
+    <div class="panel">
       <h2>Who's tipped</h2>
       <div class="hint">Shows who has tipped for a round, not what they picked.</div>
       <select id="adminSubmissionsRoundSelect" style="width:100%; margin-top:10px; margin-bottom:10px;"><option value="">Loading rounds…</option></select>
@@ -754,7 +762,11 @@
   </div>
 
   <div class="tab-panel" id="tab-tipping">
-    <div class="tipping-comp-title">MLSynd Footy Tipping</div>
+    <div class="tipping-comp-title" id="tipCompTitle">MLSynd Footy Tipping</div>
+    <div class="tip-sport-switch" role="tablist" aria-label="Tipping competition">
+      <button type="button" class="tip-sport-btn active" data-tipsport="afl" role="tab" aria-selected="true">🏉 AFL</button>
+      <button type="button" class="tip-sport-btn" data-tipsport="nrl" role="tab" aria-selected="false">🏈 NRL</button>
+    </div>
     <div class="panel" id="tippingPrizePotPanel" style="text-align:center;">
       <div style="font-family:'Manrope', sans-serif; font-size:11px; letter-spacing:0; text-transform:none; color:var(--muted);">Prize Pot</div>
       <div id="tippingPrizePotVal" style="font-family:'Manrope', sans-serif; font-size:26px; font-weight:700; color:var(--brass);">$0</div>
@@ -4031,7 +4043,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-30.229"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-10-30.230"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -10624,11 +10636,16 @@ document.getElementById('bigWinModal').addEventListener('click', (e) => {
 // own picks, guarded by a per-round idempotency flag so re-running it on
 // every poll never double-awards.
 async function checkAndAwardTippingXP(){
+  await awardTippingXPForSport('afl');
+  await awardTippingXPForSport('nrl');
+}
+async function awardTippingXPForSport(sport){
   if(!currentUserUid) return;
+  const N = tipNs(sport), pre = sport === 'afl' ? '' : sport + '-';
   try{
-    const seasonStartRound = await getSeasonStartRound();
+    const seasonStartRound = await getSeasonStartRound(sport);
 
-    const games = await fetchTippingFixtures().catch(() => []);
+    const games = await fetchTippingFixtures(sport).catch(() => []);
     const relevant = games.filter(g => g.round >= seasonStartRound);
     const byRound = {};
     relevant.forEach(g => {
@@ -10636,14 +10653,14 @@ async function checkAndAwardTippingXP(){
       byRound[g.round].push(g);
     });
 
-    const jokerRes = await authedFetch(`/tipping/joker/${currentUserUid}.json`);
+    const jokerRes = await authedFetch(`${N.R}/joker/${currentUserUid}.json`);
     const myJoker = await jokerRes.json();
     const myJokerRound = myJoker && myJoker.round != null ? Number(myJoker.round) : null;
     // v173: "already paid" markers were keyed by round NUMBER only, so every
     // round paid in 2026 would have counted as already paid in 2027 — no
     // tipping XP all season. Now keyed "<year>-<round>" (2026's plain keys
     // are simply ignored from here on; the rules' $round wildcard accepts it).
-    const seasonYear = await getTippingSeasonYear();
+    const seasonYear = await getTippingSeasonYear(sport);
 
     for(const roundStr of Object.keys(byRound)){
       const round = Number(roundStr);
@@ -10651,14 +10668,14 @@ async function checkAndAwardTippingXP(){
       const allDone = roundGames.length > 0 && roundGames.every(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)));
       if(!allDone) continue;
 
-      const awardKey = `${seasonYear}-${round}`;
+      const awardKey = `${pre}${seasonYear}-${round}`;
       const alreadyRes = await authedFetch(`/xp/${currentUserUid}/awardedTippingRounds/${awardKey}.json`);
       const already = await alreadyRes.json();
       if(already) continue;
 
       let points = 0, correct = 0, hadAutoTip = false;
       for(const g of roundGames){
-        const pickRes = await authedFetch(`/tipping/picks/${g.id}/${currentUserUid}.json`);
+        const pickRes = await authedFetch(`${N.R}/picks/${g.id}/${currentUserUid}.json`);
         const pickData = await pickRes.json();
         const actualWinner = g.hscore === g.ascore ? 'draw' : (g.hscore > g.ascore ? g.hteam : g.ateam);
         let myPick = pickData && pickData.pick ? pickData.pick : null;
@@ -10669,7 +10686,7 @@ async function checkAndAwardTippingXP(){
       if(myJokerRound === round) points *= 2;
 
       if(points > 0){
-        await awardXP(points * XP_RATES.perTippingPoint, `Tipping ${roundLabel(round)} (${points}pt${points === 1 ? '' : 's'})`);
+        await awardXP(points * XP_RATES.perTippingPoint, `${sport === 'afl' ? 'Tipping' : 'NRL Tipping'} ${tipRoundLabel(sport, round, games)} (${points}pt${points === 1 ? '' : 's'})`);
       }
       await authedFetch(`/xp/${currentUserUid}/awardedTippingRounds/${awardKey}.json`, {
         method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(true)
@@ -13923,7 +13940,7 @@ async function renderFormGuide(){
     // itself uses before reading the result, rather than guessing from
     // a value that might be stale or never written at all.
     try{
-      const games = await fetchTippingFixtures();
+      const games = await fetchTippingFixtures('afl');
       await renderTippingLadder(games);
     }catch(e){}
 
@@ -14830,7 +14847,7 @@ async function computeWeeklyOutstandingItems(){
   // Tips: find the next round that hasn't started yet, and see which linked
   // members haven't picked ANY game in it — "make sure all tips are in".
   try{
-    const games = await fetchTippingFixtures();
+    const games = await fetchTippingFixtures('afl');
     const upcoming = games.filter(g => !gameHasStarted(g));
     if(upcoming.length > 0){
       const targetRound = Math.min(...upcoming.map(g => g.round));
@@ -16869,7 +16886,7 @@ async function refreshNavBadges(){
   // Tipping: you haven't tipped every game in the next round, and it starts within 3 days.
   let tipDot = false;
   try{
-    const games = await fetchTippingFixtures();
+    const games = await fetchTippingFixtures('afl');
     const upcoming = games.filter(g => !gameHasStarted(g));
     if(upcoming.length){
       const r = Math.min(...upcoming.map(g => g.round));
@@ -17079,7 +17096,7 @@ async function refreshAfl(){
           complete: f.complete, live: f.complete > 0 && f.complete < 100,
           timestr: f.complete >= 100 ? 'Full Time' : '',
         },
-        dt: f.date ? new Date(f.date.replace(' ', 'T') + '+10:00') : null,
+        dt: f.date ? new Date(gameKickoffMs(f)) : null,
         venue: fixVenueName(f.venue),
         findOddsFor,
       }));
@@ -17894,6 +17911,79 @@ document.getElementById('racingArea').addEventListener('click', async (e) => {
 // risk surface than this small a convenience gain justifies).
 const TIP_LOCK_WINDOW_MS = 12 * 3600 * 1000;
 
+// ---- Tipping sports (AFL + NRL) ----
+// Each league is its own comp: its own picks, Joker, ladder, season points,
+// prize pot, dues and archive, kept under separate Firebase paths. TP.* are
+// the live path prefixes for whichever league the Tipping tab is showing;
+// code that must always mean AFL (Board, profile, XP) passes 'afl' explicitly.
+const TIPNS = {
+  afl: { label: 'AFL', fn: 'afl-fixtures', odds: 'afl', logo: undefined, R: '/tipping',    S: '/tippingStats',    D: '/tippingDues',    DC: '/tippingDuesConfig',    A: '/tippingArchive' },
+  nrl: { label: 'NRL', fn: 'nrl-fixtures', odds: 'nrl', logo: 'nrl',     R: '/tippingNrl', S: '/tippingStatsNrl', D: '/tippingDuesNrl', DC: '/tippingDuesConfigNrl', A: '/tippingArchiveNrl' },
+};
+let TIP_SPORT = 'afl';
+try{ if(localStorage.getItem('mlsynd_tipsport') === 'nrl') TIP_SPORT = 'nrl'; }catch(e){}
+let TP = TIPNS[TIP_SPORT];
+function tipNs(sport){ return TIPNS[sport] || TP; }
+// One place that turns a game's start into real UTC milliseconds. Uses the
+// feed's true unix time when it has one, otherwise reads the local time as
+// Melbourne/Sydney time (AEST or AEDT as the date requires) — the old fixed
+// +10:00 was an hour out for every game from October to early April.
+const _tipTzFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+function localMelbToMs(str){
+  const m = String(str || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if(!m) return NaN;
+  const asUtc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  let guess = asUtc - 10 * 3600e3;
+  for(let i = 0; i < 2; i++){
+    const parts = _tipTzFmt.formatToParts(new Date(guess));
+    const g = t => +parts.find(x => x.type === t).value;
+    const shown = Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second'));
+    guess += asUtc - shown;
+  }
+  return guess;
+}
+function gameKickoffMs(g){
+  if(!g) return NaN;
+  if(g.unixtime) return Number(g.unixtime) * 1000;
+  return localMelbToMs(g.date);
+}
+
+function syncTipSportUI(){
+  document.querySelectorAll('.tip-sport-btn').forEach(b => {
+    const on = b.dataset.tipsport === TIP_SPORT;
+    b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  const t = document.getElementById('tipCompTitle');
+  if(t) t.textContent = `MLSynd ${TP.label} Tipping`;
+}
+function setTipSport(sport){
+  if(!TIPNS[sport] || sport === TIP_SPORT){ syncTipSportUI(); return; }
+  TIP_SPORT = sport; TP = TIPNS[sport];
+  try{ localStorage.setItem('mlsynd_tipsport', sport); }catch(e){}
+  // Everything cached per-league state is cleared so nothing from the other comp can leak in.
+  tippingSelectedRound = null; myJokerRound = undefined; allJokers = null; tippingDraft = {}; tippingRoundGameMeta = {};
+  lastLadderRefresh = 0; tippingRoundNames = {};
+  syncTipSportUI();
+  const ga = document.getElementById('tippingGamesArea'); if(ga) ga.innerHTML = 'Loading…';
+  const la = document.getElementById('tippingLadderArea'); if(la) la.innerHTML = 'Loading…';
+  refreshTipping(); refreshTippingLadderOnly();
+  const hist = document.getElementById('tippingSubview-history');
+  if(hist && hist.style.display !== 'none') renderTippingHistory();
+  // Admin tipping panel, if it has been opened, reloads for the chosen comp.
+  try{
+    if(typeof diagTippingLoaded !== 'undefined' && diagTippingLoaded){
+      loadAdminPrizePot(); loadAdminFirstRound(); loadAdminSubmissionsRounds(); loadAdminTippingSeasonYear();
+      populateAdminTippingDuesAddSelect(); renderAdminTippingDues();
+    }
+  }catch(e){}
+  refreshBoardJokerData();
+}
+syncTipSportUI();
+document.addEventListener('click', (e) => {
+  const b = e.target.closest && e.target.closest('.tip-sport-btn');
+  if(b) setTipSport(b.dataset.tipsport);
+});
+
 // Single shared source of truth for the season-start-round config value,
 // replacing four independent copies of the same fetch+parse+default-to-1
 // pattern (checkAndAwardTippingXP, computeTippingDiagnostics,
@@ -17903,21 +17993,20 @@ const TIP_LOCK_WINDOW_MS = 12 * 3600 * 1000;
 // succeeded) for anything that needs to report on the config's health;
 // getSeasonStartRound() is the convenience wrapper for the common case of
 // just wanting the effective number to filter games by.
-async function getSeasonStartRoundInfo(){
+async function getSeasonStartRoundInfo(sport){
   try{
-    const res = await authedFetch('/tipping/config/firstRound.json');
+    const res = await authedFetch(`${tipNs(sport).R}/config/firstRound.json`);
     const raw = await res.json();
     return { ok: true, raw, value: raw != null ? Number(raw) : 1 };
   }catch(e){
     return { ok: false, raw: null, value: 1, error: e.message };
   }
 }
-async function getSeasonStartRound(){
-  const info = await getSeasonStartRoundInfo();
+async function getSeasonStartRound(sport){
+  const info = await getSeasonStartRoundInfo(sport);
   return info.value;
 }
-let tippingFixturesCache = null;
-let tippingFixturesCacheTime = 0;
+let tippingFixturesCaches = {}; // sport -> { at, games }
 
 // ---- Season points reset (v173) ----
 // /tippingStats/{uid}/seasonPoints feeds the Player Tier score, Board and
@@ -17926,12 +18015,12 @@ let tippingFixturesCacheTime = 0;
 // Zeroes every entry (entries are kept — the fines job uses them as the
 // list of known tippers).
 async function resetAllTippingSeasonPoints(){
-  const res = await authedFetch('/tippingStats.json?shallow=true');
+  const res = await authedFetch(`${TP.S}.json?shallow=true`);
   if(!res.ok) throw new Error(`Could not read tippingStats (HTTP ${res.status})`);
   const uids = Object.keys((await res.json()) || {});
   let done = 0;
   for(const uid of uids){
-    await authedWrite(`/tippingStats/${uid}/seasonPoints.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '0' });
+    await authedWrite(`${TP.S}/${uid}/seasonPoints.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '0' });
     done++;
   }
   return done;
@@ -17944,9 +18033,9 @@ async function maybeResetSeasonPointsAfterArchive(){
   try{
     if(!(currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase())) return;
     const year = await getTippingSeasonYear();
-    const marker = `mlsynd-season-points-reset-${year}`;
+    const marker = `mlsynd-season-points-reset-${TIP_SPORT}-${year}`;
     try{ if(localStorage.getItem(marker)) return; }catch(e){}
-    const arch = await authedFetch(`/tippingArchive/${year - 1}.json?shallow=true`);
+    const arch = await authedFetch(`${TP.A}/${year - 1}.json?shallow=true`);
     if(!arch.ok || !(await arch.json())) return;
     const games = await fetchTippingFixtures(); // throws on a feed error, so an outage can't trigger this
     if(games.some(g => g.complete >= 100)) return;
@@ -17962,18 +18051,21 @@ async function maybeResetSeasonPointsAfterArchive(){
 // submissions) now only looks at fixtures from THAT year. Previously the
 // fixtures feed's games were used as-is, so after archiving 2026 the feed
 // kept serving 2026 games and the ladder rebuilt itself from 2026 picks.
-let tippingSeasonYearCache = null, tippingSeasonYearCacheTime = 0;
-async function getTippingSeasonYear(){
-  if(tippingSeasonYearCache && Date.now() - tippingSeasonYearCacheTime < 300000) return tippingSeasonYearCache;
+let tippingSeasonYearCaches = {}; // sport -> { at, year }
+async function getTippingSeasonYear(sport){
+  const sp = sport || TIP_SPORT, N = tipNs(sp);
+  const hit = tippingSeasonYearCaches[sp];
+  if(hit && Date.now() - hit.at < 300000) return hit.year;
+  let year;
   try{
-    const res = await authedFetch('/tipping/config/year.json');
+    const res = await authedFetch(`${N.R}/config/year.json`);
     const v = res.ok ? await res.json() : null;
-    tippingSeasonYearCache = v != null ? Number(v) : new Date().getFullYear();
+    year = v != null ? Number(v) : new Date().getFullYear();
   }catch(e){
-    tippingSeasonYearCache = tippingSeasonYearCache || new Date().getFullYear();
+    year = hit ? hit.year : new Date().getFullYear();
   }
-  tippingSeasonYearCacheTime = Date.now();
-  return tippingSeasonYearCache;
+  tippingSeasonYearCaches[sp] = { at: Date.now(), year };
+  return year;
 }
 function fixtureYear(g){
   if(g && g.year != null) return Number(g.year);
@@ -17981,25 +18073,27 @@ function fixtureYear(g){
   return m ? Number(m[1]) : null;
 }
 // Raw feed, every year it returns (the Sport tab and name-sweeps want this).
-async function fetchAllAflFixtures(){
-  if(tippingFixturesCache && (Date.now() - tippingFixturesCacheTime) < 45000) return tippingFixturesCache;
-  trackApiCall('afl-fixtures');
-  const year = await getTippingSeasonYear();
-  // ?year= is passed so the fixtures function can serve the right season
-  // once it supports it; ignored harmlessly if it doesn't.
-  const res = await fetch(`/.netlify/functions/afl-fixtures?year=${year}`, { cache: 'no-store' });
+async function fetchAllAflFixtures(sport){
+  const sp = sport || 'afl', N = tipNs(sp);
+  const hit = tippingFixturesCaches[sp];
+  if(hit && (Date.now() - hit.at) < 45000) return hit.games;
+  trackApiCall(N.fn);
+  const year = await getTippingSeasonYear(sp);
+  // ?year= is passed so the fixtures function serves the right season.
+  const res = await fetch(`/.netlify/functions/${N.fn}?year=${year}`, { cache: 'no-store' });
   if(!res.ok) throw new Error(`Fixtures feed error (HTTP ${res.status})`); // never treat an outage as "no games"
   const data = await res.json();
   if(!data || !Array.isArray(data.games)) throw new Error('Fixtures feed returned no game list');
-  tippingFixturesCache = data.games || [];
-  tippingFixturesCacheTime = Date.now();
-  return tippingFixturesCache;
+  tippingFixturesCaches[sp] = { at: Date.now(), games: data.games || [] };
+  return tippingFixturesCaches[sp].games;
 }
-// Current tipping season only.
-async function fetchTippingFixtures(){
-  const [all, year] = await Promise.all([fetchAllAflFixtures(), getTippingSeasonYear()]);
+// Current tipping season only, for the given league (default: the one the Tipping tab is on).
+async function fetchTippingFixtures(sport){
+  const sp = sport || TIP_SPORT;
+  const [all, year] = await Promise.all([fetchAllAflFixtures(sp), getTippingSeasonYear(sp)]);
   const season = all.filter(g => fixtureYear(g) === year);
-  rebuildTippingRoundNames(season);
+  if(sp === TIP_SPORT) rebuildTippingRoundNames(season);
+  season.sport = sp; // lets renderers drop a result that arrives after the person switched comp
   return season;
 }
 
@@ -18031,49 +18125,50 @@ let allJokers = null; // uid -> {round} for everyone, used to show a 🃏 icon n
 // point (so the group can see how many Jokers are still in play), not a
 // bug to fix later.
 let boardJokerActiveByUid = {};
+let boardJokerActiveBySport = { afl: {}, nrl: {} };
 async function refreshBoardJokerData(){
-  try{
-    const [jokerRes, games] = await Promise.all([
-      authedFetch('/tipping/joker.json'),
-      fetchTippingFixtures().catch(() => [])
-    ]);
-    const jokers = (await jokerRes.json()) || {};
-    const roundTotals = {}; // round -> { total, done }
-    games.forEach(g => {
-      if(g.round == null) return;
-      if(!roundTotals[g.round]) roundTotals[g.round] = { total: 0, done: 0 };
-      roundTotals[g.round].total++;
-      if(g.complete >= 100) roundTotals[g.round].done++;
-    });
-    const active = {};
-    Object.entries(jokers).forEach(([uid, j]) => {
-      if(!j || j.round == null) return;
-      const counts = roundTotals[j.round];
-      // If we don't have fixture data for this round for some reason,
-      // default to still showing it rather than assuming it's used — a
-      // missing icon is a smaller problem than one vanishing incorrectly.
-      const roundFullyDone = counts && counts.total > 0 && counts.done === counts.total;
-      if(!roundFullyDone) active[uid] = true;
-    });
-    boardJokerActiveByUid = active;
-    refreshJokerIconSlots();
-  }catch(e){}
+  // The Board always shows the AFL Joker; the Tipping ladder shows whichever
+  // comp is on screen, so both leagues' "still in play" maps are kept.
+  for(const sp of ['afl', 'nrl']){
+    try{
+      const jokerRes = await authedFetch(`${TIPNS[sp].R}/joker.json`);
+      const jokers = (await jokerRes.json()) || {};
+      if(!Object.keys(jokers).length){ boardJokerActiveBySport[sp] = {}; continue; } // nobody has a Joker: no fixtures needed
+      const games = await fetchTippingFixtures(sp).catch(() => []);
+      const roundTotals = {}; // round -> { total, done }
+      games.forEach(g => {
+        if(g.round == null) return;
+        if(!roundTotals[g.round]) roundTotals[g.round] = { total: 0, done: 0 };
+        roundTotals[g.round].total++;
+        if(g.complete >= 100) roundTotals[g.round].done++;
+      });
+      const active = {};
+      Object.entries(jokers).forEach(([uid, j]) => {
+        if(!j || j.round == null) return;
+        const counts = roundTotals[j.round];
+        // No fixture data for the round → keep showing it: a missing icon is a smaller problem than one vanishing wrongly.
+        const roundFullyDone = counts && counts.total > 0 && counts.done === counts.total;
+        if(!roundFullyDone) active[uid] = true;
+      });
+      boardJokerActiveBySport[sp] = active;
+    }catch(e){}
+  }
+  boardJokerActiveByUid = boardJokerActiveBySport.afl;
+  refreshJokerIconSlots();
 }
 // Cheap DOM-only patch: updates any already-rendered Joker icon slot (Board
-// leaderboard + Tipping ladder) from the current boardJokerActiveByUid,
-// without re-running either view's full (expensive, per-game-read) render.
-// Called every time Joker data loads/changes so an icon can never sit stale
-// or missing just because it loaded after the table it belongs on.
+// leaderboard + Tipping ladder) without re-running either view's full render.
 function refreshJokerIconSlots(){
   document.querySelectorAll('[data-uid] > .lb-joker-icon-slot').forEach(slot => {
     const uid = slot.parentElement.getAttribute('data-uid');
-    slot.innerHTML = (uid && boardJokerActiveByUid[uid]) ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : '';
+    const sp = slot.closest('#tab-tipping') ? TIP_SPORT : 'afl';
+    slot.innerHTML = (uid && (boardJokerActiveBySport[sp] || {})[uid]) ? '<span class="lb-joker-icon" title="Joker still in play">🃏</span> ' : '';
   });
 }
 
 async function loadMyJoker(auth){
   try{
-    const res = await authedFetch('/tipping/joker.json');
+    const res = await authedFetch(`${TP.R}/joker.json`);
     const data = await res.json();
     allJokers = data || {};
     myJokerRound = (allJokers[auth.uid] && allJokers[auth.uid].round != null) ? allJokers[auth.uid].round : null;
@@ -18090,11 +18185,11 @@ async function syncRoundLockTime(games, round){
   // earliest kickoff time, same idea as syncGameMeta but per-round.
   const roundGames = games.filter(g => g.round === round);
   if(roundGames.length === 0) return;
-  const times = roundGames.map(g => new Date(g.date.replace(' ', 'T') + '+10:00').getTime()).filter(t => !isNaN(t));
+  const times = roundGames.map(g => gameKickoffMs(g)).filter(t => !isNaN(t));
   if(times.length === 0) return;
   const lockTime = Math.min(...times);
   try{
-    await authedFetch(`/tipping/roundLockTime/${round}.json`, {
+    await authedFetch(`${TP.R}/roundLockTime/${round}.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lockTime)
     });
   }catch(e){}
@@ -18109,7 +18204,7 @@ async function setMyJoker(auth, games, round){
   if(myJokerRound != null) roundsToSync.add(myJokerRound);
   await Promise.all([...roundsToSync].map(r => syncRoundLockTime(games, r)));
 
-  const res = await authedFetch(`/tipping/joker/${auth.uid}.json`, {
+  const res = await authedFetch(`${TP.R}/joker/${auth.uid}.json`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ round })
   });
   if(!res.ok){
@@ -18122,7 +18217,7 @@ async function setMyJoker(auth, games, round){
     try{ bodyText = await res.text(); }catch(e){}
     let diagLine = '';
     try{
-      const lockRes = await authedFetch(`/tipping/roundLockTime/${round != null ? round : myJokerRound}.json`);
+      const lockRes = await authedFetch(`${TP.R}/roundLockTime/${round != null ? round : myJokerRound}.json`);
       const lockMs = await lockRes.json();
       // Also read back whatever is CURRENTLY stored at this uid's joker
       // path — the rule's first clause checks whether the EXISTING stored
@@ -18132,11 +18227,11 @@ async function setMyJoker(auth, games, round){
       // that round's lock time is now permanently in the past, which
       // would silently block changing the Joker forever, regardless of
       // what new round is being requested.
-      const existingRes = await authedFetch(`/tipping/joker/${auth.uid}.json`);
+      const existingRes = await authedFetch(`${TP.R}/joker/${auth.uid}.json`);
       const existingVal = await existingRes.json();
       let existingLockLine = '';
       if(existingVal && existingVal.round != null){
-        const existingLockRes = await authedFetch(`/tipping/roundLockTime/${existingVal.round}.json`);
+        const existingLockRes = await authedFetch(`${TP.R}/roundLockTime/${existingVal.round}.json`);
         const existingLockMs = await existingLockRes.json();
         existingLockLine = `, existingStoredRound=${existingVal.round}, existingRoundLockTime=${existingLockMs}, existingAlreadyLocked=${existingLockMs != null && Date.now() >= existingLockMs}`;
       } else {
@@ -18214,14 +18309,14 @@ function renderJokerPanel(games, currentRound, auth){
 function gameHasStarted(g){
   // g.date is local AEST/AEDT "YYYY-MM-DD HH:MM:SS" from Squiggle
   if(!g.date) return false;
-  const t = new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
+  const t = gameKickoffMs(g);
   return Date.now() > t;
 }
 
 async function syncGameMeta(g){
-  const t = new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
+  const t = gameKickoffMs(g);
   try{
-    const res = await authedFetch(`/tipping/meta/${g.id}/commence_time_ms.json`, {
+    const res = await authedFetch(`${TP.R}/meta/${g.id}/commence_time_ms.json`, {
       method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(t)
     });
     if(!res.ok){
@@ -18236,19 +18331,20 @@ async function syncGameMeta(g){
 }
 
 let tippingSelectedRound = null;
-let tippingOddsCache = null;
-let tippingOddsCacheTime = 0;
+let tippingOddsCaches = {}; // sport -> { at, events }
 
 async function fetchTippingOdds(){
-  if(tippingOddsCache && (Date.now() - tippingOddsCacheTime) < 60000) return tippingOddsCache;
+  const sp = TIP_SPORT, hit = tippingOddsCaches[sp];
+  if(hit && (Date.now() - hit.at) < 60000) return hit.events;
+  let events = [];
   try{
     trackApiCall('puntersedge-sports-odds');
-    const res = await fetch('/.netlify/functions/puntersedge-sports-odds?sport=afl', { cache: 'no-store' });
+    const res = await fetch(`/.netlify/functions/puntersedge-sports-odds?sport=${TP.odds}`, { cache: 'no-store' });
     const data = await res.json();
-    tippingOddsCache = data.supported ? (data.events || []) : [];
-  }catch(e){ tippingOddsCache = []; }
-  tippingOddsCacheTime = Date.now();
-  return tippingOddsCache;
+    events = data.supported ? (data.events || []) : [];
+  }catch(e){ events = []; }
+  tippingOddsCaches[sp] = { at: Date.now(), events };
+  return events;
 }
 function findTippingOdds(oddsEvents, homeTeam, awayTeam){
   const h = normTeamName(homeTeam), a = normTeamName(awayTeam);
@@ -18287,9 +18383,10 @@ async function refreshTipping(isBackgroundPoll){
   const roundSelectWrap = document.getElementById('tippingRoundSelectWrap');
   try{
     const games = await fetchTippingFixtures();
+    if(games.sport !== TIP_SPORT) return; // switched comp while loading
     if(games.length === 0){
       const yr = await getTippingSeasonYear();
-      document.getElementById('tippingRoundHeading').textContent = `Footy Tipping — ${yr}`;
+      document.getElementById('tippingRoundHeading').textContent = `${TP.label} Tipping — ${yr}`;
       // v222: off-season, the countdown card says it all; hide the empty heading card
       { const hp = document.getElementById('tippingRoundHeading').closest('.panel'); if(hp) hp.classList.add('tip-offseason-head'); }
       roundSelectWrap.innerHTML = '';
@@ -18324,11 +18421,11 @@ async function refreshTipping(isBackgroundPoll){
 // Round 1 date for each upcoming season — the AFL confirmed 2027's opener
 // as the week of 17-21 March (fixture itself due in November). Add next
 // year's here once announced; a missing year just hides the countdown.
-const TIPPING_SEASON_OPENERS = { 2027: '2027-03-17T19:30:00+11:00' };
+const TIPPING_SEASON_OPENERS = { afl: { 2027: '2027-03-17T19:30:00+11:00' }, nrl: {} };
 async function buildTippingOffseasonHtml(yr){
   let podium = '';
   try{
-    const res = await authedFetch(`/tippingArchive/${yr - 1}.json`);
+    const res = await authedFetch(`${TP.A}/${yr - 1}.json`);
     const rec = res.ok ? await res.json() : null;
     const rows = (rec && rec.ladder && Array.isArray(rec.ladder.rows)) ? rec.ladder.rows : [];
     if(rows.length){
@@ -18343,7 +18440,8 @@ async function buildTippingOffseasonHtml(yr){
     }
   }catch(e){}
   let countdown = '';
-  const opener = TIPPING_SEASON_OPENERS[yr] ? new Date(TIPPING_SEASON_OPENERS[yr]).getTime() : null;
+  const openerStr = (TIPPING_SEASON_OPENERS[TIP_SPORT] || {})[yr];
+  const opener = openerStr ? new Date(openerStr).getTime() : null;
   if(opener && opener > Date.now()){
     const days = Math.ceil((opener - Date.now()) / 86400000);
     countdown = `<div class="offseason-countdown"><div class="offseason-days">${days}</div><div class="offseason-kicker">days until ${yr} Round 1</div></div>`;
@@ -18353,12 +18451,12 @@ async function buildTippingOffseasonHtml(yr){
     if(b) b.addEventListener('click', () => { const h = document.querySelector('#tab-tipping .subnav-btn[data-tipsub="history"]'); if(h) h.click(); });
   }, 0);
   return `<div class="offseason-wrap">${countdown}${podium}
-    <div class="hint offseason-note">The ${yr} fixture usually comes out in November. Games appear here as soon as it does, and everyone starts in Round 1.</div></div>`;
+    <div class="hint offseason-note">The ${yr} ${TP.label} fixture ${TIP_SPORT === 'afl' ? 'usually comes out in November' : 'comes out before the season starts'}. Games appear here as soon as it does, and everyone starts in Round 1.</div></div>`;
 }
 async function renderTippingPrizePot(){
   const el = document.getElementById('tippingPrizePotVal');
   try{
-    const res = await authedFetch('/tipping/config/prizePot.json');
+    const res = await authedFetch(`${TP.R}/config/prizePot.json`);
     const val = Number(await res.json()) || 0;
     animateValue('tippingPrizePotVal', val, v => '$' + v.toFixed(0));
     document.getElementById('prizeSplit1').textContent = '$' + (val * 0.70).toFixed(0);
@@ -18399,10 +18497,10 @@ function rebuildTippingRoundNames(games){
     if(rns.length > 1 && rns.every(x => /final/i.test(x))){
       // A finals week whose games carry different names (Qualifying +
       // Elimination) — use the standard name for that week.
-      names[r] = TIPPING_ROUND_NAMES_FALLBACK[r] || rns.join(' / ');
+      names[r] = (TIP_SPORT === 'afl' && TIPPING_ROUND_NAMES_FALLBACK[r]) || rns.join(' / ');
     } else if(rn && !/^round\s*\d+$/i.test(rn)){
       names[r] = rn; // e.g. "Opening Round", "Grand Final"
-    } else if(list.length >= 6 && list.every(g => SA_VENUE_PATTERN.test(g.venue || ''))){
+    } else if(TIP_SPORT === 'afl' && list.length >= 6 && list.every(g => SA_VENUE_PATTERN.test(g.venue || ''))){
       names[r] = 'Gather Round';
     }
   });
@@ -18410,8 +18508,16 @@ function rebuildTippingRoundNames(games){
 }
 function roundLabel(r){
   if(tippingRoundNames[r]) return tippingRoundNames[r];
+  if(TIP_SPORT !== 'afl') return `Round ${r}`;
   if(Number(r) === 0) return 'Opening Round'; // archived seasons (2024-2026) only
   return TIPPING_ROUND_NAMES_FALLBACK[r] || `Round ${r}`;
+}
+// Label for a round of a specific league, used where the league may not be the one the Tipping tab is showing (XP awards).
+function tipRoundLabel(sport, round, games){
+  if(sport === TIP_SPORT) return roundLabel(round);
+  const g = (games || []).find(x => x.round === round);
+  const rn = g && g.roundname;
+  return rn && !/^round\s*\d+$/i.test(rn) ? rn : `Round ${round}`;
 }
 
 let tippingDraft = {}; // { [gameId]: { pick, margin } } — live selections before the one Save-all click
@@ -18421,7 +18527,7 @@ let currentSeasonLeaders = new Set(); // names tied for #1 on the season ladder 
 let currentSeasonTopScore = null; // the actual points value currentSeasonLeaders are tied on — kept alongside so consumers (Form Guide) don't need to guess or re-derive it from a stale cache
 
 function getKickoffMs(g){
-  return new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
+  return gameKickoffMs(g);
 }
 function formatCountdown(ms){
   if(ms <= 0) return '00:00';
@@ -18438,16 +18544,20 @@ async function renderTippingRound(games, currentRound){
   const heading = document.getElementById('tippingRoundHeading');
   const hint = document.getElementById('tippingHint');
   const round = tippingSelectedRound;
+  if(games && games.sport && games.sport !== TIP_SPORT) return;
+  const roundSport = TIP_SPORT;
 
-  heading.textContent = `Footy Tipping — ${roundLabel(round)}`;
+  heading.textContent = `${TP.label} Tipping — ${roundLabel(round)}`;
   { const hp = heading.closest('.panel'); if(hp) hp.classList.remove('tip-offseason-head'); }
   hint.textContent = 'Pick a winner for every game, then tap Save all picks once — the round\u2019s first game also needs a margin, used only as a season-end tiebreaker. Picks stay hidden from everyone else until that game kicks off.';
 
   const roundGames = games.filter(g => g.round === round);
   const auth = await getValidAuth();
   const oddsEvents = await fetchTippingOdds();
+  if(roundSport !== TIP_SPORT) return;
 
   if(myJokerRound === undefined) await loadMyJoker(auth);
+  if(roundSport !== TIP_SPORT) return;
 
   if(roundGames.length === 0){
     gamesArea.innerHTML = '<div class="panel"><div class="empty">No games this round.</div></div>';
@@ -18468,7 +18578,7 @@ async function renderTippingRound(games, currentRound){
   const nowMs = Date.now();
   const upcomingLockGames = roundGames.filter(g => {
     if(!g.date) return false;
-    const kickoffMs = new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
+    const kickoffMs = gameKickoffMs(g);
     const lockMs = kickoffMs - TIP_LOCK_WINDOW_MS;
     const untilLock = lockMs - nowMs;
     return untilLock > 0 && untilLock <= soonThresholdMs;
@@ -18476,7 +18586,7 @@ async function renderTippingRound(games, currentRound){
   if(upcomingLockGames.length > 0 && auth){
     const missingChecks = await Promise.all(upcomingLockGames.map(async g => {
       try{
-        const res = await authedFetch(`/tipping/picks/${g.id}/${auth.uid}.json`);
+        const res = await authedFetch(`${TP.R}/picks/${g.id}/${auth.uid}.json`);
         const data = await res.json();
         return !data || !data.pick;
       }catch(e){ return false; }
@@ -18490,7 +18600,7 @@ async function renderTippingRound(games, currentRound){
   // group this round's games by local (Melbourne) calendar day
   const dayGroups = new Map();
   roundGames.forEach(g => {
-    const dt = g.date ? new Date(g.date.replace(' ', 'T') + '+10:00') : null;
+    const dt = g.date ? new Date(gameKickoffMs(g)) : null;
     const dateKey = dt ? dt.toDateString() : 'Date TBC';
     if(!dayGroups.has(dateKey)){
       dayGroups.set(dateKey, {
@@ -18602,11 +18712,11 @@ async function saveAllTippingPicks(auth){
     const results = [];
     for(const w of toWrite){
       const writes = [
-        { field: 'pick', path: `/tipping/picks/${w.gameId}/${auth.uid}/pick.json`, body: JSON.stringify(w.pick) },
-        { field: 'name', path: `/tipping/picks/${w.gameId}/${auth.uid}/name.json`, body: JSON.stringify(name) },
+        { field: 'pick', path: `${TP.R}/picks/${w.gameId}/${auth.uid}/pick.json`, body: JSON.stringify(w.pick) },
+        { field: 'name', path: `${TP.R}/picks/${w.gameId}/${auth.uid}/name.json`, body: JSON.stringify(name) },
       ];
       if(w.margin !== null){
-        writes.push({ field: 'margin', path: `/tipping/picks/${w.gameId}/${auth.uid}/margin.json`, body: JSON.stringify(w.margin) });
+        writes.push({ field: 'margin', path: `${TP.R}/picks/${w.gameId}/${auth.uid}/margin.json`, body: JSON.stringify(w.margin) });
       }
       const fieldResults = await Promise.all(writes.map(fw =>
         authedFetch(fw.path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: fw.body })
@@ -18641,7 +18751,7 @@ async function saveAllTippingPicks(auth){
       let diagLine = '';
       try{
         const firstFailedGameId = failed[0].w.gameId;
-        const metaRes = await authedFetch(`/tipping/meta/${firstFailedGameId}/commence_time_ms.json`);
+        const metaRes = await authedFetch(`${TP.R}/meta/${firstFailedGameId}/commence_time_ms.json`);
         const commenceMs = await metaRes.json();
         const nowMs = Date.now();
         const statusRes = await authedFetch(`/users/${auth.uid}/status.json`);
@@ -18662,7 +18772,7 @@ async function saveAllTippingPicks(auth){
     rounds.forEach(r => {
       // v168: a timestamp instead of `true`, so the admin tracker can tell
       // this season's submission apart from last season's same round number.
-      authedFetch(`/tipping/submissions/${r}/${auth.uid}.json`, {
+      authedFetch(`${TP.R}/submissions/${r}/${auth.uid}.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now())
       }).catch(() => {});
     });
@@ -18688,7 +18798,7 @@ async function saveAllTippingPicks(auth){
         // — needs the same 'T'+offset transformation used everywhere else
         // this exact date format gets parsed, or a naive new Date(...)
         // risks misreading it as the browser's own local time instead.
-        const gameDate = new Date(meta.date.replace(' ', 'T') + '+10:00');
+        const gameDate = new Date(gameKickoffMs(meta));
         if(isNaN(gameDate.getTime())) return;
         const gamePeriodKey = casinoPotPeriodKey(gameDate);
         authedFetch(`/casinoPot/months/${gamePeriodKey}/tippingGames/${auth.uid}/${w.gameId}.json`, {
@@ -18721,7 +18831,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents, previousDraft){
     // show pick UI, pre-filled with own existing pick if any
     let myPick = null, myMargin = '';
     try{
-      const res = await authedFetch(`/tipping/picks/${g.id}/${auth.uid}.json`);
+      const res = await authedFetch(`${TP.R}/picks/${g.id}/${auth.uid}.json`);
       const mine = await res.json();
       if(mine){ myPick = mine.pick; myMargin = mine.margin != null ? mine.margin : ''; }
     }catch(e){}
@@ -18751,7 +18861,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents, previousDraft){
       // until kickoff, that's the part worth keeping as a reveal.
       let crowdSplitLine = '';
       try{
-        const picksRes = await authedFetch(`/tipping/picks/${g.id}.json`);
+        const picksRes = await authedFetch(`${TP.R}/picks/${g.id}.json`);
         const allPicks = Object.values((await picksRes.json()) || {});
         const homeCount = allPicks.filter(p => p.pick === 'home').length;
         const awayCount = allPicks.filter(p => p.pick === 'away').length;
@@ -18794,8 +18904,8 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents, previousDraft){
     body.innerHTML = `
       ${myPick ? `<div class="tip-your-pick-confirm" style="margin-bottom:10px; padding-top:0; border-top:none;">✅ Your pick is saved — <b>${myPick === 'draw' ? 'Draw' : escapeHtml(myPick === 'home' ? g.hteam : g.ateam)}</b>${myMargin !== '' ? `, margin ${escapeHtml(String(myMargin))}` : ''}. Locks 12h before the opening bounce.</div>` : ''}
       <div class="tip-pick-row">
-        <button type="button" class="tip-pick-btn${myPick === 'home' ? ' selected' : ''}" data-pick="home">${teamLogoImg(g.hteam, 32)}${escapeHtml(g.hteam)}${homeOddsHtml}</button>
-        <button type="button" class="tip-pick-btn${myPick === 'away' ? ' selected' : ''}" data-pick="away">${teamLogoImg(g.ateam, 32)}${escapeHtml(g.ateam)}${awayOddsHtml}</button>
+        <button type="button" class="tip-pick-btn${myPick === 'home' ? ' selected' : ''}" data-pick="home">${teamLogoImg(g.hteam, 32, TP.logo)}${escapeHtml(g.hteam)}${homeOddsHtml}</button>
+        <button type="button" class="tip-pick-btn${myPick === 'away' ? ' selected' : ''}" data-pick="away">${teamLogoImg(g.ateam, 32, TP.logo)}${escapeHtml(g.ateam)}${awayOddsHtml}</button>
       </div>
       <button type="button" class="tip-draw-btn${myPick === 'draw' ? ' selected' : ''}" data-pick="draw">Tip a Draw</button>
       ${isMarginGame ? `<div class="tip-margin-field"><label>Margin (tiebreaker only)</label><input type="number" min="0" class="tip-margin-input" value="${myMargin}"></div>` : ''}
@@ -18819,7 +18929,7 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents, previousDraft){
   } else {
     // STATE 4: the opening bounce has passed — reveal everyone's picks, grouped by team
     try{
-      const res = await authedFetch(`/tipping/picks/${g.id}.json`);
+      const res = await authedFetch(`${TP.R}/picks/${g.id}.json`);
       const all = await res.json() || {};
       const entries = Object.entries(all).map(([uid, p]) => ({ ...p, uid }));
       if(entries.length === 0){
@@ -18847,20 +18957,20 @@ async function renderTipGame(g, isMarginGame, auth, oddsEvents, previousDraft){
           }).join('')
         : '<div class="tip-picker-name" style="opacity:.5;">No tips</div>';
       const scoreLineHtml = complete
-        ? `<div class="tip-game-meta" style="margin-bottom:8px;"><span style="display:flex; align-items:center; gap:6px;">${teamLogoImg(g.hteam, 16)}${escapeHtml(g.hteam)} ${g.hscore} — ${g.ascore} ${escapeHtml(g.ateam)}${teamLogoImg(g.ateam, 16)}</span></div>`
+        ? `<div class="tip-game-meta" style="margin-bottom:8px;"><span style="display:flex; align-items:center; gap:6px;">${teamLogoImg(g.hteam, 16, TP.logo)}${escapeHtml(g.hteam)} ${g.hscore} — ${g.ascore} ${escapeHtml(g.ateam)}${teamLogoImg(g.ateam, 16, TP.logo)}</span></div>`
         : '<div class="hint" style="margin-bottom:8px;">Game underway — result not final yet.</div>';
       body.innerHTML = `
         ${scoreLineHtml}
         <div class="tip-team-cols">
           <div class="tip-team-col ${homeCls}">
-            ${teamLogoImg(g.hteam, 40)}
+            ${teamLogoImg(g.hteam, 40, TP.logo)}
             <div class="tip-team-name">${escapeHtml(g.hteam)}</div>
             <div class="tip-team-result-icon">${homeIcon}</div>
             <div class="tip-picker-list">${pickerListHtml(homePicks)}</div>
             <div class="tip-picker-count">${homePicks.length} tip${homePicks.length === 1 ? '' : 's'}</div>
           </div>
           <div class="tip-team-col ${awayCls}">
-            ${teamLogoImg(g.ateam, 40)}
+            ${teamLogoImg(g.ateam, 40, TP.logo)}
             <div class="tip-team-name">${escapeHtml(g.ateam)}</div>
             <div class="tip-team-result-icon">${awayIcon}</div>
             <div class="tip-picker-list">${pickerListHtml(awayPicks)}</div>
@@ -19132,7 +19242,7 @@ async function computeTippingDiagnostics(){
     const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)) && g.round >= seasonStartRound);
     const pickResults = await Promise.all(finishedGames.map(async g => {
       try{
-        const res = await authedFetch(`/tipping/picks/${g.id}.json`);
+        const res = await authedFetch(`${TP.R}/picks/${g.id}.json`);
         if(!res.ok) return { g, picks: {}, readFailed: true, status: res.status };
         return { g, picks: (await res.json()) || {}, readFailed: false };
       }catch(e){
@@ -19180,7 +19290,7 @@ async function computeDashboardHealthChecks(){
   const total = (currentState && currentState.members) ? currentState.members.length : 0;
   let prizePot = null;
   try{
-    const res = await authedFetch('/tipping/config/prizePot.json');
+    const res = await authedFetch(`${TP.R}/config/prizePot.json`);
     prizePot = await res.json();
   }catch(e){}
   return {
@@ -19292,7 +19402,7 @@ async function runFullHealthCheck(){
   try{
     const games = await fetchTippingFixtures();
     const validRounds = new Set(games.map(g => g.round));
-    const jokerRes = await authedFetch('/tipping/joker.json');
+    const jokerRes = await authedFetch(`${TP.R}/joker.json`);
     const jokers = await jokerRes.json() || {};
     const invalid = Object.entries(jokers).filter(([uid, j]) => j && j.round != null && !validRounds.has(j.round));
     check('Joker round validity', invalid.length === 0 ? 'pass' : 'warn', invalid.length === 0 ? `${Object.keys(jokers).length} joker pick(s), all valid rounds` : `${invalid.length} pointing at a round that doesn't exist this season`);
@@ -20712,10 +20822,10 @@ document.getElementById('adminRenameSaveBtn').addEventListener('click', async ()
     let swept = 0;
     await Promise.all(games.map(async g => {
       try{
-        const res = await authedFetch(`/tipping/picks/${g.id}/${adminRenameTargetUid}.json`);
+        const res = await authedFetch(`${TP.R}/picks/${g.id}/${adminRenameTargetUid}.json`);
         const mine = await res.json();
         if(mine){
-          await authedFetch(`/tipping/picks/${g.id}/${adminRenameTargetUid}/name.json`, {
+          await authedFetch(`${TP.R}/picks/${g.id}/${adminRenameTargetUid}/name.json`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newName)
           });
           swept++;
@@ -20984,7 +21094,7 @@ document.getElementById('adminGuestLinkCopyBtn').addEventListener('click', () =>
 // ==== Admin: Tipping — prize pot, first round, submissions ====
 async function loadAdminPrizePot(){
   try{
-    const res = await authedFetch('/tipping/config/prizePot.json');
+    const res = await authedFetch(`${TP.R}/config/prizePot.json`);
     const val = await res.json();
     document.getElementById('adminPrizePotInput').value = val != null ? val : '';
   }catch(e){}
@@ -20994,7 +21104,7 @@ document.getElementById('adminSavePrizePotBtn').addEventListener('click', async 
   const input = document.getElementById('adminPrizePotInput');
   const val = input.value !== '' ? Number(input.value) : 0;
   try{
-    await authedFetch('/tipping/config/prizePot.json', {
+    await authedFetch(`${TP.R}/config/prizePot.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(val)
     });
     statusEl.className = 'status-msg ok';
@@ -21007,7 +21117,7 @@ document.getElementById('adminSavePrizePotBtn').addEventListener('click', async 
 });
 async function loadAdminFirstRound(){
   try{
-    const res = await authedFetch('/tipping/config/firstRound.json');
+    const res = await authedFetch(`${TP.R}/config/firstRound.json`);
     const val = await res.json();
     document.getElementById('adminFirstRoundInput').value = val != null ? val : 1;
   }catch(e){}
@@ -21017,7 +21127,7 @@ document.getElementById('adminSaveFirstRoundBtn').addEventListener('click', asyn
   const input = document.getElementById('adminFirstRoundInput');
   const val = input.value !== '' ? parseInt(input.value, 10) : 1;
   try{
-    await authedFetch('/tipping/config/firstRound.json', {
+    await authedFetch(`${TP.R}/config/firstRound.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(val)
     });
     statusEl.className = 'status-msg ok';
@@ -21059,7 +21169,7 @@ async function loadAdminSubmissionsForRound(round){
   try{
     const [usersRes, subsRes] = await Promise.all([
       authedFetch('/users.json'),
-      authedFetch(`/tipping/submissions/${round}.json`)
+      authedFetch(`${TP.R}/submissions/${round}.json`)
     ]);
     const allUsers = (await usersRes.json()) || {};
     const rawSubmitted = (await subsRes.json()) || {};
@@ -21096,7 +21206,7 @@ async function loadAdminSubmissionsForRound(round){
 // only participant has no Board roster entry to key off. ====
 async function loadAdminTippingDuesDefaultFee(){
   try{
-    const res = await authedFetch('/tippingDuesConfig/amountPerPerson.json');
+    const res = await authedFetch(`${TP.DC}/amountPerPerson.json`);
     const val = await res.json();
     const input = document.getElementById('adminTippingDuesDefaultFee');
     if(input && val != null) input.value = val;
@@ -21108,7 +21218,7 @@ document.getElementById('adminTippingDuesSaveDefaultBtn').addEventListener('clic
   const val = parseFloat(input.value);
   if(isNaN(val) || val < 0){ status.textContent = 'Enter a fee of 0 or more.'; return; }
   try{
-    await authedFetch('/tippingDuesConfig/amountPerPerson.json', {
+    await authedFetch(`${TP.DC}/amountPerPerson.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(val)
     });
     status.textContent = `Saved — new participants added from now on default to $${val}.`;
@@ -21123,7 +21233,7 @@ async function populateAdminTippingDuesAddSelect(){
   try{
     const [usersRes, duesRes] = await Promise.all([
       authedFetch('/users.json'),
-      authedFetch('/tippingDues.json')
+      authedFetch(`${TP.D}.json`)
     ]);
     const all = (await usersRes.json()) || {};
     const existing = (await duesRes.json()) || {};
@@ -21142,7 +21252,7 @@ document.getElementById('adminTippingDuesAddBtn').addEventListener('click', asyn
   const defaultFeeInput = document.getElementById('adminTippingDuesDefaultFee');
   const commitment = parseFloat(defaultFeeInput.value) || 0;
   try{
-    await authedFetch(`/tippingDues/${uid}.json`, {
+    await authedFetch(`${TP.D}/${uid}.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, commitment, owed: commitment, addedAt: Date.now() })
     });
@@ -21158,7 +21268,7 @@ async function renderAdminTippingDues(){
   if(!area) return;
   await loadAdminTippingDuesDefaultFee();
   try{
-    const res = await authedFetch('/tippingDues.json');
+    const res = await authedFetch(`${TP.D}.json`);
     const all = (await res.json()) || {};
     const entries = Object.entries(all).sort((a, b) => (a[1].name || '').localeCompare(b[1].name || ''));
     if(entries.length === 0){
@@ -21189,7 +21299,7 @@ async function renderAdminTippingDues(){
         const newOwed = Math.max(0, Math.min(Math.round(d.commitment), isNaN(val) ? 0 : val));
         const paid = before - newOwed;
         try{
-          await authedFetch(`/tippingDues/${uid}/owed.json`, {
+          await authedFetch(`${TP.D}/${uid}/owed.json`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newOwed)
           });
           if(paid > 0){
@@ -21208,7 +21318,7 @@ async function renderAdminTippingDues(){
         const name = e.target.dataset.name;
         if(!confirm(`Remove ${name} from Tipping Dues? This doesn't claw back any XP already awarded.`)) return;
         try{
-          await authedFetch(`/tippingDues/${uid}.json`, { method: 'DELETE' });
+          await authedFetch(`${TP.D}/${uid}.json`, { method: 'DELETE' });
           showToast(`Removed ${name}`);
           await populateAdminTippingDuesAddSelect();
           renderAdminTippingDues();
@@ -21236,7 +21346,7 @@ let adminCurrentSeasonYear = null;
 async function loadAdminTippingSeasonYear(){
   const hint = document.getElementById('adminTippingSeasonYearHint');
   try{
-    const res = await authedFetch('/tipping/config/year.json');
+    const res = await authedFetch(`${TP.R}/config/year.json`);
     const val = await res.json();
     adminCurrentSeasonYear = val != null ? Number(val) : new Date().getFullYear();
     hint.textContent = `Current season: ${adminCurrentSeasonYear}${val == null ? ' (assumed — not explicitly set yet)' : ''}`;
@@ -21262,7 +21372,7 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
   // v168 guard: running this twice would archive the NEW (empty) season
   // over the top of a real one.
   try{
-    const exRes = await authedFetch(`/tippingArchive/${outgoingYear}.json?shallow=true`);
+    const exRes = await authedFetch(`${TP.A}/${outgoingYear}.json?shallow=true`);
     const existing = exRes.ok ? await exRes.json() : null;
     if(existing && !confirm(`${outgoingYear} has already been archived. Archiving again will REPLACE that saved ladder with whatever is live now. Only continue if you're sure.`)) return;
   }catch(e){}
@@ -21270,9 +21380,9 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
   statusEl.textContent = 'Archiving…';
   try{
     const [ladderRes, prizePotRes, jokerRes] = await Promise.all([
-      authedFetch('/tipping/lastComputedLadder.json'),
-      authedFetch('/tipping/config/prizePot.json'),
-      authedFetch('/tipping/joker.json'),
+      authedFetch(`${TP.R}/lastComputedLadder.json`),
+      authedFetch(`${TP.R}/config/prizePot.json`),
+      authedFetch(`${TP.R}/joker.json`),
     ]);
     const ladderSnapshot = await ladderRes.json();
     const outgoingPrizePot = await prizePotRes.json();
@@ -21282,7 +21392,7 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
       statusEl.textContent = "No ladder snapshot found — open the Dashboard's Tipping tab once first (this is what captures the final ladder), then try again.";
       return;
     }
-    const archiveRes = await authedFetch(`/tippingArchive/${outgoingYear}.json`, {
+    const archiveRes = await authedFetch(`${TP.A}/${outgoingYear}.json`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         archivedAt: Date.now(), ladder: ladderSnapshot,
@@ -21294,7 +21404,7 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
       statusEl.textContent = `Archive write failed (HTTP ${archiveRes.status}) — nothing was reset, safe to retry.`;
       return;
     }
-    const resetRes = await authedFetch('/tipping.json', {
+    const resetRes = await authedFetch(`${TP.R}.json`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         'config/firstRound': newFirstRound, 'config/prizePot': newPrizePot, 'config/year': newYear,
@@ -21307,7 +21417,7 @@ document.getElementById('adminArchiveResetSeasonBtn').addEventListener('click', 
       return;
     }
     authedFetch('/pushJokerLastChanceNotified.json', { method: 'DELETE' }).catch(() => {});
-    tippingSeasonYearCache = null; tippingFixturesCache = null;
+    tippingSeasonYearCaches = {}; tippingFixturesCaches = {};
     try{ await resetAllTippingSeasonPoints(); try{ localStorage.setItem(`mlsynd-season-points-reset-${newYear}`, String(Date.now())); }catch(e){} }
     catch(e){ showToast('Season archived, but resetting tipping points failed: ' + e.message); }
     statusEl.className = 'status-msg ok';
@@ -24125,7 +24235,12 @@ async function ensureCommenceTimesSynced(finishedGames){
 
 async function renderTippingLadder(games){
   const area = document.getElementById('tippingLadderArea');
+  // Local copies so a switch of comp part-way through can never write one league's points into the other's paths.
+  const ladderSport = TIP_SPORT, TP = TIPNS[ladderSport];
+  const switched = () => TIP_SPORT !== ladderSport;
+  if(games && games.sport && games.sport !== ladderSport) return;
   const ladderAuth = await getValidAuth();
+  if(switched()) return;
   const isAdminViewer = !!(ladderAuth && ladderAuth.email && ladderAuth.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
 
   // This competition deliberately started partway through the season as a
@@ -24137,17 +24252,19 @@ async function renderTippingLadder(games){
   // wasn't a data or auth bug at all — confirmed via the diagnostics above
   // (0 failed reads, 0 uid mismatches, 175/178 pre-Round-22 games genuinely
   // empty for everyone) before landing on this as the real fix.
-  const seasonStartRound = await getSeasonStartRound();
+  const seasonStartRound = await getSeasonStartRound(ladderSport);
+  if(switched()) return;
 
   const finishedGames = games.filter(g => g.complete >= 100 && (g.winner || (g.hscore != null && g.ascore != null)) && g.round >= seasonStartRound);
   if(finishedGames.length === 0){
-    currentSeasonLeaders = new Set();
-    currentSeasonTopScore = null;
+    if(TIP_SPORT === 'afl') currentSeasonLeaders = new Set();
+    if(TIP_SPORT === 'afl') currentSeasonTopScore = null;
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
 
   await ensureCommenceTimesSynced(finishedGames);
+  if(switched()) return;
 
   // Rounds now score live, game by game, as each result comes in — no need
   // to wait for the whole round to finish. The one thing that genuinely
@@ -24164,8 +24281,8 @@ async function renderTippingLadder(games){
   finishedGames.forEach(g => { roundCounts[g.round].done++; });
   const involvedRounds = Object.keys(roundCounts).filter(r => roundCounts[r].done > 0).map(Number);
   if(involvedRounds.length === 0){
-    currentSeasonLeaders = new Set();
-    currentSeasonTopScore = null;
+    if(TIP_SPORT === 'afl') currentSeasonLeaders = new Set();
+    if(TIP_SPORT === 'afl') currentSeasonTopScore = null;
     area.innerHTML = '<div class="empty">Ladder will build up as games are completed.</div>';
     return;
   }
@@ -24173,15 +24290,16 @@ async function renderTippingLadder(games){
   const [pickResults, jokersRaw] = await Promise.all([
     Promise.all(finishedGames.map(async g => {
       try{
-        const res = await authedFetch(`/tipping/picks/${g.id}.json`);
+        const res = await authedFetch(`${TP.R}/picks/${g.id}.json`);
         if(!res.ok) return { g, picks: {}, readFailed: true, status: res.status };
         return { g, picks: (await res.json()) || {}, readFailed: false };
       }catch(e){
         return { g, picks: {}, readFailed: true, status: 'exception: ' + e.message };
       }
     })),
-    authedFetch('/tipping/joker.json').then(r => r.json()).catch(() => null)
+    authedFetch(`${TP.R}/joker.json`).then(r => r.json()).catch(() => null)
   ]);
+  if(switched()) return;
   const jokers = jokersRaw || {};
 
   // DIAGNOSTIC: three theory-driven fixes haven't resolved this, so rather
@@ -24321,8 +24439,8 @@ async function renderTippingLadder(games){
   const rows = Object.values(tally);
   rows.sort((a, b) => b.points - a.points || a.marginDiff - b.marginDiff);
   if(rows.length === 0){
-    currentSeasonLeaders = new Set();
-    currentSeasonTopScore = null;
+    if(TIP_SPORT === 'afl') currentSeasonLeaders = new Set();
+    if(TIP_SPORT === 'afl') currentSeasonTopScore = null;
     area.innerHTML = '<div class="empty">No picks recorded yet.</div>';
     return;
   }
@@ -24336,7 +24454,7 @@ async function renderTippingLadder(games){
   // can already independently derive from picks, never used for scoring
   // itself. Whoever opens Tipping last before the admin runs the season
   // archive is what makes the snapshot fresh.
-  authedFetch('/tipping/lastComputedLadder.json', {
+  authedFetch(`${TP.R}/lastComputedLadder.json`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ updatedAt: Date.now(), seasonStartRound, rows })
   }).catch(() => {});
@@ -24350,7 +24468,7 @@ async function renderTippingLadder(games){
   if(currentUserUid){
     const myRow = rows.find(r => r.uid === currentUserUid);
     if(myRow){
-      authedFetch(`/tippingStats/${currentUserUid}/seasonPoints.json`, {
+      authedFetch(`${TP.S}/${currentUserUid}/seasonPoints.json`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(myRow.points)
       }).then(() => checkCasinoTierUpForCurrentUser()).catch(() => {});
     }
@@ -24390,8 +24508,8 @@ async function renderTippingLadder(games){
   const topScore = rows[0].points;
   const bottomScore = rows[rows.length - 1].points;
   const hasSpread = topScore !== bottomScore;
-  currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.points === topScore).map(r => r.name)) : new Set();
-  currentSeasonTopScore = hasSpread ? topScore : null;
+  if(TIP_SPORT === 'afl') currentSeasonLeaders = hasSpread ? new Set(rows.filter(r => r.points === topScore).map(r => r.name)) : new Set();
+  if(TIP_SPORT === 'afl') currentSeasonTopScore = hasSpread ? topScore : null;
 
   // Safety net: with several completed rounds and several tippers, everyone
   // landing on the exact same non-zero score is a strong anomaly signal
@@ -24489,7 +24607,7 @@ async function renderTippingHistory(){
   const area = document.getElementById('tippingHistoryArea');
   try{
     if(!tippingArchiveCache){
-      const res = await authedFetch('/tippingArchive.json');
+      const res = await authedFetch(`${TP.A}.json`);
       tippingArchiveCache = (await res.json()) || {};
     }
     const years = Object.keys(tippingArchiveCache).sort((a, b) => b - a); // newest first
@@ -24876,12 +24994,12 @@ async function renderHomeDigest(){
   }catch(e){}
 
   try{
-    const games = await fetchTippingFixtures();
+    const games = await fetchTippingFixtures('afl');
     const now = Date.now();
     let nextLock = null;
     (games || []).forEach(g => {
       if(!g.date) return;
-      const kickoffMs = new Date(g.date.replace(' ', 'T') + '+10:00').getTime();
+      const kickoffMs = gameKickoffMs(g);
       const lockMs = kickoffMs - TIP_LOCK_WINDOW_MS;
       if(lockMs > now && (!nextLock || lockMs < nextLock)) nextLock = lockMs;
     });

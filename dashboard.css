@@ -7340,3 +7340,10 @@ button.adm-quiet-danger:hover, button.adm-quiet-danger:active{ color:var(--loss)
 .awk-save{ width:100%; min-height:46px; border-radius:13px; border:1px solid var(--line); background:var(--surface-2, #1F2220); color:var(--chalk); font:inherit; font-size:14px; font-weight:800; cursor:pointer; }
 .awk-save.ready{ background:var(--accent); color:var(--accent-ink, #11140A); border-color:transparent; }
 @media (max-width:360px){ .awk-r{ min-width:38px; padding:0 5px; } }
+
+/* ---- Tipping: AFL / NRL comp switch ---- */
+.tip-sport-switch{ display:flex; gap:6px; padding:4px; margin:0 0 12px; border-radius:14px; background:rgba(0,0,0,.28); border:1px solid var(--line); }
+.tip-sport-btn{ flex:1; min-height:44px; border:0; border-radius:10px; background:transparent; color:var(--muted); font:600 14px 'Manrope', sans-serif; cursor:pointer; transition:background .2s, color .2s, box-shadow .2s; }
+.tip-sport-btn.active{ background:linear-gradient(180deg, var(--brass-light), var(--brass)); color:#10130a; box-shadow:0 2px 10px rgba(205,244,100,.25); }
+.tip-sport-btn:focus-visible{ outline:2px solid var(--brass-light); outline-offset:2px; }
+.tip-sport-switch-admin{ margin:10px 0 0; }
