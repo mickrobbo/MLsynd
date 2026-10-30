@@ -1,8 +1,7 @@
 {
-  "version": "2026-10-30.232",
+  "version": "2026-10-30.233",
   "date": "2026-10-30",
   "changes": [
-    "New: AFL and NRL tipping have their own rules, and each person picks AFL, NRL or both under 'I'm tipping in'",
-    "New: only people who have paid the entry fee share a comp's prize pot. Everyone is on the ladder, paid entrants get a 💰 badge and the 1st, 2nd and 3rd prize places"
+    "Fixed: long leg names in the Home group multi no longer overlap the line underneath"
   ]
 }
