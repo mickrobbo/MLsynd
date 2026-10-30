@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=234">
+<link rel="stylesheet" href="dashboard.css?v=235">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -4025,7 +4025,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-30.234"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-10-31.235"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -21851,7 +21851,7 @@ async function notifyMultiResults(names){
 function weeklyChecklistSteps(){
   const st = currentState || {};
   const draft = st.groupEntryDraft || {};
-  const legs = Object.values(draft).filter(e => e && e.odds != null && Number(e.odds) > 0);
+  const legs = Object.values(draft).filter(e => e && ((e.odds != null && Number(e.odds) > 0) || e.result || (e.pick && e.pick.sel)));
   const legsWithResult = legs.filter(e => e.result);
   const weekSel = document.getElementById('adminWeekLabel');
   const ret = document.getElementById('adminGMultiRet');

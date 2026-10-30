@@ -1,9 +1,7 @@
 {
-  "version": "2026-10-30.234",
-  "date": "2026-10-30",
+  "version": "2026-10-31.235",
+  "date": "2026-10-31",
   "changes": [
-    "New: EFL (Championship) tipping, a free comp with its own ladder and Matchweek rounds",
-    "AFL is now the only tipping comp with a prize pot; NRL and EFL are free ladder-only comps",
-    "Rules, entry choice and ladder now follow each comp"
+    "Fixed: the Admin week list now shows every group multi leg, including ones with no price entered yet"
   ]
 }

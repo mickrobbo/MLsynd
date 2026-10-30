@@ -139,6 +139,13 @@ test('Running costs include Anthropic', async ({ page }) => {
 });
 
 
+test('Admin week lists a leg that has a selection but no price yet', async ({ page }) => {
+  await goAdmin(page, 'entry');
+  await page.evaluate(() => { currentState.groupEntryDraft = { Dean: { odds: 1.5 }, Zak: { pick: { sel: 'Wrexham And Draw', leg: 2 } }, Brad: { pick: { sel: 'Over 24.5', leg: 3 } } }; updateWeeklyChecklist(); });
+  const desk = await text(page, '#adminWeeklyChecklistRows');
+  assert.match(desk, /0 of 3 marked/); assert.ok(desk.includes('Zak') && desk.includes('Brad'), desk);
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');

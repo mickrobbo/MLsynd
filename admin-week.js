@@ -21,7 +21,7 @@
   function legsNow(){
     const draft = st().groupEntryDraft || {};
     return Object.entries(draft)
-      .filter(([, e]) => e && (e.result || Number(e.odds) > 0))
+      .filter(([, e]) => e && (e.result || Number(e.odds) > 0 || (e.pick && e.pick.sel)))
       .map(([name, e]) => ({ name, odds: Number(e.odds) || 0, result: e.result || null, pick: e.pick || null }))
       .sort((a, b) => ((a.pick && Number(a.pick.leg)) || 1e9) - ((b.pick && Number(b.pick.leg)) || 1e9));
   }
