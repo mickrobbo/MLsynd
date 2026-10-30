@@ -1,7 +1,7 @@
 {
-  "version": "2026-10-26.228",
-  "date": "2026-10-24",
+  "version": "2026-10-30.229",
+  "date": "2026-10-30",
   "changes": [
-    "Fixed: the group multi not showing on Home after the slip was read"
+    "Fixed: the 'Where the XP Goes' bars on profiles never showed, and the tier progress bar and those bars now grow in when a profile opens"
   ]
 }
