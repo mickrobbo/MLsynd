@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=235">
+<link rel="stylesheet" href="dashboard.css?v=236">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -4025,7 +4025,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-10-31.235"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-02.236"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -16144,7 +16144,9 @@ function render(state){
         const roast = pool[hashStr(b.name + ((lastWeek && lastWeek.label) || '') + 'ind') % pool.length];
         roastHtml = `<div class="ind-note">${escapeHtml(b.name)} ${roast}.</div>`;
       }
-      const plHtml = b.pl != null ? `${b.pl > 0 ? '+' : ''}${homeMoney(b.pl)}` : (res === 'pending' ? 'Awaiting result' : '—');
+      // Not placed yet: until Admin ticks it as placed, the bet is not "running".
+      const placed = !!(b.placed || b.result || b.pl != null); // the Admin "Bet's actually been placed" tick
+      const plHtml = b.pl != null ? `${b.pl > 0 ? '+' : ''}${homeMoney(b.pl)}` : (res === 'pending' ? (placed ? 'Awaiting result' : 'Not placed yet') : '—');
       const mem = (state.members || []).find(mm => mm.name === b.name) || {};
       const indLegs = b.pick ? (Array.isArray(b.pick.legs) && b.pick.legs.length ? b.pick.legs : [b.pick]) : [];
       const LEGRES = { won: 'Won', lost: 'Lost', void: 'Void', Win: 'Won', Loss: 'Lost', Void: 'Void' };
@@ -16163,7 +16165,7 @@ function render(state){
           <div class="ind-detail-foot">${oddsN > 0 && indLegs.length > 1 ? `<span>Multi @${oddsN.toFixed(2)}</span>` : ''}${stakeN > 0 ? `<span>Stake ${moneyAud(stakeN)}</span>` : ''}${potRet ? `<span>${b.result === 'Win' ? 'Paid' : b.result ? 'Would have paid' : 'Pays'} ${moneyAud(potRet)}</span>` : ''}</div>
         </div>` : `<div class="ind-detail" hidden><div class="ind-detail-none">No slip read for this bet yet, so there's no selection to show.</div></div>`;
       return `<div class="ind-tile result-${res}" data-ind-open="${origIdx}" role="button" tabindex="0" aria-expanded="false" aria-label="${escapeHtml(b.name || '')}'s bet, show details">
-        <div class="ind-top"><span class="ind-av hm-open-profile" data-profile="${escapeHtml(b.name || '')}" data-hm-uid="${escapeHtml(mem.linkedUid || '')}" role="button" aria-label="Open ${escapeHtml(b.name || '')}'s profile">${escapeHtml(String(b.name || '?').trim().charAt(0).toUpperCase())}</span><span class="ind-name">${escapeHtml(b.name || '')}</span><span class="slip-stamp ind-stamp">${IND_STAMP[b.result] || 'Running'}</span></div>
+        <div class="ind-top"><span class="ind-av hm-open-profile" data-profile="${escapeHtml(b.name || '')}" data-hm-uid="${escapeHtml(mem.linkedUid || '')}" role="button" aria-label="Open ${escapeHtml(b.name || '')}'s profile">${escapeHtml(String(b.name || '?').trim().charAt(0).toUpperCase())}</span><span class="ind-name">${escapeHtml(b.name || '')}</span><span class="slip-stamp ind-stamp">${IND_STAMP[b.result] || (placed ? 'Running' : 'To bet')}</span></div>
         <div class="ind-pl">${plHtml}</div>
         ${b.sgm ? `<div class="ind-badge ${b.sgmResult === 'Win' ? 'win' : (b.sgmResult === 'Loss' ? 'loss' : '')}">SGM bonus bet${b.sgmResult === 'Win' ? ' won' : b.sgmResult === 'Loss' ? ' lost' : ''}${(b.sgmResult === 'Win' && b.sgmAmount != null) ? ` +${homeMoney(b.sgmAmount)}` : ''}</div>` : ''}
         ${b.cashedOut ? `<div class="ind-badge">Cashed out early</div>` : ''}

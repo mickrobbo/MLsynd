@@ -1,7 +1,7 @@
 {
-  "version": "2026-10-31.235",
-  "date": "2026-10-31",
+  "version": "2026-11-02.236",
+  "date": "2026-11-02",
   "changes": [
-    "Fixed: the Admin week list now shows every group multi leg, including ones with no price entered yet"
+    "Fixed: individual bets show 'Not placed yet' until Admin ticks them as placed, and names are no longer cut off"
   ]
 }

@@ -146,6 +146,14 @@ test('Admin week lists a leg that has a selection but no price yet', async ({ pa
   assert.match(desk, /0 of 3 marked/); assert.ok(desk.includes('Zak') && desk.includes('Brad'), desk);
 });
 
+test('Home individual bets: unplaced bet says so, names are not chopped', async ({ page }) => {
+  await page.evaluate(() => { currentState.weeklyIndividualBets = [{ name: 'Murphington', odds: 3, result: '' }, { name: 'Dean', odds: 3, placed: true, result: '' }]; render(currentState); });
+  const t = await text(page, '#weeklyIndividualBetsArea');
+  assert.ok(/not placed yet/i.test(t) && /to bet/i.test(t), t);
+  assert.ok(/awaiting result/i.test(t) && /running/i.test(t), t);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.ind-name')).textOverflow), 'clip');
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');

@@ -7360,3 +7360,7 @@ button.adm-quiet-danger:hover, button.adm-quiet-danger:active{ color:var(--loss)
 .ladder-paid{ margin-left:6px; font-size:11px; color:var(--brass-light); white-space:nowrap; }
 /* Free comps (NRL, EFL): hide every prize pot and fee control */
 body.tip-free [data-tip-prize]{ display:none !important; }
+
+/* Individual bet tiles: never chop a name; the stamp drops to its own line instead */
+.ind-top{ flex-wrap:wrap; row-gap:4px; }
+.ind-top .ind-name{ flex:1 1 64px; min-width:0; overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.15; }
