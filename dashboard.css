@@ -7364,3 +7364,24 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 /* Individual bet tiles: never chop a name; the stamp drops to its own line instead */
 .ind-top{ flex-wrap:wrap; row-gap:4px; }
 .ind-top .ind-name{ flex:1 1 64px; min-width:0; overflow:visible; text-overflow:clip; white-space:normal; overflow-wrap:anywhere; line-height:1.15; }
+
+/* Touch targets: on phones and tablets every tappable control gets at least a 40px hit area */
+@media (pointer:coarse){
+  #pushToggleBtn, #cpSoundBtn, #mainSignOutBtn, #hofOpenBtn, #pickStatsOpenBtn, #sportViewScores, #sportViewLadder,
+  .casino-rules-btn, #czAllGames, #potDetailsToggleBtn, .home-link, .cp-week-x, a.slip-open, #clearMyErrorsBtn,
+  .awk-week, .awk-ghost, .adminDuesMinus, .adminDuesPlus, #adminSavePrizePotBtn, #adminSaveFirstRoundBtn,
+  #adminCopyTippingInviteBtn, .adminRemoveRosterBtn, #aoBackupNow, #aoBackupRefresh, #aoTfCheck, #aoErrRefresh,
+  #adminDuesOwedInput, #adminPrizePotInput, #adminFirstRoundInput, #adminRosterNameInput, .weekly-reminder-check-row{
+    min-height:40px; box-sizing:border-box;
+  }
+  #pushToggleBtn, #cpSoundBtn, #mainSignOutBtn, #hofOpenBtn, #pickStatsOpenBtn, .casino-rules-btn, #czAllGames,
+  #potDetailsToggleBtn, .home-link, .cp-week-x, a.slip-open, #clearMyErrorsBtn, .awk-week, .awk-ghost,
+  .adminDuesMinus, .adminDuesPlus, #adminSavePrizePotBtn, #adminSaveFirstRoundBtn, #adminCopyTippingInviteBtn,
+  .adminRemoveRosterBtn, #aoBackupNow, #aoBackupRefresh, #aoTfCheck, #aoErrRefresh, .weekly-reminder-check-row{
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .lb-time-btn, .awk-r, button.small, #adminBackupBtn, #adminRestoreBtn{ min-height:40px; box-sizing:border-box; }
+  .cp-week-x{ min-width:40px; }
+  .weekly-reminder-check-row{ display:flex; justify-content:flex-start; }
+  a.slip-open{ padding-block:8px; }
+}

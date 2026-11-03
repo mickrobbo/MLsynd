@@ -1,8 +1,7 @@
 {
-  "version": "2026-11-04.237",
+  "version": "2026-11-04.238",
   "date": "2026-11-04",
   "changes": [
-    "Admin: remove any saved week (even one saved twice) with its totals, XP and fines reversed",
-    "Admin: new Check the books report flags duplicate weeks and totals that don't match"
+    "Bigger tap targets on phones and tablets (buttons, toggles, admin controls)"
   ]
 }
