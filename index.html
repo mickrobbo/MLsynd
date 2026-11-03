@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=238">
+<link rel="stylesheet" href="dashboard.css?v=239">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -4032,7 +4032,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-04.238"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-04.239"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -22639,7 +22639,7 @@ async function refundAdminFinePersonalShare(uid, amount, reason){
 // real Firebase from here) — the recommendation stands to check this
 // against a week the Ledger has already saved before trusting it with a
 // brand new one.
-document.getElementById('adminSaveWeekBtn').addEventListener('click', async () => {
+async function adminSaveWeekRun(){
   const status = document.getElementById('adminEntryStatus');
   const weekLabel = document.getElementById('adminWeekLabel').value.trim();
   if(!weekLabel){
@@ -22648,6 +22648,17 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
     return;
   }
   const members = currentState.members || [];
+  // Guard: a week with this label is already saved (a double tap or a second device).
+  const labelKey = weekLabel.toLowerCase();
+  const already = (currentState.history || []).filter(h => String(h.label || '').trim().toLowerCase() === labelKey);
+  if(already.length){
+    const when = already[already.length - 1].savedAt ? new Date(already[already.length - 1].savedAt).toLocaleString('en-AU') : 'earlier';
+    if(!confirm(`"${weekLabel}" is already saved (${when}). Saving it again counts everyone's results, XP and fines a second time.\n\nOnly continue if this is a genuinely different week with the same name.`)){
+      status.className = 'status-msg error';
+      status.textContent = `Not saved: ${weekLabel} is already in Season history.`;
+      return;
+    }
+  }
 
   try{
     // Snapshot ranks before this week, for movement indicators.
@@ -22953,6 +22964,16 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
     status.className = 'status-msg error';
     status.textContent = 'Something went wrong saving this week: ' + err.message + ' — check Admin → Season History to see what actually landed before trying again.';
   }
+}
+
+let adminSaveWeekInFlight = false;
+document.getElementById('adminSaveWeekBtn').addEventListener('click', async () => {
+  if(adminSaveWeekInFlight) return;
+  adminSaveWeekInFlight = true;
+  const btn = document.getElementById('adminSaveWeekBtn');
+  btn.disabled = true;
+  try{ await adminSaveWeekRun(); }
+  finally{ adminSaveWeekInFlight = false; btn.disabled = false; }
 });
 
 // ==== Admin: Undo Week ====

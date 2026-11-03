@@ -169,6 +169,19 @@ test('A week saved twice is flagged and one copy can be removed, taking its tota
   assert.ok(!/saved twice/.test(await text(page, '#adminHistoryArea')));
 });
 
+test('Save week refuses to double-save a week that is already in history', async ({ page, db }) => {
+  await goAdmin(page, 'entry');
+  const n = db.state.history.length, label = db.state.history[n - 1].label;
+  await page.evaluate((label) => { const sel = document.getElementById('adminWeekLabel'); if(![...sel.options].some(o => o.value === label)) sel.add(new Option(label, label)); sel.value = label; }, label);
+  let asked = '';
+  page.once('dialog', d => { asked = d.message(); d.dismiss(); });
+  await page.click('#adminSaveWeekBtn'); await page.waitForTimeout(1500);
+  assert.match(asked, /already saved/);
+  assert.equal(db.state.history.length, n, 'a duplicate week must not be written');
+  assert.match(await text(page, '#adminEntryStatus'), /already in Season history/);
+  assert.equal(await page.evaluate(() => document.getElementById('adminSaveWeekBtn').disabled), false);
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');
