@@ -1,7 +1,8 @@
 {
-  "version": "2026-11-02.236",
-  "date": "2026-11-02",
+  "version": "2026-11-04.237",
+  "date": "2026-11-04",
   "changes": [
-    "Fixed: individual bets show 'Not placed yet' until Admin ticks them as placed, and names are no longer cut off"
+    "Admin: remove any saved week (even one saved twice) with its totals, XP and fines reversed",
+    "Admin: new Check the books report flags duplicate weeks and totals that don't match"
   ]
 }

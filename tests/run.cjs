@@ -154,6 +154,21 @@ test('Home individual bets: unplaced bet says so, names are not chopped', async 
   assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.ind-name')).textOverflow), 'clip');
 });
 
+test('A week saved twice is flagged and one copy can be removed, taking its totals back out', async ({ page, db }) => {
+  await goAdmin(page, 'repair');
+  const before = await page.evaluate(() => { const h = currentState.history; const dupe = JSON.parse(JSON.stringify(h[h.length - 1])); dupe.savedAt += 5000; h.push(dupe);
+    ['lottoOut','lottoRet','multiOut','multiRet','bonus','sgmWin'].forEach(k => { currentState.group[k] = (currentState.group[k] || 0) + (dupe.group[k] || 0); });
+    renderAdminHistory(); return { n: h.length, multiOut: currentState.group.multiOut }; });
+  await page.click('#adminBooksBtn');
+  assert.match(await text(page, '#adminBooksOut'), /saved twice/);
+  assert.equal(await page.locator('#adminHistoryArea [data-remove-week]').count(), before.n);
+  page.on('dialog', d => d.accept());
+  await page.click('#adminHistoryArea [data-remove-week="' + (before.n - 1) + '"]'); await page.waitForTimeout(2500);
+  assert.equal(db.state.history.length, before.n - 1);
+  assert.equal(db.state.group.multiOut, before.multiOut - 12.5);
+  assert.ok(!/saved twice/.test(await text(page, '#adminHistoryArea')));
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');

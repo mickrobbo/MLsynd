@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=236">
+<link rel="stylesheet" href="dashboard.css?v=237">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -631,8 +631,15 @@
     </div>
     <div class="panel">
       <h2>Season history</h2>
-      <div class="hint">Every saved week, most recent first.</div>
+      <div class="hint">Every saved week, most recent first. Remove takes one week back out (totals, XP and fines), whichever it is.</div>
       <div id="adminHistoryArea" style="margin-top:10px;"><div class="empty">Loading…</div></div>
+    </div>
+    <div class="panel">
+      <h2>Check the books</h2>
+      <div class="hint">Looks for weeks saved twice and any total that doesn't match the saved weeks. It only reports, it never changes anything.</div>
+      <button type="button" id="adminBooksBtn" class="small" style="margin-top:10px;">Check now</button>
+      <div class="status-msg" id="adminBooksStatus"></div>
+      <div id="adminBooksOut" style="margin-top:8px;"></div>
     </div>
     <div class="panel">
       <h2>Recalculate totals</h2>
@@ -4025,7 +4032,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-02.236"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-04.237"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -22960,20 +22967,20 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
 // since the person's balance may have moved since. Only ever touches the
 // single most recently saved week, same as the Ledger's own version.
 let adminUndoWeekInFlight = false;
-document.getElementById('adminUndoWeekBtn').addEventListener('click', async () => {
+// Reverses ANY one saved week (not just the latest). Every number a save adds is
+// additive, so taking one week back out leaves the others exactly as they were.
+async function reverseSavedWeek(idx, status, btn){
   if(adminUndoWeekInFlight) return;
-  const status = document.getElementById('adminUndoWeekStatus');
   const history = currentState.history || [];
-  if(history.length === 0){
+  if(!history[idx]){
     status.className = 'status-msg error';
-    status.textContent = 'No saved weeks to undo.';
+    status.textContent = 'No saved week to undo.';
     return;
   }
-  const last = history[history.length - 1];
-  if(!confirm(`Undo "${last.label}"? This reverses everyone's totals, XP, and fines back to exactly before that week was saved. This cannot be re-applied except by running Save Week again from scratch.`)) return;
+  const last = history[idx];
+  if(!confirm(`Remove "${last.label}" (saved ${last.savedAt ? new Date(last.savedAt).toLocaleString('en-AU') : 'unknown'})? This reverses everyone's totals, XP, and fines for that one week only. Other weeks are not touched. It can't be re-applied except by running Save Week again.`)) return;
 
   adminUndoWeekInFlight = true;
-  const btn = document.getElementById('adminUndoWeekBtn');
   btn.disabled = true;
   status.className = 'status-msg';
   status.textContent = 'Undoing — reversing XP and fines, this can take a few seconds…';
@@ -22984,7 +22991,7 @@ document.getElementById('adminUndoWeekBtn').addEventListener('click', async () =
     // in memory even if a later write fails.
     const workingMembers = JSON.parse(JSON.stringify(currentState.members || []));
     const workingGroup = { ...(currentState.group || {}) };
-    const workingHistory = history.slice(0, -1);
+    const workingHistory = history.filter((_, i) => i !== idx);
 
     if(last.xpAwarded) await applyAdminXPAwards(last.xpAwarded, true);
     if(last.potFineAmount > 0 && last.potFinePeriodKey){
@@ -23061,8 +23068,9 @@ document.getElementById('adminUndoWeekBtn').addEventListener('click', async () =
     renderAdminLastSavedWeekIndicator();
 
     status.className = 'status-msg ok';
-    status.textContent = `${last.label} undone.`;
-    showToast(`${last.label} undone`);
+    status.textContent = `${last.label} removed.`;
+    showToast(`${last.label} removed`);
+    try{ renderAdminBooksCheck(); }catch(e){}
   }catch(err){
     console.error('undo week failed:', err);
     status.className = 'status-msg error';
@@ -23071,6 +23079,10 @@ document.getElementById('adminUndoWeekBtn').addEventListener('click', async () =
     btn.disabled = false;
     adminUndoWeekInFlight = false;
   }
+}
+document.getElementById('adminUndoWeekBtn').addEventListener('click', () => {
+  const h = currentState.history || [];
+  reverseSavedWeek(h.length - 1, document.getElementById('adminUndoWeekStatus'), document.getElementById('adminUndoWeekBtn'));
 });
 
 // ==== Admin: Repair tools — Recalculate / Clear warning / Reset Season ====
@@ -23903,12 +23915,56 @@ function renderAdminHistory(){
     area.innerHTML = '<div class="empty">No weeks saved yet.</div>';
     return;
   }
-  area.innerHTML = [...history].reverse().map(h => `
-    <div style="display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--line); font-size:12.5px;">
-      <span style="color:var(--chalk);">${escapeHtml(h.label)}</span>
-      <span style="color:var(--muted);">${new Date(h.savedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-    </div>`).join('');
+  const count = {};
+  history.forEach(h => { const k = String(h.label || '').trim().toLowerCase(); count[k] = (count[k] || 0) + 1; });
+  area.innerHTML = history.map((h, i) => ({ h, i })).reverse().map(({ h, i }) => {
+    const dup = count[String(h.label || '').trim().toLowerCase()] > 1;
+    return `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--line); font-size:12.5px;">
+      <span style="color:var(--chalk); min-width:0;">${escapeHtml(h.label)}${dup ? ' <b style="color:var(--loss);">saved twice</b>' : ''}<br><span style="color:var(--muted); font-size:11.5px;">${h.savedAt ? new Date(h.savedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''}</span></span>
+      <button type="button" class="small danger" data-remove-week="${i}" style="flex:none;">Remove</button>
+    </div>`; }).join('');
 }
+document.getElementById('adminHistoryArea').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-remove-week]');
+  if(!b) return;
+  const st = document.getElementById('adminBooksStatus') || document.getElementById('adminUndoWeekStatus');
+  reverseSavedWeek(Number(b.dataset.removeWeek), st, b);
+});
+
+// ==== Admin: Check the books (read-only) ====
+// Rebuilds every total from the saved weeks and lists anything that doesn't
+// match what is stored. Never changes data; "Recalculate now" is the fix.
+function renderAdminBooksCheck(){
+  const out = document.getElementById('adminBooksOut');
+  if(!out) return;
+  const history = currentState.history || [];
+  const issues = [];
+  const seen = {};
+  history.forEach((h, i) => {
+    const k = String(h.label || '').trim().toLowerCase();
+    if(seen[k] !== undefined) issues.push(`"${h.label}" is saved twice (entries ${seen[k] + 1} and ${i + 1}). Remove the extra one in Season history.`);
+    else seen[k] = i;
+  });
+  const { newGroup, newMembers } = recalculateAllFromHistoryAdmin();
+  const g = currentState.group || {};
+  ['lottoOut','lottoRet','multiOut','multiRet','bonus','sgmWin'].forEach(k => {
+    if(Math.abs((g[k] || 0) - (newGroup[k] || 0)) > 0.01) issues.push(`Group ${k}: stored ${moneyAud(g[k] || 0)}, saved weeks add up to ${moneyAud(newGroup[k] || 0)}.`);
+  });
+  (currentState.members || []).forEach(m => {
+    const n = newMembers.find(x => x.name === m.name); if(!n) return;
+    ['legs','wins','losses','voids','mia','indWin','indLoss'].forEach(k => { if((m[k] || 0) !== (n[k] || 0)) issues.push(`${m.name} ${k}: stored ${m[k] || 0}, weeks say ${n[k] || 0}.`); });
+    if(Math.abs((m.pl || 0) - (n.pl || 0)) > 0.01) issues.push(`${m.name} individual P/L: stored ${moneyAud(m.pl || 0)}, weeks say ${moneyAud(n.pl || 0)}.`);
+    if((m.duesOwed || 0) > (m.duesCommitment || 0) + 0.005) issues.push(`${m.name}: owes more than their commitment.`);
+  });
+  let bank = null;
+  try{ bank = computeSeasonFinancials(currentState); }catch(e){}
+  const head = bank ? `<div class="hint">Bank now ${moneyAud(bank.bank)} = dues collected ${moneyAud(bank.duesCollected)} + betting P/L ${moneyAud(bank.profitLoss)}. ${history.length} saved weeks.</div>` : '';
+  out.innerHTML = head + (issues.length
+    ? `<ul style="margin:8px 0 0 18px; font-size:12.5px; color:var(--chalk);">${issues.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul><div class="hint" style="margin-top:6px;">After removing any duplicate week, run Recalculate now to rebuild the totals.</div>`
+    : '<div class="status-msg ok" style="display:block;">All totals match the saved weeks.</div>');
+}
+document.getElementById('adminBooksBtn').addEventListener('click', renderAdminBooksCheck);
 
 // ==== Admin: Backup (download only — restore deliberately stays in the
 // Ledger for now, since it fully replaces live shared state) ====
