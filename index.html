@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=239">
+<link rel="stylesheet" href="dashboard.css?v=240">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -4032,7 +4032,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-04.239"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-04.240"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -22990,7 +22990,8 @@ document.getElementById('adminSaveWeekBtn').addEventListener('click', async () =
 let adminUndoWeekInFlight = false;
 // Reverses ANY one saved week (not just the latest). Every number a save adds is
 // additive, so taking one week back out leaves the others exactly as they were.
-async function reverseSavedWeek(idx, status, btn){
+async function reverseSavedWeek(idx, status, btn, opts){
+  opts = opts || {};
   if(adminUndoWeekInFlight) return;
   const history = currentState.history || [];
   if(!history[idx]){
@@ -22999,7 +23000,7 @@ async function reverseSavedWeek(idx, status, btn){
     return;
   }
   const last = history[idx];
-  if(!confirm(`Remove "${last.label}" (saved ${last.savedAt ? new Date(last.savedAt).toLocaleString('en-AU') : 'unknown'})? This reverses everyone's totals, XP, and fines for that one week only. Other weeks are not touched. It can't be re-applied except by running Save Week again.`)) return;
+  if(!opts.skipConfirm && !confirm(`Remove "${last.label}" (saved ${last.savedAt ? new Date(last.savedAt).toLocaleString('en-AU') : 'unknown'})? This reverses everyone's totals, XP, and fines for that one week only. Other weeks are not touched. It can't be re-applied except by running Save Week again.`)) return;
 
   adminUndoWeekInFlight = true;
   btn.disabled = true;
@@ -23090,6 +23091,7 @@ async function reverseSavedWeek(idx, status, btn){
 
     status.className = 'status-msg ok';
     status.textContent = `${last.label} removed.`;
+    opts.ok = true;
     showToast(`${last.label} removed`);
     try{ renderAdminBooksCheck(); }catch(e){}
   }catch(err){
@@ -23960,10 +23962,11 @@ function renderAdminBooksCheck(){
   const out = document.getElementById('adminBooksOut');
   if(!out) return;
   const history = currentState.history || [];
-  const issues = [];
+  const issues = [], dupIdx = [];
   const seen = {};
   history.forEach((h, i) => {
     const k = String(h.label || '').trim().toLowerCase();
+    if(seen[k] !== undefined){ dupIdx.push(i); }
     if(seen[k] !== undefined) issues.push(`"${h.label}" is saved twice (entries ${seen[k] + 1} and ${i + 1}). Remove the extra one in Season history.`);
     else seen[k] = i;
   });
@@ -23981,11 +23984,36 @@ function renderAdminBooksCheck(){
   let bank = null;
   try{ bank = computeSeasonFinancials(currentState); }catch(e){}
   const head = bank ? `<div class="hint">Bank now ${moneyAud(bank.bank)} = dues collected ${moneyAud(bank.duesCollected)} + betting P/L ${moneyAud(bank.profitLoss)}. ${history.length} saved weeks.</div>` : '';
-  out.innerHTML = head + (issues.length
+  const fixBtn = dupIdx.length ? `<button type="button" id="adminDupFixBtn" class="small danger" style="margin-top:10px;">Remove ${dupIdx.length} extra copy${dupIdx.length === 1 ? '' : 'ies'} and recalculate</button>` : '';
+  out.innerHTML = head + fixBtn + (issues.length
     ? `<ul style="margin:8px 0 0 18px; font-size:12.5px; color:var(--chalk);">${issues.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul><div class="hint" style="margin-top:6px;">After removing any duplicate week, run Recalculate now to rebuild the totals.</div>`
     : '<div class="status-msg ok" style="display:block;">All totals match the saved weeks.</div>');
 }
 document.getElementById('adminBooksBtn').addEventListener('click', renderAdminBooksCheck);
+// One tap: keep the first save of each week, take every later copy back out (totals, XP, fines), then rebuild totals.
+document.getElementById('adminBooksOut').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('#adminDupFixBtn'); if(!b) return;
+  const status = document.getElementById('adminBooksStatus');
+  const h = currentState.history || [], seen = {}, dups = [];
+  h.forEach((w, i) => { const k = String(w.label || '').trim().toLowerCase(); if(seen[k] !== undefined) dups.push(i); else seen[k] = i; });
+  if(!dups.length) return;
+  if(!confirm(`Keep the first save of each week and remove ${dups.length} later copy${dups.length === 1 ? '' : 'ies'} (${dups.map(i => h[i].label).join(', ')})? Their results, XP and fines are reversed. Then totals are recalculated.`)) return;
+  b.disabled = true;
+  for(const i of dups.slice().reverse()){
+    const o = { skipConfirm: true };
+    await reverseSavedWeek(i, status, b, o);
+    if(!o.ok){ b.disabled = false; return; }
+  }
+  try{
+    const { newGroup, newMembers } = recalculateAllFromHistoryAdmin();
+    await authedWrite('/state/group.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newGroup) });
+    await authedWrite('/state/members.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newMembers) });
+    currentState.group = newGroup; currentState.members = newMembers;
+    status.className = 'status-msg ok'; status.textContent = 'Duplicate weeks removed and totals recalculated.';
+    showToast('Duplicates removed, totals recalculated');
+  }catch(e){ status.className = 'status-msg error'; status.textContent = 'Removed, but recalculating failed. Tap Recalculate now.'; }
+  renderAdminHistory(); renderAdminBooksCheck();
+});
 
 // ==== Admin: Backup (download only — restore deliberately stays in the
 // Ledger for now, since it fully replaces live shared state) ====

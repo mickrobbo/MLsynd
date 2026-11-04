@@ -182,6 +182,16 @@ test('Save week refuses to double-save a week that is already in history', async
   assert.equal(await page.evaluate(() => document.getElementById('adminSaveWeekBtn').disabled), false);
 });
 
+test('One tap removes the extra copy of a week saved twice and recalculates', async ({ page, db }) => {
+  await goAdmin(page, 'repair');
+  const n0 = await page.evaluate(() => { const h = currentState.history; const d = JSON.parse(JSON.stringify(h[h.length - 1])); d.savedAt += 5000; h.push(d); renderAdminHistory(); return h.length; });
+  await page.click('#adminBooksBtn');
+  page.once('dialog', d => d.accept()); page.on('dialog', d => d.accept().catch(() => {}));
+  await page.click('#adminDupFixBtn'); await page.waitForTimeout(3500);
+  assert.equal(db.state.history.length, n0 - 1);
+  assert.match(await text(page, '#adminBooksOut'), /match the saved weeks|All totals match/);
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');
