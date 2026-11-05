@@ -1,7 +1,7 @@
 {
-  "version": "2026-11-05.244",
+  "version": "2026-11-05.245",
   "date": "2026-11-05",
   "changes": [
-    "Lotto tab: Lotto Pigs profit and loss. Set the price per share for each draw, tap shares for each person who buys in, and winnings split by shares"
+    "Lotto Pigs: draw date is clearly labelled so you can back-date last week's tickets"
   ]
 }

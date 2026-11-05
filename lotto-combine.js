@@ -335,7 +335,7 @@
         <div class="hint" id="lcLedgerNote"></div>
         <div id="lcLForm" class="lc-form">
           <label class="lc-field">Draw<input type="text" id="lcLLabel" placeholder="e.g. Powerball $100M" maxlength="60" autocomplete="off"></label>
-          <label class="lc-field">Date<input type="date" id="lcLDate"></label>
+          <label class="lc-field">Draw date (past dates are fine)<input type="date" id="lcLDate"></label>
           <label class="lc-field">Price per share ($)<input type="number" id="lcLPrice" inputmode="decimal" step="0.01" min="0"></label>
           <label class="lc-field">Won ($)<input type="number" id="lcLWon" inputmode="decimal" step="0.01" min="0" placeholder="blank until result"></label>
         </div>

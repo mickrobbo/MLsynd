@@ -243,6 +243,18 @@ test('Lotto Pigs profit and loss: shares at a price, winnings split by shares, o
   assert.equal(Object.keys(db.state.lottoLedger).length, 1);
 });
 
+test('Lotto Pigs: a draw can be back-dated to last week and sorts by its date', async ({ page, db }) => {
+  await goAdmin(page, 'lotto');
+  await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.waitForTimeout(1000);
+  const n = await page.evaluate(() => document.querySelector('#lcMembers [data-lc-member]').dataset.lcMember);
+  const add = async (label, date) => { await page.fill('#lcLLabel', label); await page.fill('#lcLDate', date); await page.fill('#lcLPrice', '25'); await page.fill('#lcLWon', '0');
+    await page.evaluate((n) => document.querySelector(`#lcShares [data-lc-sh="1"][data-lc-n="${n}"]`).click(), n); await page.click('#lcLSave'); await page.waitForTimeout(1000); };
+  await add('This week', '2026-11-04'); await add('Last week', '2026-10-29');
+  const saved = Object.values(db.state.lottoLedger);
+  assert.ok(saved.some(e => e.label === 'Last week' && e.date === '2026-10-29'), 'past date kept');
+  assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#lcEntries .lc-entry-main b')].map(b => b.textContent)), ['This week', 'Last week']);
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');
