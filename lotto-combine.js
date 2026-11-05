@@ -4,7 +4,9 @@
 // downloaded or shared straight into the separate lotto group chat.
 // Everything happens on the phone: nothing is uploaded or sent anywhere, and
 // nothing here touches the bank, the week or any other part of the platform.
-// Only the group's name and member list are saved (to /state/lottoGroup).
+// Saved: the group's name and member list (/state/lottoGroup) and the Lotto
+// Pigs profit and loss book (/state/lottoLedger/{id}), which is completely
+// separate from the syndicate's bank, weeks, dues and fines.
 (function(){
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -172,6 +174,130 @@
     }catch(e){ if(e && e.name === 'AbortError') return; status.className = 'status-msg error'; status.textContent = e.message || 'Could not share.'; }
   }
 
+
+  // ---------- Lotto Pigs profit and loss ----------
+  // Each draw: a price per share (it changes ticket to ticket), and how many
+  // shares each person bought. Only people with shares are in that draw, and
+  // winnings are split by shares. Someone who didn't buy in gets nothing.
+  const money = (v) => { const n = Math.round((Number(v) || 0) * 100) / 100, a = Math.abs(n); return (n < 0 ? '-' : '') + '$' + a.toLocaleString('en-AU', { minimumFractionDigits: a % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
+  const signed = (v) => (Math.round((Number(v) || 0) * 100) > 0 ? '+' : '') + money(v);
+  const PRICE_KEY = 'mlsynd-lotto-share-price';
+  let editingId = null, draftShares = {};
+  const lastPrice = () => { try{ const v = parseFloat(localStorage.getItem(PRICE_KEY)); return v > 0 ? v : 25; }catch(e){ return 25; } };
+  // one shape for every saved draw (older entries without shares count as one share each)
+  function norm(e){
+    let shares = {};
+    if(e.shares && typeof e.shares === 'object') Object.entries(e.shares).forEach(([n, c]) => { if(Number(c) > 0) shares[n] = Number(c); });
+    else if(Array.isArray(e.members)) e.members.forEach(n => { shares[n] = 1; });
+    const total = Object.values(shares).reduce((x, y) => x + y, 0);
+    const price = Number(e.price) > 0 ? Number(e.price) : (total ? (Number(e.cost) || 0) / total : 0);
+    const cost = e.shares ? total * price : (Number(e.cost) || 0);
+    const pend = e.won == null || e.won === '';
+    return { shares, total, price, cost, pend, won: pend ? 0 : Number(e.won) || 0 };
+  }
+  function entries(){
+    const o = st().lottoLedger || {};
+    return Object.entries(o).filter(([, e]) => e && typeof e === 'object').map(([id, e]) => ({ id, ...e }))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
+  }
+  function totals(list){
+    let spent = 0, won = 0, pending = 0; const per = {};
+    list.forEach(e => {
+      const n = norm(e); spent += n.cost; won += n.won; if(n.pend) pending++;
+      Object.entries(n.shares).forEach(([name, c]) => {
+        const r = per[name] || (per[name] = { spent: 0, won: 0, draws: 0, shares: 0 });
+        r.spent += c * n.price; r.won += n.total ? n.won * c / n.total : 0; r.draws++; r.shares += c;
+      });
+    });
+    return { spent, won, net: won - spent, pending, per, draws: list.length };
+  }
+  function summaryText(list){
+    const t = totals(list), g = group();
+    return `${g.name || 'Lotto Pigs'}: ${t.draws} draw${t.draws === 1 ? '' : 's'}, spent ${money(t.spent)}, won ${money(t.won)}, net ${signed(t.net)}${t.pending ? ` (${t.pending} awaiting result)` : ''}.` +
+      Object.entries(t.per).map(([n, r]) => `\n${n}: in ${money(r.spent)}, back ${money(r.won)}, net ${signed(r.won - r.spent)}`).join('');
+  }
+  function renderShares(){
+    const box = $('lcShares'); if(!box) return;
+    const g = group(), price = parseFloat($('lcLPrice').value) || 0;
+    const names = g.members.slice(); Object.keys(draftShares).forEach(n => { if(!names.includes(n)) names.push(n); });
+    const total = names.reduce((x, n) => x + (draftShares[n] || 0), 0), entrants = names.filter(n => draftShares[n] > 0).length;
+    box.innerHTML = names.length ? names.map(n => `<div class="lc-share-row"><span>${esc(n)}</span>
+        <button type="button" data-lc-sh="-1" data-lc-n="${esc(n)}" aria-label="One less share for ${esc(n)}" ${draftShares[n] > 0 ? '' : 'disabled'}>−</button>
+        <b>${draftShares[n] || 0}</b>
+        <button type="button" data-lc-sh="1" data-lc-n="${esc(n)}" aria-label="One more share for ${esc(n)}">+</button></div>`).join('')
+      : '<div class="hint">Pick the Lotto Pigs members above first.</div>';
+    $('lcLTotal').textContent = total ? `${total} share${total === 1 ? '' : 's'} × ${money(price)} = ${money(total * price)} cost · ${entrants} in` : 'Tap + for each share someone buys. No shares means they\'re not in this draw.';
+  }
+  function renderLedger(){
+    const box = $('lcLedger'); if(!box) return;
+    const list = entries(), t = totals(list);
+    $('lcSummary').innerHTML = list.length ? `
+      <div class="lc-sum"><span>Spent</span><b>${money(t.spent)}</b></div>
+      <div class="lc-sum"><span>Won</span><b>${money(t.won)}</b></div>
+      <div class="lc-sum ${t.net >= 0 ? 'pos' : 'neg'}"><span>Net</span><b>${signed(t.net)}</b></div>
+      <div class="lc-sum"><span>Draws</span><b>${t.draws}</b></div>` : '';
+    $('lcLedgerNote').textContent = t.pending ? `${t.pending} draw${t.pending === 1 ? ' is' : 's are'} still awaiting a result, counted as $0 won until you enter it.` : '';
+    $('lcEntries').innerHTML = list.length ? list.map(e => {
+      const n = norm(e), who = Object.entries(n.shares).map(([name, c]) => `${name} ${c}`).join(', ');
+      return `<div class="lc-entry" data-lc-eid="${esc(e.id)}">
+        <div class="lc-entry-main"><b>${esc(e.label || 'Lotto draw')}</b><span>${esc(prettyDate(e.date))}</span></div>
+        <div class="lc-entry-who">${n.total} share${n.total === 1 ? '' : 's'} × ${money(n.price)} · ${esc(who)}</div>
+        <div class="lc-entry-nums"><span>Cost ${money(n.cost)}</span><span>${n.pend ? 'Awaiting result' : 'Won ' + money(n.won)}</span><b class="${n.pend ? '' : (n.won - n.cost >= 0 ? 'pos' : 'neg')}">${n.pend ? '–' : signed(n.won - n.cost)}</b></div>
+        <div class="lc-entry-btns"><button type="button" class="small" data-lc-edit="${esc(e.id)}">${n.pend ? 'Enter result' : 'Edit'}</button><button type="button" class="small danger" data-lc-del="${esc(e.id)}">Delete</button></div>
+      </div>`; }).join('') : '<div class="empty">No draws yet. Add the first one above.</div>';
+    const names = Object.keys(t.per);
+    $('lcPerMember').innerHTML = names.length ? `<h3 class="lc-h3">Per person (winnings split by shares)</h3>` + names.map(n => { const r = t.per[n], net = r.won - r.spent; return `<div class="lc-pm"><span>${esc(n)}</span><span>in ${money(r.spent)}</span><span>back ${money(r.won)}</span><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div>`; }).join('') : '';
+    $('lcCopy').disabled = !list.length;
+  }
+  function resetForm(){
+    editingId = null; draftShares = {};
+    $('lcLDate').value = todayStr(); $('lcLLabel').value = ''; $('lcLPrice').value = lastPrice(); $('lcLWon').value = '';
+    $('lcLSave').textContent = 'Add draw'; $('lcLCancel').hidden = true; renderShares();
+  }
+  async function saveEntry(){
+    const status = $('lcLStatus');
+    const price = parseFloat($('lcLPrice').value), wonRaw = $('lcLWon').value.trim();
+    const total = Object.values(draftShares).reduce((x, y) => x + y, 0);
+    if(!(price > 0)){ status.className = 'status-msg error'; status.textContent = 'Enter the price of one share.'; return; }
+    if(!total){ status.className = 'status-msg error'; status.textContent = 'Add at least one share for someone.'; return; }
+    const won = wonRaw === '' ? null : parseFloat(wonRaw);
+    if(won !== null && (isNaN(won) || won < 0)){ status.className = 'status-msg error'; status.textContent = 'Winnings must be a number, or leave it blank until the result is in.'; return; }
+    const old = editingId ? (st().lottoLedger || {})[editingId] : null;
+    const id = editingId || ('l' + Date.now());
+    const shares = {}; Object.entries(draftShares).forEach(([n, c]) => { if(c > 0) shares[n] = c; });
+    const entry = { date: $('lcLDate').value || todayStr(), label: $('lcLLabel').value.trim() || 'Lotto draw', price: Math.round(price * 100) / 100, shares,
+      cost: Math.round(total * price * 100) / 100, won: won == null ? null : Math.round(won * 100) / 100, createdAt: old ? old.createdAt || Date.now() : Date.now() };
+    const btn = $('lcLSave'); btn.disabled = true;
+    try{
+      const res = await authedWrite(`/state/lottoLedger/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      try{ localStorage.setItem(PRICE_KEY, String(entry.price)); }catch(e){}
+      (st().lottoLedger = st().lottoLedger || {})[id] = entry;
+      status.className = 'status-msg ok'; status.textContent = editingId ? 'Draw updated.' : 'Draw added.';
+      resetForm(); renderLedger();
+    }catch(e){ status.className = 'status-msg error'; status.textContent = 'Could not save. Check your connection and try again.'; }
+    btn.disabled = false;
+  }
+  async function deleteEntry(id){
+    const e = (st().lottoLedger || {})[id]; if(!e) return;
+    if(!confirm(`Delete "${e.label || 'Lotto draw'}" (${prettyDate(e.date)})? It comes out of the Lotto Pigs profit and loss.`)) return;
+    const status = $('lcLStatus');
+    try{
+      const res = await authedWrite(`/state/lottoLedger/${id}.json`, { method: 'DELETE' });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      delete st().lottoLedger[id]; if(editingId === id) resetForm();
+      status.className = 'status-msg ok'; status.textContent = 'Deleted.'; renderLedger();
+    }catch(err){ status.className = 'status-msg error'; status.textContent = 'Could not delete. Try again.'; }
+  }
+  function startEdit(id){
+    const e = (st().lottoLedger || {})[id]; if(!e) return;
+    const n = norm(e);
+    editingId = id; draftShares = { ...n.shares };
+    $('lcLDate').value = e.date || todayStr(); $('lcLLabel').value = e.label || ''; $('lcLPrice').value = n.price || lastPrice(); $('lcLWon').value = n.pend ? '' : n.won;
+    $('lcLSave').textContent = 'Save changes'; $('lcLCancel').hidden = false; renderShares();
+    $('lcLWon').focus(); $('lcLForm').scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
   // ---------- UI ----------
   function build(){
     const root = $('lottoRoot'); if(!root || root.dataset.built) return; root.dataset.built = '1';
@@ -201,6 +327,26 @@
         </div>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcDownload" disabled>Download picture</button><button type="button" class="small" id="lcShare" disabled>Share…</button></div>
         <div class="lc-preview" id="lcPreviewWrap" hidden><canvas id="lcCanvas" aria-label="Preview of the combined lotto picture"></canvas></div>
+      </div>
+      <div class="panel" id="lcLedger">
+        <h2>Lotto Pigs profit and loss</h2>
+        <div class="hint">Add each draw you buy tickets for: what it cost and what came back. Kept separate from the syndicate's money.</div>
+        <div class="lc-summary" id="lcSummary"></div>
+        <div class="hint" id="lcLedgerNote"></div>
+        <div id="lcLForm" class="lc-form">
+          <label class="lc-field">Draw<input type="text" id="lcLLabel" placeholder="e.g. Powerball $100M" maxlength="60" autocomplete="off"></label>
+          <label class="lc-field">Date<input type="date" id="lcLDate"></label>
+          <label class="lc-field">Price per share ($)<input type="number" id="lcLPrice" inputmode="decimal" step="0.01" min="0"></label>
+          <label class="lc-field">Won ($)<input type="number" id="lcLWon" inputmode="decimal" step="0.01" min="0" placeholder="blank until result"></label>
+        </div>
+        <h3 class="lc-h3">Who bought in (shares)</h3>
+        <div id="lcShares" class="lc-shares"></div>
+        <div class="lc-count" id="lcLTotal"></div>
+        <div class="lc-actions"><button type="button" class="small adm-primary" id="lcLSave">Add draw</button><button type="button" class="small" id="lcLCancel" hidden>Cancel</button></div>
+        <div class="status-msg" id="lcLStatus"></div>
+        <div id="lcEntries"></div>
+        <div id="lcPerMember"></div>
+        <div class="lc-actions"><button type="button" class="small" id="lcCopy" disabled>Copy summary for the group chat</button></div>
       </div>`;
     $('lcDate').value = todayStr();
     $('lcPick').addEventListener('click', () => $('lcFile').click());
@@ -221,7 +367,7 @@
       const g = group(), n = b.dataset.lcMember;
       g.members = g.members.includes(n) ? g.members.filter(x => x !== n) : g.members.concat(n);
       st().lottoGroup = { name: g.name, members: g.members }; // show the change at once
-      renderMembers(); scheduleRender();
+      renderMembers(); scheduleRender(); renderShares();
       await saveGroup(g);
     });
     const addExtra = async () => {
@@ -235,9 +381,16 @@
     $('lcExtraName').addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); addExtra(); } });
     let nameTimer = null;
     $('lcGroupName').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(async () => { const g = group(); g.name = $('lcGroupName').value.trim(); st().lottoGroup = { name: g.name, members: g.members }; scheduleRender(); await saveGroup(g); }, 700); });
+    $('lcShares').addEventListener('click', (e) => { const b = e.target.closest('[data-lc-sh]'); if(!b) return; const n = b.dataset.lcN, d = Number(b.dataset.lcSh); draftShares[n] = Math.max(0, (draftShares[n] || 0) + d); if(!draftShares[n]) delete draftShares[n]; renderShares(); });
+    $('lcLPrice').addEventListener('input', renderShares);
+    $('lcLSave').addEventListener('click', saveEntry);
+    $('lcLCancel').addEventListener('click', resetForm);
+    $('lcEntries').addEventListener('click', (e) => { const ed = e.target.closest('[data-lc-edit]'), del = e.target.closest('[data-lc-del]'); if(ed) startEdit(ed.dataset.lcEdit); else if(del) deleteEntry(del.dataset.lcDel); });
+    $('lcCopy').addEventListener('click', async () => { const st2 = $('lcLStatus'); try{ await navigator.clipboard.writeText(summaryText(entries())); st2.className = 'status-msg ok'; st2.textContent = 'Copied. Paste it into the group chat.'; }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not copy on this browser.'; } });
+    resetForm(); renderLedger();
     renderMembers(); renderList();
   }
-  function refresh(){ build(); const gn = $('lcGroupName'); if(gn && document.activeElement !== gn) gn.value = group().name; renderMembers(); }
+  function refresh(){ build(); const gn = $('lcGroupName'); if(gn && document.activeElement !== gn) gn.value = group().name; renderMembers(); renderLedger(); renderShares(); }
   window.lottoCombineRefresh = refresh;
   document.addEventListener('DOMContentLoaded', build);
   if(document.readyState !== 'loading') build();

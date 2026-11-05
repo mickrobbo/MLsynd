@@ -1,7 +1,7 @@
 {
-  "version": "2026-11-05.242",
+  "version": "2026-11-05.244",
   "date": "2026-11-05",
   "changes": [
-    "Lotto tab: add Lotto Pigs people who aren't on the platform"
+    "Lotto tab: Lotto Pigs profit and loss. Set the price per share for each draw, tap shares for each person who buys in, and winnings split by shares"
   ]
 }

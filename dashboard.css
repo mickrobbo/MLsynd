@@ -7412,3 +7412,33 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-check input{ width:20px; height:20px; accent-color:var(--brass); }
 .lc-preview{ margin-top:14px; border-radius:14px; overflow:hidden; border:1px solid var(--line); background:#0d100d; }
 .lc-preview canvas{ display:block; width:100%; height:auto; }
+
+/* Lotto Pigs profit and loss */
+.lc-summary{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; margin-top:12px; }
+.lc-sum{ padding:10px 8px; border-radius:12px; background:var(--surface); border:1px solid var(--line); text-align:center; min-width:0; }
+.lc-sum span{ display:block; font-size:11px; color:var(--muted); }
+.lc-sum b{ display:block; font:800 16px 'Manrope', sans-serif; color:var(--chalk); margin-top:2px; overflow-wrap:anywhere; }
+.lc-sum.pos b, .pos{ color:var(--win); } .lc-sum.neg b, .neg{ color:var(--loss); }
+.lc-form{ display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+.lc-form .lc-field:first-child{ grid-column:1 / -1; }
+#lcEntries{ margin-top:14px; display:flex; flex-direction:column; gap:10px; }
+.lc-entry{ padding:12px; border-radius:14px; background:var(--surface); border:1px solid var(--line); }
+.lc-entry-main{ display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
+.lc-entry-main b{ font-size:15px; min-width:0; overflow-wrap:anywhere; } .lc-entry-main span{ font-size:12px; color:var(--muted); flex:none; }
+.lc-entry-nums{ display:flex; gap:12px; align-items:baseline; margin-top:6px; font-size:13px; color:var(--muted); flex-wrap:wrap; }
+.lc-entry-nums b{ margin-left:auto; font:800 17px 'Manrope', sans-serif; }
+.lc-entry-btns{ display:flex; gap:8px; margin-top:10px; }
+.lc-h3{ margin:16px 0 6px; font-size:13px; color:var(--brass-light); text-transform:none; letter-spacing:0; }
+.lc-pm{ display:grid; grid-template-columns:1.2fr 1fr 1fr auto; gap:8px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13px; align-items:baseline; }
+.lc-pm span:first-child{ color:var(--chalk); font-weight:600; } .lc-pm span{ color:var(--muted); }
+@media (max-width:380px){ .lc-summary{ grid-template-columns:repeat(2, minmax(0,1fr)); } .lc-pm{ grid-template-columns:1fr 1fr; } }
+
+.lc-field input, .lc-field select{ width:100%; min-width:0; box-sizing:border-box; }
+.lc-form .lc-field{ min-width:0; }
+.lc-shares{ display:flex; flex-direction:column; }
+.lc-share-row{ display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--line); }
+.lc-share-row span{ flex:1; min-width:0; font-weight:600; overflow-wrap:anywhere; }
+.lc-share-row button{ width:44px; height:44px; border-radius:12px; border:1px solid var(--line); background:var(--surface); color:var(--chalk); font:700 22px 'Manrope', sans-serif; cursor:pointer; }
+.lc-share-row button:disabled{ opacity:.3; }
+.lc-share-row b{ min-width:26px; text-align:center; font:800 18px 'Manrope', sans-serif; }
+.lc-entry-who{ margin-top:4px; font-size:12.5px; color:var(--muted); overflow-wrap:anywhere; }

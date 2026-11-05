@@ -213,6 +213,36 @@ test('Lotto tab: pick group members, combine several ticket screenshots into one
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('.lc-item-btns button')].every(b => b.getBoundingClientRect().right <= b.closest('.lc-item').getBoundingClientRect().right + 1)), true, 'remove button must fit in its tile');
 });
 
+test('Lotto Pigs profit and loss: shares at a price, winnings split by shares, only entrants share', async ({ page, db }) => {
+  await goAdmin(page, 'lotto');
+  for(const n of [1, 2, 3]) await page.click(`#lcMembers [data-lc-member]:nth-child(${n})`);
+  await page.waitForTimeout(1200);
+  const plus = (name, k) => page.evaluate(([name, k]) => { for(let i = 0; i < k; i++) document.querySelector(`#lcShares [data-lc-sh="1"][data-lc-n="${name}"]`).click(); }, [name, k]);
+  const names = await page.evaluate(() => [...document.querySelectorAll('#lcMembers [data-lc-member]')].slice(0, 3).map(b => b.dataset.lcMember));
+  await page.fill('#lcLLabel', 'Powerball $100M'); await page.fill('#lcLPrice', '25'); await page.fill('#lcLWon', '0');
+  await plus(names[0], 2); await plus(names[1], 1);
+  assert.match(await text(page, '#lcLTotal'), /3 shares × \$25 = \$75 cost · 2 in/);
+  await page.click('#lcLSave'); await page.waitForTimeout(1200);
+  await page.fill('#lcLLabel', 'Oz Lotto'); await page.fill('#lcLWon', '300');
+  await plus(names[1], 1); await plus(names[2], 2);
+  await page.click('#lcLSave'); await page.waitForTimeout(1200);
+  assert.equal(Object.keys(db.state.lottoLedger).length, 2);
+  const oz = Object.values(db.state.lottoLedger).find(e => e.label === 'Oz Lotto');
+  assert.equal(oz.cost, 75); assert.deepEqual(oz.shares, { [names[1]]: 1, [names[2]]: 2 });
+  const sum = await text(page, '#lcSummary');
+  assert.ok(sum.includes('$150') && sum.includes('$300') && sum.includes('+$150'), sum);
+  const per = await text(page, '#lcPerMember');
+  // Oz Lotto: $300 over 3 shares = $100 a share; the 2-share person is in $50, back $200
+  assert.ok(per.includes(names[2]) && per.includes('+$150'), per);
+  assert.ok(per.includes(names[0]) && per.includes('-$50'), per); // 2 shares in Powerball lost, not in Oz Lotto
+  await page.fill('#lcLLabel', 'No shares'); await page.click('#lcLSave');
+  assert.match(await text(page, '#lcLStatus'), /at least one share/);
+  page.on('dialog', d => d.accept());
+  const id = await page.evaluate(() => Object.keys(currentState.lottoLedger)[0]);
+  await page.click(`[data-lc-del="${id}"]`); await page.waitForTimeout(1200);
+  assert.equal(Object.keys(db.state.lottoLedger).length, 1);
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');
