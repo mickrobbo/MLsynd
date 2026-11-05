@@ -7444,3 +7444,26 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-entry-who{ margin-top:4px; font-size:12.5px; color:var(--muted); overflow-wrap:anywhere; }
 
 .lc-pm small{ display:block; font-weight:500; font-size:11px; color:var(--muted); }
+
+/* Home → Lotto (read only for group members) */
+.lc-chips-static .lc-chip{ min-height:34px; display:inline-flex; align-items:center; cursor:default; font-size:13px; }
+.lc-mine{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; margin-top:6px; }
+.lc-mine div{ padding:10px 8px; border-radius:12px; background:var(--surface); border:1px solid var(--line); text-align:center; }
+.lc-mine span{ display:block; font-size:11px; color:var(--muted); } .lc-mine b{ display:block; font:800 16px 'Manrope', sans-serif; margin-top:2px; }
+.lc-home-entries{ display:flex; flex-direction:column; gap:10px; }
+#homeMainSubnav .subnav-btn{ min-width:0; }
+
+/* Round Lotto Pigs button in the header, left of Syndy (only for people in the group) */
+.header-lotto-btn{
+  position:absolute; top:50%; right:106px; transform:translateY(-50%); z-index:5;
+  width:44px; height:44px; border-radius:50%; padding:0; line-height:1; font-size:22px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--surface); border:1px solid var(--line); color:var(--chalk);
+}
+.header-lotto-btn:active{ transform:translateY(-50%) scale(.94); }
+
+.header-lotto-btn{ overflow:hidden; background:#000; border:1.5px solid #c9a24a; }
+.header-lotto-btn img{ display:block; width:100%; height:100%; object-fit:cover; border-radius:50%; }
+.lc-hero{ display:flex; justify-content:center; margin:2px 0 4px; }
+.lc-hero img{ width:168px; height:168px; object-fit:contain; filter:drop-shadow(0 6px 18px rgba(201,162,74,.28)); }
+.lc-hero-title{ text-align:center; color:#e3c06a; }

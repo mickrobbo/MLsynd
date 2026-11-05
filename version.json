@@ -1,7 +1,7 @@
 {
-  "version": "2026-11-05.246",
+  "version": "2026-11-05.249",
   "date": "2026-11-05",
   "changes": [
-    "Lotto Pigs: divide a ticket's cost between the shares, and mark how much winnings covered so members only pay the rest"
+    "Lotto Pigs: gold pig emblem on the header button, the Lotto page and the shared picture; data kept completely separate from the syndicate"
   ]
 }

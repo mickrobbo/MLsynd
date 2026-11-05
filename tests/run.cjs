@@ -196,9 +196,9 @@ test('Lotto tab: pick group members, combine several ticket screenshots into one
   const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
   await goAdmin(page, 'lotto');
   await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.click('#lcMembers [data-lc-member]:nth-child(3)'); await page.waitForTimeout(1500);
-  assert.equal(db.state.lottoGroup.members.length, 2, 'group members should be saved');
+  assert.equal(db.lottoPigs.group.members.length, 2, 'group members should be saved');
   await page.fill('#lcExtraName', 'Uncle Ray'); await page.click('#lcExtraAdd'); await page.waitForTimeout(1200);
-  assert.ok(db.state.lottoGroup.members.includes('Uncle Ray'), 'an outside person can be added');
+  assert.ok(db.lottoPigs.group.members.includes('Uncle Ray'), 'an outside person can be added');
   assert.ok((await text(page, '#lcMembers')).includes('Uncle Ray'));
   const files = [];
   for(const [i, c] of ['#c33', '#3c3', '#33c'].entries()) files.push({ name: `t${i}.png`, mimeType: 'image/png', buffer: Buffer.from(await png(600, 1200 + i * 200, c), 'base64') });
@@ -226,8 +226,8 @@ test('Lotto Pigs profit and loss: shares at a price, winnings split by shares, o
   await page.fill('#lcLLabel', 'Oz Lotto'); await page.fill('#lcLWon', '300');
   await plus(names[1], 1); await plus(names[2], 2);
   await page.click('#lcLSave'); await page.waitForTimeout(1200);
-  assert.equal(Object.keys(db.state.lottoLedger).length, 2);
-  const oz = Object.values(db.state.lottoLedger).find(e => e.label === 'Oz Lotto');
+  assert.equal(Object.keys(db.lottoPigs.ledger).length, 2);
+  const oz = Object.values(db.lottoPigs.ledger).find(e => e.label === 'Oz Lotto');
   assert.equal(oz.cost, 75); assert.deepEqual(oz.shares, { [names[1]]: 1, [names[2]]: 2 });
   const sum = await text(page, '#lcSummary');
   assert.ok(sum.includes('$150') && sum.includes('$300') && sum.includes('+$150'), sum);
@@ -238,9 +238,9 @@ test('Lotto Pigs profit and loss: shares at a price, winnings split by shares, o
   await page.fill('#lcLLabel', 'No shares'); await page.click('#lcLSave');
   assert.match(await text(page, '#lcLStatus'), /at least one share/);
   page.on('dialog', d => d.accept());
-  const id = await page.evaluate(() => Object.keys(currentState.lottoLedger)[0]);
+  const id = Object.keys(db.lottoPigs.ledger)[0];
   await page.click(`[data-lc-del="${id}"]`); await page.waitForTimeout(1200);
-  assert.equal(Object.keys(db.state.lottoLedger).length, 1);
+  assert.equal(Object.keys(db.lottoPigs.ledger).length, 1);
 });
 
 test('Lotto Pigs: a draw can be back-dated to last week and sorts by its date', async ({ page, db }) => {
@@ -250,7 +250,7 @@ test('Lotto Pigs: a draw can be back-dated to last week and sorts by its date', 
   const add = async (label, date) => { await page.fill('#lcLLabel', label); await page.fill('#lcLDate', date); await page.fill('#lcLPrice', '25'); await page.fill('#lcLWon', '0');
     await page.evaluate((n) => document.querySelector(`#lcShares [data-lc-sh="1"][data-lc-n="${n}"]`).click(), n); await page.click('#lcLSave'); await page.waitForTimeout(1000); };
   await add('This week', '2026-11-04'); await add('Last week', '2026-10-29');
-  const saved = Object.values(db.state.lottoLedger);
+  const saved = Object.values(db.lottoPigs.ledger);
   assert.ok(saved.some(e => e.label === 'Last week' && e.date === '2026-10-29'), 'past date kept');
   assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#lcEntries .lc-entry-main b')].map(b => b.textContent)), ['This week', 'Last week']);
 });
@@ -269,7 +269,7 @@ test('Lotto Pigs: ticket cost divided by shares, and winnings can cover some or 
   await page.fill('#lcLLabel', 'Rolled'); await page.fill('#lcLTicket', '40'); await page.fill('#lcLCovered', '40'); await plus(names[0], 1); await plus(names[1], 1);
   assert.match(await text(page, '#lcLTotal'), /winnings cover \$40 · members pay \$0/);
   await page.fill('#lcLWon', '0'); await page.click('#lcLSave'); await page.waitForTimeout(1000);
-  const rolled = Object.values(db.state.lottoLedger).find(e => e.label === 'Rolled');
+  const rolled = Object.values(db.lottoPigs.ledger).find(e => e.label === 'Rolled');
   assert.equal(rolled.cost, 40); assert.equal(rolled.covered, 40); assert.equal(rolled.costMode, 'total');
   assert.match(await text(page, '#lcSummary'), /\$70/);
   assert.match(await text(page, '#lcLedgerNote'), /Members paid \$30 in cash; \$40 of the tickets came out of winnings/);
@@ -278,6 +278,33 @@ test('Lotto Pigs: ticket cost divided by shares, and winnings can cover some or 
   await page.fill('#lcLLabel', 'Too much'); await page.fill('#lcLTicket', '10'); await page.fill('#lcLCovered', '20'); await plus(names[0], 1); await page.click('#lcLSave');
   assert.match(await text(page, '#lcLStatus'), /can't be more than the ticket cost/);
 });
+
+test('Lotto Pigs: only people ticked in the group get the header pig button and Home view', async ({ page }) => {
+  await page.evaluate(() => { currentUserEmail = 'someone@example.com'; render(currentState); });
+  await page.evaluate(() => lottoReload()); await page.waitForTimeout(500);
+  await page.evaluate(() => render(currentState));
+  assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('lottoHeaderBtn')).display), 'none', 'not in the group: no pig button');
+  // make this login the member (Josh) who IS in the group
+  await page.evaluate(() => { currentState.members.forEach(x => { if(x.linkedUid === currentUserUid) x.linkedUid = null; }); currentState.members.find(x => x.name === 'Josh').linkedUid = currentUserUid; render(currentState); });
+  await page.waitForTimeout(300);
+  assert.notEqual(await page.evaluate(() => getComputedStyle(document.getElementById('lottoHeaderBtn')).display), 'none', 'in the group: pig button shows');
+  const pos = await page.evaluate(() => { const l = document.getElementById('lottoHeaderBtn').getBoundingClientRect(), s = document.getElementById('syndyFabBtn'); const sr = s.getBoundingClientRect(); return { lr: l.right, sl: sr.left, vis: s.offsetParent !== null }; });
+  if(pos.vis) assert.ok(pos.lr <= pos.sl, 'pig button sits left of Syndy: ' + JSON.stringify(pos));
+  await page.click('#lottoHeaderBtn'); await page.waitForTimeout(800);
+  const txt = await text(page, '#homeSubview-lotto');
+  assert.ok(txt.includes('Lotto Pigs') && txt.includes('(you)') && txt.includes('+$50') && txt.includes('Powerball'), txt);
+  assert.equal(await page.locator('#homeSubview-lotto button, #homeSubview-lotto input').count(), 0, 'members get a read-only view');
+}, { db: (db) => { db.lottoPigs = { group: { name: 'Lotto Pigs', members: ['Josh'], uids: { u5: true } }, ledger: { a: { date: '2026-11-01', label: 'Powerball', price: 25, shares: { Josh: 2 }, cost: 50, won: 100, createdAt: 1 } } }; } });
+
+test('Lotto Pigs data lives outside /state and old copies are moved out of it', async ({ page, db }) => {
+  await goAdmin(page, 'lotto'); await page.waitForTimeout(1500);
+  assert.ok(db.lottoPigs && db.lottoPigs.group && db.lottoPigs.group.members.includes('Billy'), 'moved to /lottoPigs');
+  assert.ok(db.lottoPigs.ledger.old1, 'ledger moved');
+  assert.equal(db.state.lottoGroup, undefined); assert.equal(db.state.lottoLedger, undefined);
+  await page.click('#lcMembers [data-lc-member]:nth-child(2)'); await page.waitForTimeout(1000);
+  assert.equal(db.state.lottoGroup, undefined, 'nothing is ever written into /state'); 
+  assert.ok(Object.keys(db.lottoPigs.group.uids || {}).length >= 1, 'platform logins of the ticked members are stored for the database rules');
+}, { db: (db) => { db.state.lottoGroup = { name: 'Lotto Pigs', members: ['Billy'] }; db.state.lottoLedger = { old1: { date: '2026-11-01', label: 'Old', price: 25, shares: { Billy: 1 }, cost: 25, won: 0, createdAt: 1 } }; } });
 
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {

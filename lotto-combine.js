@@ -4,9 +4,11 @@
 // downloaded or shared straight into the separate lotto group chat.
 // Everything happens on the phone: nothing is uploaded or sent anywhere, and
 // nothing here touches the bank, the week or any other part of the platform.
-// Saved: the group's name and member list (/state/lottoGroup) and the Lotto
-// Pigs profit and loss book (/state/lottoLedger/{id}), which is completely
-// separate from the syndicate's bank, weeks, dues and fines.
+// Saved in its OWN place in the database, /lottoPigs (the group at
+// /lottoPigs/group, the profit and loss book at /lottoPigs/ledger/{id}). It is
+// deliberately not inside /state, so the syndicate's Save week, Recalculate,
+// Reset season, Restore and the Ledger app can never touch it. The rules only
+// let the admin write it and only the group's members (and the admin) read it.
 (function(){
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -15,6 +17,8 @@
   const BG = '#0d100d', PANEL = '#171c17', LIME = '#cdf464', CHALK = '#f1f3ee', MUTED = '#9aa396';
   const MAX_SIDE = 4096, MAX_AREA = 14e6, COL_W = 900, GAP = 24, PAD = 36;
 
+  // brand graphics for the shared picture (loaded once; the picture still works if they can't load)
+  const art = {}; ['icon:lotto-pigs-icon.webp', 'mark:lotto-pigs-mark.webp'].forEach(x => { const [k, f] = x.split(':'); const im = new Image(); im.onload = () => { art[k] = im; try{ scheduleRender(); }catch(e){} }; im.src = f; });
   let tickets = []; // { id, name, img, url, w, h }
   let nextId = 1;
   let lastBlob = null, lastName = 'lotto-tickets.png';
@@ -24,14 +28,49 @@
   const prettyDate = (s) => { const d = new Date(s + 'T12:00:00'); return isNaN(d) ? '' : d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }); };
 
   // ---------- who is in the lotto group ----------
-  function group(){ const g = st().lottoGroup; return { name: (g && g.name) || 'Lotto Pigs', members: Array.isArray(g && g.members) ? g.members.slice() : [] }; }
+  const LP = { group: null, ledger: {}, allowed: false, loaded: false, loading: null };
+  function group(){ const g = LP.group; return { name: (g && g.name) || 'Lotto Pigs', members: Array.isArray(g && g.members) ? g.members.slice() : [] }; }
+  // the platform logins of the people ticked, so the database rules can let exactly them read it
+  function uidsFor(members){ const u = {}; (st().members || []).forEach(m => { if(m.linkedUid && members.includes(m.name)) u[m.linkedUid] = true; }); return u; }
+  function setGroup(g){ LP.group = { name: g.name || '', members: g.members.slice(), uids: uidsFor(g.members) }; }
+  const isAdminUser = () => { try{ return !!(currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()); }catch(e){ return false; } };
+  async function lpLoad(force){
+    if(LP.loaded && !force) return LP;
+    if(LP.loading) return LP.loading;
+    LP.loading = (async () => {
+      try{
+        const res = await authedFetch('/lottoPigs.json');
+        if(res.ok){
+          const d = (await res.json()) || {};
+          LP.allowed = true; LP.group = d.group || null; LP.ledger = d.ledger && typeof d.ledger === 'object' ? d.ledger : {};
+          if(isAdminUser()) await migrateOld();
+        }else{ LP.allowed = false; LP.group = null; LP.ledger = {}; }
+      }catch(e){ /* offline: keep what we have */ }
+      LP.loaded = true; LP.loading = null;
+      try{ syncHeader(); refreshAll(); }catch(e){}
+      return LP;
+    })();
+    return LP.loading;
+  }
+  // Earlier test versions kept this inside /state. Move it out once, then clear it from /state.
+  async function migrateOld(){
+    const g = st().lottoGroup, l = st().lottoLedger;
+    if(!g && !l) return;
+    try{
+      if(g && !LP.group){ setGroup({ name: g.name, members: Array.isArray(g.members) ? g.members : [] }); await authedWrite('/lottoPigs/group.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(LP.group) }); }
+      if(l && !Object.keys(LP.ledger).length){ await authedWrite('/lottoPigs/ledger.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(l) }); LP.ledger = l; }
+      if(g) await authedWrite('/state/lottoGroup.json', { method: 'DELETE' });
+      if(l) await authedWrite('/state/lottoLedger.json', { method: 'DELETE' });
+      delete st().lottoGroup; delete st().lottoLedger;
+    }catch(e){}
+  }
   function allNames(){ return (st().members || []).map(m => m.name).filter(Boolean); }
   async function saveGroup(g){
     const status = $('lcGroupStatus');
     try{
-      const res = await authedWrite('/state/lottoGroup.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: g.name || '', members: g.members }) });
+      setGroup(g);
+      const res = await authedWrite('/lottoPigs/group.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(LP.group) });
       if(!res || !res.ok) throw new Error('HTTP ' + (res && res.status));
-      st().lottoGroup = { name: g.name || '', members: g.members };
       status.className = 'status-msg ok'; status.textContent = 'Saved.';
     }catch(e){
       status.className = 'status-msg error'; status.textContent = 'Could not save the group. Check your connection and try again.';
@@ -114,7 +153,7 @@
     m.font = '600 34px Manrope, system-ui, sans-serif';
     const whoText = showWho && who.length ? (gName ? gName + ': ' : 'In: ') + who.join(', ') : '';
     const whoLines = whoText ? wrapText(m, whoText, W - PAD * 2) : [];
-    const headH = showTitle && (title || date) ? 150 : 0;
+    const headH = showTitle && (title || date) ? 190 : 0;
     const footH = whoLines.length ? 40 + whoLines.length * 46 + 10 : 0;
     const H = PAD + headH + L.bodyH + (footH ? PAD + footH : 0) + PAD;
     let s = Math.min(1, MAX_SIDE / Math.max(W, H), Math.sqrt(MAX_AREA / (W * H)));
@@ -123,11 +162,17 @@
     ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
     let y = PAD;
     if(headH){
-      ctx.fillStyle = LIME; ctx.fillRect(PAD, y + 8, 8, 96);
+      const D = 150, tx = PAD + (art.icon ? D + 28 : 32);
+      if(art.icon){
+        ctx.save(); ctx.beginPath(); ctx.arc(PAD + D / 2, y + D / 2, D / 2, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(art.icon, PAD, y, D, D); ctx.restore();
+        ctx.lineWidth = 4; ctx.strokeStyle = '#c9a24a'; ctx.beginPath(); ctx.arc(PAD + D / 2, y + D / 2, D / 2 - 2, 0, Math.PI * 2); ctx.stroke();
+      }else{ ctx.fillStyle = LIME; ctx.fillRect(PAD, y + 8, 8, 96); }
+      const badge = art.mark ? 130 : 0, textW = W - tx - PAD - (badge ? badge + 20 : 0);
       ctx.fillStyle = CHALK; ctx.font = '800 64px Manrope, system-ui, sans-serif'; ctx.textBaseline = 'top';
-      ctx.fillText(title || 'Lotto Pigs', PAD + 32, y + 4, W - PAD * 2 - 32);
+      ctx.fillText(title || 'Lotto Pigs', tx, y + 22, textW);
       ctx.fillStyle = MUTED; ctx.font = '600 34px Manrope, system-ui, sans-serif';
-      ctx.fillText([date, `${tickets.length} ticket${tickets.length === 1 ? '' : 's'}`].filter(Boolean).join('  ·  '), PAD + 32, y + 80, W - PAD * 2 - 32);
+      ctx.fillText([date, `${tickets.length} ticket${tickets.length === 1 ? '' : 's'}`].filter(Boolean).join('  ·  '), tx, y + 98, textW);
+      if(badge){ ctx.save(); ctx.beginPath(); ctx.arc(W - PAD - badge / 2, y + D / 2, badge / 2, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(art.mark, W - PAD - badge, y + D / 2 - badge / 2, badge, badge); ctx.restore(); }
       y += headH;
     }
     tickets.forEach((t, i) => {
@@ -198,7 +243,7 @@
     return { shares, total, price, cost, covered, costMode, pend, won: pend ? 0 : Number(e.won) || 0 };
   }
   function entries(){
-    const o = st().lottoLedger || {};
+    const o = LP.ledger || {};
     return Object.entries(o).filter(([, e]) => e && typeof e === 'object').map(([id, e]) => ({ id, ...e }))
       .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
   }
@@ -273,41 +318,125 @@
     if(covered < 0 || covered > fullCost + 0.005){ status.className = 'status-msg error'; status.textContent = `"Covered by winnings" can't be more than the ticket cost (${money(fullCost)}).`; return; }
     const won = wonRaw === '' ? null : parseFloat(wonRaw);
     if(won !== null && (isNaN(won) || won < 0)){ status.className = 'status-msg error'; status.textContent = 'Winnings must be a number, or leave it blank until the result is in.'; return; }
-    const old = editingId ? (st().lottoLedger || {})[editingId] : null;
+    const old = editingId ? (LP.ledger || {})[editingId] : null;
     const id = editingId || ('l' + Date.now());
     const shares = {}; Object.entries(draftShares).forEach(([n, c]) => { if(c > 0) shares[n] = c; });
     const entry = { date: $('lcLDate').value || todayStr(), label: $('lcLLabel').value.trim() || 'Lotto draw', price: Math.round(price * 10000) / 10000, shares, costMode, covered: Math.round(covered * 100) / 100,
       cost: Math.round(fullCost * 100) / 100, won: won == null ? null : Math.round(won * 100) / 100, createdAt: old ? old.createdAt || Date.now() : Date.now() };
     const btn = $('lcLSave'); btn.disabled = true;
     try{
-      const res = await authedWrite(`/state/lottoLedger/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
+      const res = await authedWrite(`/lottoPigs/ledger/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       try{ if(costMode === 'share') localStorage.setItem(PRICE_KEY, String(entry.price)); }catch(e){}
-      (st().lottoLedger = st().lottoLedger || {})[id] = entry;
+      (LP.ledger = LP.ledger || {})[id] = entry;
       status.className = 'status-msg ok'; status.textContent = editingId ? 'Draw updated.' : 'Draw added.';
       resetForm(); renderLedger();
     }catch(e){ status.className = 'status-msg error'; status.textContent = 'Could not save. Check your connection and try again.'; }
     btn.disabled = false;
   }
   async function deleteEntry(id){
-    const e = (st().lottoLedger || {})[id]; if(!e) return;
+    const e = (LP.ledger || {})[id]; if(!e) return;
     if(!confirm(`Delete "${e.label || 'Lotto draw'}" (${prettyDate(e.date)})? It comes out of the Lotto Pigs profit and loss.`)) return;
     const status = $('lcLStatus');
     try{
-      const res = await authedWrite(`/state/lottoLedger/${id}.json`, { method: 'DELETE' });
+      const res = await authedWrite(`/lottoPigs/ledger/${id}.json`, { method: 'DELETE' });
       if(!res.ok) throw new Error('HTTP ' + res.status);
-      delete st().lottoLedger[id]; if(editingId === id) resetForm();
+      delete LP.ledger[id]; if(editingId === id) resetForm();
       status.className = 'status-msg ok'; status.textContent = 'Deleted.'; renderLedger();
     }catch(err){ status.className = 'status-msg error'; status.textContent = 'Could not delete. Try again.'; }
   }
   function startEdit(id){
-    const e = (st().lottoLedger || {})[id]; if(!e) return;
+    const e = (LP.ledger || {})[id]; if(!e) return;
     const n = norm(e);
     editingId = id; draftShares = { ...n.shares };
     $('lcLDate').value = e.date || todayStr(); $('lcLLabel').value = e.label || ''; $('lcLPrice').value = n.costMode === 'share' && n.price ? n.price : lastPrice(); $('lcLTicket').value = n.costMode === 'total' ? n.cost : ''; $('lcLCovered').value = n.covered || ''; $('lcLWon').value = n.pend ? '' : n.won;
     $('lcLSave').textContent = 'Save changes'; $('lcLCancel').hidden = false; renderShares();
     $('lcLWon').focus(); $('lcLForm').scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
+
+
+  // ---------- Home → Lotto: what the group's members see (read only) ----------
+  // Only people in the Lotto Pigs group (and the admin) get the Lotto button on Home.
+  // Nothing can be changed here; adding draws and picking members stays in Admin.
+  function meName(){ const me = (st().members || []).find(m => m.linkedUid && m.linkedUid === (typeof currentUserUid !== 'undefined' ? currentUserUid : null)); return me ? me.name : null; }
+  function inGroup(){ const n = meName(); return !!(n && group().members.includes(n)); }
+  function renderHome(){
+    const root = $('homeLottoRoot'); if(!root) return;
+    const g = group(), list = entries(), t = totals(list), me = meName();
+    const mine = me && t.per[me];
+    root.innerHTML = `
+      <div class="panel lc-home">
+        <div class="lc-hero"><img src="lotto-pigs-emblem.webp" alt="Lotto Pigs" width="168" height="168" decoding="async"></div>
+        <h2 class="lc-hero-title">${esc(g.name || 'Lotto Pigs')}</h2>
+        <div class="hint">Your lotto group's results. This is separate from the syndicate's money.</div>
+        <div class="lc-chips lc-chips-static">${g.members.map(n => `<span class="lc-chip${n === me ? ' on' : ''}">${esc(n)}${n === me ? ' (you)' : ''}</span>`).join('')}</div>
+        ${list.length ? `<div class="lc-summary">
+          <div class="lc-sum"><span>Spent</span><b>${money(t.spent)}</b></div>
+          <div class="lc-sum"><span>Won</span><b>${money(t.won)}</b></div>
+          <div class="lc-sum ${t.net >= 0 ? 'pos' : 'neg'}"><span>Net</span><b>${signed(t.net)}</b></div>
+          <div class="lc-sum"><span>Draws</span><b>${t.draws}</b></div></div>` : ''}
+        ${t.pending ? `<div class="hint">${t.pending} draw${t.pending === 1 ? ' is' : 's are'} still awaiting a result.</div>` : ''}
+        ${mine ? `<h3 class="lc-h3">Your position</h3><div class="lc-mine"><div><span>You put in</span><b>${money(mine.spent)}</b></div><div><span>Your share back</span><b>${money(mine.won)}</b></div><div class="${mine.won - mine.spent >= 0 ? 'pos' : 'neg'}"><span>Your net</span><b>${signed(mine.won - mine.spent)}</b></div></div>
+          <div class="hint">${mine.shares} share${mine.shares === 1 ? '' : 's'} across ${mine.draws} draw${mine.draws === 1 ? '' : 's'}.</div>` : (me && list.length ? '<div class="hint">You haven\'t bought into a draw yet.</div>' : '')}
+        <h3 class="lc-h3">Draws</h3>
+        <div id="lcHomeEntries" class="lc-home-entries">${list.length ? list.map(e => {
+          const n = norm(e), yours = me && n.shares[me];
+          return `<div class="lc-entry">
+            <div class="lc-entry-main"><b>${esc(e.label || 'Lotto draw')}</b><span>${esc(prettyDate(e.date))}</span></div>
+            <div class="lc-entry-who">${n.total} share${n.total === 1 ? '' : 's'} · ${esc(Object.entries(n.shares).map(([x, c]) => `${x} ${c}`).join(', '))}</div>
+            <div class="lc-entry-nums"><span>Cost ${money(n.cost)}</span><span>${n.pend ? 'Awaiting result' : 'Won ' + money(n.won)}</span><b class="${n.pend ? '' : (n.won - n.cost >= 0 ? 'pos' : 'neg')}">${n.pend ? '–' : signed(n.won - n.cost)}</b></div>
+            ${yours ? `<div class="lc-entry-who">You: ${yours} share${yours === 1 ? '' : 's'}${n.pend ? '' : ' · ' + signed(n.won * yours / n.total - n.cost * yours / n.total)}</div>` : ''}
+          </div>`; }).join('') : '<div class="empty">No draws yet.</div>'}</div>
+        ${Object.keys(t.per).length ? `<h3 class="lc-h3">Per person (winnings split by shares)</h3>` + Object.entries(t.per).map(([n, r]) => { const net = r.won - r.spent; return `<div class="lc-pm"><span>${esc(n)}${n === me ? ' (you)' : ''}</span><span>in ${money(r.spent)}</span><span>back ${money(r.won)}</span><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div>`; }).join('') : ''}
+      </div>`;
+  }
+  // The round pig button in the header, next to Syndy: only for people ticked in the group.
+  function syncHeader(){
+    const hb = $('lottoHeaderBtn'); if(!hb) return;
+    hb.style.display = (LP.allowed && inGroup()) ? '' : 'none';
+    placeHeaderBtn();
+    const view = $('homeSubview-lotto');
+    if(!(LP.allowed && (inGroup() || isAdminUser())) && view && view.style.display !== 'none' && typeof navShowHomeSub === 'function') navShowHomeSub('overview');
+    if(view && view.style.display !== 'none') renderHome();
+  }
+  // sit just to the left of the Syndy button (or the cog when Syndy isn't showing)
+  function placeHeaderBtn(){
+    const hb = $('lottoHeaderBtn'), head = hb && hb.parentElement; if(!hb || hb.style.display === 'none' || !head) return;
+    const vis = (e) => e && e.style.display !== 'none' && e.offsetParent !== null;
+    const anchor = vis($('syndyFabBtn')) ? $('syndyFabBtn') : (vis($('headerAdminBtn')) ? $('headerAdminBtn') : null);
+    const hr = head.getBoundingClientRect();
+    const right = anchor ? Math.round(hr.right - anchor.getBoundingClientRect().left + 8) : 54;
+    hb.style.right = right + 'px';
+  }
+  window.addEventListener('resize', () => { try{ placeHeaderBtn(); }catch(e){} });
+  function openHome(){
+    if(typeof setActiveTab === 'function') setActiveTab('balance');
+    const tb = $('homeLottoSubBtn'); if(tb) tb.style.display = '';
+    if(typeof navShowHomeSub === 'function') navShowHomeSub('lotto');
+    renderHome(); window.scrollTo(0, 0);
+    lpLoad(true).then(renderHome);
+  }
+  function refreshAll(){ try{ if($('lottoRoot') && $('lottoRoot').dataset.built) refresh(); }catch(e){} }
+  let hooked = false;
+  function syncHome(){ // called whenever the app redraws
+    if(!hooked){ hooked = true; lpLoad(); }
+    syncHeader();
+    const tb = $('homeLottoSubBtn'), view = $('homeSubview-lotto');
+    if(tb && view && view.style.display === 'none') tb.style.display = 'none'; // the tab only shows while you're on it
+  }
+  window.lottoHomeSync = syncHome;
+  window.lottoReload = () => lpLoad(true);
+  (function hook(){
+    const orig = window.render;
+    if(typeof orig === 'function' && !orig.__lotto){
+      const wrapped = function(){ const r = orig.apply(this, arguments); try{ syncHome(); }catch(e){} return r; };
+      wrapped.__lotto = true; window.render = wrapped;
+    }
+    const hb = $('lottoHeaderBtn'); if(hb) hb.addEventListener('click', openHome);
+    const tb = $('homeLottoSubBtn'); if(tb) tb.addEventListener('click', () => { renderHome(); lpLoad(true).then(renderHome); });
+    // members only see changes the admin makes when they reload; refresh quietly now and then while looking at it
+    setInterval(() => { const v = $('homeSubview-lotto'); if(v && v.style.display !== 'none' && !document.hidden) lpLoad(true).then(renderHome); }, 60000);
+  })();
 
   // ---------- UI ----------
   function build(){
@@ -379,7 +508,7 @@
       const b = e.target.closest('[data-lc-member]'); if(!b) return;
       const g = group(), n = b.dataset.lcMember;
       g.members = g.members.includes(n) ? g.members.filter(x => x !== n) : g.members.concat(n);
-      st().lottoGroup = { name: g.name, members: g.members }; // show the change at once
+      setGroup(g); // show the change at once
       renderMembers(); scheduleRender(); renderShares();
       await saveGroup(g);
     });
@@ -387,13 +516,13 @@
       const inp = $('lcExtraName'), n = inp.value.trim().replace(/\s+/g, ' '); if(!n) return;
       const g = group(); inp.value = '';
       if(!g.members.includes(n)) g.members.push(n);
-      st().lottoGroup = { name: g.name, members: g.members };
+      setGroup(g);
       renderMembers(); scheduleRender(); await saveGroup(g);
     };
     $('lcExtraAdd').addEventListener('click', addExtra);
     $('lcExtraName').addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); addExtra(); } });
     let nameTimer = null;
-    $('lcGroupName').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(async () => { const g = group(); g.name = $('lcGroupName').value.trim(); st().lottoGroup = { name: g.name, members: g.members }; scheduleRender(); await saveGroup(g); }, 700); });
+    $('lcGroupName').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(async () => { const g = group(); g.name = $('lcGroupName').value.trim(); setGroup(g); scheduleRender(); await saveGroup(g); }, 700); });
     $('lcShares').addEventListener('click', (e) => { const b = e.target.closest('[data-lc-sh]'); if(!b) return; const n = b.dataset.lcN, d = Number(b.dataset.lcSh); draftShares[n] = Math.max(0, (draftShares[n] || 0) + d); if(!draftShares[n]) delete draftShares[n]; renderShares(); });
     ['lcLPrice', 'lcLTicket', 'lcLCovered'].forEach(id => $(id).addEventListener('input', renderShares));
     $('lcLSave').addEventListener('click', saveEntry);
@@ -409,5 +538,5 @@
   if(document.readyState !== 'loading') build();
   // keep the member list current when the shared data changes or the tab opens
   const tabBtn = document.querySelector('#diagSubmodeRow [data-submode="lotto"]');
-  if(tabBtn) tabBtn.addEventListener('click', () => setTimeout(refresh, 50));
+  if(tabBtn) tabBtn.addEventListener('click', () => { setTimeout(refresh, 50); lpLoad(true); });
 })();

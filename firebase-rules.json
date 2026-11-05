@@ -702,6 +702,10 @@
     },
     "pushJokerLastChanceNotifiedEfl": {
       ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
+    },
+    "lottoPigs": {
+      ".read": "auth != null && (auth.token.email === 'mlsynd00@gmail.com' || (root.child('users').child(auth.uid).child('status').val() === 'approved' && root.child('lottoPigs').child('group').child('uids').child(auth.uid).val() === true))",
+      ".write": "auth != null && auth.token.email === 'mlsynd00@gmail.com'"
     }
   }
 }
