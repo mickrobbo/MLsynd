@@ -7726,3 +7726,9 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .home-digest .dg-s{ font-size:12.5px; line-height:1.35; color:var(--muted); }
 .home-digest .dg-pill{ flex:none; padding:6px 12px; border-radius:999px; font:800 13px 'Manrope', sans-serif; color:var(--accent); background:rgba(205,244,100,.14); border:1px solid rgba(205,244,100,.4); white-space:nowrap; font-variant-numeric:tabular-nums; }
 .home-digest .dg-pill.plain{ color:var(--chalk); background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.14); }
+
+
+/* New MLSYND logo: transparent artwork that sits straight on the page */
+.header-banner-default{ height:54px; max-width:56%; border-radius:0; filter:drop-shadow(0 2px 14px rgba(255,200,70,.22)); }
+.auth-logo-icon{ max-width:260px; width:72%; filter:drop-shadow(0 4px 24px rgba(255,200,70,.3)); }
+.cp-splash-logo img{ filter:drop-shadow(0 6px 28px rgba(255,200,70,.35)); }

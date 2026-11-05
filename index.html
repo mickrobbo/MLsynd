@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MLSynd">
 <link rel="manifest" href="dashboard-manifest.json">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png?v=269">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=269">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=268">
+<link rel="stylesheet" href="dashboard.css?v=269">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -34,11 +34,11 @@
      of whether it turns out to be the actual cause of anything. -->
 </head>
 <body>
-<div id="cpSplash" aria-hidden="true"><div class="cp-splash-logo"><img src="/banner-clear.webp" alt=""></div><div class="cp-splash-bar"><span></span></div></div>
+<div id="cpSplash" aria-hidden="true"><div class="cp-splash-logo"><img src="/banner-clear.webp?v=269" alt=""></div><div class="cp-splash-bar"><span></span></div></div>
 <img src="/home-silhouette.jpg" alt="" class="home-silhouette-bg" loading="lazy" decoding="async">
 <div id="authGate" class="auth-gate">
   <div class="auth-box">
-    <img src="/logo-icon.webp" alt="" class="auth-logo-icon">
+    <img src="/logo-icon.webp?v=269" alt="" class="auth-logo-icon">
     <div class="auth-title">MLSYND</div>
     <div class="auth-tagline">Sports Betting Syndicate</div>
     <div id="authFormWrap">
@@ -87,7 +87,7 @@
 </div>
 <div class="wrap">
   <header>
-    <img src="/banner-clear.webp" alt="MLSynd" class="header-banner header-banner-default">
+    <img src="/banner-clear.webp?v=269" alt="MLSynd" class="header-banner header-banner-default">
     <img src="/banner-gold.png" alt="MLSynd" class="header-banner header-banner-maxines" loading="lazy" decoding="async">
     <button type="button" id="syndyFabBtn" class="syndy-fab header-syndy-btn" title="Ask Syndy" style="display:none;">
   <img src="syndy-icon.png" alt="Syndy" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🤖',style:'font-size:26px;'}))">
@@ -4039,7 +4039,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-05.268"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-05.269"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -25389,7 +25389,7 @@ initAuthGate();
 <script src="app-premium.js?v=222"></script>
 <script src="app-a11y.js?v=227"></script>
 <script src="slip-scan.js?v=227"></script>
-<script src="lotto-combine.js?v=268"></script>
+<script src="lotto-combine.js?v=269"></script>
 <script src="admin-ops.js?v=222"></script>
 <script src="casino-showcase.js?v=223"></script>
 <script src="pick-stats.js?v=216"></script>
