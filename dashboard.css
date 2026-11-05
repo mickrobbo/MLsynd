@@ -7626,3 +7626,11 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-dr-head{ align-items:center; }
 .lc-chip-st{ min-width:0; text-align:center; }
 .lc-roll.src{ text-align:center; }
+
+/* simpler draw body */
+.lc-dr-grid{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+.lc-roll{ padding:6px 14px; }
+.lc-roll-r{ padding:8px 0; }
+.lc-roll-r.tot{ margin-top:0; padding-top:10px; }
+.lc-roll-r.tot b{ color:#e3c06a; font-size:15px; }
+.lc-dr-who{ margin-top:12px; }

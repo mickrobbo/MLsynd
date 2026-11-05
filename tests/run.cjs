@@ -331,8 +331,8 @@ test('Lotto Pigs: winnings from one draw roll into the next ticket and members t
   await page.click('#lottoHeaderBtn'); await page.waitForTimeout(800);
   await page.evaluate(() => document.querySelectorAll('#homeSubview-lotto [data-lc-toggle]').forEach(b => b.click()));
   const txt = await text(page, '#homeSubview-lotto');
-  assert.match(txt, /Winnings from Oz Lotto/); assert.match(txt, /−\$15\.05/); assert.match(txt, /Members top up\s*\$63\.55/);
-  assert.match(txt, /7 members · \$9\.08 each, split equally/); assert.match(txt, /rolled into Powerball/);
+  assert.match(txt, /Winnings from Oz Lotto/); assert.match(txt, /−\$15\.05/); assert.match(txt, /Top-up · 7 × \$9\.08\s*\$63\.55/);
+  assert.match(txt, /rolled into Powerball/);
   assert.match(txt, /You pay \$9\.08/);
 }, { db: (db) => { const sh = { Brad: 1, Dean: 2, Josh: 2, Zak: 2, Murph: 2, Trasky: 2, Damon: 2 }; db.lottoPigs = { group: { name: 'Lotto Pigs', members: Object.keys(sh), uids: { u5: true } }, ledger: {
   a: { date: '2026-11-03', label: 'Oz Lotto', price: 1.35, shares: sh, cost: 17.5, won: 15.05, costMode: 'total', createdAt: 1 },
