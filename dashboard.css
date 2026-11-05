@@ -7732,3 +7732,40 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .header-banner-default{ height:54px; max-width:56%; border-radius:0; filter:drop-shadow(0 2px 14px rgba(255,200,70,.22)); }
 .auth-logo-icon{ max-width:260px; width:72%; filter:drop-shadow(0 4px 24px rgba(255,200,70,.3)); }
 .cp-splash-logo img{ filter:drop-shadow(0 6px 28px rgba(255,200,70,.35)); }
+
+/* v270: bets section polish — pill status, tinted tiles, tidy leg list */
+.ind-grid{ align-items:start; }
+.ind-tile{ border:1px solid rgba(255,255,255,.07) !important; border-radius:18px !important; padding:13px 13px 12px; gap:5px; overflow:hidden;
+  background:linear-gradient(165deg, rgba(255,255,255,.045), rgba(255,255,255,.012) 70%), var(--surface) !important; }
+.ind-tile::before{ content:""; position:absolute; left:0; right:0; top:0; height:3px; background:rgba(255,255,255,.14); }
+.ind-tile.result-win{ border-color:rgba(31,196,104,.35) !important; background:linear-gradient(165deg, rgba(31,196,104,.14), rgba(31,196,104,.02) 65%), var(--surface) !important; }
+.ind-tile.result-win::before{ background:linear-gradient(90deg,#1FC468,#4DEB8E); }
+.ind-tile.result-loss{ border-color:rgba(245,69,75,.32) !important; background:linear-gradient(165deg, rgba(245,69,75,.13), rgba(245,69,75,.02) 65%), var(--surface) !important; }
+.ind-tile.result-loss::before{ background:linear-gradient(90deg,#F5454B,#FF7A66); }
+.ind-tile.result-void::before{ background:#7FA8D8; }
+.ind-tile.result-pending::before{ background:linear-gradient(90deg,rgba(255,201,60,.9),rgba(255,201,60,.35)); }
+.ind-av{ flex:0 0 30px; width:30px; height:30px; font-size:13px; }
+.ind-stamp{ transform:none !important; border:0 !important; border-radius:999px; padding:3px 9px !important; font-size:10.5px !important; font-weight:800; letter-spacing:.06em; text-transform:uppercase; background:rgba(255,255,255,.08); color:var(--muted); box-shadow:none; }
+.ind-tile.result-win .ind-stamp{ background:rgba(31,196,104,.2); color:#4DEB8E; }
+.ind-tile.result-loss .ind-stamp{ background:rgba(245,69,75,.2); color:#FF7A66; }
+.ind-tile.result-void .ind-stamp{ background:rgba(127,168,216,.2); color:#A9C6EA; }
+.ind-tile.result-pending .ind-stamp{ background:rgba(255,201,60,.16); color:#FFC93C; }
+.ind-pl{ font-size:26px; margin-top:4px; }
+.ind-tile.result-pending .ind-pl{ font-size:14px; font-weight:600; margin-top:2px; }
+.ind-pick{ margin-top:4px; }
+.ind-pick > span:not(.ind-stake){ display:inline-block; margin-left:4px; padding:1px 7px; border-radius:999px; background:rgba(255,255,255,.08); color:var(--chalk); font-weight:700; font-size:11.5px; }
+.ind-legs-row{ margin-top:8px; }
+.ind-track{ margin-top:8px; height:4px; }
+.ind-more{ margin-top:8px; text-align:center; opacity:.7; }
+.ind-detail{ margin-top:8px; padding-top:6px; }
+.ind-leg{ grid-template-columns:minmax(0,1fr) auto; gap:2px 10px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+.ind-leg-main{ grid-column:1; grid-row:1 / span 2; }
+.ind-leg-main b{ white-space:normal; line-height:1.25; }
+.ind-leg-odds{ grid-column:2; grid-row:1; justify-self:end; padding:2px 9px; border-radius:999px; background:rgba(255,255,255,.08); font-size:12.5px; }
+.ind-leg .hm-chip-sm{ grid-column:2; grid-row:2; }
+.ind-detail-foot{ margin-top:10px; padding:9px 11px; border-radius:12px; background:rgba(255,255,255,.05); justify-content:space-between; font-size:12px; }
+.ind-detail .hm-insight{ text-align:center; opacity:.85; }
+
+/* group multi */
+#groupMultiArea .hm-track{ height:6px; gap:4px; }
+#groupMultiArea .hm-seg{ border-radius:4px; }
