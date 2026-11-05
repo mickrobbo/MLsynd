@@ -314,7 +314,7 @@ test('Lotto Pigs: only people ticked in the group get the header pig button and 
   await page.click('#lottoHeaderBtn'); await page.waitForTimeout(800);
   const txt = await text(page, '#homeSubview-lotto');
   assert.ok(txt.includes('Lotto Pigs') && /YOU/.test(txt) && txt.includes('+$50') && txt.includes('Powerball'), txt);
-  assert.equal(await page.locator('#homeSubview-lotto input, #homeSubview-lotto button:not([data-lc-toggle]):not([data-lc-view])').count(), 0, 'members get a read-only view');
+  assert.equal(await page.locator('#homeSubview-lotto input, #homeSubview-lotto button:not([data-lc-toggle]):not([data-lc-view]):not([data-lc-series]):not([data-lc-fold])').count(), 0, 'members get a read-only view');
   assert.equal(await page.locator('#homeSubview-lotto .lc-dr-body').first().isVisible(), false, 'draw details start collapsed');
   await page.click('#homeSubview-lotto [data-lc-toggle]');
   assert.equal(await page.locator('#homeSubview-lotto .lc-dr-body').first().isVisible(), true, 'tap opens the details');
@@ -338,7 +338,16 @@ test('Lotto Pigs: winnings from one draw roll into the next ticket and members t
   const box = await page.locator('#lcPlot').boundingBox();
   await page.mouse.move(box.x + box.width * 0.95, box.y + box.height / 2); await page.mouse.down();
   assert.match(await text(page, '#lcChLbl'), /Oz Lotto/i); await page.mouse.up();
+  assert.equal(await page.locator('#lcPlChart .lc-lg').count(), 2, 'a legend chip for the total and for Oz Lotto');
+  assert.equal(await page.locator('.lc-types').first().isVisible(), false, 'stats start folded away');
+  await page.click('[data-lc-fold="stats"]');
   assert.match(await text(page, '#homeSubview-lotto .lc-types'), /Oz Lotto -\$2\.45 1 draw/);
+  await page.click('[data-lc-series="Oz Lotto"]');
+  assert.equal(await page.locator('#lcPlChart .lc-lg.off').count(), 1, 'tapping a name hides its line');
+  assert.equal(await page.locator('.lc-types').first().isVisible(), true, 'folds stay open after the chart redraws');
+  assert.equal(await page.locator('#homeSubview-lotto .lc-people').first().isVisible(), false, 'each person starts folded');
+  await page.click('[data-lc-fold="people"]');
+  assert.equal(await page.locator('#homeSubview-lotto .lc-people').first().isVisible(), true);
   assert.match(txt, /You pay \$9\.08/);
 }, { db: (db) => { const sh = { Brad: 1, Dean: 2, Josh: 2, Zak: 2, Murph: 2, Trasky: 2, Damon: 2 }; db.lottoPigs = { group: { name: 'Lotto Pigs', members: Object.keys(sh), uids: { u5: true } }, ledger: {
   a: { date: '2026-11-03', label: 'Oz Lotto', price: 1.35, shares: sh, cost: 17.5, won: 15.05, costMode: 'total', createdAt: 1 },

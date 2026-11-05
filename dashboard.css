@@ -7680,3 +7680,23 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-ty-bar{ border-radius:4px; }
 .lc-ty-bar.pos{ background:linear-gradient(90deg, #1c8a4b, #2fbf72); } .lc-ty-bar.neg{ background:linear-gradient(270deg, #c93a40, #ef5b5f); }
 .lc-ty-n{ font-size:14.5px; }
+
+/* Lotto Pigs: line toggles and dropdowns */
+.lc-legend{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.lc-lg{ display:inline-flex; align-items:center; gap:7px; min-height:36px; padding:0 12px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:var(--chalk); font:700 12.5px 'Manrope', sans-serif; cursor:pointer; }
+.lc-lg i{ width:9px; height:9px; border-radius:50%; flex:none; }
+.lc-lg b{ font-weight:800; color:var(--muted); font-variant-numeric:tabular-nums; }
+.lc-lg.off{ opacity:.45; } .lc-lg.off i{ background:transparent !important; box-shadow:inset 0 0 0 1.5px var(--muted); }
+.lc-fold{ margin-top:14px; border-top:1px solid rgba(255,255,255,.07); }
+.lc-fold-h{ width:100%; min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 2px; background:none; border:0; color:var(--chalk); font:700 14px 'Manrope', sans-serif; cursor:pointer; text-align:left; }
+.lc-fold.open > .lc-fold-h .lc-chev{ transform:rotate(180deg); }
+.lc-fold-b{ display:none; }
+.lc-fold.open > .lc-fold-b{ display:block; animation:lcOpen .18s ease; }
+.lc-fold .lc-stats{ margin-top:2px; border-top:0; padding-top:6px; }
+.lc-fold .lc-types{ margin-top:14px; }
+.lc-fold-card{ margin-top:0; border:1px solid rgba(255,255,255,.05); border-radius:22px; background:var(--surface); padding:0 16px; }
+.lc-fold-card .lc-fold-h{ padding:0 2px; }
+.lc-fold-card.open .lc-fold-h{ border-bottom:1px solid var(--line); }
+.lc-fold-card .lc-people{ border:0; background:none; padding:0; }
+.lc-fold-card .lc-pp:last-child{ border-bottom:0; }
+.lc-ch-hint{ margin-top:10px; }

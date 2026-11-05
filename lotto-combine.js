@@ -456,6 +456,10 @@
   }
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-lc-view]'); if(b) return viewTicket(b.dataset.lcView);
+    const sb = e.target.closest('[data-lc-series]');
+    if(sb){ const k = sb.dataset.lcSeries; if(chartHidden.has(k)) chartHidden.delete(k); else if(visibleKeys().length > 1) chartHidden.add(k); const holder = $('lcPlChart'); if(holder){ const tmp = document.createElement('div'); tmp.innerHTML = plChart(entries()); holder.replaceWith(tmp.firstElementChild); wireChart(); } return; }
+    const fb = e.target.closest('[data-lc-fold]');
+    if(fb){ const k = fb.dataset.lcFold, on = !openFolds.has(k); on ? openFolds.add(k) : openFolds.delete(k); fb.parentElement.classList.toggle('open', on); fb.setAttribute('aria-expanded', String(on)); return; }
     const t = e.target.closest('[data-lc-toggle]'); if(!t) return;
     const id = t.dataset.lcToggle, card = t.closest('.lc-draw'), on = !openDraws.has(id);
     on ? openDraws.add(id) : openDraws.delete(id); card.classList.toggle('open', on); t.setAttribute('aria-expanded', String(on));
@@ -490,8 +494,15 @@
     return d;
   }
   const CH = { W: 340, H: 176, L: 44, R: 16, T: 14, B: 24 };
+  const TYPE_COL = { 'Powerball': '#3987e5', 'Oz Lotto': '#199e70', 'Saturday Lotto': '#9085e9', 'Set for Life': '#c98500' };
+  const FALLBACK_COL = ['#c98500', '#9085e9', '#199e70', '#3987e5'];
+  const chartHidden = new Set(), openFolds = new Set();
+  let chartSeries = [];
+  const visibleKeys = () => chartSeries.filter(sr => !chartHidden.has(sr.key)).map(sr => sr.key);
   function chartScale(){
-    let lo = Math.min(0, ...chartPts.map(p => p.v)), hi = Math.max(0, ...chartPts.map(p => p.v));
+    const keys = visibleKeys(), vals = [0];
+    chartPts.forEach(p => keys.forEach(k => vals.push(k === 'Total' ? p.v : (p.t[k] || 0))));
+    let lo = Math.min(...vals), hi = Math.max(...vals);
     if(hi === lo){ hi += 1; lo -= 1; }
     const pad = (hi - lo) * 0.12; if(hi > 0) hi += pad; if(lo < 0) lo -= pad;
     return { hi, lo, x: (i) => CH.L + (chartPts.length === 1 ? 0 : i * (CH.W - CH.L - CH.R) / (chartPts.length - 1)), y: (v) => CH.T + (hi - v) / (hi - lo) * (CH.H - CH.T - CH.B) };
@@ -500,13 +511,28 @@
     const settled = list.filter(e => !norm(e).pend).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
     const pending = list.filter(e => norm(e).pend), inPlay = pending.reduce((x, e) => x + norm(e).cost, 0);
     if(!settled.length) return '';
-    let run = 0, spent = 0, won = 0; chartPts = [{ label: 'Start', date: '', v: 0 }];
-    settled.forEach(e => { const n = norm(e); run += n.won - n.cost; spent += n.cost; won += n.won; chartPts.push({ label: e.label || 'Lotto draw', date: e.date, v: Math.round(run * 100) / 100, d: n.won - n.cost }); });
-    const { hi, lo, x, y } = chartScale(), { W, H, L, R, T, B } = CH;
-    const last = chartPts[chartPts.length - 1], col = last.v >= 0 ? '#7FE3A2' : '#FF8A80', pos = last.v >= 0;
-    const xy = chartPts.map((p, i) => [x(i), y(p.v)]), line = smoothPath(xy);
-    const area = `${line} L${xy[xy.length - 1][0].toFixed(1)} ${y(0).toFixed(1)} L${xy[0][0].toFixed(1)} ${y(0).toFixed(1)} Z`;
+    // one running line per ticket type (up to four, biggest spend first) plus the group total
+    const spend = {}; settled.forEach(e => { const t = ticketType(e.label); spend[t] = (spend[t] || 0) + norm(e).cost; });
+    const typeNames = Object.keys(spend).sort((a, b) => spend[b] - spend[a]).slice(0, 4), used = new Set(), cols = {};
+    typeNames.forEach(t => { if(TYPE_COL[t] && !used.has(TYPE_COL[t])){ cols[t] = TYPE_COL[t]; used.add(cols[t]); } });
+    typeNames.forEach(t => { if(!cols[t]){ cols[t] = FALLBACK_COL.find(c => !used.has(c)) || '#9085e9'; used.add(cols[t]); } });
+    let run = 0, spent = 0, won = 0; const cum = {}; chartPts = [{ label: 'Start', date: '', v: 0, t: {} }];
+    settled.forEach(e => { const n = norm(e), t = ticketType(e.label); run += n.won - n.cost; spent += n.cost; won += n.won; cum[t] = (cum[t] || 0) + n.won - n.cost;
+      const tt = {}; typeNames.forEach(k => { tt[k] = Math.round((cum[k] || 0) * 100) / 100; });
+      chartPts.push({ label: e.label || 'Lotto draw', date: e.date, v: Math.round(run * 100) / 100, d: n.won - n.cost, t: tt }); });
+    const last = chartPts[chartPts.length - 1], pos = last.v >= 0, totalCol = pos ? '#7FE3A2' : '#FF8A80';
+    chartSeries = [{ key: 'Total', name: 'Group total', col: totalCol }].concat(typeNames.map(t => ({ key: t, name: t, col: cols[t] })));
+    if(chartSeries.every(sr => chartHidden.has(sr.key))) chartHidden.clear();
+    const { hi, lo, x, y } = chartScale(), { W, H, L, R, T, B } = CH, vis = visibleKeys();
+    const val = (p, k) => k === 'Total' ? p.v : (p.t[k] || 0);
     const ticks = [hi, 0, lo].filter((v, i, a) => a.indexOf(v) === i);
+    const showTotal = vis.includes('Total'), tl = smoothPath(chartPts.map((p, i) => [x(i), y(p.v)]));
+    const tArea = `${tl} L${x(chartPts.length - 1).toFixed(1)} ${y(0).toFixed(1)} L${x(0).toFixed(1)} ${y(0).toFixed(1)} Z`;
+    const lines = chartSeries.filter(sr => sr.key !== 'Total' && vis.includes(sr.key)).map(sr => {
+      const xy = chartPts.map((p, i) => [x(i), y(val(p, sr.key))]);
+      return `<path d="${smoothPath(xy)}" fill="none" stroke="${sr.col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${xy[xy.length - 1][0].toFixed(1)}" cy="${xy[xy.length - 1][1].toFixed(1)}" r="3.8" fill="${sr.col}" stroke="var(--surface)" stroke-width="2"/>`; }).join('');
+    const ex = x(chartPts.length - 1).toFixed(1), ey = y(last.v).toFixed(1);
+    const chips = chartSeries.map(sr => `<button type="button" class="lc-lg${vis.includes(sr.key) ? '' : ' off'}" data-lc-series="${esc(sr.key)}" aria-pressed="${vis.includes(sr.key)}"><i style="background:${sr.col}"></i><span>${esc(sr.name)}</span><b data-lc-sv="${esc(sr.key)}" data-base="${signed(val(last, sr.key))}">${signed(val(last, sr.key))}</b></button>`).join('');
     return `<div class="lc-chart" id="lcPlChart">
       <div class="lc-ch-head">
         <div class="lc-ch-read"><span class="lc-ch-lbl" id="lcChLbl">Group profit / loss</span><b class="lc-ch-val ${pos ? 'pos' : 'neg'}" id="lcChVal">${signed(last.v)}</b></div>
@@ -514,24 +540,26 @@
       </div>
       <div class="lc-plot" id="lcPlot"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Running profit and loss across ${settled.length} settled draws, now ${signed(last.v)}">
         <defs>
-          <linearGradient id="lcAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity="${pos ? .32 : .02}"/><stop offset="1" stop-color="${col}" stop-opacity="${pos ? .02 : .32}"/></linearGradient>
+          <linearGradient id="lcAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${totalCol}" stop-opacity="${pos ? .3 : .02}"/><stop offset="1" stop-color="${totalCol}" stop-opacity="${pos ? .02 : .3}"/></linearGradient>
           <filter id="lcGlow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3.5"/></filter>
         </defs>
         ${ticks.map(v => `<line class="${v === 0 ? 'lc-zero' : 'lc-grid'}" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="lc-ylab" x="${L - 8}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${axisMoney(v)}</text>`).join('')}
-        <path d="${area}" fill="url(#lcAreaG)"/>
-        <path d="${line}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" opacity=".35" filter="url(#lcGlow)"/>
-        <path d="${line}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+        ${showTotal ? `<path d="${tArea}" fill="url(#lcAreaG)"/><path d="${tl}" fill="none" stroke="${totalCol}" stroke-width="5" stroke-linecap="round" opacity=".35" filter="url(#lcGlow)"/><path d="${tl}" fill="none" stroke="${totalCol}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>` : ''}
+        ${lines}
         <line class="lc-guide" id="lcGuide" x1="0" x2="0" y1="${T}" y2="${H - B}" opacity="0"/>
-        ${xy.map((p, i) => i && i < xy.length - 1 ? `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="var(--surface)" stroke="${col}" stroke-width="2"/>` : '').join('')}
-        <circle cx="${xy[xy.length - 1][0].toFixed(1)}" cy="${xy[xy.length - 1][1].toFixed(1)}" r="9" fill="${col}" opacity=".18"/>
-        <circle cx="${xy[xy.length - 1][0].toFixed(1)}" cy="${xy[xy.length - 1][1].toFixed(1)}" r="4.5" fill="${col}" stroke="var(--surface)" stroke-width="2"/>
-        <circle id="lcDot" r="6" cx="0" cy="0" fill="${col}" stroke="var(--surface)" stroke-width="2.5" opacity="0"/>
+        ${showTotal ? `<circle cx="${ex}" cy="${ey}" r="9" fill="${totalCol}" opacity=".18"/><circle cx="${ex}" cy="${ey}" r="4.5" fill="${totalCol}" stroke="var(--surface)" stroke-width="2"/>` : ''}
         <text class="lc-xlab" x="${L}" y="${H - 6}" text-anchor="start">${esc(shortDate(settled[0].date))}</text>
         ${chartPts.length > 2 ? `<text class="lc-xlab" x="${W - R}" y="${H - 6}" text-anchor="end">${esc(shortDate(settled[settled.length - 1].date))}</text>` : ''}
       </svg></div>
-      <div class="lc-ch-hint" id="lcChHint">Touch the chart to see each draw</div>
-      <div class="lc-stats"><div><span>Spent</span><b>${money(spent)}</b></div><div><span>Won</span><b>${money(won)}</b></div><div><span>Draws</span><b>${settled.length}${pending.length ? `<small> +${pending.length} open</small>` : ''}</b></div></div>
-      ${typeBars(list)}
+      <div class="lc-legend" role="group" aria-label="Lines on the chart">${chips}</div>
+      <div class="lc-ch-hint" id="lcChHint">Drag across the chart · tap a name to show or hide a line</div>
+      <div class="lc-fold${openFolds.has('stats') ? ' open' : ''}">
+        <button type="button" class="lc-fold-h" data-lc-fold="stats" aria-expanded="${openFolds.has('stats')}"><span>Stats &amp; ticket types</span><svg class="lc-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="lc-fold-b">
+          <div class="lc-stats"><div><span>Spent</span><b>${money(spent)}</b></div><div><span>Won</span><b>${money(won)}</b></div><div><span>Draws</span><b>${settled.length}${pending.length ? `<small> +${pending.length} open</small>` : ''}</b></div></div>
+          ${typeBars(list)}
+        </div>
+      </div>
     </div>`;
   }
   function typeBars(list){
@@ -548,23 +576,26 @@
   function wireChart(){
     const plot = $('lcPlot'); if(!plot || chartPts.length < 2) return;
     const svg = plot.querySelector('svg'), vb = svg.viewBox.baseVal, { x: xs, y: ys } = chartScale();
-    const lbl = $('lcChLbl'), val = $('lcChVal'), guide = $('lcGuide'), dot = $('lcDot'), hint = $('lcChHint');
+    const lbl = $('lcChLbl'), val = $('lcChVal'), guide = $('lcGuide'), hint = $('lcChHint');
     const base = { l: lbl.textContent, v: val.textContent, c: val.className };
+    const chipVals = [...document.querySelectorAll('#lcPlChart [data-lc-sv]')], dots = [];
+    const mk = (col) => { const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('r', 6); c.setAttribute('fill', col); c.setAttribute('stroke', 'var(--surface)'); c.setAttribute('stroke-width', 2.5); c.setAttribute('opacity', 0); svg.appendChild(c); return c; };
+    const dotFor = {}; chartSeries.forEach(sr => { if(!chartHidden.has(sr.key)) dotFor[sr.key] = mk(sr.col); });
     const show = (clientX) => {
       const r = svg.getBoundingClientRect(), px = (clientX - r.left) / r.width * vb.width;
       let best = 0, bd = 1e9; chartPts.forEach((p, i) => { const d = Math.abs(xs(i) - px); if(d < bd){ bd = d; best = i; } });
       const p = chartPts[best];
       guide.setAttribute('x1', xs(best)); guide.setAttribute('x2', xs(best)); guide.setAttribute('opacity', '1');
-      dot.setAttribute('cx', xs(best)); dot.setAttribute('cy', ys(p.v)); dot.setAttribute('opacity', '1');
+      Object.entries(dotFor).forEach(([k, d]) => { d.setAttribute('cx', xs(best)); d.setAttribute('cy', ys(k === 'Total' ? p.v : (p.t[k] || 0))); d.setAttribute('opacity', 1); });
+      chipVals.forEach(b => { const k = b.dataset.lcSv; b.textContent = signed(k === 'Total' ? p.v : (p.t[k] || 0)); });
       lbl.textContent = best ? `${p.label} · ${shortDate(p.date)} (${signed(p.d)})` : 'Start';
       val.textContent = signed(p.v); val.className = 'lc-ch-val ' + (p.v >= 0 ? 'pos' : 'neg'); if(hint) hint.style.opacity = 0;
     };
-    const reset = () => { guide.setAttribute('opacity', '0'); dot.setAttribute('opacity', '0'); lbl.textContent = base.l; val.textContent = base.v; val.className = base.c; if(hint) hint.style.opacity = 1; };
+    const reset = () => { guide.setAttribute('opacity', '0'); Object.values(dotFor).forEach(d => d.setAttribute('opacity', 0)); chipVals.forEach(b => { b.textContent = b.dataset.base; }); lbl.textContent = base.l; val.textContent = base.v; val.className = base.c; if(hint) hint.style.opacity = 1; };
     plot.addEventListener('pointerdown', (e) => { plot.setPointerCapture && plot.setPointerCapture(e.pointerId); show(e.clientX); });
     plot.addEventListener('pointermove', (e) => { if(e.pressure > 0 || e.pointerType === 'mouse') show(e.clientX); });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => plot.addEventListener(ev, reset));
   }
-
   const openDraws = new Set();
   function renderHome(){
     const root = $('homeLottoRoot'); if(!root) return;
@@ -610,7 +641,7 @@
         ${plChart(list) ? `<div class="lc-sec"><h3>Profit &amp; loss</h3><span>${list.length} draw${list.length === 1 ? '' : 's'}</span></div>${plChart(list)}` : ''}
         <div class="lc-sec"><h3>Draws</h3><span>${list.length}</span></div>
         <div id="lcHomeEntries" class="lc-home-entries">${drawCards}</div>
-        ${perRows ? `<div class="lc-sec"><h3>Each person</h3><span>winnings split by shares</span></div><div class="lc-people">${perRows}</div>` : ''}
+        ${perRows ? `<div class="lc-sec"><h3>Each person</h3><span>winnings split by shares</span></div><div class="lc-fold lc-fold-card${openFolds.has('people') ? ' open' : ''}"><button type="button" class="lc-fold-h" data-lc-fold="people" aria-expanded="${openFolds.has('people')}"><span>${Object.keys(t.per).length} members</span><svg class="lc-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button><div class="lc-fold-b"><div class="lc-people">${perRows}</div></div></div>` : ''}
       </div>`;
     try{ wireChart(); }catch(e){}
   }
