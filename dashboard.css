@@ -7660,3 +7660,23 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-ty-bar.pos{ left:50%; background:#22A35A; border-top-left-radius:0; border-bottom-left-radius:0; }
 .lc-ty-bar.neg{ right:50%; background:#E5484D; border-top-right-radius:0; border-bottom-right-radius:0; }
 .lc-ty-sub{ margin-top:6px; font-size:12px; color:var(--muted); }
+
+/* Lotto Pigs: one combined profit and loss card */
+.lc-chart{ padding:18px 16px 16px; border-radius:24px; background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0) 60%), var(--surface); }
+.lc-ch-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:8px; }
+.lc-ch-lbl{ font-size:11.5px; letter-spacing:.06em; text-transform:uppercase; }
+.lc-ch-val{ font-size:34px; margin-top:4px; }
+.lc-play{ flex:none; display:inline-flex; align-items:center; gap:6px; margin-top:2px; padding:5px 10px; border-radius:999px; font:700 11.5px 'Manrope', sans-serif; color:#e3c06a; background:rgba(201,162,74,.1); border:1px solid rgba(201,162,74,.3); white-space:nowrap; }
+.lc-play i{ width:6px; height:6px; border-radius:50%; background:#e3c06a; box-shadow:0 0 0 3px rgba(227,192,106,.2); }
+.lc-plot{ margin:0 -6px; }
+.lc-stats{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); margin-top:12px; padding-top:14px; border-top:1px solid rgba(255,255,255,.07); }
+.lc-stats div{ text-align:center; } .lc-stats div + div{ border-left:1px solid rgba(255,255,255,.07); }
+.lc-stats span{ display:block; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+.lc-stats b{ display:block; margin-top:5px; font:800 17px 'Manrope', sans-serif; color:var(--chalk); font-variant-numeric:tabular-nums; }
+.lc-stats small{ font-size:11px; font-weight:700; color:var(--muted); margin-left:2px; }
+.lc-types{ display:flex; flex-direction:column; gap:14px; margin-top:16px; padding:16px 0 0; border:0; border-top:1px solid rgba(255,255,255,.07); border-radius:0; background:none; }
+.lc-types-t{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+.lc-ty-track{ height:8px; background:rgba(255,255,255,.06); }
+.lc-ty-bar{ border-radius:4px; }
+.lc-ty-bar.pos{ background:linear-gradient(90deg, #1c8a4b, #2fbf72); } .lc-ty-bar.neg{ background:linear-gradient(270deg, #c93a40, #ef5b5f); }
+.lc-ty-n{ font-size:14.5px; }

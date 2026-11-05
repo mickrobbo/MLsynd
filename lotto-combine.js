@@ -478,35 +478,60 @@
   const shortDate = (d) => { try{ return new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); }catch(e){ return d || ''; } };
   const axisMoney = (v) => { const a = Math.abs(v), t = a >= 1e6 ? (a / 1e6).toFixed(1).replace(/\.0$/, '') + 'M' : a >= 1e4 ? Math.round(a / 1e3) + 'k' : String(Math.round(a)); return (v < 0 ? '−' : '') + '$' + t; };
   let chartPts = [];
-  function plChart(list){
-    const settled = list.filter(e => !norm(e).pend).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
-    if(!settled.length) return '';
-    let run = 0; chartPts = [{ label: 'Start', date: '', v: 0 }];
-    settled.forEach(e => { const n = norm(e); run += n.won - n.cost; chartPts.push({ label: e.label || 'Lotto draw', date: e.date, v: Math.round(run * 100) / 100, d: n.won - n.cost }); });
-    const W = 340, H = 168, L = 46, R = 14, T = 12, B = 24;
+  function smoothPath(pts){ // monotone cubic, so the line never overshoots a draw
+    const n = pts.length; if(n < 3) return pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    const dx = [], m = [], t = [];
+    for(let i = 0; i < n - 1; i++){ dx[i] = pts[i + 1][0] - pts[i][0]; m[i] = (pts[i + 1][1] - pts[i][1]) / dx[i]; }
+    t[0] = m[0]; t[n - 1] = m[n - 2];
+    for(let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+    for(let i = 0; i < n - 1; i++){ if(m[i] === 0){ t[i] = 0; t[i + 1] = 0; continue; } const a = t[i] / m[i], b = t[i + 1] / m[i], h = Math.hypot(a, b); if(h > 3){ t[i] = 3 * a / h * m[i]; t[i + 1] = 3 * b / h * m[i]; } }
+    let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+    for(let i = 0; i < n - 1; i++){ const h = dx[i] / 3; d += ` C${(pts[i][0] + h).toFixed(1)} ${(pts[i][1] + t[i] * h).toFixed(1)} ${(pts[i + 1][0] - h).toFixed(1)} ${(pts[i + 1][1] - t[i + 1] * h).toFixed(1)} ${pts[i + 1][0].toFixed(1)} ${pts[i + 1][1].toFixed(1)}`; }
+    return d;
+  }
+  const CH = { W: 340, H: 176, L: 44, R: 16, T: 14, B: 24 };
+  function chartScale(){
     let lo = Math.min(0, ...chartPts.map(p => p.v)), hi = Math.max(0, ...chartPts.map(p => p.v));
     if(hi === lo){ hi += 1; lo -= 1; }
-    const pad = (hi - lo) * 0.1; if(hi > 0) hi += pad; if(lo < 0) lo -= pad;
-    const x = (i) => L + (chartPts.length === 1 ? 0 : i * (W - L - R) / (chartPts.length - 1)), y = (v) => T + (hi - v) / (hi - lo) * (H - T - B);
-    const last = chartPts[chartPts.length - 1], col = last.v >= 0 ? '#7FE3A2' : '#FF8A80';
-    const line = chartPts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p.v).toFixed(1)}`).join(' ');
-    const area = `${line} L${x(chartPts.length - 1).toFixed(1)} ${y(0).toFixed(1)} L${x(0).toFixed(1)} ${y(0).toFixed(1)} Z`;
+    const pad = (hi - lo) * 0.12; if(hi > 0) hi += pad; if(lo < 0) lo -= pad;
+    return { hi, lo, x: (i) => CH.L + (chartPts.length === 1 ? 0 : i * (CH.W - CH.L - CH.R) / (chartPts.length - 1)), y: (v) => CH.T + (hi - v) / (hi - lo) * (CH.H - CH.T - CH.B) };
+  }
+  function plChart(list){
+    const settled = list.filter(e => !norm(e).pend).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.createdAt || 0) - (b.createdAt || 0));
+    const pending = list.filter(e => norm(e).pend), inPlay = pending.reduce((x, e) => x + norm(e).cost, 0);
+    if(!settled.length) return '';
+    let run = 0, spent = 0, won = 0; chartPts = [{ label: 'Start', date: '', v: 0 }];
+    settled.forEach(e => { const n = norm(e); run += n.won - n.cost; spent += n.cost; won += n.won; chartPts.push({ label: e.label || 'Lotto draw', date: e.date, v: Math.round(run * 100) / 100, d: n.won - n.cost }); });
+    const { hi, lo, x, y } = chartScale(), { W, H, L, R, T, B } = CH;
+    const last = chartPts[chartPts.length - 1], col = last.v >= 0 ? '#7FE3A2' : '#FF8A80', pos = last.v >= 0;
+    const xy = chartPts.map((p, i) => [x(i), y(p.v)]), line = smoothPath(xy);
+    const area = `${line} L${xy[xy.length - 1][0].toFixed(1)} ${y(0).toFixed(1)} L${xy[0][0].toFixed(1)} ${y(0).toFixed(1)} Z`;
     const ticks = [hi, 0, lo].filter((v, i, a) => a.indexOf(v) === i);
-    const first = settled[0];
     return `<div class="lc-chart" id="lcPlChart">
-      <div class="lc-ch-head"><div class="lc-ch-read"><span class="lc-ch-lbl" id="lcChLbl">Group profit / loss, settled draws</span><b class="lc-ch-val ${last.v >= 0 ? 'pos' : 'neg'}" id="lcChVal">${signed(last.v)}</b></div></div>
+      <div class="lc-ch-head">
+        <div class="lc-ch-read"><span class="lc-ch-lbl" id="lcChLbl">Group profit / loss</span><b class="lc-ch-val ${pos ? 'pos' : 'neg'}" id="lcChVal">${signed(last.v)}</b></div>
+        ${inPlay > 0 ? `<span class="lc-play"><i></i>${money(inPlay)} in play</span>` : ''}
+      </div>
       <div class="lc-plot" id="lcPlot"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Running profit and loss across ${settled.length} settled draws, now ${signed(last.v)}">
-        <defs><linearGradient id="lcAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+        <defs>
+          <linearGradient id="lcAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity="${pos ? .32 : .02}"/><stop offset="1" stop-color="${col}" stop-opacity="${pos ? .02 : .32}"/></linearGradient>
+          <filter id="lcGlow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="3.5"/></filter>
+        </defs>
         ${ticks.map(v => `<line class="${v === 0 ? 'lc-zero' : 'lc-grid'}" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="lc-ylab" x="${L - 8}" y="${(y(v) + 3.5).toFixed(1)}" text-anchor="end">${axisMoney(v)}</text>`).join('')}
         <path d="${area}" fill="url(#lcAreaG)"/>
+        <path d="${line}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" opacity=".35" filter="url(#lcGlow)"/>
         <path d="${line}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
         <line class="lc-guide" id="lcGuide" x1="0" x2="0" y1="${T}" y2="${H - B}" opacity="0"/>
-        ${chartPts.map((p, i) => i ? `<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="4" fill="${col}" stroke="var(--surface)" stroke-width="2"/>` : '').join('')}
+        ${xy.map((p, i) => i && i < xy.length - 1 ? `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="var(--surface)" stroke="${col}" stroke-width="2"/>` : '').join('')}
+        <circle cx="${xy[xy.length - 1][0].toFixed(1)}" cy="${xy[xy.length - 1][1].toFixed(1)}" r="9" fill="${col}" opacity=".18"/>
+        <circle cx="${xy[xy.length - 1][0].toFixed(1)}" cy="${xy[xy.length - 1][1].toFixed(1)}" r="4.5" fill="${col}" stroke="var(--surface)" stroke-width="2"/>
         <circle id="lcDot" r="6" cx="0" cy="0" fill="${col}" stroke="var(--surface)" stroke-width="2.5" opacity="0"/>
-        <text class="lc-xlab" x="${L}" y="${H - 6}" text-anchor="start">${esc(shortDate(first.date))}</text>
+        <text class="lc-xlab" x="${L}" y="${H - 6}" text-anchor="start">${esc(shortDate(settled[0].date))}</text>
         ${chartPts.length > 2 ? `<text class="lc-xlab" x="${W - R}" y="${H - 6}" text-anchor="end">${esc(shortDate(settled[settled.length - 1].date))}</text>` : ''}
       </svg></div>
       <div class="lc-ch-hint" id="lcChHint">Touch the chart to see each draw</div>
+      <div class="lc-stats"><div><span>Spent</span><b>${money(spent)}</b></div><div><span>Won</span><b>${money(won)}</b></div><div><span>Draws</span><b>${settled.length}${pending.length ? `<small> +${pending.length} open</small>` : ''}</b></div></div>
+      ${typeBars(list)}
     </div>`;
   }
   function typeBars(list){
@@ -515,17 +540,14 @@
     const rows = Object.entries(by).map(([t, r]) => ({ t, ...r, net: r.won - r.spent })).sort((a, b) => b.net - a.net);
     if(!rows.length) return '';
     const max = Math.max(...rows.map(r => Math.abs(r.net)), 1);
-    return `<div class="lc-types">${rows.map(r => { const w = Math.max(r.net === 0 ? 0 : 3, Math.abs(r.net) / max * 100);
+    return `<div class="lc-types"><div class="lc-types-t">By ticket type</div>${rows.map(r => { const w = Math.max(r.net === 0 ? 0 : 3, Math.abs(r.net) / max * 100);
       return `<div class="lc-ty"><div class="lc-ty-top"><span class="lc-ty-n">${esc(r.t)}</span><b class="${r.net >= 0 ? 'pos' : 'neg'}">${signed(r.net)}</b></div>
         <div class="lc-ty-track"><i class="lc-ty-mid"></i>${r.net ? `<i class="lc-ty-bar ${r.net >= 0 ? 'pos' : 'neg'}" style="width:${(w / 2).toFixed(1)}%"></i>` : ''}</div>
         <div class="lc-ty-sub">${r.draws} draw${r.draws === 1 ? '' : 's'} · in ${money(r.spent)} · back ${money(r.won)}</div></div>`; }).join('')}</div>`;
   }
   function wireChart(){
     const plot = $('lcPlot'); if(!plot || chartPts.length < 2) return;
-    const svg = plot.querySelector('svg'), vb = svg.viewBox.baseVal, L = 46, R = 14, T = 12, B = 24;
-    const lo0 = Math.min(0, ...chartPts.map(p => p.v)), hi0 = Math.max(0, ...chartPts.map(p => p.v));
-    let hi = hi0 === lo0 ? hi0 + 1 : hi0, lo = hi0 === lo0 ? lo0 - 1 : lo0; const pad = (hi - lo) * 0.1; if(hi > 0) hi += pad; if(lo < 0) lo -= pad;
-    const xs = (i) => L + i * (vb.width - L - R) / (chartPts.length - 1), ys = (v) => T + (hi - v) / (hi - lo) * (vb.height - T - B);
+    const svg = plot.querySelector('svg'), vb = svg.viewBox.baseVal, { x: xs, y: ys } = chartScale();
     const lbl = $('lcChLbl'), val = $('lcChVal'), guide = $('lcGuide'), dot = $('lcDot'), hint = $('lcChHint');
     const base = { l: lbl.textContent, v: val.textContent, c: val.className };
     const show = (clientX) => {
@@ -585,13 +607,7 @@
             <b class="lc-me-v">${signed(netMe)}</b>
             <div class="lc-me-row"><div><span>You put in</span><b>${money(mine.spent)}</b></div><div><span>Your share back</span><b>${money(mine.won)}</b></div><div><span>Your shares</span><b>${mine.shares}</b></div></div>
           </div>` : (me && list.length ? '<div class="lc-empty">You haven\'t bought into a draw yet.</div>' : '')}
-        ${list.length ? `<div class="lc-sec"><h3>Whole group</h3>${t.pending ? `<span>${t.pending} awaiting result</span>` : ''}</div><div class="lc-grp">
-          <div><span>Spent</span><b>${money(t.spent)}</b></div>
-          <div><span>Won</span><b>${money(t.won)}</b></div>
-          <div class="${t.net >= 0 ? 'pos' : 'neg'}"><span>Net</span><b>${signed(t.net)}</b></div>
-          <div><span>Draws</span><b>${t.draws}</b></div></div>` : ''}
-        ${plChart(list) ? `<div class="lc-sec"><h3>Profit &amp; loss</h3><span>over time</span></div>${plChart(list)}` : ''}
-        ${typeBars(list) ? `<div class="lc-sec"><h3>By ticket type</h3><span>net result</span></div>${typeBars(list)}` : ''}
+        ${plChart(list) ? `<div class="lc-sec"><h3>Profit &amp; loss</h3><span>${list.length} draw${list.length === 1 ? '' : 's'}</span></div>${plChart(list)}` : ''}
         <div class="lc-sec"><h3>Draws</h3><span>${list.length}</span></div>
         <div id="lcHomeEntries" class="lc-home-entries">${drawCards}</div>
         ${perRows ? `<div class="lc-sec"><h3>Each person</h3><span>winnings split by shares</span></div><div class="lc-people">${perRows}</div>` : ''}
