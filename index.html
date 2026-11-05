@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=240">
+<link rel="stylesheet" href="dashboard.css?v=241">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -244,13 +244,14 @@
 
     <div id="homeSubview-diag" class="home-subview" style="display:none;">
 
-    <div class="admin-submode-grid adm-tabs6" id="diagSubmodeRow">
+    <div class="admin-submode-grid adm-tabs6 adm-tabs7" id="diagSubmodeRow">
       <button type="button" class="admin-submode-btn active" data-submode="entry"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></span><span class="admin-submode-label">Week</span></button>
       <button type="button" class="admin-submode-btn" data-submode="money"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 9.5v5M17.5 9.5v5"/></svg></span><span class="admin-submode-label">Money</span></button>
       <button type="button" class="admin-submode-btn" data-submode="tipping"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)"/><path d="M9.2 14.8l5.6-5.6M10.4 11.6l2 2M11.9 10.1l2 2"/></svg></span><span class="admin-submode-label">Tipping</span></button>
       <button type="button" class="admin-submode-btn" data-submode="squad" style="position:relative;"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.5 5.6a3 3 0 0 1 0 5.8M17.5 13.9c1.9.6 3.1 2.4 3.5 5.1"/></svg></span><span class="admin-submode-label">People</span><span class="admin-submode-badge" id="adminAccessBadge" style="display:none;"></span></button>
       <button type="button" class="admin-submode-btn" data-submode="pulse"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg></span><span class="admin-submode-label">Insights</span></button>
       <button type="button" class="admin-submode-btn" data-submode="repair"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5a4 4 0 0 0-5 5L4 16l4 4 5.5-5.5a4 4 0 0 0 5-5l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6z"/></svg></span><span class="admin-submode-label">Tools</span></button>
+      <button type="button" class="admin-submode-btn" data-submode="lotto"><span class="admin-submode-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M8 10h.01M8 14h.01M12.5 10h4M12.5 14h4"/></svg></span><span class="admin-submode-label">Lotto</span></button>
     </div>
 
     <div class="diag-submode active" data-submode-panel="entry">
@@ -613,6 +614,9 @@
       <button type="button" id="testPushBtn">Send test notification</button>
       <div class="status-msg" id="testPushStatus"></div>
     </div>
+    </div>
+    <div class="diag-submode" data-submode-panel="lotto">
+      <div id="lottoRoot"></div>
     </div>
     <div class="diag-submode" data-submode-panel="repair">
     <div class="panel">
@@ -4032,7 +4036,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-04.240"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-05.241"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -25377,6 +25381,7 @@ initAuthGate();
 <script src="app-premium.js?v=222"></script>
 <script src="app-a11y.js?v=227"></script>
 <script src="slip-scan.js?v=227"></script>
+<script src="lotto-combine.js?v=241"></script>
 <script src="admin-ops.js?v=222"></script>
 <script src="casino-showcase.js?v=223"></script>
 <script src="pick-stats.js?v=216"></script>

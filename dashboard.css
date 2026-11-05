@@ -7385,3 +7385,30 @@ body.tip-free [data-tip-prize]{ display:none !important; }
   .weekly-reminder-check-row{ display:flex; justify-content:flex-start; }
   a.slip-open{ padding-block:8px; }
 }
+
+/* Admin tab bar with a seventh tab (Lotto) */
+#diagSubmodeRow.adm-tabs7{ grid-template-columns:repeat(7, minmax(0,1fr)); gap:2px; }
+#diagSubmodeRow.adm-tabs7 .admin-submode-label{ font-size:10px; letter-spacing:-.01em; }
+/* Lotto: members + ticket combiner */
+.lc-field{ display:flex; flex-direction:column; gap:4px; margin-top:10px; font-size:12px; color:var(--muted); }
+.lc-field input, .lc-field select{ min-height:40px; }
+.lc-count{ font-size:12px; color:var(--muted); margin-top:10px; }
+.lc-chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.lc-chip{ min-height:40px; padding:0 14px; border-radius:999px; border:1px solid var(--line); background:var(--surface); color:var(--chalk); font:600 14px 'Manrope', sans-serif; cursor:pointer; }
+.lc-chip.on{ background:var(--accent); color:var(--accent-ink, #0B0C0B); border-color:transparent; }
+.lc-actions{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.lc-actions .lc-count{ margin:0; flex:1; }
+.lc-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:10px; margin-top:12px; }
+.lc-item{ position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--line); background:var(--surface); }
+.lc-item img{ display:block; width:100%; aspect-ratio:3/4; object-fit:cover; object-position:top; }
+.lc-item-n{ position:absolute; top:6px; left:6px; min-width:22px; height:22px; border-radius:11px; background:rgba(0,0,0,.65); color:var(--chalk); font:700 12px 'Manrope', sans-serif; display:flex; align-items:center; justify-content:center; }
+.lc-item-btns{ display:flex; }
+.lc-item-btns button{ flex:1 1 0; min-width:0; padding:0; min-height:40px; border:0; border-top:1px solid var(--line); background:transparent; color:var(--chalk); font-size:16px; cursor:pointer; }
+.lc-item-btns button + button{ border-left:1px solid var(--line); }
+.lc-item-btns button:disabled{ opacity:.3; }
+.lc-opts{ display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+.lc-opts .lc-field:first-child{ grid-column:1 / -1; }
+.lc-check{ display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:var(--chalk); grid-column:1 / -1; min-height:40px; }
+.lc-check input{ width:20px; height:20px; accent-color:var(--brass); }
+.lc-preview{ margin-top:14px; border-radius:14px; overflow:hidden; border:1px solid var(--line); background:#0d100d; }
+.lc-preview canvas{ display:block; width:100%; height:auto; }

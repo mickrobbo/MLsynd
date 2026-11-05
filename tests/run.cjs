@@ -192,6 +192,24 @@ test('One tap removes the extra copy of a week saved twice and recalculates', as
   assert.match(await text(page, '#adminBooksOut'), /match the saved weeks|All totals match/);
 });
 
+test('Lotto tab: pick group members, combine several ticket screenshots into one downloadable picture', async ({ page, db }) => {
+  const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
+  await goAdmin(page, 'lotto');
+  await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.click('#lcMembers [data-lc-member]:nth-child(3)'); await page.waitForTimeout(1500);
+  assert.equal(db.state.lottoGroup.members.length, 2, 'group members should be saved');
+  const files = [];
+  for(const [i, c] of ['#c33', '#3c3', '#33c'].entries()) files.push({ name: `t${i}.png`, mimeType: 'image/png', buffer: Buffer.from(await png(600, 1200 + i * 200, c), 'base64') });
+  await page.setInputFiles('#lcFile', files); await page.waitForTimeout(1200);
+  assert.equal(await page.locator('#lcList .lc-item').count(), 3);
+  const dim = await page.evaluate(() => ({ w: lcCanvas.width, h: lcCanvas.height }));
+  assert.ok(dim.w > 900 && dim.h > 900, JSON.stringify(dim));
+  await page.click('#lcList [data-lc-id] [data-lc-act="down"]'); await page.click('#lcList [data-lc-id]:last-child [data-lc-act="rm"]');
+  assert.equal(await page.locator('#lcList .lc-item').count(), 2);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#lcDownload')]);
+  assert.match(dl.suggestedFilename(), /^lotto-tickets-\d{4}-\d{2}-\d{2}\.(png|jpg)$/);
+  assert.equal(await page.evaluate(() => [...document.querySelectorAll('.lc-item-btns button')].every(b => b.getBoundingClientRect().right <= b.closest('.lc-item').getBoundingClientRect().right + 1)), true, 'remove button must fit in its tile');
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');
