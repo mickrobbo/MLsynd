@@ -7467,3 +7467,36 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-hero{ display:flex; justify-content:center; margin:2px 0 4px; }
 .lc-hero img{ width:168px; height:168px; object-fit:contain; filter:drop-shadow(0 6px 18px rgba(201,162,74,.28)); }
 .lc-hero-title{ text-align:center; color:#e3c06a; }
+
+/* Lotto Pigs Home polish */
+.lc-me{ margin-top:12px; padding:16px 14px 12px; border-radius:18px; text-align:center; background:linear-gradient(180deg, rgba(201,162,74,.14), rgba(201,162,74,.04)); border:1px solid rgba(201,162,74,.4); }
+.lc-me-k{ display:block; font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.lc-me-v{ display:block; font:800 38px/1.1 'Manrope', sans-serif; margin:4px 0 12px; white-space:nowrap; }
+.lc-me.pos .lc-me-v{ color:var(--win); } .lc-me.neg .lc-me-v{ color:var(--loss); }
+.lc-me-row{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; padding-top:10px; border-top:1px solid var(--line); }
+.lc-me-row span{ display:block; font-size:11px; color:var(--muted); }
+.lc-me-row b{ display:block; font:800 15px 'Manrope', sans-serif; margin-top:2px; white-space:nowrap; color:var(--chalk); }
+.lc-grp{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px; }
+.lc-grp div{ padding:10px 12px; border-radius:12px; background:var(--surface); border:1px solid var(--line); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.lc-grp span{ font-size:12px; color:var(--muted); }
+.lc-grp b{ font:800 15px 'Manrope', sans-serif; white-space:nowrap; color:var(--chalk); }
+.lc-grp .pos b{ color:var(--win); } .lc-grp .neg b{ color:var(--loss); }
+.lc-who{ margin-top:14px; font-size:12.5px; color:var(--muted); line-height:1.6; }
+.lc-who b{ color:#e3c06a; }
+.lc-pp{ padding:10px 0; border-bottom:1px solid var(--line); }
+.lc-pp-top{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.lc-pp-top span{ font-weight:700; font-size:14px; color:var(--chalk); } .lc-pp-top b{ font:800 15px 'Manrope', sans-serif; white-space:nowrap; }
+.lc-pp-sub{ margin-top:2px; font-size:12px; color:var(--muted); }
+.lc-pp.me .lc-pp-top span{ color:#e3c06a; }
+.lc-home .lc-hero img{ width:132px; height:132px; }
+.lc-home .lc-hero-title{ margin:0; font-size:22px; }
+.lc-home .hint{ text-align:center; }
+.lc-summary{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+.lc-sum b{ white-space:nowrap; overflow-wrap:normal; }
+.lc-home .lc-hero-title{ text-align:center; margin:2px 0 4px; }
+.lc-hero{ position:relative; margin:-6px 0 0; }
+.lc-hero::before{ content:''; position:absolute; inset:8% 14%; background:radial-gradient(closest-side, rgba(201,162,74,.28), rgba(201,162,74,0) 72%); filter:blur(8px); }
+.lc-hero img{ position:relative; width:190px; height:190px; mix-blend-mode:screen; filter:none;
+  -webkit-mask-image:radial-gradient(closest-side, #000 82%, transparent 100%); mask-image:radial-gradient(closest-side, #000 82%, transparent 100%); }
+.lc-home .lc-hero img{ width:190px; height:190px; }
+.lc-home .lc-hero-title{ margin-top:-14px; position:relative; }

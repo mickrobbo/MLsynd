@@ -369,15 +369,18 @@
         <div class="lc-hero"><img src="lotto-pigs-emblem.webp" alt="Lotto Pigs" width="168" height="168" decoding="async"></div>
         <h2 class="lc-hero-title">${esc(g.name || 'Lotto Pigs')}</h2>
         <div class="hint">Your lotto group's results. This is separate from the syndicate's money.</div>
-        <div class="lc-chips lc-chips-static">${g.members.map(n => `<span class="lc-chip${n === me ? ' on' : ''}">${esc(n)}${n === me ? ' (you)' : ''}</span>`).join('')}</div>
-        ${list.length ? `<div class="lc-summary">
-          <div class="lc-sum"><span>Spent</span><b>${money(t.spent)}</b></div>
-          <div class="lc-sum"><span>Won</span><b>${money(t.won)}</b></div>
-          <div class="lc-sum ${t.net >= 0 ? 'pos' : 'neg'}"><span>Net</span><b>${signed(t.net)}</b></div>
-          <div class="lc-sum"><span>Draws</span><b>${t.draws}</b></div></div>` : ''}
+        ${mine ? `<div class="lc-me ${mine.won - mine.spent >= 0 ? 'pos' : 'neg'}">
+            <span class="lc-me-k">Your net</span>
+            <b class="lc-me-v">${signed(mine.won - mine.spent)}</b>
+            <div class="lc-me-row"><div><span>You put in</span><b>${money(mine.spent)}</b></div><div><span>Your share back</span><b>${money(mine.won)}</b></div><div><span>Your shares</span><b>${mine.shares}</b></div></div>
+          </div>` : (me && list.length ? '<div class="hint">You haven\'t bought into a draw yet.</div>' : '')}
+        ${list.length ? `<h3 class="lc-h3">Whole group</h3><div class="lc-grp">
+          <div><span>Spent</span><b>${money(t.spent)}</b></div>
+          <div><span>Won</span><b>${money(t.won)}</b></div>
+          <div class="${t.net >= 0 ? 'pos' : 'neg'}"><span>Net</span><b>${signed(t.net)}</b></div>
+          <div><span>Draws</span><b>${t.draws}</b></div></div>` : ''}
         ${t.pending ? `<div class="hint">${t.pending} draw${t.pending === 1 ? ' is' : 's are'} still awaiting a result.</div>` : ''}
-        ${mine ? `<h3 class="lc-h3">Your position</h3><div class="lc-mine"><div><span>You put in</span><b>${money(mine.spent)}</b></div><div><span>Your share back</span><b>${money(mine.won)}</b></div><div class="${mine.won - mine.spent >= 0 ? 'pos' : 'neg'}"><span>Your net</span><b>${signed(mine.won - mine.spent)}</b></div></div>
-          <div class="hint">${mine.shares} share${mine.shares === 1 ? '' : 's'} across ${mine.draws} draw${mine.draws === 1 ? '' : 's'}.</div>` : (me && list.length ? '<div class="hint">You haven\'t bought into a draw yet.</div>' : '')}
+        <div class="lc-who">In the group: ${g.members.map(n => n === me ? '<b>' + esc(n) + ' (you)</b>' : esc(n)).join(' · ')}</div>
         <h3 class="lc-h3">Draws</h3>
         <div id="lcHomeEntries" class="lc-home-entries">${list.length ? list.map(e => {
           const n = norm(e), yours = me && n.shares[me];
@@ -387,7 +390,7 @@
             <div class="lc-entry-nums"><span>Cost ${money(n.cost)}</span><span>${n.pend ? 'Awaiting result' : 'Won ' + money(n.won)}</span><b class="${n.pend ? '' : (n.won - n.cost >= 0 ? 'pos' : 'neg')}">${n.pend ? '–' : signed(n.won - n.cost)}</b></div>
             ${yours ? `<div class="lc-entry-who">You: ${yours} share${yours === 1 ? '' : 's'}${n.pend ? '' : ' · ' + signed(n.won * yours / n.total - n.cost * yours / n.total)}</div>` : ''}
           </div>`; }).join('') : '<div class="empty">No draws yet.</div>'}</div>
-        ${Object.keys(t.per).length ? `<h3 class="lc-h3">Per person (winnings split by shares)</h3>` + Object.entries(t.per).map(([n, r]) => { const net = r.won - r.spent; return `<div class="lc-pm"><span>${esc(n)}${n === me ? ' (you)' : ''}</span><span>in ${money(r.spent)}</span><span>back ${money(r.won)}</span><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div>`; }).join('') : ''}
+        ${Object.keys(t.per).length ? `<h3 class="lc-h3">Per person (winnings split by shares)</h3>` + Object.entries(t.per).map(([n, r]) => { const net = r.won - r.spent; return `<div class="lc-pp${n === me ? ' me' : ''}"><div class="lc-pp-top"><span>${esc(n)}${n === me ? ' (you)' : ''}</span><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div><div class="lc-pp-sub">In ${money(r.spent)} · back ${money(r.won)}</div></div>`; }).join('') : ''}
       </div>`;
   }
   // The round pig button in the header, next to Syndy: only for people ticked in the group.
