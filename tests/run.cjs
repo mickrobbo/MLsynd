@@ -333,6 +333,12 @@ test('Lotto Pigs: winnings from one draw roll into the next ticket and members t
   const txt = await text(page, '#homeSubview-lotto');
   assert.match(txt, /Winnings from Oz Lotto/); assert.match(txt, /−\$15\.05/); assert.match(txt, /Top-up · 7 × \$9\.08\s*\$63\.55/);
   assert.match(txt, /rolled into Powerball/);
+  assert.ok(await page.locator('#lcPlChart svg path').count() >= 2, 'profit and loss chart is drawn');
+  await page.locator('#lcPlot').scrollIntoViewIfNeeded(); await page.evaluate(() => { document.querySelectorAll('.bottom-nav,#bottomNav,[class*=tabbar]').forEach(e => { e.style.pointerEvents = 'none'; }); });
+  const box = await page.locator('#lcPlot').boundingBox();
+  await page.mouse.move(box.x + box.width * 0.95, box.y + box.height / 2); await page.mouse.down();
+  assert.match(await text(page, '#lcChLbl'), /Oz Lotto/); await page.mouse.up();
+  assert.match(await text(page, '#homeSubview-lotto .lc-types'), /Oz Lotto -\$2\.45 1 draw/);
   assert.match(txt, /You pay \$9\.08/);
 }, { db: (db) => { const sh = { Brad: 1, Dean: 2, Josh: 2, Zak: 2, Murph: 2, Trasky: 2, Damon: 2 }; db.lottoPigs = { group: { name: 'Lotto Pigs', members: Object.keys(sh), uids: { u5: true } }, ledger: {
   a: { date: '2026-11-03', label: 'Oz Lotto', price: 1.35, shares: sh, cost: 17.5, won: 15.05, costMode: 'total', createdAt: 1 },

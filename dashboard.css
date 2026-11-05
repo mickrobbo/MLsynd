@@ -7634,3 +7634,29 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-roll-r.tot{ margin-top:0; padding-top:10px; }
 .lc-roll-r.tot b{ color:#e3c06a; font-size:15px; }
 .lc-dr-who{ margin-top:12px; }
+
+/* Lotto Pigs: charts (same look as the season chart on Overview) */
+.lc-chart{ padding:16px 14px 12px; border-radius:22px; background:var(--surface); border:1px solid rgba(255,255,255,.05); }
+.lc-ch-head{ margin-bottom:6px; padding:0 2px; }
+.lc-ch-lbl{ display:block; font-size:12px; font-weight:700; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lc-ch-val{ display:block; margin-top:2px; font:800 30px/1.1 'Manrope', sans-serif; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+.lc-ch-val.pos{ color:#7FE3A2; } .lc-ch-val.neg{ color:#FF8A80; }
+.lc-plot{ position:relative; margin:0 -4px; cursor:crosshair; touch-action:pan-y; user-select:none; -webkit-user-select:none; }
+.lc-plot svg{ display:block; width:100%; height:auto; overflow:visible; }
+.lc-plot svg *{ pointer-events:none; }
+.lc-grid{ stroke:rgba(255,255,255,.07); stroke-width:1; stroke-dasharray:3 4; }
+.lc-zero{ stroke:rgba(255,255,255,.22); stroke-width:1; }
+.lc-ylab, .lc-xlab{ fill:var(--muted); font:700 10.5px 'Manrope', sans-serif; }
+.lc-guide{ stroke:rgba(255,255,255,.45); stroke-width:1.25; stroke-dasharray:3 3; }
+.lc-ch-hint{ margin-top:4px; text-align:center; font-size:11.5px; color:var(--muted); transition:opacity .2s; }
+.lc-types{ display:flex; flex-direction:column; gap:14px; padding:16px 16px 14px; border-radius:22px; background:var(--surface); border:1px solid rgba(255,255,255,.05); }
+.lc-ty-top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.lc-ty-n{ font:700 15px 'Manrope', sans-serif; color:var(--chalk); }
+.lc-ty-top b{ font:800 15px 'Manrope', sans-serif; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.lc-ty-top b.pos{ color:#7FE3A2; } .lc-ty-top b.neg{ color:#FF8A80; }
+.lc-ty-track{ position:relative; height:10px; margin-top:8px; border-radius:6px; background:rgba(255,255,255,.05); }
+.lc-ty-mid{ position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:rgba(255,255,255,.28); }
+.lc-ty-bar{ position:absolute; top:0; bottom:0; border-radius:5px; }
+.lc-ty-bar.pos{ left:50%; background:#22A35A; border-top-left-radius:0; border-bottom-left-radius:0; }
+.lc-ty-bar.neg{ right:50%; background:#E5484D; border-top-right-radius:0; border-bottom-right-radius:0; }
+.lc-ty-sub{ margin-top:6px; font-size:12px; color:var(--muted); }
