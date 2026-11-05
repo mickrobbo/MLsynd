@@ -197,6 +197,9 @@ test('Lotto tab: pick group members, combine several ticket screenshots into one
   await goAdmin(page, 'lotto');
   await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.click('#lcMembers [data-lc-member]:nth-child(3)'); await page.waitForTimeout(1500);
   assert.equal(db.state.lottoGroup.members.length, 2, 'group members should be saved');
+  await page.fill('#lcExtraName', 'Uncle Ray'); await page.click('#lcExtraAdd'); await page.waitForTimeout(1200);
+  assert.ok(db.state.lottoGroup.members.includes('Uncle Ray'), 'an outside person can be added');
+  assert.ok((await text(page, '#lcMembers')).includes('Uncle Ray'));
   const files = [];
   for(const [i, c] of ['#c33', '#3c3', '#33c'].entries()) files.push({ name: `t${i}.png`, mimeType: 'image/png', buffer: Buffer.from(await png(600, 1200 + i * 200, c), 'base64') });
   await page.setInputFiles('#lcFile', files); await page.waitForTimeout(1200);

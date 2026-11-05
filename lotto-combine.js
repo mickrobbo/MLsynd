@@ -37,7 +37,8 @@
   }
   function renderMembers(){
     const wrap = $('lcMembers'); if(!wrap) return;
-    const g = group(), names = allNames();
+    const g = group(), plat = allNames();
+    const names = plat.concat(g.members.filter(n => !plat.includes(n))); // plus Lotto Pigs people who aren't on the platform
     if(!names.length){ wrap.innerHTML = '<div class="empty">No members yet.</div>'; return; }
     wrap.innerHTML = names.map(n => `<button type="button" class="lc-chip${g.members.includes(n) ? ' on' : ''}" data-lc-member="${esc(n)}" aria-pressed="${g.members.includes(n)}">${g.members.includes(n) ? '✓ ' : ''}${esc(n)}</button>`).join('');
     const c = $('lcMemberCount'); if(c) c.textContent = g.members.length ? `${g.members.length} in` : 'Nobody picked yet';
@@ -181,6 +182,7 @@
         <label class="lc-field">Group name<input type="text" id="lcGroupName" placeholder="Lotto Pigs" maxlength="40" autocomplete="off"></label>
         <div class="lc-count" id="lcMemberCount"></div>
         <div class="lc-chips" id="lcMembers"></div>
+        <div class="lc-actions"><input type="text" id="lcExtraName" placeholder="Someone not on the platform" maxlength="30" autocomplete="off" style="flex:1; min-height:40px;"><button type="button" class="small" id="lcExtraAdd">Add</button></div>
         <div class="status-msg" id="lcGroupStatus"></div>
       </div>
       <div class="panel">
@@ -222,6 +224,15 @@
       renderMembers(); scheduleRender();
       await saveGroup(g);
     });
+    const addExtra = async () => {
+      const inp = $('lcExtraName'), n = inp.value.trim().replace(/\s+/g, ' '); if(!n) return;
+      const g = group(); inp.value = '';
+      if(!g.members.includes(n)) g.members.push(n);
+      st().lottoGroup = { name: g.name, members: g.members };
+      renderMembers(); scheduleRender(); await saveGroup(g);
+    };
+    $('lcExtraAdd').addEventListener('click', addExtra);
+    $('lcExtraName').addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); addExtra(); } });
     let nameTimer = null;
     $('lcGroupName').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(async () => { const g = group(); g.name = $('lcGroupName').value.trim(); st().lottoGroup = { name: g.name, members: g.members }; scheduleRender(); await saveGroup(g); }, 700); });
     renderMembers(); renderList();
