@@ -313,7 +313,7 @@ test('Lotto Pigs: only people ticked in the group get the header pig button and 
   if(pos.vis) assert.ok(pos.lr <= pos.sl, 'pig button sits left of Syndy: ' + JSON.stringify(pos));
   await page.click('#lottoHeaderBtn'); await page.waitForTimeout(800);
   const txt = await text(page, '#homeSubview-lotto');
-  assert.ok(txt.includes('Lotto Pigs') && txt.includes('(you)') && txt.includes('+$50') && txt.includes('Powerball'), txt);
+  assert.ok(txt.includes('Lotto Pigs') && /YOU/.test(txt) && txt.includes('+$50') && txt.includes('Powerball'), txt);
   assert.equal(await page.locator('#homeSubview-lotto button, #homeSubview-lotto input').count(), 0, 'members get a read-only view');
 }, { db: (db) => { db.lottoPigs = { group: { name: 'Lotto Pigs', members: ['Josh'], uids: { u5: true } }, ledger: { a: { date: '2026-11-01', label: 'Powerball', price: 25, shares: { Josh: 2 }, cost: 50, won: 100, createdAt: 1 } } }; } });
 
