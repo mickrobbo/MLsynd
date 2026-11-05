@@ -444,39 +444,43 @@
     const root = $('homeLottoRoot'); if(!root) return;
     const g = group(), list = entries(), t = totals(list), me = meName();
     const mine = me && t.per[me];
+    const netMe = mine ? mine.won - mine.spent : 0;
+    const perRows = Object.entries(t.per).map(([n, r]) => { const net = r.won - r.spent; return `<div class="lc-pp${n === me ? ' me' : ''}"><div class="lc-pp-l"><span class="lc-av">${esc(n.charAt(0))}</span><div><div class="lc-pp-name">${esc(n)}${n === me ? ' <em>you</em>' : ''}</div><div class="lc-pp-sub">${r.shares} share${r.shares === 1 ? '' : 's'} · in ${money(r.spent)} · back ${money(r.won)}</div></div></div><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div>`; }).join('');
+    const drawCards = list.length ? list.map(e => {
+      const n = norm(e), yours = me && n.shares[me], per = n.total ? 1 / n.total : 0;
+      const youLine = yours ? `<div class="lc-dr-you"><span>Your ${yours} share${yours === 1 ? '' : 's'}</span><span>Paid <b>${money(n.cost * per * yours)}</b></span>${n.pend ? (n.jackpot ? `<span>Top prize <b>${money(n.jackpot * per * yours)}</b></span>` : '') : `<span>Back <b>${money(n.won * per * yours)}</b></span>`}</div>` : '';
+      return `<div class="lc-draw">
+        <div class="lc-dr-head"><div><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))} · ${n.total} share${n.total === 1 ? '' : 's'} · ${Object.keys(n.shares).length} in</div></div>
+          <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span></div>
+        <div class="lc-dr-grid">
+          <div><span>Share value</span><b>${money(n.cost * per)}</b></div>
+          <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b>${n.pend ? (n.jackpot ? money(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
+          <div><span>Ticket cost</span><b>${money(n.cost)}</b></div>
+        </div>
+        ${youLine}
+        <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
+        ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg>View ticket</button>` : ''}
+      </div>`; }).join('') : '<div class="lc-empty">No draws yet. Your first one will show up here.</div>';
     root.innerHTML = `
-      <div class="panel lc-home">
-        <div class="lc-hero"><img src="lotto-pigs-emblem.webp" alt="Lotto Pigs" width="168" height="168" decoding="async"></div>
-        <h2 class="lc-hero-title">${esc(g.name || 'Lotto Pigs')}</h2>
-        <div class="hint">Your lotto group's results. This is separate from the syndicate's money.</div>
-        ${mine ? `<div class="lc-me ${mine.won - mine.spent >= 0 ? 'pos' : 'neg'}">
+      <div class="lc-home">
+        <div class="lc-top">
+          <div class="lc-hero"><img src="lotto-pigs-emblem.webp" alt="" width="190" height="190" decoding="async"></div>
+          <h2 class="lc-hero-title">${esc(g.name || 'Lotto Pigs')}</h2>
+          <div class="lc-tag">Your group's results · kept separate from the syndicate</div>
+        </div>
+        ${mine ? `<div class="lc-me ${netMe >= 0 ? 'pos' : 'neg'}">
             <span class="lc-me-k">Your net</span>
-            <b class="lc-me-v">${signed(mine.won - mine.spent)}</b>
+            <b class="lc-me-v">${signed(netMe)}</b>
             <div class="lc-me-row"><div><span>You put in</span><b>${money(mine.spent)}</b></div><div><span>Your share back</span><b>${money(mine.won)}</b></div><div><span>Your shares</span><b>${mine.shares}</b></div></div>
-          </div>` : (me && list.length ? '<div class="hint">You haven\'t bought into a draw yet.</div>' : '')}
-        ${list.length ? `<h3 class="lc-h3">Whole group</h3><div class="lc-grp">
+          </div>` : (me && list.length ? '<div class="lc-empty">You haven\'t bought into a draw yet.</div>' : '')}
+        ${list.length ? `<div class="lc-sec"><h3>Whole group</h3>${t.pending ? `<span>${t.pending} awaiting result</span>` : ''}</div><div class="lc-grp">
           <div><span>Spent</span><b>${money(t.spent)}</b></div>
           <div><span>Won</span><b>${money(t.won)}</b></div>
           <div class="${t.net >= 0 ? 'pos' : 'neg'}"><span>Net</span><b>${signed(t.net)}</b></div>
           <div><span>Draws</span><b>${t.draws}</b></div></div>` : ''}
-        ${t.pending ? `<div class="hint">${t.pending} draw${t.pending === 1 ? ' is' : 's are'} still awaiting a result.</div>` : ''}
-        <h3 class="lc-h3">Draws</h3>
-        <div id="lcHomeEntries" class="lc-home-entries">${list.length ? list.map(e => {
-          const n = norm(e), yours = me && n.shares[me], per = n.total ? 1 / n.total : 0;
-          const youLine = yours ? `<div class="lc-dr-you"><span>You hold <b>${yours}</b> share${yours === 1 ? '' : 's'}</span><span>Paid <b>${money(n.cost * per * yours)}</b></span>${n.pend ? (n.jackpot ? `<span>Top prize <b>${money(n.jackpot * per * yours)}</b></span>` : '') : `<span>Back <b>${money(n.won * per * yours)}</b></span>`}</div>` : '';
-          return `<div class="lc-draw">
-            <div class="lc-dr-head"><div><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))} · ${n.total} share${n.total === 1 ? '' : 's'} · ${Object.keys(n.shares).length} in</div></div>
-              <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span></div>
-            <div class="lc-dr-grid">
-              <div><span>Share value</span><b>${money(n.cost * per)}</b></div>
-              <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b>${n.pend ? (n.jackpot ? money(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
-              <div><span>Ticket cost</span><b>${money(n.cost)}</b></div>
-            </div>
-            ${youLine}
-            <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
-            ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}">View ticket</button>` : ''}
-          </div>`; }).join('') : '<div class="empty">No draws yet.</div>'}</div>
-        ${Object.keys(t.per).length ? `<h3 class="lc-h3">Per person (winnings split by shares)</h3>` + Object.entries(t.per).map(([n, r]) => { const net = r.won - r.spent; return `<div class="lc-pp${n === me ? ' me' : ''}"><div class="lc-pp-top"><span>${esc(n)}${n === me ? ' (you)' : ''}</span><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div><div class="lc-pp-sub">In ${money(r.spent)} · back ${money(r.won)}</div></div>`; }).join('') : ''}
+        <div class="lc-sec"><h3>Draws</h3><span>${list.length}</span></div>
+        <div id="lcHomeEntries" class="lc-home-entries">${drawCards}</div>
+        ${perRows ? `<div class="lc-sec"><h3>Each person</h3><span>winnings split by shares</span></div><div class="lc-people">${perRows}</div>` : ''}
       </div>`;
   }
   // The round pig button in the header, next to Syndy: only for people ticked in the group.
