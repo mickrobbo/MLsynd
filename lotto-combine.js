@@ -240,12 +240,24 @@
     const cost = e.shares ? (costMode === 'total' && Number(e.cost) > 0 ? Number(e.cost) : total * price) : (Number(e.cost) || 0);
     const covered = Math.min(cost, Math.max(0, Number(e.covered) || 0));
     const pend = e.won == null || e.won === '';
-    return { shares, total, price, cost, covered, costMode, pend, won: pend ? 0 : Number(e.won) || 0, jackpot: Number(e.jackpot) > 0 ? Number(e.jackpot) : 0, hasTicket: !!e.hasTicket };
+    const entrants = Object.keys(shares).length, topUp = Math.max(0, cost - covered);
+    return { entrants, topUp, each: covered > 0 && entrants ? topUp / entrants : null, shares, total, price, cost, covered, costMode, pend, won: pend ? 0 : Number(e.won) || 0, jackpot: Number(e.jackpot) > 0 ? Number(e.jackpot) : 0, hasTicket: !!e.hasTicket };
   }
   function entries(){
     const o = LP.ledger || {};
     return Object.entries(o).filter(([, e]) => e && typeof e === 'object').map(([id, e]) => ({ id, ...e }))
       .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0));
+  }
+  // Winnings from one draw that were put toward the next ticket. Linked by choice, or matched by amount.
+  function rollLinks(list){
+    const out = { from: {}, into: {} };
+    list.forEach(e => {
+      const n = norm(e); if(!(n.covered > 0)) return;
+      let src = e.coveredFrom && list.find(x => x.id === e.coveredFrom);
+      if(!src) src = list.filter(x => x.id !== e.id && Math.abs(norm(x).won - n.covered) < 0.005 && norm(x).won > 0 && (x.date || '') <= (e.date || '')).sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+      if(src){ out.from[e.id] = src; (out.into[src.id] = out.into[src.id] || []).push(e); }
+    });
+    return out;
   }
   function totals(list){
     let spent = 0, won = 0, pending = 0, covered = 0; const per = {};
@@ -253,8 +265,8 @@
       const n = norm(e); spent += n.cost; won += n.won; covered += n.covered; if(n.pend) pending++;
       Object.entries(n.shares).forEach(([name, c]) => {
         const r = per[name] || (per[name] = { spent: 0, cash: 0, won: 0, draws: 0, shares: 0 });
-        const f = n.total ? c / n.total : 0;
-        r.spent += n.cost * f; r.cash += (n.cost - n.covered) * f; r.won += n.won * f; r.draws++; r.shares += c;
+        const f = n.total ? c / n.total : 0, eq = n.covered > 0 && n.entrants; // winnings used on a ticket: the rest is topped up equally per member
+        r.spent += eq ? n.cost / n.entrants : n.cost * f; r.cash += eq ? n.topUp / n.entrants : (n.cost - n.covered) * f; r.won += n.won * f; r.draws++; r.shares += c;
       });
     });
     return { spent, won, covered, cash: spent - covered, net: won - spent, pending, per, draws: list.length };
@@ -263,6 +275,11 @@
     const t = totals(list), g = group();
     return `${g.name || 'Lotto Pigs'}: ${t.draws} draw${t.draws === 1 ? '' : 's'}, spent ${money(t.spent)}, won ${money(t.won)}, net ${signed(t.net)}${t.pending ? ` (${t.pending} awaiting result)` : ''}.${t.covered > 0 ? ` Paid in cash ${money(t.cash)}, ${money(t.covered)} from winnings.` : ''}` +
       Object.entries(t.per).map(([n, r]) => `\n${n}: in ${money(r.spent)}, back ${money(r.won)}, net ${signed(r.won - r.spent)}`).join('');
+  }
+  function syncFrom(){
+    const sel = $('lcLFrom'); if(!sel) return; const prev = sel.value;
+    sel.innerHTML = '<option value="">—</option>' + entries().filter(e => norm(e).won > 0 && e.id !== editingId).map(e => `<option value="${esc(e.id)}">${esc(e.label || 'Lotto draw')} · ${esc(prettyDate(e.date))} · ${money(norm(e).won)}</option>`).join('');
+    if(prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
   }
   function renderShares(){
     const box = $('lcShares'); if(!box) return;
@@ -277,7 +294,7 @@
     if(!total){ $('lcLTotal').textContent = 'Tap + for each share someone buys. No shares means they\'re not in this draw.'; return; }
     const cost = tcost > 0 ? tcost : total * price, pay = Math.max(0, cost - cov);
     $('lcLTotal').textContent = `${total} share${total === 1 ? '' : 's'} · ${entrants} in · ticket ${money(cost)}${tcost > 0 ? ` (${money(cost / total)} a share)` : ` (${total} × ${money(price)})`}` +
-      (cov > 0 ? ` · winnings cover ${money(Math.min(cov, cost))} · members pay ${money(pay)}` : ` · members pay ${money(pay)}`);
+      (cov > 0 ? ` · winnings cover ${money(Math.min(cov, cost))} · members pay ${money(pay)}${pay > 0 && entrants ? ` (${money(pay / entrants)} each, split equally)` : ''}` : ` · members pay ${money(pay)}`);
   }
   function renderLedger(){
     const box = $('lcLedger'); if(!box) return;
@@ -288,23 +305,25 @@
       <div class="lc-sum ${t.net >= 0 ? 'pos' : 'neg'}"><span>Net</span><b>${signed(t.net)}</b></div>
       <div class="lc-sum"><span>Draws</span><b>${t.draws}</b></div>` : '';
     $('lcLedgerNote').textContent = (t.covered > 0 ? `Members paid ${money(t.cash)} in cash; ${money(t.covered)} of the tickets came out of winnings. ` : '') + (t.pending ? `${t.pending} draw${t.pending === 1 ? ' is' : 's are'} still awaiting a result, counted as $0 won until you enter it.` : '');
+    const links = rollLinks(list);
     $('lcEntries').innerHTML = list.length ? list.map(e => {
       const n = norm(e), who = Object.entries(n.shares).map(([name, c]) => `${name} ${c}`).join(', ');
       return `<div class="lc-entry" data-lc-eid="${esc(e.id)}">
         <div class="lc-entry-main"><b>${esc(e.label || 'Lotto draw')}</b><span>${esc(prettyDate(e.date))}</span></div>
         <div class="lc-entry-who">${n.total} share${n.total === 1 ? '' : 's'} · ${n.costMode === 'total' ? money(n.price || (n.total ? n.cost / n.total : 0)) + ' each' : '× ' + money(n.price)} · ${esc(who)}</div>
-        ${n.covered > 0 ? `<div class="lc-entry-who">Winnings covered ${money(n.covered)} · members paid ${money(n.cost - n.covered)}</div>` : ''}
+        ${n.covered > 0 ? `<div class="lc-entry-who">Winnings covered ${money(n.covered)}${links.from[e.id] ? ' (from ' + esc(links.from[e.id].label || 'an earlier draw') + ')' : ''} · members top up ${money(n.cost - n.covered)}${n.each != null && n.topUp > 0 ? ` · ${money(n.each)} each` : ''}</div>` : ''}
+        ${links.into[e.id] ? `<div class="lc-entry-who">Winnings rolled into ${esc(links.into[e.id].map(x => x.label || 'next draw').join(', '))}</div>` : ''}
         <div class="lc-entry-nums"><span>Cost ${money(n.cost)}</span><span>${n.pend ? 'Awaiting result' : 'Won ' + money(n.won)}</span><b class="${n.pend ? '' : (n.won - n.cost >= 0 ? 'pos' : 'neg')}">${n.pend ? '–' : signed(n.won - n.cost)}</b></div>
         ${n.jackpot ? `<div class="lc-entry-who">Top prize ${money(n.jackpot)} · ${money(n.jackpot / n.total)} a share</div>` : ''}
         <div class="lc-entry-btns">${n.hasTicket ? `<button type="button" class="small" data-lc-view="${esc(e.id)}">View ticket</button>` : ''}<button type="button" class="small" data-lc-edit="${esc(e.id)}">${n.pend ? 'Enter result' : 'Edit'}</button>${n.hasTicket ? `<button type="button" class="small" data-lc-unattach="${esc(e.id)}">Remove ticket</button>` : ''}<button type="button" class="small danger" data-lc-del="${esc(e.id)}">Delete</button></div>
       </div>`; }).join('') : '<div class="empty">No draws yet. Add the first one above.</div>';
     const names = Object.keys(t.per);
     $('lcPerMember').innerHTML = names.length ? `<h3 class="lc-h3">Per person (winnings split by shares)</h3>` + names.map(n => { const r = t.per[n], net = r.won - r.spent; return `<div class="lc-pm"><span>${esc(n)}${t.covered > 0 ? `<small>cash in ${money(r.cash)}</small>` : ''}</span><span>in ${money(r.spent)}</span><span>back ${money(r.won)}</span><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div>`; }).join('') : '';
-    $('lcCopy').disabled = !list.length; syncAttach();
+    $('lcCopy').disabled = !list.length; syncAttach(); syncFrom();
   }
   function resetForm(){
     editingId = null; draftShares = {};
-    $('lcLDate').value = todayStr(); $('lcLLabel').value = ''; $('lcLPrice').value = lastPrice(); $('lcLTicket').value = ''; $('lcLCovered').value = ''; $('lcLWon').value = ''; $('lcLJackpot').value = '';
+    $('lcLDate').value = todayStr(); $('lcLLabel').value = ''; $('lcLPrice').value = lastPrice(); $('lcLTicket').value = ''; $('lcLCovered').value = ''; $('lcLWon').value = ''; $('lcLJackpot').value = ''; if($('lcLFrom')) $('lcLFrom').value = '';
     $('lcLSave').textContent = 'Add draw'; $('lcLCancel').hidden = true; renderShares();
   }
   async function saveEntry(){
@@ -324,6 +343,7 @@
     const shares = {}; Object.entries(draftShares).forEach(([n, c]) => { if(c > 0) shares[n] = c; });
     const entry = { date: $('lcLDate').value || todayStr(), label: $('lcLLabel').value.trim() || 'Lotto draw', price: Math.round(price * 10000) / 10000, shares, costMode, covered: Math.round(covered * 100) / 100,
       cost: Math.round(fullCost * 100) / 100, won: won == null ? null : Math.round(won * 100) / 100, createdAt: old ? old.createdAt || Date.now() : Date.now() };
+    if(covered > 0 && $('lcLFrom').value) entry.coveredFrom = $('lcLFrom').value;
     const jp = parseFloat($('lcLJackpot').value); if(jp > 0) entry.jackpot = Math.round(jp * 100) / 100;
     if(old && old.hasTicket) entry.hasTicket = true;
     const btn = $('lcLSave'); btn.disabled = true;
@@ -352,7 +372,7 @@
     const e = (LP.ledger || {})[id]; if(!e) return;
     const n = norm(e);
     editingId = id; draftShares = { ...n.shares };
-    $('lcLDate').value = e.date || todayStr(); $('lcLLabel').value = e.label || ''; $('lcLPrice').value = n.costMode === 'share' && n.price ? n.price : lastPrice(); $('lcLTicket').value = n.costMode === 'total' ? n.cost : ''; $('lcLCovered').value = n.covered || ''; $('lcLWon').value = n.pend ? '' : n.won; $('lcLJackpot').value = n.jackpot || '';
+    $('lcLDate').value = e.date || todayStr(); $('lcLLabel').value = e.label || ''; $('lcLPrice').value = n.costMode === 'share' && n.price ? n.price : lastPrice(); $('lcLTicket').value = n.costMode === 'total' ? n.cost : ''; $('lcLCovered').value = n.covered || ''; $('lcLWon').value = n.pend ? '' : n.won; $('lcLJackpot').value = n.jackpot || ''; syncFrom(); $('lcLFrom').value = e.coveredFrom || '';
     $('lcLSave').textContent = 'Save changes'; $('lcLCancel').hidden = false; renderShares();
     $('lcLWon').focus(); $('lcLForm').scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
@@ -452,12 +472,16 @@
     const mine = me && t.per[me];
     const netMe = mine ? mine.won - mine.spent : 0;
     const perRows = Object.entries(t.per).map(([n, r]) => { const net = r.won - r.spent; return `<div class="lc-pp${n === me ? ' me' : ''}"><div class="lc-pp-l"><span class="lc-av">${esc(n.charAt(0))}</span><div><div class="lc-pp-name">${esc(n)}${n === me ? ' <em>you</em>' : ''}</div><div class="lc-pp-sub">${r.shares} share${r.shares === 1 ? '' : 's'} · in ${money(r.spent)} · back ${money(r.won)}</div></div></div><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div>`; }).join('');
+    const links = rollLinks(list);
     const drawCards = list.length ? list.map(e => {
       const n = norm(e), yours = me && n.shares[me], per = n.total ? 1 / n.total : 0;
-      const youLine = yours ? `<div class="lc-dr-you"><span>Your ${yours} share${yours === 1 ? '' : 's'}</span><span>Paid <b>${money(n.cost * per * yours)}</b></span>${n.pend ? (n.jackpot ? `<span>Top prize <b>${money(n.jackpot * per * yours)}</b></span>` : '') : `<span>Back <b>${money(n.won * per * yours)}</b></span>`}</div>` : '';
+      const eq = n.covered > 0 && n.entrants, src = links.from[e.id], into = links.into[e.id];
+      const roll = eq ? `<div class="lc-roll"><div class="lc-roll-t">How this ticket was paid</div><div class="lc-roll-r"><span>Ticket cost</span><b>${money(n.cost)}</b></div><div class="lc-roll-r"><span>${src ? 'Winnings from ' + esc(src.label || 'the last draw') : 'Winnings applied'}</span><b class="pos">−${money(n.covered)}</b></div><div class="lc-roll-r tot"><span>Members top up</span><b>${money(n.topUp)}</b></div><div class="lc-roll-each">${n.entrants} member${n.entrants === 1 ? '' : 's'} · <b>${money(n.each)} each</b>, split equally</div></div>` : '';
+      const rolledOut = into ? `<div class="lc-roll src">Winnings of <b>${money(into.reduce((x, y) => x + norm(y).covered, 0))}</b> rolled into <b>${esc(into.map(x => x.label || 'the next draw').join(', '))}</b></div>` : '';
+      const youLine = yours ? `<div class="lc-dr-you"><span>Your ${yours} share${yours === 1 ? '' : 's'}</span>${eq ? `<span>You pay <b>${n.topUp > 0 ? money(n.each) : '$0'}</b></span><span>Put in <b>${money(n.cost / n.entrants)}</b></span>` : `<span>Paid <b>${money(n.cost * per * yours)}</b></span>`}${n.pend ? (n.jackpot ? `<span>Top prize <b>${money(n.jackpot * per * yours)}</b></span>` : '') : `<span>Back <b>${money(n.won * per * yours)}</b></span>`}</div>` : '';
       const open = openDraws.has(e.id);
       return `<div class="lc-draw${open ? ' open' : ''}">
-        <button type="button" class="lc-dr-head" data-lc-toggle="${esc(e.id)}" aria-expanded="${open}" aria-label="${esc(e.label || 'Lotto draw')}, ${open ? 'hide' : 'show'} details"><div class="lc-dr-hl"><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))}${n.hasTicket ? ' · ticket' : ''}</div></div>
+        <button type="button" class="lc-dr-head" data-lc-toggle="${esc(e.id)}" aria-expanded="${open}" aria-label="${esc(e.label || 'Lotto draw')}, ${open ? 'hide' : 'show'} details"><div class="lc-dr-hl"><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))}${n.hasTicket ? ' · ticket' : ''}${into ? ' · rolled over' : ''}</div></div>
           <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span><svg class="lc-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
         <div class="lc-dr-body"><div class="lc-dr-meta">${n.total} share${n.total === 1 ? '' : 's'} · ${Object.keys(n.shares).length} in</div>
         <div class="lc-dr-grid">
@@ -465,6 +489,7 @@
           <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b>${n.pend ? (n.jackpot ? money(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
           <div><span>Ticket cost</span><b>${money(n.cost)}</b></div>
         </div>
+        ${roll}${rolledOut}
         ${youLine}
         <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
         ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg>View ticket</button>` : ''}
@@ -583,6 +608,7 @@
           <label class="lc-field">Or total ticket cost ($)<input type="number" id="lcLTicket" inputmode="decimal" step="0.01" min="0" placeholder="divided by shares"></label>
           <label class="lc-field">Covered by winnings ($)<input type="number" id="lcLCovered" inputmode="decimal" step="0.01" min="0" placeholder="0 = members pay"></label>
           <label class="lc-field">Top prize ($, optional)<input type="number" id="lcLJackpot" inputmode="decimal" step="1" min="0" placeholder="e.g. 100000000"></label>
+          <label class="lc-field">Winnings came from<select id="lcLFrom"><option value="">—</option></select></label>
           <label class="lc-field">Won ($)<input type="number" id="lcLWon" inputmode="decimal" step="0.01" min="0" placeholder="blank until result"></label>
         </div>
         <h3 class="lc-h3">Who bought in (shares)</h3>
@@ -630,6 +656,7 @@
     $('lcGroupName').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(async () => { const g = group(); g.name = $('lcGroupName').value.trim(); setGroup(g); scheduleRender(); await saveGroup(g); }, 700); });
     $('lcShares').addEventListener('click', (e) => { const b = e.target.closest('[data-lc-sh]'); if(!b) return; const n = b.dataset.lcN, d = Number(b.dataset.lcSh); draftShares[n] = Math.max(0, (draftShares[n] || 0) + d); if(!draftShares[n]) delete draftShares[n]; renderShares(); });
     ['lcLPrice', 'lcLTicket', 'lcLCovered'].forEach(id => $(id).addEventListener('input', renderShares));
+    $('lcLFrom').addEventListener('change', () => { const src = (LP.ledger || {})[$('lcLFrom').value]; if(src){ $('lcLCovered').value = norm(src).won; renderShares(); } });
     $('lcLSave').addEventListener('click', saveEntry);
     $('lcLCancel').addEventListener('click', resetForm);
     $('lcEntries').addEventListener('click', (e) => { const ed = e.target.closest('[data-lc-edit]'), del = e.target.closest('[data-lc-del]'); const un = e.target.closest('[data-lc-unattach]'); if(un) unattachTicket(un.dataset.lcUnattach); else if(ed) startEdit(ed.dataset.lcEdit); else if(del) deleteEntry(del.dataset.lcDel); });

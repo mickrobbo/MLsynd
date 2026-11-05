@@ -325,6 +325,19 @@ test('Lotto Pigs: only people ticked in the group get the header pig button and 
   assert.equal(await page.locator('#homeSubview-lotto .lc-dr-body').first().isVisible(), false, 'tap again closes it');
 }, { db: (db) => { db.lottoPigs = { group: { name: 'Lotto Pigs', members: ['Josh'], uids: { u5: true } }, ledger: { a: { date: '2026-11-01', label: 'Powerball', price: 25, shares: { Josh: 2 }, cost: 50, won: 100, createdAt: 1 } } }; } });
 
+test('Lotto Pigs: winnings from one draw roll into the next ticket and members top up the rest equally', async ({ page }) => {
+  await page.evaluate(() => { currentState.members.forEach(x => { if(x.linkedUid === currentUserUid) x.linkedUid = null; }); currentState.members.find(x => x.name === 'Josh').linkedUid = currentUserUid; render(currentState); });
+  await page.waitForTimeout(300);
+  await page.click('#lottoHeaderBtn'); await page.waitForTimeout(800);
+  await page.evaluate(() => document.querySelectorAll('#homeSubview-lotto [data-lc-toggle]').forEach(b => b.click()));
+  const txt = await text(page, '#homeSubview-lotto');
+  assert.match(txt, /Winnings from Oz Lotto/); assert.match(txt, /−\$15\.05/); assert.match(txt, /Members top up\s*\$63\.55/);
+  assert.match(txt, /7 members · \$9\.08 each, split equally/); assert.match(txt, /rolled into Powerball/);
+  assert.match(txt, /You pay \$9\.08/);
+}, { db: (db) => { const sh = { Brad: 1, Dean: 2, Josh: 2, Zak: 2, Murph: 2, Trasky: 2, Damon: 2 }; db.lottoPigs = { group: { name: 'Lotto Pigs', members: Object.keys(sh), uids: { u5: true } }, ledger: {
+  a: { date: '2026-11-03', label: 'Oz Lotto', price: 1.35, shares: sh, cost: 17.5, won: 15.05, costMode: 'total', createdAt: 1 },
+  b: { date: '2026-11-05', label: 'Powerball', price: 6.05, shares: sh, cost: 78.6, covered: 15.05, won: null, costMode: 'total', createdAt: 2 } } }; } });
+
 test('Lotto Pigs data lives outside /state and old copies are moved out of it', async ({ page, db }) => {
   await goAdmin(page, 'lotto'); await page.waitForTimeout(1500);
   assert.ok(db.lottoPigs && db.lottoPigs.group && db.lottoPigs.group.members.includes('Billy'), 'moved to /lottoPigs');

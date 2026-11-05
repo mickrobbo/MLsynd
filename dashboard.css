@@ -7594,3 +7594,14 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-dr-body .lc-dr-grid{ margin-top:8px; border-top:1px solid var(--line); }
 .lc-draw.open .lc-dr-head{ padding-bottom:8px; }
 @media (prefers-reduced-motion:reduce){ .lc-draw.open .lc-dr-body{ animation:none; } .lc-chev{ transition:none; } }
+
+/* Winnings rolled into the next ticket */
+.lc-roll{ margin-top:12px; padding:12px 14px; border-radius:14px; background:rgba(255,255,255,.035); border:1px solid var(--line); }
+.lc-roll-t{ font:700 12px 'Manrope', sans-serif; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.lc-roll-r{ display:flex; justify-content:space-between; gap:10px; padding:5px 0; font-size:13.5px; color:var(--muted); }
+.lc-roll-r b{ font:800 14px 'Manrope', sans-serif; color:var(--chalk); white-space:nowrap; } .lc-roll-r b.pos{ color:var(--win); }
+.lc-roll-r.tot{ margin-top:4px; padding-top:9px; border-top:1px solid var(--line); color:var(--chalk); }
+.lc-roll-each{ margin-top:8px; padding:9px 12px; border-radius:10px; text-align:center; font-size:13px; color:var(--muted); background:rgba(201,162,74,.1); border:1px solid rgba(201,162,74,.25); }
+.lc-roll-each b{ color:#e3c06a; font-weight:800; font-size:15px; }
+.lc-roll.src{ padding:10px 14px; font-size:13px; color:var(--muted); background:rgba(120,220,150,.06); border-color:rgba(120,220,150,.25); }
+.lc-roll.src b{ color:var(--chalk); }
