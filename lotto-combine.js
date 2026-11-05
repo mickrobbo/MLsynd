@@ -520,7 +520,7 @@
     settled.forEach(e => { const n = norm(e), t = ticketType(e.label); run += n.won - n.cost; spent += n.cost; won += n.won; cum[t] = (cum[t] || 0) + n.won - n.cost;
       const tt = {}; typeNames.forEach(k => { tt[k] = Math.round((cum[k] || 0) * 100) / 100; });
       chartPts.push({ label: e.label || 'Lotto draw', date: e.date, v: Math.round(run * 100) / 100, d: n.won - n.cost, t: tt }); });
-    const last = chartPts[chartPts.length - 1], pos = last.v >= 0, totalCol = pos ? '#7FE3A2' : '#FF8A80';
+    const last = chartPts[chartPts.length - 1], pos = last.v >= 0, totalCol = pos ? '#4DEB8E' : '#FF6A5E';
     chartSeries = [{ key: 'Total', name: 'Group total', col: totalCol }].concat(typeNames.map(t => ({ key: t, name: t, col: cols[t] })));
     if(chartSeries.every(sr => chartHidden.has(sr.key))) chartHidden.clear();
     const { hi, lo, x, y } = chartScale(), { W, H, L, R, T, B } = CH, vis = visibleKeys();
@@ -577,7 +577,7 @@
     const plot = $('lcPlot'); if(!plot || chartPts.length < 2) return;
     const svg = plot.querySelector('svg'), vb = svg.viewBox.baseVal, { x: xs, y: ys } = chartScale();
     const lbl = $('lcChLbl'), val = $('lcChVal'), guide = $('lcGuide'), hint = $('lcChHint');
-    const base = { l: lbl.textContent, v: val.textContent, c: val.className };
+    let lastIdx = -1; const base = { l: lbl.textContent, v: val.textContent, c: val.className };
     const chipVals = [...document.querySelectorAll('#lcPlChart [data-lc-sv]')], dots = [];
     const mk = (col) => { const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); c.setAttribute('r', 6); c.setAttribute('fill', col); c.setAttribute('stroke', 'var(--surface)'); c.setAttribute('stroke-width', 2.5); c.setAttribute('opacity', 0); svg.appendChild(c); return c; };
     const dotFor = {}; chartSeries.forEach(sr => { if(!chartHidden.has(sr.key)) dotFor[sr.key] = mk(sr.col); });
@@ -588,17 +588,23 @@
       guide.setAttribute('x1', xs(best)); guide.setAttribute('x2', xs(best)); guide.setAttribute('opacity', '1');
       Object.entries(dotFor).forEach(([k, d]) => { d.setAttribute('cx', xs(best)); d.setAttribute('cy', ys(k === 'Total' ? p.v : (p.t[k] || 0))); d.setAttribute('opacity', 1); });
       chipVals.forEach(b => { const k = b.dataset.lcSv; b.textContent = signed(k === 'Total' ? p.v : (p.t[k] || 0)); });
+      if(best !== lastIdx){ lastIdx = best; try{ const st = JSON.parse(localStorage.getItem('cp-settings') || '{}'); if(st.haptics !== false && navigator.vibrate) navigator.vibrate(4); }catch(e){} }
       lbl.textContent = best ? `${p.label} · ${shortDate(p.date)} (${signed(p.d)})` : 'Start';
       val.textContent = signed(p.v); val.className = 'lc-ch-val ' + (p.v >= 0 ? 'pos' : 'neg'); if(hint) hint.style.opacity = 0;
     };
-    const reset = () => { guide.setAttribute('opacity', '0'); Object.values(dotFor).forEach(d => d.setAttribute('opacity', 0)); chipVals.forEach(b => { b.textContent = b.dataset.base; }); lbl.textContent = base.l; val.textContent = base.v; val.className = base.c; if(hint) hint.style.opacity = 1; };
+    const reset = () => { lastIdx = -1; guide.setAttribute('opacity', '0'); Object.values(dotFor).forEach(d => d.setAttribute('opacity', 0)); chipVals.forEach(b => { b.textContent = b.dataset.base; }); lbl.textContent = base.l; val.textContent = base.v; val.className = base.c; if(hint) hint.style.opacity = 1; };
     plot.addEventListener('pointerdown', (e) => { plot.setPointerCapture && plot.setPointerCapture(e.pointerId); show(e.clientX); });
     plot.addEventListener('pointermove', (e) => { if(e.pressure > 0 || e.pointerType === 'mouse') show(e.clientX); });
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => plot.addEventListener(ev, reset));
   }
   const openDraws = new Set();
+  let homeSig = '';
   function renderHome(){
     const root = $('homeLottoRoot'); if(!root) return;
+    // the app redraws often; only rebuild when the Lotto Pigs data (or who's looking) really changed
+    const sig = JSON.stringify([LP.group, LP.ledger, meName(), root.clientWidth]);
+    if(sig === homeSig && root.firstChild) return;
+    homeSig = sig;
     const g = group(), list = entries(), t = totals(list), me = meName();
     const mine = me && t.per[me];
     const netMe = mine ? mine.won - mine.spent : 0;
@@ -617,6 +623,7 @@
         <button type="button" class="lc-dr-head" data-lc-toggle="${esc(e.id)}" aria-expanded="${open}" aria-label="${esc(e.label || 'Lotto draw')}, ${open ? 'hide' : 'show'} details"><div class="lc-dr-hl"><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))} · ${n.total} share${n.total === 1 ? '' : 's'}${into ? ' · rolled over' : ''}</div></div>
           <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span><svg class="lc-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
         <div class="lc-dr-body">
+        ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg>View ticket</button>` : ''}
         <div class="lc-dr-grid">
           <div><span>Share value</span><b>${money(n.cost * per)}</b></div>
           <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b${n.pend && n.jackpot ? ` title="${esc(money(n.jackpot * per))}"` : ''}>${n.pend ? (n.jackpot ? moneyShort(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
@@ -624,7 +631,6 @@
         ${roll}${rolledOut}
         ${youLine}
         <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
-        ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg>View ticket</button>` : ''}
       </div></div>`; }).join('') : '<div class="lc-empty">No draws yet. Your first one will show up here.</div>';
     root.innerHTML = `
       <div class="lc-home">
