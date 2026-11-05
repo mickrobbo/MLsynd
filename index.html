@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=267">
+<link rel="stylesheet" href="dashboard.css?v=268">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -4039,7 +4039,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-05.267"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-05.268"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -17578,7 +17578,7 @@ function updateHomeOweChip(owed){
   const chip = document.getElementById('homeOweChip');
   if(!chip) return;
   payOwedNow = owed > 0 ? owed : 0;
-  if(owed > 0){ chip.innerHTML = `<span>You owe <b>$${owed}</b></span><span class="home-owe-go">Settle up</span>`; chip.style.display = ''; }
+  if(owed > 0){ chip.innerHTML = `<span class="owe-ico" aria-hidden="true">$</span><span class="owe-txt"><small>You owe</small><b>$${owed}</b></span><span class="home-owe-go">Settle up<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>`; chip.style.display = ''; }
   else chip.style.display = 'none';
 }
 function navGoto(dest){
@@ -25220,6 +25220,10 @@ document.getElementById('hofRivalB').addEventListener('change', renderRivalryCom
 // that now covers the same ground properly (multiple wins, not just
 // one) right on the same page, rather than showing a thinner version
 // of the same thing twice.
+// one row of the Home digest: icon tile, a title with a quiet line under it, and a value pill on the right
+function digestRow(icon, title, sub, pill, tone){
+  return `<div class="home-digest-row dg"><span class="dg-ico" aria-hidden="true">${icon}</span><div class="dg-txt"><span class="dg-t">${escapeHtml(title)}</span><span class="dg-s">${escapeHtml(sub)}</span></div><span class="dg-pill${tone === 'plain' ? ' plain' : ''}">${escapeHtml(pill)}</span></div>`;
+}
 async function renderHomeDigest(){
   const el = document.getElementById('homeDigestWidget');
   if(!el || currentUserRole === 'readonly') return; // guests don't have Casino/Bounties activity worth digesting
@@ -25230,7 +25234,7 @@ async function renderHomeDigest(){
     const bounties = res.ok ? ((await res.json()) || {}) : {};
     const openCount = Object.values(bounties).filter(b => b && b.status === 'open').length;
     if(openCount > 0){
-      parts.push(`<div class="home-digest-row">🎯 <b>${openCount}</b> ${openCount === 1 ? 'bounty' : 'bounties'} open right now</div>`);
+      parts.push(digestRow('🎯', `${openCount} ${openCount === 1 ? 'bounty' : 'bounties'} open`, 'Up for grabs right now', String(openCount), 'plain'));
     }
   }catch(e){}
 
@@ -25249,7 +25253,7 @@ async function renderHomeDigest(){
       const hrs = Math.floor(msLeft / 3600000);
       const mins = Math.floor((msLeft % 3600000) / 60000);
       const timeText = hrs >= 24 ? `${Math.floor(hrs / 24)}d ${hrs % 24}h` : hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-      parts.push(`<div class="home-digest-row">⏰ Next tipping lockout in <b>${timeText}</b></div>`);
+      parts.push(digestRow('⏰', 'Next tipping lockout', 'Get your tips in before it locks', timeText));
     }
   }catch(e){}
 
@@ -25270,7 +25274,8 @@ async function renderHomeDigest(){
       }
       if(stillOpen){
         const minsLeft = Math.max(0, Math.round((event.endsAt - Date.now()) / 60000));
-        parts.unshift(`<div class="home-digest-row">${escapeHtml(event.label)} — ${escapeHtml(event.desc)} <b>${minsLeft}m left</b></div>`);
+        const lm = String(event.label || '').match(/^(\p{Extended_Pictographic}\uFE0F?)\s*(.*)$/u);
+        parts.unshift(digestRow(lm ? lm[1] : '✨', lm ? lm[2] : String(event.label || 'Special event'), String(event.desc || '').replace(/^[—–-]\s*/, ''), `${minsLeft}m left`));
       }
     }
   }catch(e){}
@@ -25384,7 +25389,7 @@ initAuthGate();
 <script src="app-premium.js?v=222"></script>
 <script src="app-a11y.js?v=227"></script>
 <script src="slip-scan.js?v=227"></script>
-<script src="lotto-combine.js?v=267"></script>
+<script src="lotto-combine.js?v=268"></script>
 <script src="admin-ops.js?v=222"></script>
 <script src="casino-showcase.js?v=223"></script>
 <script src="pick-stats.js?v=216"></script>
