@@ -221,7 +221,7 @@ test('Lotto Pigs profit and loss: shares at a price, winnings split by shares, o
   const names = await page.evaluate(() => [...document.querySelectorAll('#lcMembers [data-lc-member]')].slice(0, 3).map(b => b.dataset.lcMember));
   await page.fill('#lcLLabel', 'Powerball $100M'); await page.fill('#lcLPrice', '25'); await page.fill('#lcLWon', '0');
   await plus(names[0], 2); await plus(names[1], 1);
-  assert.match(await text(page, '#lcLTotal'), /3 shares × \$25 = \$75 cost · 2 in/);
+  assert.match(await text(page, '#lcLTotal'), /3 shares · 2 in · ticket \$75 \(3 × \$25\) · members pay \$75/);
   await page.click('#lcLSave'); await page.waitForTimeout(1200);
   await page.fill('#lcLLabel', 'Oz Lotto'); await page.fill('#lcLWon', '300');
   await plus(names[1], 1); await plus(names[2], 2);
@@ -253,6 +253,30 @@ test('Lotto Pigs: a draw can be back-dated to last week and sorts by its date', 
   const saved = Object.values(db.state.lottoLedger);
   assert.ok(saved.some(e => e.label === 'Last week' && e.date === '2026-10-29'), 'past date kept');
   assert.deepEqual(await page.evaluate(() => [...document.querySelectorAll('#lcEntries .lc-entry-main b')].map(b => b.textContent)), ['This week', 'Last week']);
+});
+
+test('Lotto Pigs: ticket cost divided by shares, and winnings can cover some or all of it', async ({ page, db }) => {
+  await goAdmin(page, 'lotto');
+  for(const k of [1, 2]) await page.click(`#lcMembers [data-lc-member]:nth-child(${k})`);
+  await page.waitForTimeout(1000);
+  const names = await page.evaluate(() => [...document.querySelectorAll('#lcMembers [data-lc-member]')].slice(0, 2).map(b => b.dataset.lcMember));
+  const plus = (n, k) => page.evaluate(([n, k]) => { for(let i = 0; i < k; i++) document.querySelector(`#lcShares [data-lc-sh="1"][data-lc-n="${n}"]`).click(); }, [n, k]);
+  // 1) members chip in: $30 ticket split over 3 shares (2 + 1), nothing from winnings
+  await page.fill('#lcLLabel', 'Divide'); await page.fill('#lcLTicket', '30'); await plus(names[0], 2); await plus(names[1], 1);
+  assert.match(await text(page, '#lcLTotal'), /ticket \$30 \(\$10 a share\).*members pay \$30/);
+  await page.fill('#lcLWon', '0'); await page.click('#lcLSave'); await page.waitForTimeout(1000);
+  // 2) winnings cover the whole next ticket, so nobody pays cash
+  await page.fill('#lcLLabel', 'Rolled'); await page.fill('#lcLTicket', '40'); await page.fill('#lcLCovered', '40'); await plus(names[0], 1); await plus(names[1], 1);
+  assert.match(await text(page, '#lcLTotal'), /winnings cover \$40 · members pay \$0/);
+  await page.fill('#lcLWon', '0'); await page.click('#lcLSave'); await page.waitForTimeout(1000);
+  const rolled = Object.values(db.state.lottoLedger).find(e => e.label === 'Rolled');
+  assert.equal(rolled.cost, 40); assert.equal(rolled.covered, 40); assert.equal(rolled.costMode, 'total');
+  assert.match(await text(page, '#lcSummary'), /\$70/);
+  assert.match(await text(page, '#lcLedgerNote'), /Members paid \$30 in cash; \$40 of the tickets came out of winnings/);
+  const per = await text(page, '#lcPerMember');
+  assert.ok(per.includes('cash in $20') && per.includes('cash in $10'), per); // 2 shares of the $30 draw = $20; 1 share = $10
+  await page.fill('#lcLLabel', 'Too much'); await page.fill('#lcLTicket', '10'); await page.fill('#lcLCovered', '20'); await plus(names[0], 1); await page.click('#lcLSave');
+  assert.match(await text(page, '#lcLStatus'), /can't be more than the ticket cost/);
 });
 
 // v225/v226 one-screen admin week

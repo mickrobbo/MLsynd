@@ -1,7 +1,7 @@
 {
-  "version": "2026-11-05.245",
+  "version": "2026-11-05.246",
   "date": "2026-11-05",
   "changes": [
-    "Lotto Pigs: draw date is clearly labelled so you can back-date last week's tickets"
+    "Lotto Pigs: divide a ticket's cost between the shares, and mark how much winnings covered so members only pay the rest"
   ]
 }
