@@ -433,13 +433,19 @@
       ov.querySelectorAll('[data-lc-vsave],[data-lc-vshare]').forEach(b => b.disabled = false);
     }catch(err){ const m = ov.querySelector('.lc-viewer-msg'); if(m) m.textContent = 'Could not load the ticket. Check your connection and try again.'; }
   }
-  document.addEventListener('click', (e) => { const b = e.target.closest('[data-lc-view]'); if(b) viewTicket(b.dataset.lcView); });
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-lc-view]'); if(b) return viewTicket(b.dataset.lcView);
+    const t = e.target.closest('[data-lc-toggle]'); if(!t) return;
+    const id = t.dataset.lcToggle, card = t.closest('.lc-draw'), on = !openDraws.has(id);
+    on ? openDraws.add(id) : openDraws.delete(id); card.classList.toggle('open', on); t.setAttribute('aria-expanded', String(on));
+  });
 
   // ---------- Home → Lotto: what the group's members see (read only) ----------
   // Only people in the Lotto Pigs group (and the admin) get the Lotto button on Home.
   // Nothing can be changed here; adding draws and picking members stays in Admin.
   function meName(){ const me = (st().members || []).find(m => m.linkedUid && m.linkedUid === (typeof currentUserUid !== 'undefined' ? currentUserUid : null)); return me ? me.name : null; }
   function inGroup(){ const n = meName(); return !!(n && group().members.includes(n)); }
+  const openDraws = new Set();
   function renderHome(){
     const root = $('homeLottoRoot'); if(!root) return;
     const g = group(), list = entries(), t = totals(list), me = meName();
@@ -449,9 +455,11 @@
     const drawCards = list.length ? list.map(e => {
       const n = norm(e), yours = me && n.shares[me], per = n.total ? 1 / n.total : 0;
       const youLine = yours ? `<div class="lc-dr-you"><span>Your ${yours} share${yours === 1 ? '' : 's'}</span><span>Paid <b>${money(n.cost * per * yours)}</b></span>${n.pend ? (n.jackpot ? `<span>Top prize <b>${money(n.jackpot * per * yours)}</b></span>` : '') : `<span>Back <b>${money(n.won * per * yours)}</b></span>`}</div>` : '';
-      return `<div class="lc-draw">
-        <div class="lc-dr-head"><div><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))} · ${n.total} share${n.total === 1 ? '' : 's'} · ${Object.keys(n.shares).length} in</div></div>
-          <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span></div>
+      const open = openDraws.has(e.id);
+      return `<div class="lc-draw${open ? ' open' : ''}">
+        <button type="button" class="lc-dr-head" data-lc-toggle="${esc(e.id)}" aria-expanded="${open}" aria-label="${esc(e.label || 'Lotto draw')}, ${open ? 'hide' : 'show'} details"><div class="lc-dr-hl"><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))}${n.hasTicket ? ' · ticket' : ''}</div></div>
+          <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span><svg class="lc-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+        <div class="lc-dr-body"><div class="lc-dr-meta">${n.total} share${n.total === 1 ? '' : 's'} · ${Object.keys(n.shares).length} in</div>
         <div class="lc-dr-grid">
           <div><span>Share value</span><b>${money(n.cost * per)}</b></div>
           <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b>${n.pend ? (n.jackpot ? money(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
@@ -460,7 +468,7 @@
         ${youLine}
         <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
         ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg>View ticket</button>` : ''}
-      </div>`; }).join('') : '<div class="lc-empty">No draws yet. Your first one will show up here.</div>';
+      </div></div>`; }).join('') : '<div class="lc-empty">No draws yet. Your first one will show up here.</div>';
     root.innerHTML = `
       <div class="lc-home">
         <div class="lc-top">

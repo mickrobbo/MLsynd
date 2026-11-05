@@ -7580,3 +7580,17 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-entry-btns .small{ flex:1 1 calc(50% - 8px); min-height:44px; }
 #lcPerMember .lc-pm{ grid-template-columns:1.1fr 1fr 1fr auto; }
 .lc-attach .lc-field{ font-size:12.5px; }
+
+/* Lotto Pigs: collapsible draws */
+.lc-draw{ padding:0; overflow:hidden; }
+.lc-dr-head{ width:100%; display:flex; align-items:center; gap:10px; padding:14px 14px 14px 16px; min-height:64px; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.lc-dr-hl{ flex:1; min-width:0; }
+.lc-chev{ flex:none; color:var(--muted); transition:transform .2s ease; }
+.lc-draw.open .lc-chev{ transform:rotate(180deg); }
+.lc-dr-body{ display:none; padding:0 16px 16px; }
+.lc-draw.open .lc-dr-body{ display:block; animation:lcOpen .18s ease; }
+@keyframes lcOpen{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:none; } }
+.lc-dr-meta{ font-size:12px; color:var(--muted); margin-bottom:2px; }
+.lc-dr-body .lc-dr-grid{ margin-top:8px; border-top:1px solid var(--line); }
+.lc-draw.open .lc-dr-head{ padding-bottom:8px; }
+@media (prefers-reduced-motion:reduce){ .lc-draw.open .lc-dr-body{ animation:none; } .lc-chev{ transition:none; } }

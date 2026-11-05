@@ -314,7 +314,15 @@ test('Lotto Pigs: only people ticked in the group get the header pig button and 
   await page.click('#lottoHeaderBtn'); await page.waitForTimeout(800);
   const txt = await text(page, '#homeSubview-lotto');
   assert.ok(txt.includes('Lotto Pigs') && /YOU/.test(txt) && txt.includes('+$50') && txt.includes('Powerball'), txt);
-  assert.equal(await page.locator('#homeSubview-lotto button, #homeSubview-lotto input').count(), 0, 'members get a read-only view');
+  assert.equal(await page.locator('#homeSubview-lotto input, #homeSubview-lotto button:not([data-lc-toggle]):not([data-lc-view])').count(), 0, 'members get a read-only view');
+  assert.equal(await page.locator('#homeSubview-lotto .lc-dr-body').first().isVisible(), false, 'draw details start collapsed');
+  await page.click('#homeSubview-lotto [data-lc-toggle]');
+  assert.equal(await page.locator('#homeSubview-lotto .lc-dr-body').first().isVisible(), true, 'tap opens the details');
+  assert.match(await text(page, '#homeSubview-lotto .lc-draw'), /Share value \$25/);
+  await page.evaluate(() => lottoReload()); await page.waitForTimeout(500);
+  assert.equal(await page.locator('#homeSubview-lotto .lc-dr-body').first().isVisible(), true, 'stays open after a refresh');
+  await page.click('#homeSubview-lotto [data-lc-toggle]');
+  assert.equal(await page.locator('#homeSubview-lotto .lc-dr-body').first().isVisible(), false, 'tap again closes it');
 }, { db: (db) => { db.lottoPigs = { group: { name: 'Lotto Pigs', members: ['Josh'], uids: { u5: true } }, ledger: { a: { date: '2026-11-01', label: 'Powerball', price: 25, shares: { Josh: 2 }, cost: 50, won: 100, createdAt: 1 } } }; } });
 
 test('Lotto Pigs data lives outside /state and old copies are moved out of it', async ({ page, db }) => {
