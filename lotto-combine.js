@@ -225,6 +225,7 @@
   // shares each person bought. Only people with shares are in that draw, and
   // winnings are split by shares. Someone who didn't buy in gets nothing.
   const money = (v) => { const n = Math.round((Number(v) || 0) * 100) / 100, a = Math.abs(n); return (n < 0 ? '-' : '') + '$' + a.toLocaleString('en-AU', { minimumFractionDigits: a % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
+  const moneyShort = (v) => { const a = Math.abs(Number(v) || 0); return a >= 1e9 ? '$' + (a / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B' : a >= 1e6 ? '$' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M' : money(v); };
   const signed = (v) => (Math.round((Number(v) || 0) * 100) > 0 ? '+' : '') + money(v);
   const PRICE_KEY = 'mlsynd-lotto-share-price';
   let editingId = null, draftShares = {};
@@ -478,20 +479,22 @@
       const eq = n.covered > 0 && n.entrants, src = links.from[e.id], into = links.into[e.id];
       const roll = eq ? `<div class="lc-roll"><div class="lc-roll-t">How this ticket was paid</div><div class="lc-roll-r"><span>Ticket cost</span><b>${money(n.cost)}</b></div><div class="lc-roll-r"><span>${src ? 'Winnings from ' + esc(src.label || 'the last draw') : 'Winnings applied'}</span><b class="pos">−${money(n.covered)}</b></div><div class="lc-roll-r tot"><span>Members top up</span><b>${money(n.topUp)}</b></div><div class="lc-roll-each">${n.entrants} member${n.entrants === 1 ? '' : 's'} · <b>${money(n.each)} each</b>, split equally</div></div>` : '';
       const rolledOut = into ? `<div class="lc-roll src">Winnings of <b>${money(into.reduce((x, y) => x + norm(y).covered, 0))}</b> rolled into <b>${esc(into.map(x => x.label || 'the next draw').join(', '))}</b></div>` : '';
-      const youLine = yours ? `<div class="lc-dr-you"><span>Your ${yours} share${yours === 1 ? '' : 's'}</span>${eq ? `<span>You pay <b>${n.topUp > 0 ? money(n.each) : '$0'}</b></span><span>Put in <b>${money(n.cost / n.entrants)}</b></span>` : `<span>Paid <b>${money(n.cost * per * yours)}</b></span>`}${n.pend ? (n.jackpot ? `<span>Top prize <b>${money(n.jackpot * per * yours)}</b></span>` : '') : `<span>Back <b>${money(n.won * per * yours)}</b></span>`}</div>` : '';
+      const cell = (k, v, t) => `<div><span>${k}</span><b${t ? ` title="${esc(t)}"` : ''}>${v}</b></div>`;
+      const youCells = yours ? (eq ? cell('You pay', n.topUp > 0 ? money(n.each) : '$0') + cell('Put in', money(n.cost / n.entrants)) : cell('Paid', money(n.cost * per * yours))) + (n.pend ? (n.jackpot ? cell('Top prize', moneyShort(n.jackpot * per * yours), money(n.jackpot * per * yours)) : '') : cell('Back', money(n.won * per * yours))) : '';
+      const youLine = yours ? `<div class="lc-dr-you"><div class="lc-you-t">Your ${yours} share${yours === 1 ? '' : 's'}</div><div class="lc-you-g c${(youCells.match(/<div>/g) || []).length}">${youCells}</div></div>` : '';
       const open = openDraws.has(e.id);
       return `<div class="lc-draw${open ? ' open' : ''}">
         <button type="button" class="lc-dr-head" data-lc-toggle="${esc(e.id)}" aria-expanded="${open}" aria-label="${esc(e.label || 'Lotto draw')}, ${open ? 'hide' : 'show'} details"><div class="lc-dr-hl"><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))}${n.hasTicket ? ' · ticket' : ''}${into ? ' · rolled over' : ''}</div></div>
           <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span><svg class="lc-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-        <div class="lc-dr-body"><div class="lc-dr-meta">${n.total} share${n.total === 1 ? '' : 's'} · ${Object.keys(n.shares).length} in</div>
+        <div class="lc-dr-body">
         <div class="lc-dr-grid">
           <div><span>Share value</span><b>${money(n.cost * per)}</b></div>
-          <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b>${n.pend ? (n.jackpot ? money(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
+          <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b${n.pend && n.jackpot ? ` title="${esc(money(n.jackpot * per))}"` : ''}>${n.pend ? (n.jackpot ? moneyShort(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
           <div><span>Ticket cost</span><b>${money(n.cost)}</b></div>
         </div>
         ${roll}${rolledOut}
         ${youLine}
-        <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
+        <div class="lc-dr-whol">${n.entrants} in · ${n.total} share${n.total === 1 ? '' : 's'}</div><div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
         ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg>View ticket</button>` : ''}
       </div></div>`; }).join('') : '<div class="lc-empty">No draws yet. Your first one will show up here.</div>';
     root.innerHTML = `
