@@ -353,21 +353,6 @@ test('Lotto Pigs: winnings from one draw roll into the next ticket and members t
   a: { date: '2026-11-03', label: 'Oz Lotto', price: 1.35, shares: sh, cost: 17.5, won: 15.05, costMode: 'total', createdAt: 1 },
   b: { date: '2026-11-05', label: 'Powerball', price: 6.05, shares: sh, cost: 78.6, covered: 15.05, won: null, costMode: 'total', createdAt: 2 } } }; } });
 
-test('Season P/L chart: lines for lotto, group multi and individual bets can be shown or hidden', async ({ page }) => {
-  await page.evaluate(() => { currentState.history.forEach((h, i) => { h.individualEntries = { a: { pl: 20 * (i % 3 ? 1 : -2), outlay: 50 } }; }); render(currentState); });
-  await page.waitForSelector('#chartArea .ch-lg');
-  assert.equal(await page.locator('#chartArea .ch-lg').count(), 4, 'total plus three lines');
-  const paths = () => page.locator('#chartSvg path[fill="none"]').count();
-  const before = await paths();
-  await page.click('[data-ch-line="lotto"]');
-  assert.equal(await page.locator('#chartArea .ch-lg.off').count(), 1);
-  assert.equal(await paths(), before - 1, 'hiding a name removes its line');
-  await page.click('[data-ch-line="lotto"]');
-  assert.equal(await paths(), before, 'and showing it brings it back');
-  const sum = await page.evaluate(() => { const p = window.__chartPoints.at(-1); return Math.round((p.lotto + p.multi + p.ind) * 100) / 100 - Math.round(p.cum * 100) / 100; });
-  assert.ok(Math.abs(sum) < 0.02, 'the three lines add up to the total: ' + sum);
-});
-
 test('Lotto Pigs data lives outside /state and old copies are moved out of it', async ({ page, db }) => {
   await goAdmin(page, 'lotto'); await page.waitForTimeout(1500);
   assert.ok(db.lottoPigs && db.lottoPigs.group && db.lottoPigs.group.members.includes('Billy'), 'moved to /lottoPigs');

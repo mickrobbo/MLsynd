@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=265">
+<link rel="stylesheet" href="dashboard.css?v=266">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -4039,7 +4039,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-05.265"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-05.266"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14022,27 +14022,12 @@ function smoothPath(pts){
   }
   return d;
 }
-const CHART_SERIES = [
-  { key: 'lotto', name: 'Lotto', col: '#c98500' },
-  { key: 'multi', name: 'Group multi', col: '#3987e5' },
-  { key: 'ind', name: 'Individual', col: '#199e70' }
-];
-const CHART_LINES_KEY = 'mlsynd-chart-lines-hidden';
-function chartHiddenLines(){ try{ const v = JSON.parse(localStorage.getItem(CHART_LINES_KEY) || '[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
 function buildChart(history){
   if(!history || history.length === 0){
     return '<div class="empty">No weeks saved yet — this fills in as you save each week.</div>';
   }
-  let running = 0, rLotto = 0, rMulti = 0, rInd = 0;
-  const all = history.map(h => {
-    const wk = weekGroupPl(h), g = h.group || {};
-    // the same week split three ways: lotto, the group multi (with its SGM pot), and the individual bets
-    rLotto += (g.lottoRet || 0) - (g.lottoOut || 0);
-    rMulti += (g.multiRet || 0) + (g.sgmWin || 0) - (g.multiOut || 0) - (g.bonus || 0);
-    rInd += Object.values(h.individualEntries || {}).reduce((t, e) => t + (Number(e && e.pl) || 0), 0);
-    running += wk;
-    return { label: h.label, cum: running, wk, lotto: rLotto, multi: rMulti, ind: rInd };
-  });
+  let running = 0;
+  const all = history.map(h => { const wk = weekGroupPl(h); running += wk; return { label: h.label, cum: running, wk }; });
   const range = chartRange();
   const points = range && all.length > range ? all.slice(-range) : all;
 
@@ -14053,8 +14038,7 @@ function buildChart(history){
   let more = false; try{ more = localStorage.getItem('mlsynd-chart-more') === '1'; }catch(e){}
   const lineH = more ? 150 : 168, bandGap = more ? 12 : 0, bandH = more ? 46 : 0, padL = 6, padR = 44, padT = 14, padB = 22;
   const chartH = lineH + bandGap + bandH + padB;
-  const hiddenLines = chartHiddenLines(), shown = CHART_SERIES.filter(sr => !hiddenLines.includes(sr.key));
-  const values = points.flatMap(p => [p.cum].concat(shown.map(sr => p[sr.key])));
+  const values = points.map(p => p.cum);
   // Season view always includes $0; Last 10 zooms to the recent range so the trend is readable
   let maxV = Math.max(0, ...values), minV = Math.min(0, ...values);
   if(range){ const hi = Math.max(...values), lo = Math.min(...values), pad = Math.max(1, (hi - lo) * .12); maxV = hi + pad; minV = lo - pad; if(maxV > 0 && minV < 0){ maxV = Math.max(maxV, 0); minV = Math.min(minV, 0); } }
@@ -14065,7 +14049,6 @@ function buildChart(history){
   const zeroY = yFor(0);
   const coords = points.map((p, i) => [padL + i * stepX, yFor(p.cum)]);
   const linePath = smoothPath(coords);
-  const lineCoords = {}; shown.forEach(sr => { lineCoords[sr.key] = points.map((p, i) => [padL + i * stepX, yFor(p[sr.key])]); });
   const last = coords[coords.length - 1];
   const finalPl = points[points.length - 1].cum;
   const up = finalPl >= 0;
@@ -14087,7 +14070,6 @@ function buildChart(history){
 
   window.__chartPoints = points;
   window.__chartCoords = coords;
-  window.__chartLines = shown.map(sr => ({ ...sr, coords: lineCoords[sr.key] }));
   window.__chartGeom = { chartW, chartH, zeroY, padT, padB, padL, stepX };
   setTimeout(() => { if(document.getElementById('chartSvg')) window.__chDrawn = true; }, 50); // the draw-in plays once per visit, not on every refresh
 
@@ -14102,9 +14084,7 @@ function buildChart(history){
       ${grid}
       <path d="${areaPath}" fill="url(#cpAreaG1)" stroke="none"/>
       <path d="${linePath}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" pathLength="1" class="ch-line${window.__chDrawn ? '' : ' ch-draw'}"/>
-      ${shown.map(sr => `<path d="${smoothPath(lineCoords[sr.key])}" fill="none" stroke="${sr.col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity=".95"/><circle cx="${lineCoords[sr.key][lineCoords[sr.key].length - 1][0].toFixed(1)}" cy="${lineCoords[sr.key][lineCoords[sr.key].length - 1][1].toFixed(1)}" r="3.2" fill="${sr.col}" stroke="var(--surface)" stroke-width="1.5"/>`).join('')}
       <line id="chartGuide" x1="0" y1="${padT}" x2="0" y2="${bTop + bandH}" class="ch-guide" opacity="0"/>
-      ${shown.map(sr => `<circle id="chartSelDot_${sr.key}" r="4.5" fill="${sr.col}" stroke="var(--surface)" stroke-width="2" opacity="0"/>`).join('')}
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="9" fill="${col}" class="ch-pulse"/>
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3.5" fill="${col}"/>
       <circle id="chartSelDot" r="5.5" fill="var(--ink)" stroke="${col}" stroke-width="2.5" opacity="0"/>
@@ -14113,8 +14093,7 @@ function buildChart(history){
       <rect class="ch-hit" x="0" y="0" width="${chartW}" height="${chartH}" fill="transparent"/>
     </svg>
     </div>
-    <div class="ch-legend" role="group" aria-label="Lines on the chart"><span class="ch-lg total"><i style="background:${col}"></i><span>Total</span><b data-ch-sv="cum">${chartMoney(points[points.length - 1].cum, true)}</b></span>${CHART_SERIES.map(sr => { const on = !hiddenLines.includes(sr.key); return `<button type="button" class="ch-lg${on ? '' : ' off'}" data-ch-line="${sr.key}" aria-pressed="${on}"><i style="background:${sr.col}"></i><span>${sr.name}</span><b data-ch-sv="${sr.key}">${chartMoney(points[points.length - 1][sr.key], true)}</b></button>`; }).join('')}</div>
-    <div id="chartTooltip" class="chart-tooltip ch-hint">Drag along the line · tap a name to show or hide it</div>
+    <div id="chartTooltip" class="chart-tooltip ch-hint">Drag along the line to see any week</div>
     <button type="button" class="ch-more-btn" data-ch-more aria-expanded="${more}">${more ? 'Hide stats' : 'More stats'}</button>
     ${more ? chartStatsHtml(history, points, range) : ''}
   </div>`;
@@ -14167,8 +14146,6 @@ function selectChartPoint(idx, live){
   const chg = document.getElementById('chReadChg');
   if(chg){ chg.textContent = `${chartMoney(p.wk)} that week`; chg.className = 'ch-read-chg ' + (p.wk >= 0 ? 'pos' : 'neg'); }
   if(val){ val.textContent = chartMoney(p.cum); val.className = 'ch-read-val ' + (p.cum >= 0 ? 'pos' : 'neg'); }
-  (window.__chartLines || []).forEach(sr => { const d = document.getElementById('chartSelDot_' + sr.key), cc = sr.coords[idx]; if(d && cc){ d.setAttribute('cx', cc[0].toFixed(1)); d.setAttribute('cy', cc[1].toFixed(1)); d.setAttribute('opacity', live ? '1' : '0'); } });
-  document.querySelectorAll('#chartArea [data-ch-sv]').forEach(b => { const k = b.dataset.chSv; b.textContent = chartMoney(p[k], true); });
   window.__chartSel = idx;
 }
 
@@ -14222,14 +14199,6 @@ function selectChartPoint(idx, live){
     const mb = e.target.closest('[data-ch-more]');
     if(mb){
       try{ localStorage.setItem('mlsynd-chart-more', mb.getAttribute('aria-expanded') === 'true' ? '0' : '1'); }catch(err){}
-      if(currentState){ host.innerHTML = buildChart(currentState.history || []); const pts = window.__chartPoints; if(pts) selectChartPoint(pts.length - 1, false); }
-      return;
-    }
-    const lb = e.target.closest('[data-ch-line]');
-    if(lb){
-      const hid = chartHiddenLines(), k = lb.dataset.chLine, i = hid.indexOf(k);
-      if(i >= 0) hid.splice(i, 1); else hid.push(k);
-      try{ localStorage.setItem(CHART_LINES_KEY, JSON.stringify(hid)); }catch(err){}
       if(currentState){ host.innerHTML = buildChart(currentState.history || []); const pts = window.__chartPoints; if(pts) selectChartPoint(pts.length - 1, false); }
       return;
     }
@@ -25415,7 +25384,7 @@ initAuthGate();
 <script src="app-premium.js?v=222"></script>
 <script src="app-a11y.js?v=227"></script>
 <script src="slip-scan.js?v=227"></script>
-<script src="lotto-combine.js?v=265"></script>
+<script src="lotto-combine.js?v=266"></script>
 <script src="admin-ops.js?v=222"></script>
 <script src="casino-showcase.js?v=223"></script>
 <script src="pick-stats.js?v=216"></script>
