@@ -115,7 +115,7 @@
         </div></div>`).join('');
     const has = tickets.length > 0;
     ['lcDownload', 'lcShare', 'lcClear'].forEach(id => { const b = $(id); if(b) b.disabled = !has; });
-    $('lcPreviewWrap').hidden = !has;
+    $('lcPreviewWrap').hidden = !has; syncAttach();
   }
 
   // ---------- drawing ----------
@@ -240,7 +240,7 @@
     const cost = e.shares ? (costMode === 'total' && Number(e.cost) > 0 ? Number(e.cost) : total * price) : (Number(e.cost) || 0);
     const covered = Math.min(cost, Math.max(0, Number(e.covered) || 0));
     const pend = e.won == null || e.won === '';
-    return { shares, total, price, cost, covered, costMode, pend, won: pend ? 0 : Number(e.won) || 0 };
+    return { shares, total, price, cost, covered, costMode, pend, won: pend ? 0 : Number(e.won) || 0, jackpot: Number(e.jackpot) > 0 ? Number(e.jackpot) : 0, hasTicket: !!e.hasTicket };
   }
   function entries(){
     const o = LP.ledger || {};
@@ -295,15 +295,16 @@
         <div class="lc-entry-who">${n.total} share${n.total === 1 ? '' : 's'} · ${n.costMode === 'total' ? money(n.price || (n.total ? n.cost / n.total : 0)) + ' each' : '× ' + money(n.price)} · ${esc(who)}</div>
         ${n.covered > 0 ? `<div class="lc-entry-who">Winnings covered ${money(n.covered)} · members paid ${money(n.cost - n.covered)}</div>` : ''}
         <div class="lc-entry-nums"><span>Cost ${money(n.cost)}</span><span>${n.pend ? 'Awaiting result' : 'Won ' + money(n.won)}</span><b class="${n.pend ? '' : (n.won - n.cost >= 0 ? 'pos' : 'neg')}">${n.pend ? '–' : signed(n.won - n.cost)}</b></div>
-        <div class="lc-entry-btns"><button type="button" class="small" data-lc-edit="${esc(e.id)}">${n.pend ? 'Enter result' : 'Edit'}</button><button type="button" class="small danger" data-lc-del="${esc(e.id)}">Delete</button></div>
+        ${n.jackpot ? `<div class="lc-entry-who">Top prize ${money(n.jackpot)} · ${money(n.jackpot / n.total)} a share</div>` : ''}
+        <div class="lc-entry-btns">${n.hasTicket ? `<button type="button" class="small" data-lc-view="${esc(e.id)}">View ticket</button>` : ''}<button type="button" class="small" data-lc-edit="${esc(e.id)}">${n.pend ? 'Enter result' : 'Edit'}</button>${n.hasTicket ? `<button type="button" class="small" data-lc-unattach="${esc(e.id)}">Remove ticket</button>` : ''}<button type="button" class="small danger" data-lc-del="${esc(e.id)}">Delete</button></div>
       </div>`; }).join('') : '<div class="empty">No draws yet. Add the first one above.</div>';
     const names = Object.keys(t.per);
     $('lcPerMember').innerHTML = names.length ? `<h3 class="lc-h3">Per person (winnings split by shares)</h3>` + names.map(n => { const r = t.per[n], net = r.won - r.spent; return `<div class="lc-pm"><span>${esc(n)}${t.covered > 0 ? `<small>cash in ${money(r.cash)}</small>` : ''}</span><span>in ${money(r.spent)}</span><span>back ${money(r.won)}</span><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div>`; }).join('') : '';
-    $('lcCopy').disabled = !list.length;
+    $('lcCopy').disabled = !list.length; syncAttach();
   }
   function resetForm(){
     editingId = null; draftShares = {};
-    $('lcLDate').value = todayStr(); $('lcLLabel').value = ''; $('lcLPrice').value = lastPrice(); $('lcLTicket').value = ''; $('lcLCovered').value = ''; $('lcLWon').value = '';
+    $('lcLDate').value = todayStr(); $('lcLLabel').value = ''; $('lcLPrice').value = lastPrice(); $('lcLTicket').value = ''; $('lcLCovered').value = ''; $('lcLWon').value = ''; $('lcLJackpot').value = '';
     $('lcLSave').textContent = 'Add draw'; $('lcLCancel').hidden = true; renderShares();
   }
   async function saveEntry(){
@@ -323,6 +324,8 @@
     const shares = {}; Object.entries(draftShares).forEach(([n, c]) => { if(c > 0) shares[n] = c; });
     const entry = { date: $('lcLDate').value || todayStr(), label: $('lcLLabel').value.trim() || 'Lotto draw', price: Math.round(price * 10000) / 10000, shares, costMode, covered: Math.round(covered * 100) / 100,
       cost: Math.round(fullCost * 100) / 100, won: won == null ? null : Math.round(won * 100) / 100, createdAt: old ? old.createdAt || Date.now() : Date.now() };
+    const jp = parseFloat($('lcLJackpot').value); if(jp > 0) entry.jackpot = Math.round(jp * 100) / 100;
+    if(old && old.hasTicket) entry.hasTicket = true;
     const btn = $('lcLSave'); btn.disabled = true;
     try{
       const res = await authedWrite(`/lottoPigs/ledger/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
@@ -349,11 +352,88 @@
     const e = (LP.ledger || {})[id]; if(!e) return;
     const n = norm(e);
     editingId = id; draftShares = { ...n.shares };
-    $('lcLDate').value = e.date || todayStr(); $('lcLLabel').value = e.label || ''; $('lcLPrice').value = n.costMode === 'share' && n.price ? n.price : lastPrice(); $('lcLTicket').value = n.costMode === 'total' ? n.cost : ''; $('lcLCovered').value = n.covered || ''; $('lcLWon').value = n.pend ? '' : n.won;
+    $('lcLDate').value = e.date || todayStr(); $('lcLLabel').value = e.label || ''; $('lcLPrice').value = n.costMode === 'share' && n.price ? n.price : lastPrice(); $('lcLTicket').value = n.costMode === 'total' ? n.cost : ''; $('lcLCovered').value = n.covered || ''; $('lcLWon').value = n.pend ? '' : n.won; $('lcLJackpot').value = n.jackpot || '';
     $('lcLSave').textContent = 'Save changes'; $('lcLCancel').hidden = false; renderShares();
     $('lcLWon').focus(); $('lcLForm').scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
+
+  // ---------- ticket pictures kept with a draw ----------
+  // Stored apart from the draws (/lottoPigsTickets) so loading the profit and loss stays light.
+  const ticketCache = {};
+  function syncAttach(){
+    const sel = $('lcAttachSel'), btn = $('lcAttach'); if(!sel || !btn) return;
+    const prev = sel.value, list = entries();
+    sel.innerHTML = '<option value="">Choose a draw…</option>' + list.map(e => `<option value="${esc(e.id)}">${esc(e.label || 'Lotto draw')} · ${esc(prettyDate(e.date))}${e.hasTicket ? ' (has a ticket)' : ''}</option>`).join('');
+    if(prev && list.some(e => e.id === prev)) sel.value = prev;
+    btn.disabled = !(tickets.length && sel.value);
+  }
+  function ticketDataUrl(){
+    const c = draw(); if(!c) throw new Error('Add at least one ticket first.');
+    const maxW = 1600, k = Math.min(1, maxW / c.width), out = document.createElement('canvas');
+    out.width = Math.round(c.width * k); out.height = Math.round(c.height * k);
+    const x = out.getContext('2d'); x.fillStyle = '#0d100d'; x.fillRect(0, 0, out.width, out.height); x.drawImage(c, 0, 0, out.width, out.height);
+    let q = 0.82, url = out.toDataURL('image/jpeg', q);
+    while(url.length > 3.2e6 && q > 0.45){ q -= 0.1; url = out.toDataURL('image/jpeg', q); }
+    return url;
+  }
+  async function attachTicket(){
+    const st2 = $('lcAttachStatus'), id = $('lcAttachSel').value, btn = $('lcAttach');
+    if(!id || !tickets.length) return;
+    btn.disabled = true; st2.className = 'status-msg'; st2.textContent = 'Saving…';
+    try{
+      const img = ticketDataUrl();
+      let r = await authedWrite(`/lottoPigsTickets/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img, at: Date.now() }) });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      r = await authedWrite(`/lottoPigs/ledger/${id}/hasTicket.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: 'true' });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      (LP.ledger[id] || (LP.ledger[id] = {})).hasTicket = true; ticketCache[id] = img;
+      st2.className = 'status-msg ok'; st2.textContent = 'Saved. Group members can now view it on that draw.'; renderLedger();
+    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not save the picture. Check the new Firebase rules are published, then try again.'; }
+    syncAttach();
+  }
+  async function unattachTicket(id){
+    if(!confirm('Remove the ticket picture from this draw?')) return;
+    const st2 = $('lcLStatus');
+    try{
+      await authedWrite(`/lottoPigsTickets/${id}.json`, { method: 'DELETE' });
+      await authedWrite(`/lottoPigs/ledger/${id}/hasTicket.json`, { method: 'DELETE' });
+      if(LP.ledger[id]) delete LP.ledger[id].hasTicket; delete ticketCache[id];
+      renderLedger(); renderHome();
+    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not remove it. Try again.'; }
+  }
+  async function getTicket(id){
+    if(ticketCache[id]) return ticketCache[id];
+    const res = await authedFetch(`/lottoPigsTickets/${id}.json`);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json(); if(!d || !d.img) throw new Error('missing');
+    return (ticketCache[id] = d.img);
+  }
+  async function viewTicket(id){
+    const e = (LP.ledger || {})[id] || {};
+    let ov = $('lcViewer'); if(ov) ov.remove();
+    ov = document.createElement('div'); ov.id = 'lcViewer'; ov.className = 'lc-viewer';
+    ov.innerHTML = `<div class="lc-viewer-bar"><div><b>${esc(e.label || 'Lotto draw')}</b><span>${esc(prettyDate(e.date))}</span></div><button type="button" data-lc-vclose aria-label="Close">✕</button></div>
+      <div class="lc-viewer-body"><div class="lc-viewer-msg">Loading ticket…</div></div>
+      <div class="lc-viewer-foot"><button type="button" class="small" data-lc-vsave disabled>Download</button><button type="button" class="small" data-lc-vshare disabled>Share…</button></div>`;
+    document.body.appendChild(ov);
+    const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (ev) => { if(ev.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    ov.addEventListener('click', async (ev) => {
+      if(ev.target === ov || ev.target.closest('[data-lc-vclose]')) return close();
+      const url = ticketCache[id]; if(!url) return;
+      const blob = await (await fetch(url)).blob(), name = `${(e.label || 'lotto').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${e.date || ''}.jpg`;
+      if(ev.target.closest('[data-lc-vsave]')){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+      if(ev.target.closest('[data-lc-vshare]')){ const f = new File([blob], name, { type: blob.type }); try{ if(navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: e.label || 'Lotto ticket' }); else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); } }catch(err){} }
+    });
+    try{
+      const url = await getTicket(id);
+      ov.querySelector('.lc-viewer-body').innerHTML = `<img src="${url}" alt="Ticket for ${esc(e.label || 'this draw')}">`;
+      ov.querySelectorAll('[data-lc-vsave],[data-lc-vshare]').forEach(b => b.disabled = false);
+    }catch(err){ const m = ov.querySelector('.lc-viewer-msg'); if(m) m.textContent = 'Could not load the ticket. Check your connection and try again.'; }
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-lc-view]'); if(b) viewTicket(b.dataset.lcView); });
 
   // ---------- Home → Lotto: what the group's members see (read only) ----------
   // Only people in the Lotto Pigs group (and the admin) get the Lotto button on Home.
@@ -380,15 +460,21 @@
           <div class="${t.net >= 0 ? 'pos' : 'neg'}"><span>Net</span><b>${signed(t.net)}</b></div>
           <div><span>Draws</span><b>${t.draws}</b></div></div>` : ''}
         ${t.pending ? `<div class="hint">${t.pending} draw${t.pending === 1 ? ' is' : 's are'} still awaiting a result.</div>` : ''}
-        <div class="lc-who">In the group: ${g.members.map(n => n === me ? '<b>' + esc(n) + ' (you)</b>' : esc(n)).join(' · ')}</div>
         <h3 class="lc-h3">Draws</h3>
         <div id="lcHomeEntries" class="lc-home-entries">${list.length ? list.map(e => {
-          const n = norm(e), yours = me && n.shares[me];
-          return `<div class="lc-entry">
-            <div class="lc-entry-main"><b>${esc(e.label || 'Lotto draw')}</b><span>${esc(prettyDate(e.date))}</span></div>
-            <div class="lc-entry-who">${n.total} share${n.total === 1 ? '' : 's'} · ${esc(Object.entries(n.shares).map(([x, c]) => `${x} ${c}`).join(', '))}</div>
-            <div class="lc-entry-nums"><span>Cost ${money(n.cost)}</span><span>${n.pend ? 'Awaiting result' : 'Won ' + money(n.won)}</span><b class="${n.pend ? '' : (n.won - n.cost >= 0 ? 'pos' : 'neg')}">${n.pend ? '–' : signed(n.won - n.cost)}</b></div>
-            ${yours ? `<div class="lc-entry-who">You: ${yours} share${yours === 1 ? '' : 's'}${n.pend ? '' : ' · ' + signed(n.won * yours / n.total - n.cost * yours / n.total)}</div>` : ''}
+          const n = norm(e), yours = me && n.shares[me], per = n.total ? 1 / n.total : 0;
+          const youLine = yours ? `<div class="lc-dr-you"><span>You hold <b>${yours}</b> share${yours === 1 ? '' : 's'}</span><span>Paid <b>${money(n.cost * per * yours)}</b></span>${n.pend ? (n.jackpot ? `<span>Top prize <b>${money(n.jackpot * per * yours)}</b></span>` : '') : `<span>Back <b>${money(n.won * per * yours)}</b></span>`}</div>` : '';
+          return `<div class="lc-draw">
+            <div class="lc-dr-head"><div><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))} · ${n.total} share${n.total === 1 ? '' : 's'} · ${Object.keys(n.shares).length} in</div></div>
+              <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span></div>
+            <div class="lc-dr-grid">
+              <div><span>Share value</span><b>${money(n.cost * per)}</b></div>
+              <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b>${n.pend ? (n.jackpot ? money(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
+              <div><span>Ticket cost</span><b>${money(n.cost)}</b></div>
+            </div>
+            ${youLine}
+            <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
+            ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}">View ticket</button>` : ''}
           </div>`; }).join('') : '<div class="empty">No draws yet.</div>'}</div>
         ${Object.keys(t.per).length ? `<h3 class="lc-h3">Per person (winnings split by shares)</h3>` + Object.entries(t.per).map(([n, r]) => { const net = r.won - r.spent; return `<div class="lc-pp${n === me ? ' me' : ''}"><div class="lc-pp-top"><span>${esc(n)}${n === me ? ' (you)' : ''}</span><b class="${net >= 0 ? 'pos' : 'neg'}">${signed(net)}</b></div><div class="lc-pp-sub">In ${money(r.spent)} · back ${money(r.won)}</div></div>`; }).join('') : ''}
       </div>`;
@@ -469,6 +555,8 @@
           <label class="lc-check"><input type="checkbox" id="lcShowWho" checked> Show who's in the group</label>
         </div>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcDownload" disabled>Download picture</button><button type="button" class="small" id="lcShare" disabled>Share…</button></div>
+        <div class="lc-attach"><label class="lc-field">Keep this picture with a draw (so members can view it)<select id="lcAttachSel"></select></label><button type="button" class="small adm-primary" id="lcAttach" disabled>Save to draw</button></div>
+        <div class="status-msg" id="lcAttachStatus"></div>
         <div class="lc-preview" id="lcPreviewWrap" hidden><canvas id="lcCanvas" aria-label="Preview of the combined lotto picture"></canvas></div>
       </div>
       <div class="panel" id="lcLedger">
@@ -482,6 +570,7 @@
           <label class="lc-field">Price per share ($)<input type="number" id="lcLPrice" inputmode="decimal" step="0.01" min="0"></label>
           <label class="lc-field">Or total ticket cost ($)<input type="number" id="lcLTicket" inputmode="decimal" step="0.01" min="0" placeholder="divided by shares"></label>
           <label class="lc-field">Covered by winnings ($)<input type="number" id="lcLCovered" inputmode="decimal" step="0.01" min="0" placeholder="0 = members pay"></label>
+          <label class="lc-field">Top prize ($, optional)<input type="number" id="lcLJackpot" inputmode="decimal" step="1" min="0" placeholder="e.g. 100000000"></label>
           <label class="lc-field">Won ($)<input type="number" id="lcLWon" inputmode="decimal" step="0.01" min="0" placeholder="blank until result"></label>
         </div>
         <h3 class="lc-h3">Who bought in (shares)</h3>
@@ -505,6 +594,7 @@
       renderList(); scheduleRender();
     });
     ['lcTitle', 'lcDate', 'lcCols', 'lcShowTitle', 'lcShowWho'].forEach(id => { $(id).addEventListener('input', scheduleRender); $(id).addEventListener('change', scheduleRender); });
+    $('lcAttach').addEventListener('click', attachTicket); $('lcAttachSel').addEventListener('change', syncAttach);
     $('lcDownload').addEventListener('click', download);
     $('lcShare').addEventListener('click', share);
     $('lcMembers').addEventListener('click', async (e) => {
@@ -530,7 +620,7 @@
     ['lcLPrice', 'lcLTicket', 'lcLCovered'].forEach(id => $(id).addEventListener('input', renderShares));
     $('lcLSave').addEventListener('click', saveEntry);
     $('lcLCancel').addEventListener('click', resetForm);
-    $('lcEntries').addEventListener('click', (e) => { const ed = e.target.closest('[data-lc-edit]'), del = e.target.closest('[data-lc-del]'); if(ed) startEdit(ed.dataset.lcEdit); else if(del) deleteEntry(del.dataset.lcDel); });
+    $('lcEntries').addEventListener('click', (e) => { const ed = e.target.closest('[data-lc-edit]'), del = e.target.closest('[data-lc-del]'); const un = e.target.closest('[data-lc-unattach]'); if(un) unattachTicket(un.dataset.lcUnattach); else if(ed) startEdit(ed.dataset.lcEdit); else if(del) deleteEntry(del.dataset.lcDel); });
     $('lcCopy').addEventListener('click', async () => { const st2 = $('lcLStatus'); try{ await navigator.clipboard.writeText(summaryText(entries())); st2.className = 'status-msg ok'; st2.textContent = 'Copied. Paste it into the group chat.'; }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not copy on this browser.'; } });
     resetForm(); renderLedger();
     renderMembers(); renderList();

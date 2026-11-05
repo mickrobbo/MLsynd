@@ -213,6 +213,27 @@ test('Lotto tab: pick group members, combine several ticket screenshots into one
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('.lc-item-btns button')].every(b => b.getBoundingClientRect().right <= b.closest('.lc-item').getBoundingClientRect().right + 1)), true, 'remove button must fit in its tile');
 });
 
+test('Lotto Pigs: attach the combined ticket to a draw, members view it, share value and top prize per share show', async ({ page, db }) => {
+  await goAdmin(page, 'lotto');
+  await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.waitForTimeout(900);
+  const nm = await page.evaluate(() => document.querySelector('#lcMembers [data-lc-member]').dataset.lcMember);
+  await page.fill('#lcLLabel', 'Powerball'); await page.fill('#lcLPrice', '20'); await page.fill('#lcLJackpot', '100000000');
+  await page.evaluate((n) => { for(let i = 0; i < 4; i++) document.querySelector(`#lcShares [data-lc-sh="1"][data-lc-n="${n}"]`).click(); }, nm);
+  await page.click('#lcLSave'); await page.waitForTimeout(1000);
+  const id = Object.keys(db.lottoPigs.ledger)[0];
+  assert.equal(db.lottoPigs.ledger[id].jackpot, 100000000);
+  const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
+  const tk = [];
+  for(const [i, c] of ['#c33', '#33c'].entries()) tk.push({ name: `a${i}.png`, mimeType: 'image/png', buffer: Buffer.from(await png(600, 1100, c), 'base64') });
+  await page.setInputFiles('#lcFile', tk); await page.waitForTimeout(1200);
+  await page.selectOption('#lcAttachSel', id); await page.click('#lcAttach'); await page.waitForTimeout(1500);
+  assert.ok(db.lottoPigsTickets && db.lottoPigsTickets[id] && /^data:image\/jpeg/.test(db.lottoPigsTickets[id].img), 'picture stored apart from the draws');
+  assert.equal(db.lottoPigs.ledger[id].hasTicket, true);
+  await page.click(`[data-lc-view="${id}"]`); await page.waitForSelector('#lcViewer img', { timeout: 5000 });
+  assert.ok(await page.locator('#lcViewer img').isVisible());
+  await page.click('[data-lc-vclose]'); assert.equal(await page.locator('#lcViewer').count(), 0);
+});
+
 test('Lotto Pigs profit and loss: shares at a price, winnings split by shares, only entrants share', async ({ page, db }) => {
   await goAdmin(page, 'lotto');
   for(const n of [1, 2, 3]) await page.click(`#lcMembers [data-lc-member]:nth-child(${n})`);
