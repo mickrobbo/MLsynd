@@ -631,13 +631,19 @@
     while(url.length > 3.2e6 && q > 0.45){ q -= 0.1; url = out.toDataURL('image/jpeg', q); }
     return url;
   }
+  function resultText(){
+    const rs = groups().map((g, i) => infoFor(i)).filter(t => t && t.result && (t.result.prize != null || t.result.status && t.result.status !== 'pending'));
+    if(!rs.length) return '';
+    const tot = rs.reduce((a, t) => a + (+t.result.prize || 0), 0);
+    return tot > 0 ? 'Won ' + fmtMoney(tot) : 'No prize';
+  }
   function renderMlAdmin(){
     const sel = $('lcMlReplace'), list = $('lcMlList'); if(!sel || !list) return;
     const items = Object.keys(ML.meta).map(id => ({ id, ...ML.meta[id] })).sort((a, b) => (b.at || 0) - (a.at || 0));
     const prev = sel.value;
     sel.innerHTML = '<option value="">Save as a new ticket</option>' + items.map(m => `<option value="${esc(m.id)}">Replace: ${esc(m.label || 'MLSynd lotto')} · ${esc(prettyDate(m.date))}</option>`).join('');
     if(prev && items.some(m => m.id === prev)) sel.value = prev;
-    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}</i></span><button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
+    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}${m.res ? ' · ' + esc(m.res) : ''}</i></span><button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
   }
   async function removeMl(id){
     const m = ML.meta[id] || {}; if(!confirm(`Remove "${m.label || 'this ticket'}" from the Overview?`)) return;
@@ -657,7 +663,7 @@
       const rep = $('lcMlReplace') ? $('lcMlReplace').value : '';
       const img = ticketDataUrl(), id = rep && ML.meta[rep] ? rep : 'm' + Date.now().toString(36);
       const games = info && info.tickets ? [...new Set(info.tickets.map(t => t.game).filter(Boolean))].join(' + ') : '';
-      const meta = { label: ($('lcTitle').value || '').trim() || 'MLSynd lotto', date: $('lcDate').value || todayStr(), n: groups().length, games, at: Date.now() };
+      const meta = { label: ($('lcTitle').value || '').trim() || 'MLSynd lotto', date: $('lcDate').value || todayStr(), n: groups().length, games, at: Date.now(), res: resultText() };
       let r = await authedWrite(`/mlsyndLotto/img/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img }) });
       if(!r.ok) throw new Error('HTTP ' + r.status);
       r = await authedWrite(`/mlsyndLotto/meta/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meta) });
@@ -746,7 +752,7 @@
     if(!box){ box = document.createElement('div'); box.id = 'homeMlLotto'; box.className = 'home-block home-ml-lotto'; box.hidden = true; anchor.parentNode.insertBefore(box, anchor); }
     const list = Object.keys(ML.meta).map(id => ({ id, ...ML.meta[id] })).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 3);
     box.hidden = !list.length;
-    box.innerHTML = list.length ? `<div class="home-block-title">Lotto tickets</div>` + list.map(m => `<div class="mll-row"><div class="mll-t"><b>${esc(m.label || 'MLSynd lotto')}</b><span>${[prettyDate(m.date), m.n ? m.n + ' ticket' + (m.n === 1 ? '' : 's') : '', m.games ? esc(m.games) : ''].filter(Boolean).join(' · ')}</span></div><button type="button" class="mll-go" data-lc-mlview="${esc(m.id)}">View ticket</button></div>`).join('') : '';
+    box.innerHTML = list.length ? `<div class="home-block-title">Lotto tickets</div>` + list.map(m => `<div class="mll-row"><div class="mll-t"><b>${esc(m.label || 'MLSynd lotto')}</b><span>${[prettyDate(m.date), m.n ? m.n + ' ticket' + (m.n === 1 ? '' : 's') : '', m.games ? esc(m.games) : ''].filter(Boolean).join(' · ')}</span></div>${m.res ? `<span class="mll-res ${/^Won/.test(m.res) ? 'won' : ''}">${esc(m.res)}</span>` : ''}<button type="button" class="mll-go" data-lc-mlview="${esc(m.id)}">View ticket</button></div>`).join('') : '';
   }
   async function loadMl(){
     try{ const r = await authedFetch('/mlsyndLotto/meta.json'); if(!r.ok) return; const d = await r.json(); ML.meta = d && typeof d === 'object' ? d : {}; ML.loaded = true; renderMlHome(); renderMlAdmin(); }catch(e){}

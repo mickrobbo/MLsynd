@@ -312,6 +312,7 @@ test('MLSynd tickets: enter a result, replace a saved ticket, remove it from the
   assert.ok(h1 > h0, 'a result adds the prize bar to the card: ' + h0 + ' -> ' + h1);
   await page.click('#lcAttach'); await page.waitForTimeout(1500);
   assert.equal(Object.keys(db.mlsyndLotto.meta).length, 1);
+  assert.equal(Object.values(db.mlsyndLotto.meta)[0].res, 'Won $55', 'result saved with the ticket');
   await page.click('#lcAttach'); await page.waitForTimeout(1500);
   assert.equal(Object.keys(db.mlsyndLotto.meta).length, 2, 'save as new makes a second one');
   const firstId = Object.keys(db.mlsyndLotto.meta)[0];

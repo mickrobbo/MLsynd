@@ -7844,3 +7844,7 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .home-owe .owe-txt b{ margin-top:0; font-size:18px; }
 .home-owe .home-owe-go{ min-height:30px; padding:0 10px 0 12px; font-size:12.5px; }
 .home-digest{ margin:14px 0 0; }
+
+/* v281: result tag on the Overview ticket row */
+.mll-res{ flex:none; padding:5px 10px; border-radius:999px; font:800 12.5px 'Manrope', sans-serif; color:var(--muted); background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); white-space:nowrap; }
+.mll-res.won{ color:#4DEB8E; background:rgba(77,235,142,.14); border-color:rgba(77,235,142,.45); }
