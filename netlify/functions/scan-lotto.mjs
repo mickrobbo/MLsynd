@@ -50,7 +50,7 @@ Return ONLY a JSON object, no other text, in exactly this shape:
 {
   "tickets": [
     {
-      "game": string | null,            // e.g. "Powerball", "OzLotto", "Saturday Lotto", "Set for Life"
+      "game": string | null,            // the game name exactly as printed on the ticket logo, e.g. "Powerball", "TattsLotto", "OzLotto", "Set for Life". Never rename it based on the draw date.
       "draw_number": string | null,     // draw number as shown
       "draw_date": string | null,       // YYYY-MM-DD of the draw (first draw if several)
       "draws": number | null,           // how many consecutive draws the ticket covers, if shown

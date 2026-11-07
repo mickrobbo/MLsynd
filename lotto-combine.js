@@ -151,10 +151,12 @@
     wrap.innerHTML = info.tickets.map((t, i) => `<div class="lc-info-card">
         <div class="lc-info-h"><b>Ticket ${i + 1}${t.game ? ' · ' + esc(t.game) : ''}</b><span>${[t.draw_number ? 'Draw ' + esc(t.draw_number) : '', t.draw_date ? esc(fmtDay(t.draw_date)) : '', t.entry_type ? esc(t.entry_type) : '', t.price != null ? fmtMoney(t.price) : ''].filter(Boolean).join(' · ')}</span></div>
         ${t.entries.map(e => `<div class="lc-info-row"><i>${esc(e.label || '')}</i>${e.numbers.map(n => `<em>${n}</em>`).join('')}${e.extra.map(n => `<em class="x">${n}</em>`).join('')}</div>`).join('')}
+        <label class="lc-jp">Jackpot / first division prize ($)<input type="number" inputmode="decimal" min="0" step="1" data-lc-jp="${i}" value="${t.jackpot || ''}" placeholder="e.g. 50000000"></label>
         ${t.result && t.result.prize != null ? `<div class="lc-info-res">${(t.result.prize || 0) > 0 ? 'Won ' + fmtMoney(t.result.prize) : 'No prize'}</div>` : ''}
-      </div>`).join('') + (info.warnings && info.warnings.length ? `<div class="lc-info-warn">${info.warnings.map(w => '⚠ ' + esc(w)).join('<br>')}</div>` : '')
+      </div>`).join('') + (() => { const w = (info.warnings || []).filter(x => !/jackpot|quick ?pick|result|labelled|labeled|letters|not shown/i.test(x)); return w.length ? `<div class="lc-info-warn">${w.map(x => '⚠ ' + esc(x)).join('<br>')}</div>` : ''; })()
       + `<div class="lc-actions"><button type="button" class="small adm-primary" id="lcInfoFill">Fill the draw form with these</button><button type="button" class="small" id="lcInfoClear">Clear</button></div>
          <div class="hint">Check the numbers against the screenshots before sharing. If one is wrong, tap Read tickets again.</div>`;
+    wrap.querySelectorAll('[data-lc-jp]').forEach(inp => inp.addEventListener('input', () => { const t = info.tickets[+inp.dataset.lcJp]; if(t){ t.jackpot = parseFloat(inp.value) > 0 ? parseFloat(inp.value) : null; scheduleRender(); } }));
     $('lcInfoFill').addEventListener('click', fillFromInfo);
     $('lcInfoClear').addEventListener('click', () => { info = null; renderInfo(); scheduleRender(); });
   }
@@ -239,13 +241,23 @@
   const cleanOn = () => { const sel = $('lcStyle'); return !sel || sel.value !== 'shots'; };
   const CROW = 54, CBALL = 35, CSTEP = 43;
   function cardMeta(t){
-    const m = [['Entry type', t.entry_type], ['Total cost', t.price != null ? fmtMoney(t.price) : null], ['Purchased', t.purchased], ['Ticket no.', t.serial]].filter(x => x[1]);
-    return m;
+    return [['Total cost', t.price != null ? fmtMoney(t.price) : null], ['Purchased', t.purchased], ['Ticket no.', t.serial], ['Commission', t.commission ? fmtMoney(t.commission) : null]].filter(x => x[1]);
   }
+  // "1 Draw, 36 Game Standard entry" -> pills: 36 games, 1 draw, Standard entry
+  function chipsFor(t){
+    const et = String(t.entry_type || ''), c = [];
+    const g = /(\d+)\s*game/i.exec(et), d = /(\d+)\s*draw/i.exec(et), k = /(standard|system\s*\d*|quick\s*pick|mega|flexi|super)[a-z ]*?(entry|ticket)?(?=,|$)/i.exec(et);
+    const n = g ? +g[1] : t.entries.length; c.push(n + ' game' + (n === 1 ? '' : 's'));
+    const dr = d ? +d[1] : (t.draws || 1); c.push(dr + ' draw' + (dr === 1 ? '' : 's'));
+    if(k) c.push(k[0].trim().replace(/^./, m => m.toUpperCase())); else if(et && !g && !d) c.push(et);
+    if(t.quick_pick) c.push('Quick Pick');
+    return c;
+  }
+  const bigMoney = (v) => v >= 1e6 ? '$' + (Math.round(v / 1e5) / 10).toString().replace(/\.0$/, '') + ' Million' : fmtMoney(v);
   function cardH(t){
     const rows = t.entries.length > 8 ? Math.ceil(t.entries.length / 2) : t.entries.length;
     const metaRows = Math.ceil(cardMeta(t).length / 2);
-    return 120 + metaRows * 62 + 30 + rows * CROW + 30 + (t.commission ? 46 : 0) + (t.result && (t.result.prize != null || t.result.status) ? 64 : 0);
+    return 100 + 18 + 66 + (t.jackpot ? 88 : 0) + metaRows * 62 + 30 + rows * CROW + 30 + (t.result && (t.result.prize != null || t.result.status) ? 64 : 0);
   }
   function drawCard(ctx, t, x, y, w, n, total){
     const acc = accentFor(t.game), h = cardH(t);
@@ -263,7 +275,20 @@
     ctx.font = '700 26px Manrope, system-ui, sans-serif'; ctx.fillStyle = dark ? 'rgba(13,16,13,.8)' : 'rgba(255,255,255,.9)'; ctx.fillText(t.draw_date ? fmtDay(t.draw_date) + ' ' + new Date(t.draw_date + 'T12:00:00').getFullYear() : '', x + w - 28, y + 70);
     ctx.textAlign = 'left';
     // details grid
-    let yy = y + 100 + 26; const meta = cardMeta(t), LW = Math.round((w - 56) * 0.62), cw = LW;
+    let yy = y + 100 + 18;
+    // ticket type pills
+    let px = x + 28; ctx.font = '800 22px Manrope, system-ui, sans-serif'; ctx.textBaseline = 'middle';
+    chipsFor(t).forEach(c => { const tw = ctx.measureText(c).width + 30; if(px + tw > x + w - 20) return; ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(px, yy + 6, tw, 40, 20) : ctx.rect(px, yy + 6, tw, 40); ctx.fill(); ctx.fillStyle = CHALK; ctx.textAlign = 'left'; ctx.fillText(c, px + 15, yy + 27); px += tw + 10; });
+    yy += 66;
+    // prize money
+    if(t.jackpot){
+      ctx.fillStyle = 'rgba(232,193,79,.13)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 28, yy + 2, w - 56, 74, 16) : ctx.rect(x + 28, yy + 2, w - 56, 74); ctx.fill();
+      ctx.strokeStyle = 'rgba(232,193,79,.55)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.textAlign = 'left'; ctx.fillStyle = GOLD; ctx.font = '800 21px Manrope, system-ui, sans-serif'; ctx.fillText(/lotto|saturday|monday|wednesday|windfall/i.test(t.game || '') && !/oz|power/i.test(t.game || '') ? 'FIRST DIVISION PRIZE' : 'JACKPOT', x + 50, yy + 40);
+      ctx.textAlign = 'right'; ctx.fillStyle = '#f6d36b'; ctx.font = '800 40px Manrope, system-ui, sans-serif'; ctx.fillText(bigMoney(t.jackpot), x + w - 50, yy + 40); ctx.textAlign = 'left';
+      yy += 88;
+    }
+    const meta = cardMeta(t), LW = Math.round((w - 56) * 0.5), cw = LW;
     meta.forEach((m, i) => {
       const cx = x + 28 + (i % 2) * LW, cy = yy + Math.floor(i / 2) * 62, cwi = i % 2 ? (w - 56) - LW : LW;
       ctx.fillStyle = MUTED; ctx.font = '700 20px Manrope, system-ui, sans-serif'; ctx.fillText(m[0].toUpperCase(), cx, cy + 10);
@@ -283,7 +308,6 @@
       if(e.extra.length){ bx += 6; e.extra.forEach(nn => { ballS(ctx, bx, cy, nn, { gold: true, hit: winX ? winX.has(nn) : false, dim: !!winX && !winX.has(nn) }, CBALL); bx += CSTEP; }); }
     });
     yy += per * CROW + 12;
-    if(t.commission){ ctx.fillStyle = MUTED; ctx.font = '600 20px Manrope, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('Includes ' + fmtMoney(t.commission) + ' commission', x + 28, yy + 14); yy += 34; }
     if(t.result && (t.result.prize != null || t.result.status)){
       const won = t.result.status === 'won' || (t.result.prize || 0) > 0;
       ctx.fillStyle = won ? 'rgba(77,235,142,.16)' : 'rgba(255,255,255,.06)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 28, yy + 6, w - 56, 46, 23) : ctx.rect(x + 28, yy + 6, w - 56, 46); ctx.fill();

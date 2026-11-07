@@ -7823,3 +7823,5 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .adm-flow-hint{ margin:2px 0 8px; }
 .awk-r-mia.on{ background:#8a8f98; color:#fff; }
 .awk-res .awk-r-mia{ flex:0 0 auto; min-width:44px; }
+.lc-jp{ display:flex; flex-direction:column; gap:4px; margin:8px 0 6px; font-size:12px; color:var(--muted); }
+.lc-jp input{ min-height:40px; }
