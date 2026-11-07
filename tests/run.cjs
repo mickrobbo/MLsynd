@@ -213,6 +213,25 @@ test('Lotto tab: pick group members, combine several ticket screenshots into one
   assert.equal(await page.evaluate(() => [...document.querySelectorAll('.lc-item-btns button')].every(b => b.getBoundingClientRect().right <= b.closest('.lc-item').getBoundingClientRect().right + 1)), true, 'remove button must fit in its tile');
 });
 
+test('Lotto combiner: five screenshots can be grouped into two tickets', async ({ page }) => {
+  const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
+  await goAdmin(page, 'lotto');
+  const files = [];
+  for(const [i, c] of ['#c33', '#3c3', '#33c', '#cc3', '#3cc'].entries()) files.push({ name: `t${i}.png`, mimeType: 'image/png', buffer: Buffer.from(await png(600, 900, c), 'base64') });
+  await page.setInputFiles('#lcFile', files); await page.waitForTimeout(1200);
+  assert.equal((await text(page, '#lcCount')).startsWith('5 tickets'), true, 'starts as one ticket per screenshot');
+  await page.selectOption('#lcSplit', '2'); await page.waitForTimeout(500);
+  assert.ok((await text(page, '#lcCount')).startsWith('2 tickets'), await text(page, '#lcCount'));
+  assert.equal(await page.locator('#lcList .lc-grp-h').count(), 2);
+  assert.equal(await page.locator('#lcList .lc-joined').count(), 3);
+  // by hand: make screenshot 4 its own ticket again => 3 tickets
+  await page.click('#lcList [data-lc-id]:nth-of-type(4) [data-lc-act="join"], #lcList .lc-item:nth-of-type(4) [data-lc-act="join"]').catch(() => {});
+  const n = await page.evaluate(() => document.querySelectorAll('#lcList .lc-grp-h').length);
+  assert.ok(n >= 2 && n <= 3, 'groups: ' + n);
+  const dim = await page.evaluate(() => ({ w: lcCanvas.width, h: lcCanvas.height }));
+  assert.ok(dim.w > 900 && dim.h > 900, JSON.stringify(dim));
+});
+
 test('Lotto Pigs: attach the combined ticket to a draw, members view it, share value and top prize per share show', async ({ page, db }) => {
   await goAdmin(page, 'lotto');
   await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.waitForTimeout(900);

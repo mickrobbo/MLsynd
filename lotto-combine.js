@@ -15,7 +15,7 @@
   const esc = (s) => (typeof escapeHtml === 'function' ? escapeHtml(String(s == null ? '' : s)) : String(s == null ? '' : s));
   const st = () => (typeof currentState !== 'undefined' && currentState) ? currentState : {};
   const BG = '#0d100d', PANEL = '#171c17', LIME = '#cdf464', CHALK = '#f1f3ee', MUTED = '#9aa396';
-  const MAX_SIDE = 4096, MAX_AREA = 14e6, COL_W = 900, GAP = 24, PAD = 36;
+  const MAX_SIDE = 4096, MAX_AREA = 14e6, COL_W = 900, GAP = 24, PAD = 36, PART_GAP = 6;
 
   // brand graphics for the shared picture (loaded once; the picture still works if they can't load)
   const art = {}; ['icon:lotto-pigs-icon.webp', 'mark:lotto-pigs-mark.webp'].forEach(x => { const [k, f] = x.split(':'); const im = new Image(); im.onload = () => { art[k] = im; try{ scheduleRender(); }catch(e){} }; im.src = f; });
@@ -102,17 +102,32 @@
     status.textContent = bad ? `${bad} file${bad === 1 ? '' : 's'} couldn't be read as a picture and ${bad === 1 ? 'was' : 'were'} skipped.` : '';
     renderList(); scheduleRender();
   }
+  // Several screenshots can be ONE ticket (a long ticket scrolled in parts).
+  // A screenshot marked `join` belongs to the ticket above it.
+  function groups(){ const g = []; tickets.forEach((t, i) => { if(i > 0 && t.join) g[g.length - 1].push(t); else g.push([t]); }); return g; }
+  function splitInto(n){
+    const k = Math.max(1, Math.min(n, tickets.length)), per = tickets.length / k; let start = 0;
+    const cut = new Set(); for(let j = 0; j < k; j++){ cut.add(Math.round(start)); start += per; }
+    tickets.forEach((t, i) => { t.join = i > 0 && !cut.has(i); });
+  }
   function renderList(){
     const list = $('lcList'); if(!list) return;
-    $('lcCount').textContent = tickets.length ? `${tickets.length} ticket${tickets.length === 1 ? '' : 's'}` : '';
-    list.innerHTML = tickets.map((t, i) => `<div class="lc-item" data-lc-id="${t.id}">
-        <img src="${t.url}" alt="Ticket ${i + 1}">
+    const gs = groups(), nt = gs.length;
+    $('lcCount').textContent = tickets.length ? `${nt} ticket${nt === 1 ? '' : 's'}${tickets.length !== nt ? ` · ${tickets.length} screenshots` : ''}` : '';
+    const sp = $('lcSplit'), spw = $('lcSplitWrap');
+    if(sp){ sp.innerHTML = Array.from({ length: tickets.length }, (_, k) => `<option value="${k + 1}">${k + 1} ticket${k ? 's' : ''}${k + 1 === tickets.length ? ' (one per screenshot)' : ''}</option>`).join(''); sp.hidden = tickets.length < 2; sp.value = String(nt); if(spw) spw.hidden = tickets.length < 2; }
+    let gi = 0;
+    list.innerHTML = tickets.map((t, i) => {
+      const head = (i === 0 || !t.join) ? `<div class="lc-grp-h">Ticket ${++gi}</div>` : '';
+      return head + `<div class="lc-item${t.join ? ' lc-joined' : ''}" data-lc-id="${t.id}">
+        <img src="${t.url}" alt="Screenshot ${i + 1}">
         <span class="lc-item-n">${i + 1}</span>
         <div class="lc-item-btns">
-          <button type="button" data-lc-act="up" aria-label="Move ticket ${i + 1} earlier" ${i === 0 ? 'disabled' : ''}>↑</button>
-          <button type="button" data-lc-act="down" aria-label="Move ticket ${i + 1} later" ${i === tickets.length - 1 ? 'disabled' : ''}>↓</button>
-          <button type="button" data-lc-act="rm" aria-label="Remove ticket ${i + 1}">✕</button>
-        </div></div>`).join('');
+          ${i > 0 ? `<button type="button" class="lc-join${t.join ? ' on' : ''}" data-lc-act="join" aria-pressed="${!!t.join}">${t.join ? 'Same ticket ✓' : 'Same as above'}</button>` : ''}
+          <button type="button" data-lc-act="up" aria-label="Move screenshot ${i + 1} earlier" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" data-lc-act="down" aria-label="Move screenshot ${i + 1} later" ${i === tickets.length - 1 ? 'disabled' : ''}>↓</button>
+          <button type="button" data-lc-act="rm" aria-label="Remove screenshot ${i + 1}">✕</button>
+        </div></div>`; }).join('');
     const has = tickets.length > 0;
     ['lcDownload', 'lcShare', 'lcClear'].forEach(id => { const b = $(id); if(b) b.disabled = !has; });
     $('lcPreviewWrap').hidden = !has; syncAttach();
@@ -126,8 +141,8 @@
   }
   // Pick how many columns gives the most phone-friendly shape (close to 3:4 portrait).
   function planLayout(){
-    const n = tickets.length; let best = null;
-    const heights = tickets.map(t => Math.round(COL_W * t.h / t.w));
+    const gs = groups(), n = gs.length; let best = null;
+    const heights = gs.map(g => g.reduce((a, t) => a + Math.round(COL_W * t.h / t.w), 0) + (g.length - 1) * PART_GAP);
     for(let c = 1; c <= Math.min(n, 4); c++){
       const colH = new Array(c).fill(0), place = [];
       heights.forEach((h, i) => { const k = colH.indexOf(Math.min(...colH)); place.push({ col: k, y: colH[k], h }); colH[k] += h + GAP; });
@@ -171,15 +186,24 @@
       ctx.fillStyle = CHALK; ctx.font = '800 64px Manrope, system-ui, sans-serif'; ctx.textBaseline = 'top';
       ctx.fillText(title || 'Lotto Pigs', tx, y + 22, textW);
       ctx.fillStyle = MUTED; ctx.font = '600 34px Manrope, system-ui, sans-serif';
-      ctx.fillText([date, `${tickets.length} ticket${tickets.length === 1 ? '' : 's'}`].filter(Boolean).join('  ·  '), tx, y + 98, textW);
+      ctx.fillText([date, `${groups().length} ticket${groups().length === 1 ? '' : 's'}`].filter(Boolean).join('  ·  '), tx, y + 98, textW);
       if(badge){ ctx.save(); ctx.beginPath(); ctx.arc(W - PAD - badge / 2, y + D / 2, badge / 2, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(art.mark, W - PAD - badge, y + D / 2 - badge / 2, badge, badge); ctx.restore(); }
       y += headH;
     }
-    tickets.forEach((t, i) => {
+    const gs = groups();
+    gs.forEach((g, i) => {
       const p = L.place[i], x = PAD + p.col * (COL_W + GAP), yy = y + p.y;
       ctx.fillStyle = PANEL; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - 6, yy - 6, COL_W + 12, p.h + 12, 22) : ctx.rect(x - 6, yy - 6, COL_W + 12, p.h + 12); ctx.fill();
       ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, yy, COL_W, p.h, 16) : ctx.rect(x, yy, COL_W, p.h); ctx.clip();
-      ctx.drawImage(t.img, x, yy, COL_W, p.h); ctx.restore();
+      let py = yy;
+      g.forEach((t) => { const h = Math.round(COL_W * t.h / t.w); ctx.drawImage(t.img, x, py, COL_W, h); py += h + PART_GAP; });
+      ctx.restore();
+      if(gs.length > 1){ // small "Ticket N" tab so the groups are obvious
+        ctx.font = '800 30px Manrope, system-ui, sans-serif'; ctx.textBaseline = 'middle';
+        const label = `Ticket ${i + 1}`, tw = ctx.measureText(label).width + 36;
+        ctx.fillStyle = 'rgba(13,16,13,.88)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 14, yy + 14, tw, 48, 24) : ctx.rect(x + 14, yy + 14, tw, 48); ctx.fill();
+        ctx.fillStyle = LIME; ctx.fillText(label, x + 32, yy + 39);
+      }
     });
     y += L.bodyH;
     if(footH){
@@ -717,6 +741,7 @@
         <div class="hint">Add all your lotto ticket screenshots. They're joined into one picture you can download or share. Nothing is uploaded; it all happens on your phone.</div>
         <input type="file" id="lcFile" accept="image/*" multiple hidden>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcPick">Add ticket screenshots</button><span class="lc-count" id="lcCount"></span><button type="button" class="small" id="lcClear" disabled>Clear all</button></div>
+        <label class="lc-field lc-split" id="lcSplitWrap" hidden>How many tickets are these?<select id="lcSplit" hidden></select></label>
         <div class="lc-list" id="lcList"></div>
         <div class="status-msg" id="lcStatus"></div>
         <div class="lc-opts">
@@ -762,10 +787,13 @@
     $('lcList').addEventListener('click', (e) => {
       const b = e.target.closest('[data-lc-act]'); if(!b) return;
       const id = Number(b.closest('[data-lc-id]').dataset.lcId), i = tickets.findIndex(t => t.id === id);
-      if(b.dataset.lcAct === 'rm'){ URL.revokeObjectURL(tickets[i].url); tickets.splice(i, 1); }
+      if(b.dataset.lcAct === 'join'){ tickets[i].join = !tickets[i].join; }
+      else if(b.dataset.lcAct === 'rm'){ URL.revokeObjectURL(tickets[i].url); tickets.splice(i, 1); }
       else { const j = b.dataset.lcAct === 'up' ? i - 1 : i + 1; if(j < 0 || j >= tickets.length) return; [tickets[i], tickets[j]] = [tickets[j], tickets[i]]; }
+      if(tickets[0]) tickets[0].join = false;
       renderList(); scheduleRender();
     });
+    $('lcSplit').addEventListener('change', (e) => { splitInto(parseInt(e.target.value, 10) || 1); renderList(); scheduleRender(); });
     ['lcTitle', 'lcDate', 'lcCols', 'lcShowTitle', 'lcShowWho'].forEach(id => { $(id).addEventListener('input', scheduleRender); $(id).addEventListener('change', scheduleRender); });
     $('lcAttach').addEventListener('click', attachTicket); $('lcAttachSel').addEventListener('change', syncAttach);
     $('lcDownload').addEventListener('click', download);
