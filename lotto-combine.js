@@ -643,19 +643,37 @@
     const prev = sel.value;
     sel.innerHTML = '<option value="">Save as a new ticket</option>' + items.map(m => `<option value="${esc(m.id)}">Replace: ${esc(m.label || 'MLSynd lotto')} · ${esc(prettyDate(m.date))}</option>`).join('');
     if(prev && items.some(m => m.id === prev)) sel.value = prev;
-    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}${m.res ? ' · ' + esc(m.res) : ''}</i></span><button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
+    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}${m.res ? ' · ' + esc(m.res) : ''}</i></span>${m.data ? `<button type="button" class="small" data-lc-mledit="${esc(m.id)}">Add result</button>` : ''}<button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
+  }
+  async function editMl(id){
+    const st2 = $('lcAttachStatus'); st2.className = 'status-msg'; st2.textContent = 'Opening ticket…';
+    try{
+      const r = await authedFetch(`/mlsyndLotto/data/${id}.json`); const d = r.ok ? await r.json() : null;
+      if(!d || !d.tickets) throw new Error('none');
+      const blank = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="#1b221b"/></svg>');
+      const norm = d.tickets.map(t => ({ ...t, entries: (t.entries || []).map(e => ({ ...e, numbers: e.numbers || [], extra: e.extra || [] })), result: t.result ? { ...t.result, winning_numbers: t.result.winning_numbers || [], winning_extra: t.result.winning_extra || [] } : null }));
+      tickets.forEach(t => { if(t.url && t.url.indexOf('blob:') === 0) URL.revokeObjectURL(t.url); });
+      tickets = norm.map(() => ({ id: nextId++, name: 'saved', img: null, url: blank, w: 4, h: 4, join: false }));
+      info = { tickets: norm, warnings: [] };
+      const m = ML.meta[id] || {}; $('lcTitle').value = m.label || ''; if(m.date) $('lcDate').value = m.date;
+      { const tb = document.querySelector('#lcTgt [data-lc-tgt="ml"]'); if(tb) tb.click(); } $('lcMlReplace').value = id;
+      renderList(); renderInfo(); scheduleRender();
+      st2.className = 'status-msg ok'; st2.textContent = 'Opened. Type the result under the ticket, then Save to MLSynd.';
+      const box = $('lcInfo'); if(box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'This ticket was saved before results existed. Re-read it once, then it can be updated any time.'; }
   }
   async function removeMl(id){
     const m = ML.meta[id] || {}; if(!confirm(`Remove "${m.label || 'this ticket'}" from the Overview?`)) return;
     const st2 = $('lcAttachStatus');
     try{
       await authedWrite(`/mlsyndLotto/img/${id}.json`, { method: 'DELETE' });
+      await authedWrite(`/mlsyndLotto/data/${id}.json`, { method: 'DELETE' });
       const r = await authedWrite(`/mlsyndLotto/meta/${id}.json`, { method: 'DELETE' }); if(!r.ok) throw new Error('HTTP ' + r.status);
       delete ML.meta[id]; delete ticketCache['ml:' + id]; renderMlHome(); renderMlAdmin();
       st2.className = 'status-msg ok'; st2.textContent = 'Removed from the Overview.';
     }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not remove it. Try again.'; }
   }
-  document.addEventListener('click', (e) => { const b = e.target.closest('[data-lc-mlrm]'); if(b) removeMl(b.dataset.lcMlrm); });
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-lc-mlrm]'); if(b) removeMl(b.dataset.lcMlrm); const c = e.target.closest('[data-lc-mledit]'); if(c) editMl(c.dataset.lcMledit); });
   async function attachMl(){
     const st2 = $('lcAttachStatus'), btn = $('lcAttach'); if(!tickets.length) return;
     btn.disabled = true; st2.className = 'status-msg'; st2.textContent = 'Saving…';
@@ -663,9 +681,11 @@
       const rep = $('lcMlReplace') ? $('lcMlReplace').value : '';
       const img = ticketDataUrl(), id = rep && ML.meta[rep] ? rep : 'm' + Date.now().toString(36);
       const games = info && info.tickets ? [...new Set(info.tickets.map(t => t.game).filter(Boolean))].join(' + ') : '';
-      const meta = { label: ($('lcTitle').value || '').trim() || 'MLSynd lotto', date: $('lcDate').value || todayStr(), n: groups().length, games, at: Date.now(), res: resultText() };
+      const meta = { label: ($('lcTitle').value || '').trim() || 'MLSynd lotto', date: $('lcDate').value || todayStr(), n: groups().length, games, at: Date.now(), res: resultText(), data: !!(info && info.tickets && info.tickets.length) };
       let r = await authedWrite(`/mlsyndLotto/img/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img }) });
       if(!r.ok) throw new Error('HTTP ' + r.status);
+      if(meta.data){ r = await authedWrite(`/mlsyndLotto/data/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tickets: info.tickets }) }); if(!r.ok) throw new Error('HTTP ' + r.status); }
+      else await authedWrite(`/mlsyndLotto/data/${id}.json`, { method: 'DELETE' });
       r = await authedWrite(`/mlsyndLotto/meta/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meta) });
       if(!r.ok) throw new Error('HTTP ' + r.status);
       ML.meta[id] = meta; ticketCache['ml:' + id] = img; renderMlHome(); renderMlAdmin();

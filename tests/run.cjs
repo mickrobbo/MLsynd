@@ -318,6 +318,13 @@ test('MLSynd tickets: enter a result, replace a saved ticket, remove it from the
   const firstId = Object.keys(db.mlsyndLotto.meta)[0];
   await page.selectOption('#lcMlReplace', firstId); await page.click('#lcAttach'); await page.waitForTimeout(1500);
   assert.equal(Object.keys(db.mlsyndLotto.meta).length, 2, 'replace keeps the count');
+  // reopen a saved ticket without screenshots and add a result
+  await page.click('#lcClear'); await page.waitForTimeout(300);
+  await page.click(`[data-lc-mledit="${firstId}"]`); await page.waitForTimeout(1500);
+  assert.equal(await page.evaluate(() => document.getElementById('lcMlReplace').value), firstId, 'replace is preselected');
+  await page.fill('[data-lc-prize="0"]', '120'); await page.waitForTimeout(600);
+  await page.click('#lcAttach'); await page.waitForTimeout(1500);
+  assert.equal(db.mlsyndLotto.meta[firstId].res, 'Won $120', 'result updated from the saved data');
   page.once('dialog', d => d.accept());
   await page.click(`[data-lc-mlrm="${firstId}"]`); await page.waitForTimeout(1200);
   assert.equal(Object.keys(db.mlsyndLotto.meta).length, 1, 'removed');
