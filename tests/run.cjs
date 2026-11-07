@@ -382,6 +382,18 @@ test('Admin week on one screen: mark legs and bets, fill the return', async ({ p
 });
 
 
+test('Admin week: mark each leg of an individual multi and it shows on Home', async ({ page, db }) => {
+  await goAdmin(page, 'entry');
+  await page.evaluate(() => { renderAdminWeeklyIndividualBetsEntry(); updateWeeklyChecklist(); });
+  const row = await page.evaluate(() => adminWeekDesk.betsNow().find(b => b.name === 'Murph').row);
+  await page.click(`[data-awk-legs="${row}"]`);
+  await page.click(`.awk-r[data-awk="ileg"][data-id="${row}:0"][data-v="Win"]`); await page.waitForTimeout(2500);
+  await page.click(`.awk-r[data-awk="ileg"][data-id="${row}:1"][data-v="Loss"]`); await page.waitForTimeout(2500);
+  const m = db.state.weeklyIndividualBets.find(b => b.name === 'Murph');
+  assert.equal(m.pick.legs[0].result, 'won'); assert.equal(m.pick.legs[1].result, 'lost');
+  assert.ok((await text(page, '#adminWeeklyChecklistRows')).includes('2/3'), 'legs marked count');
+}, { db: (db) => { db.state.weeklyIndividualBets = [{ name: 'Murph', odds: 5, stake: 50, pick: { sel: '3-leg multi', legs: [{ sel: 'A', odds: 1.5 }, { sel: 'B', odds: 1.6 }, { sel: 'C', odds: 2 }] } }]; } });
+
 test('Legs in the draft show on Home even if the multi was cleared', async ({ page }) => {
   await goHome(page); await page.waitForTimeout(600);
   assert.ok(await page.locator('#groupMultiArea .hm-leg').count() >= 3, 'multi hidden by the cleared flag');

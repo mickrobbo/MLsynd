@@ -54,6 +54,15 @@
   const resBtns = (kind, id, cur, sug) => `<span class="awk-res" role="group" aria-label="Result">${RES.map(([v, t]) =>
     `<button type="button" class="awk-r awk-r-${v.toLowerCase()}${cur === v ? ' on' : ''}${!cur && sug === v ? ' sug' : ''}" data-awk="${kind}" data-id="${esc(id)}" data-v="${v}" aria-pressed="${cur === v}">${t}</button>`).join('')}</span>`;
 
+  const openLegs = new Set();
+  const legState = (l) => { const r = String(l.result || '').toLowerCase(); return r === 'won' || r === 'win' ? 'Win' : r === 'lost' || r === 'loss' ? 'Loss' : r === 'void' ? 'Void' : null; };
+  function legPanel(b, legs){
+    const done = legs.filter(l => legState(l)).length;
+    const open = openLegs.has(b.row);
+    return `<button type="button" class="awk-legs-toggle${open ? ' open' : ''}" data-awk-legs="${b.row}" aria-expanded="${open}">Legs <b>${done}/${legs.length}</b> marked<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+      ${open ? `<div class="awk-legs">${legs.map((l, i) => `<div class="awk-leg"><span class="awk-who"><b>${esc(l.sel || 'Leg ' + (i + 1))}</b><span>${esc([l.market, l.event].filter(Boolean).join(' · '))}${Number(l.odds) > 0 ? `${l.market || l.event ? ' · ' : ''}@${Number(l.odds).toFixed(2)}` : ''}</span></span>${resBtns('ileg', b.row + ':' + i, legState(l), null)}</div>`).join('')}</div>` : ''}`;
+  }
+
   function render(wrap, steps){
     const s = st();
     const legs = legsNow();
@@ -109,6 +118,7 @@
           return `<div class="awk-row${b.result ? ' is-' + String(b.result).toLowerCase() : ''}">
             <span class="awk-who"><b>${esc(b.name)}</b><span>${esc(what)}${Number(b.odds) > 0 ? ` · @${Number(b.odds).toFixed(2)}` : ''}${b.result && b.pl !== '' && b.pl != null ? ` · ${Number(b.pl) >= 0 ? '+' : '−'}${money(Math.abs(Number(b.pl)))}` : ''}</span>${sg ? `<em class="awk-sug awk-sug-${sg.toLowerCase()}">Slip says ${sg === 'Win' ? 'won' : sg === 'Loss' ? 'lost' : 'void'}</em>` : ''}</span>
             ${resBtns('bet', b.row, b.result || null, sg)}
+            ${legsN > 1 ? legPanel(b, p.legs) : ''}
           </div>`;
         }).join('')}</div>` : ''}
       </section>
@@ -141,6 +151,19 @@
     clearTimeout(betSaveT);
     betSaveT = setTimeout(() => { const b = $('adminSaveWeeklyBetsBtn'); if(b) b.click(); setTimeout(refresh, 1500); }, 400);
   }
+  // mark one leg of an individual bet; it lands on the bet's slip details, so
+  // the Home tile shows it without the slip being read again
+  function setIndLeg(row, i, v){
+    const name = (betsNow()[row] || {}).name;
+    const val = v === 'Win' ? 'won' : v === 'Loss' ? 'lost' : v === 'Void' ? 'void' : null;
+    const seen = new Set();
+    const cands = [ (window.__adminWibInfo || [])[row], name && window.slipIndExtras && window.slipIndExtras[name],
+      ...(st().weeklyIndividualBets || []).filter(b => b && b.name === name) ];
+    cands.forEach(x => { const l = x && x.pick && Array.isArray(x.pick.legs) && x.pick.legs[i]; if(l && !seen.has(l)){ seen.add(l); if(val) l.result = val; else delete l.result; } });
+    clearTimeout(betSaveT);
+    betSaveT = setTimeout(() => { const b = $('adminSaveWeeklyBetsBtn'); if(b) b.click(); setTimeout(refresh, 1500); }, 400);
+    refresh();
+  }
   function go(id){
     const panel = $(id); if(!panel) return;
     panel.classList.remove('admin-panel-collapsed');
@@ -151,10 +174,13 @@
 
   document.addEventListener('click', (e) => {
     const root = e.target.closest('#adminWeeklyChecklistRows'); if(!root) return;
+    const tg = e.target.closest('[data-awk-legs]');
+    if(tg){ e.stopPropagation(); const k = Number(tg.dataset.awkLegs); if(openLegs.has(k)) openLegs.delete(k); else openLegs.add(k); refresh(); return; }
     const r = e.target.closest('[data-awk]');
     if(r){
       e.stopPropagation();
       const v = r.classList.contains('on') ? '' : r.dataset.v; // tap again to clear
+      if(r.dataset.awk === 'ileg'){ const [rw, li] = r.dataset.id.split(':').map(Number); setIndLeg(rw, li, v); return; }
       if(r.dataset.awk === 'leg') setLeg(r.dataset.id, v); else setBet(Number(r.dataset.id), v);
       setTimeout(refresh, 60);
       return;
