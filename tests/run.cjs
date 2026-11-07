@@ -301,6 +301,28 @@ test('Lotto combiner: a re-read (saved copy with empty lists dropped) still show
   assert.ok((await text(page, '#lcInfo')).includes('OzLotto'));
 }, { fns: { 'scan-lotto': () => ({ tickets: [{ game: 'OzLotto', draw_number: '1620', price: 15, entries: [{ label: '1', numbers: [4, 9, 17, 25, 28, 36, 41] }], result: { status: 'pending' } }], cached: true }) } });
 
+test('MLSynd tickets: enter a result, replace a saved ticket, remove it from the Overview', async ({ page, db }) => {
+  const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
+  await goAdmin(page, 'lotto');
+  await page.setInputFiles('#lcFile', [{ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from(await png(600, 900, '#c33'), 'base64') }]); await page.waitForTimeout(800);
+  await page.click('#lcTgt [data-lc-tgt="ml"]'); await page.click('#lcReadBtn'); await page.waitForTimeout(1500);
+  const h0 = await page.evaluate(() => lcCanvas.height);
+  await page.fill('[data-lc-win="0"]', '4 9 17 2 3 5 6'); await page.fill('[data-lc-prize="0"]', '55'); await page.waitForTimeout(500);
+  const h1 = await page.evaluate(() => lcCanvas.height);
+  assert.ok(h1 > h0, 'a result adds the prize bar to the card: ' + h0 + ' -> ' + h1);
+  await page.click('#lcAttach'); await page.waitForTimeout(1500);
+  assert.equal(Object.keys(db.mlsyndLotto.meta).length, 1);
+  await page.click('#lcAttach'); await page.waitForTimeout(1500);
+  assert.equal(Object.keys(db.mlsyndLotto.meta).length, 2, 'save as new makes a second one');
+  const firstId = Object.keys(db.mlsyndLotto.meta)[0];
+  await page.selectOption('#lcMlReplace', firstId); await page.click('#lcAttach'); await page.waitForTimeout(1500);
+  assert.equal(Object.keys(db.mlsyndLotto.meta).length, 2, 'replace keeps the count');
+  page.once('dialog', d => d.accept());
+  await page.click(`[data-lc-mlrm="${firstId}"]`); await page.waitForTimeout(1200);
+  assert.equal(Object.keys(db.mlsyndLotto.meta).length, 1, 'removed');
+  assert.ok(!db.mlsyndLotto.img[firstId], 'its picture is removed too');
+}, { fns: { 'scan-lotto': () => ({ tickets: [{ game: 'OzLotto', draw_number: '1620', draw_date: '2026-11-04', price: 15, entries: [{ label: '1', numbers: [4, 9, 17, 25, 28, 36, 41], extra: [] }], result: null }], warnings: [] }) } });
+
 test('Lotto Pigs: attach the combined ticket to a draw, members view it, share value and top prize per share show', async ({ page, db }) => {
   await goAdmin(page, 'lotto');
   await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.waitForTimeout(900);

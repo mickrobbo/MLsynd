@@ -151,12 +151,25 @@
     wrap.innerHTML = info.tickets.map((t, i) => `<div class="lc-info-card">
         <div class="lc-info-h"><b>Ticket ${i + 1}${t.game ? ' · ' + esc(t.game) : ''}</b><span>${[t.draw_number ? 'Draw ' + esc(t.draw_number) : '', t.draw_date ? esc(fmtDay(t.draw_date)) : '', t.entry_type ? esc(t.entry_type) : '', t.price != null ? fmtMoney(t.price) : ''].filter(Boolean).join(' · ')}</span></div>
         ${t.entries.map(e => `<div class="lc-info-row"><i>${esc(e.label || '')}</i>${e.numbers.map(n => `<em>${n}</em>`).join('')}${e.extra.map(n => `<em class="x">${n}</em>`).join('')}</div>`).join('')}
+        <div class="lc-res"><div class="lc-res-h">Result (after the draw)</div>
+          <label>Winning numbers<input type="text" inputmode="numeric" data-lc-win="${i}" placeholder="e.g. 4 9 17 25 28 36 41" value="${t.result && t.result.winning_numbers ? t.result.winning_numbers.join(' ') : ''}"></label>
+          <label>Powerball / extra<input type="text" inputmode="numeric" data-lc-winx="${i}" placeholder="e.g. 7" value="${t.result && t.result.winning_extra ? t.result.winning_extra.join(' ') : ''}"></label>
+          <label>Prize won ($)<input type="number" inputmode="decimal" min="0" step="0.01" data-lc-prize="${i}" placeholder="0 if nothing" value="${t.result && t.result.prize ? t.result.prize : ''}"></label>
+        </div>
         <label class="lc-jp">Jackpot / first division prize ($)<input type="number" inputmode="decimal" min="0" step="1" data-lc-jp="${i}" value="${t.jackpot || ''}" placeholder="e.g. 50000000"></label>
         ${t.result && t.result.prize != null ? `<div class="lc-info-res">${(t.result.prize || 0) > 0 ? 'Won ' + fmtMoney(t.result.prize) : 'No prize'}</div>` : ''}
       </div>`).join('') + (() => { const w = (info.warnings || []).filter(x => !/jackpot|quick ?pick|result|labelled|labeled|letters|not shown/i.test(x)); return w.length ? `<div class="lc-info-warn">${w.map(x => '⚠ ' + esc(x)).join('<br>')}</div>` : ''; })()
       + `<div class="lc-actions"><button type="button" class="small adm-primary" id="lcInfoFill">Fill the draw form with these</button><button type="button" class="small" id="lcInfoClear">Clear</button></div>
          <div class="hint">Check the numbers against the screenshots before sharing. If one is wrong, tap Read tickets again.</div>`;
     wrap.querySelectorAll('[data-lc-jp]').forEach(inp => inp.addEventListener('input', () => { const t = info.tickets[+inp.dataset.lcJp]; if(t){ t.jackpot = parseFloat(inp.value) > 0 ? parseFloat(inp.value) : null; scheduleRender(); } }));
+    const nums = (v) => (String(v).match(/\d+/g) || []).map(Number).filter(n => n >= 0 && n <= 99);
+    const setRes = (i) => {
+      const t = info.tickets[i], g = (a) => wrap.querySelector(`[data-lc-${a}="${i}"]`);
+      const wn = nums(g('win').value), wx = nums(g('winx').value), pz = parseFloat(g('prize').value);
+      t.result = (wn.length || wx.length || pz > 0 || g('prize').value !== '') ? { status: pz > 0 ? 'won' : (wn.length || g('prize').value !== '' ? 'lost' : 'pending'), prize: pz > 0 ? pz : 0, winning_numbers: wn, winning_extra: wx } : null;
+      scheduleRender();
+    };
+    wrap.querySelectorAll('[data-lc-win],[data-lc-winx],[data-lc-prize]').forEach(inp => inp.addEventListener('input', () => setRes(+(inp.dataset.lcWin ?? inp.dataset.lcWinx ?? inp.dataset.lcPrize))));
     $('lcInfoFill').addEventListener('click', fillFromInfo);
     $('lcInfoClear').addEventListener('click', () => { info = null; renderInfo(); scheduleRender(); });
   }
@@ -601,6 +614,8 @@
     const lab = sel.closest('label'); if(lab) lab.hidden = tgt === 'ml';
     btn.textContent = tgt === 'ml' ? 'Save to MLSynd' : 'Save to draw';
     const mh = $('lcMlHint'); if(mh) mh.hidden = tgt !== 'ml';
+    const mm = $('lcMlManage'); if(mm) mm.hidden = tgt !== 'ml';
+    if(tgt === 'ml') renderMlAdmin();
     if(tgt === 'ml'){ btn.disabled = !tickets.length; return; }
     const prev = sel.value, list = entries();
     sel.innerHTML = '<option value="">Choose a draw…</option>' + list.map(e => `<option value="${esc(e.id)}">${esc(e.label || 'Lotto draw')} · ${esc(prettyDate(e.date))}${e.hasTicket ? ' (has a ticket)' : ''}</option>`).join('');
@@ -616,18 +631,38 @@
     while(url.length > 3.2e6 && q > 0.45){ q -= 0.1; url = out.toDataURL('image/jpeg', q); }
     return url;
   }
+  function renderMlAdmin(){
+    const sel = $('lcMlReplace'), list = $('lcMlList'); if(!sel || !list) return;
+    const items = Object.keys(ML.meta).map(id => ({ id, ...ML.meta[id] })).sort((a, b) => (b.at || 0) - (a.at || 0));
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Save as a new ticket</option>' + items.map(m => `<option value="${esc(m.id)}">Replace: ${esc(m.label || 'MLSynd lotto')} · ${esc(prettyDate(m.date))}</option>`).join('');
+    if(prev && items.some(m => m.id === prev)) sel.value = prev;
+    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}</i></span><button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
+  }
+  async function removeMl(id){
+    const m = ML.meta[id] || {}; if(!confirm(`Remove "${m.label || 'this ticket'}" from the Overview?`)) return;
+    const st2 = $('lcAttachStatus');
+    try{
+      await authedWrite(`/mlsyndLotto/img/${id}.json`, { method: 'DELETE' });
+      const r = await authedWrite(`/mlsyndLotto/meta/${id}.json`, { method: 'DELETE' }); if(!r.ok) throw new Error('HTTP ' + r.status);
+      delete ML.meta[id]; delete ticketCache['ml:' + id]; renderMlHome(); renderMlAdmin();
+      st2.className = 'status-msg ok'; st2.textContent = 'Removed from the Overview.';
+    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not remove it. Try again.'; }
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-lc-mlrm]'); if(b) removeMl(b.dataset.lcMlrm); });
   async function attachMl(){
     const st2 = $('lcAttachStatus'), btn = $('lcAttach'); if(!tickets.length) return;
     btn.disabled = true; st2.className = 'status-msg'; st2.textContent = 'Saving…';
     try{
-      const img = ticketDataUrl(), id = 'm' + Date.now().toString(36);
+      const rep = $('lcMlReplace') ? $('lcMlReplace').value : '';
+      const img = ticketDataUrl(), id = rep && ML.meta[rep] ? rep : 'm' + Date.now().toString(36);
       const games = info && info.tickets ? [...new Set(info.tickets.map(t => t.game).filter(Boolean))].join(' + ') : '';
       const meta = { label: ($('lcTitle').value || '').trim() || 'MLSynd lotto', date: $('lcDate').value || todayStr(), n: groups().length, games, at: Date.now() };
       let r = await authedWrite(`/mlsyndLotto/img/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img }) });
       if(!r.ok) throw new Error('HTTP ' + r.status);
       r = await authedWrite(`/mlsyndLotto/meta/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meta) });
       if(!r.ok) throw new Error('HTTP ' + r.status);
-      ML.meta[id] = meta; ticketCache['ml:' + id] = img; renderMlHome();
+      ML.meta[id] = meta; ticketCache['ml:' + id] = img; renderMlHome(); renderMlAdmin();
       st2.className = 'status-msg ok'; st2.textContent = 'Saved. MLSynd members can view it on Home → Overview.';
     }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not save the picture. Check the new Firebase rules are published, then try again.'; }
     syncAttach();
@@ -714,7 +749,7 @@
     box.innerHTML = list.length ? `<div class="home-block-title">Lotto tickets</div>` + list.map(m => `<div class="mll-row"><div class="mll-t"><b>${esc(m.label || 'MLSynd lotto')}</b><span>${[prettyDate(m.date), m.n ? m.n + ' ticket' + (m.n === 1 ? '' : 's') : '', m.games ? esc(m.games) : ''].filter(Boolean).join(' · ')}</span></div><button type="button" class="mll-go" data-lc-mlview="${esc(m.id)}">View ticket</button></div>`).join('') : '';
   }
   async function loadMl(){
-    try{ const r = await authedFetch('/mlsyndLotto/meta.json'); if(!r.ok) return; const d = await r.json(); ML.meta = d && typeof d === 'object' ? d : {}; ML.loaded = true; renderMlHome(); }catch(e){}
+    try{ const r = await authedFetch('/mlsyndLotto/meta.json'); if(!r.ok) return; const d = await r.json(); ML.meta = d && typeof d === 'object' ? d : {}; ML.loaded = true; renderMlHome(); renderMlAdmin(); }catch(e){}
   }
 
   // ---------- Home → Lotto: what the group's members see (read only) ----------
@@ -992,6 +1027,10 @@
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcDownload" disabled>Download picture</button><button type="button" class="small" id="lcShare" disabled>Share…</button></div>
         <div class="lc-attach"><label class="lc-field">Keep this picture with a draw (so members can view it)<select id="lcAttachSel"></select></label><button type="button" class="small adm-primary" id="lcAttach" disabled>Save to draw</button></div>
         <div class="hint" id="lcMlHint" hidden>MLSynd tickets are saved for every syndicate member to view on Home → Overview. The picture uses the MLSynd logo and lists all members.</div>
+        <div id="lcMlManage" hidden>
+          <label class="lc-field">When saving<select id="lcMlReplace"></select></label>
+          <div class="lc-ml-h">Saved on Overview</div><div id="lcMlList"></div>
+        </div>
         <div class="status-msg" id="lcAttachStatus"></div>
         <div class="lc-preview" id="lcPreviewWrap" hidden><canvas id="lcCanvas" aria-label="Preview of the combined lotto picture"></canvas></div>
       </div>
@@ -1037,6 +1076,7 @@
       tgt = t === 'ml' ? 'ml' : 'pigs'; try{ localStorage.setItem('mlsynd-lotto-target', tgt); }catch(e){}
       document.querySelectorAll('#lcTgt [data-lc-tgt]').forEach(b => { const on = b.dataset.lcTgt === tgt; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
       const ti = $('lcTitle'); if(ti && DEFAULT_TITLES.includes(ti.value.trim())) ti.value = tgt === 'ml' ? 'MLSynd' : 'Lotto Pigs';
+      if(tgt === 'ml' && !ML.loaded) loadMl().then(renderMlAdmin);
       syncAttach(); scheduleRender();
     };
     $('lcTgt').addEventListener('click', (e) => { const b = e.target.closest('[data-lc-tgt]'); if(b) setTgt(b.dataset.lcTgt); });
