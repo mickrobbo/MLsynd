@@ -7788,3 +7788,19 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-join.on{ background:rgba(200,245,96,.16) !important; color:var(--lime, #C8F560) !important; }
 .lc-split{ margin-top:8px; }
 .lc-item-btns{ flex-wrap:wrap; }
+
+/* v273: ticket details read from the screenshots */
+.lc-read{ display:flex; align-items:center; gap:12px; margin-top:12px; padding:12px; border:1px solid rgba(205,244,100,.25); border-radius:14px; background:rgba(205,244,100,.06); }
+.lc-read > div{ flex:1; min-width:0; }
+.lc-read b{ display:block; font-size:14px; }
+.lc-read span{ display:block; margin-top:2px; font-size:12px; color:var(--muted); line-height:1.35; }
+.lc-info-card{ margin-top:10px; padding:12px 12px 8px; border-radius:14px; background:var(--surface-2, rgba(255,255,255,.05)); border:1px solid rgba(255,255,255,.07); }
+.lc-info-h{ display:flex; flex-direction:column; gap:2px; margin-bottom:8px; }
+.lc-info-h b{ color:var(--lime, #cdf464); font-size:15px; }
+.lc-info-h span{ font-size:12px; color:var(--muted); }
+.lc-info-row{ display:flex; align-items:center; flex-wrap:wrap; gap:5px; padding:4px 0; }
+.lc-info-row i{ width:18px; font-style:normal; font-weight:800; font-size:12px; color:var(--muted); }
+.lc-info-row em{ min-width:28px; height:28px; padding:0 4px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; border:2px solid var(--lime, #cdf464); background:#232a23; font-style:normal; font-weight:800; font-size:12.5px; }
+.lc-info-row em.x{ border-color:#e8c14f; }
+.lc-info-res{ margin:6px 0 4px; padding:6px 10px; border-radius:999px; text-align:center; font-weight:800; font-size:12.5px; background:rgba(77,235,142,.16); color:#4DEB8E; }
+.lc-info-warn{ margin-top:8px; font-size:12px; color:#FFC93C; line-height:1.4; }

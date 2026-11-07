@@ -21,6 +21,7 @@
   const art = {}; ['icon:lotto-pigs-icon.webp', 'mark:lotto-pigs-mark.webp'].forEach(x => { const [k, f] = x.split(':'); const im = new Image(); im.onload = () => { art[k] = im; try{ scheduleRender(); }catch(e){} }; im.src = f; });
   let tickets = []; // { id, name, img, url, w, h }
   let nextId = 1;
+  let info = null; // ticket details read from the screenshots: { tickets: [...], warnings: [] }
   let lastBlob = null, lastName = 'lotto-tickets.png';
   let renderTimer = null;
 
@@ -129,8 +130,54 @@
           <button type="button" data-lc-act="rm" aria-label="Remove screenshot ${i + 1}">✕</button>
         </div></div>`; }).join('');
     const has = tickets.length > 0;
+    const rd = $('lcRead'); if(rd) rd.hidden = !has;
     ['lcDownload', 'lcShare', 'lcClear'].forEach(id => { const b = $(id); if(b) b.disabled = !has; });
     $('lcPreviewWrap').hidden = !has; syncAttach();
+  }
+
+  async function smallDataUrl(img){
+    const k = Math.min(1, 1100 / img.naturalWidth), c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', 0.82);
+  }
+  function staleInfo(){ if(info && info.tickets && groups().length !== info.tickets.length){ info = null; renderInfo(); const rs = $('lcReadStatus'); if(rs){ rs.className = 'status-msg'; rs.textContent = 'The tickets changed, so tap Read tickets again.'; } } }
+  function renderInfo(){
+    const wrap = $('lcInfo'); if(!wrap) return;
+    if(!info || !info.tickets || !info.tickets.length){ wrap.innerHTML = ''; return; }
+    wrap.innerHTML = info.tickets.map((t, i) => `<div class="lc-info-card">
+        <div class="lc-info-h"><b>Ticket ${i + 1}${t.game ? ' · ' + esc(t.game) : ''}</b><span>${[t.draw_number ? 'Draw ' + esc(t.draw_number) : '', t.draw_date ? esc(fmtDay(t.draw_date)) : '', t.price != null ? fmtMoney(t.price) : ''].filter(Boolean).join(' · ')}</span></div>
+        ${t.entries.map(e => `<div class="lc-info-row"><i>${esc(e.label || '')}</i>${e.numbers.map(n => `<em>${n}</em>`).join('')}${e.extra.map(n => `<em class="x">${n}</em>`).join('')}</div>`).join('')}
+        ${t.result && t.result.prize != null ? `<div class="lc-info-res">${(t.result.prize || 0) > 0 ? 'Won ' + fmtMoney(t.result.prize) : 'No prize'}</div>` : ''}
+      </div>`).join('') + (info.warnings && info.warnings.length ? `<div class="lc-info-warn">${info.warnings.map(w => '⚠ ' + esc(w)).join('<br>')}</div>` : '')
+      + `<div class="lc-actions"><button type="button" class="small adm-primary" id="lcInfoFill">Fill the draw form with these</button><button type="button" class="small" id="lcInfoClear">Clear</button></div>
+         <div class="hint">Check the numbers against the screenshots before sharing. If one is wrong, tap Read tickets again.</div>`;
+    $('lcInfoFill').addEventListener('click', fillFromInfo);
+    $('lcInfoClear').addEventListener('click', () => { info = null; renderInfo(); scheduleRender(); });
+  }
+  function fillFromInfo(){
+    if(!info || !info.tickets.length) return;
+    const t0 = info.tickets[0], games = [...new Set(info.tickets.map(t => t.game).filter(Boolean))];
+    const set = (id, v) => { const el = $(id); if(el && v != null && v !== '') el.value = v; };
+    set('lcLLabel', games.join(' + ') + (info.tickets.length > 1 ? ` (${info.tickets.length} tickets)` : '')); set('lcLDate', t0.draw_date); set('lcDate', t0.draw_date); set('lcTitle', games.join(' + '));
+    const total = info.tickets.reduce((a, t) => a + (t.price || 0), 0); if(total > 0) set('lcLTicket', total);
+    const jp = Math.max(...info.tickets.map(t => t.jackpot || 0)); if(jp > 0) set('lcLJackpot', jp);
+    ['lcLTicket', 'lcLJackpot'].forEach(id => { const el = $(id); if(el) el.dispatchEvent(new Event('input', { bubbles: true })); });
+    scheduleRender(); const rs = $('lcReadStatus'); rs.className = 'status-msg ok'; rs.textContent = 'Draw form filled in below. Add who bought in, then save the draw.';
+  }
+  async function readTickets(force){
+    const rs = $('lcReadStatus'), btn = $('lcReadBtn'); if(!tickets.length) return;
+    btn.disabled = true; rs.className = 'status-msg'; rs.textContent = `Reading ${tickets.length} screenshot${tickets.length === 1 ? '' : 's'}… about 10–20 seconds.`;
+    try{
+      const images = []; for(const t of tickets) images.push(await smallDataUrl(t.img));
+      const auth = typeof getValidAuth === 'function' ? await getValidAuth() : null; if(!auth) throw new Error('Sign in again, then try.');
+      const res = await fetch('/.netlify/functions/scan-lotto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: auth.idToken, images, groups: groups().map(g => g.length), force: !!force }) });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok) throw new Error(data.error || `The ticket reader failed (HTTP ${res.status}).`);
+      if(!data.tickets || !data.tickets.length) throw new Error('No ticket numbers found. Try a clearer, uncropped screenshot.');
+      info = data; renderInfo(); scheduleRender();
+      rs.className = 'status-msg ok'; rs.textContent = `Found ${data.tickets.length} ticket${data.tickets.length === 1 ? '' : 's'}${data.cached ? ' (read before, so free)' : ''}. Check the numbers below.`;
+    }catch(e){ rs.className = 'status-msg error'; rs.textContent = e.message || 'Could not read the tickets.'; }
+    finally{ btn.disabled = false; }
   }
 
   // ---------- drawing ----------
@@ -139,10 +186,50 @@
     words.forEach(w => { const t = line ? line + ' ' + w : w; if(ctx.measureText(t).width > maxW && line){ lines.push(line); line = w; } else line = t; });
     if(line) lines.push(line); return lines;
   }
+  // ---------- ticket details (read from the screenshots) ----------
+  const GOLD = '#e8c14f';
+  const infoFor = (i) => { const on = $('lcShowInfo'); return (info && info.tickets && info.tickets[i] && (!on || on.checked)) ? info.tickets[i] : null; };
+  const BALL = 44, BSTEP = 52;
+  function stripH(t){ if(!t) return 0; return 22 + 54 + t.entries.length * 60 + (t.result && (t.result.prize != null || t.result.status) ? 56 : 0) + 14; }
+  const fmtDay = (d) => { const x = new Date(d + 'T12:00:00'); return isNaN(x) ? '' : x.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }); };
+  const fmtMoney = (v) => '$' + Number(v).toLocaleString('en-AU', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  function ball(ctx, cx, cy, n, o){
+    ctx.beginPath(); ctx.arc(cx, cy, BALL / 2, 0, Math.PI * 2);
+    ctx.fillStyle = o.hit ? (o.gold ? GOLD : LIME) : '#232a23'; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = o.gold ? GOLD : LIME; ctx.globalAlpha = o.dim ? .45 : 1; ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = o.hit ? '#0d100d' : CHALK; ctx.font = '800 22px Manrope, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(n), cx, cy + 1); ctx.textAlign = 'left';
+  }
+  function drawStrip(ctx, t, x, y, w){
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    const meta = [t.draw_number ? 'Draw ' + t.draw_number : '', t.draw_date ? fmtDay(t.draw_date) : '', t.price != null ? fmtMoney(t.price) : ''].filter(Boolean).join('  ·  ');
+    let yy = y + 22 + 27;
+    ctx.fillStyle = LIME; ctx.font = '800 32px Manrope, system-ui, sans-serif'; ctx.fillText(t.game || 'Lotto ticket', x + 22, yy, w - 44);
+    const gw = Math.min(ctx.measureText(t.game || 'Lotto ticket').width, w - 44);
+    ctx.fillStyle = MUTED; ctx.font = '600 24px Manrope, system-ui, sans-serif'; ctx.fillText(meta, x + 22 + gw + 20, yy + 1, Math.max(60, w - 44 - gw - 20));
+    yy += 27 + 6;
+    const win = t.result && t.result.winning_numbers.length ? new Set(t.result.winning_numbers) : null;
+    const winX = t.result && t.result.winning_extra.length ? new Set(t.result.winning_extra) : null;
+    t.entries.forEach((e) => {
+      const cy = yy + 30;
+      ctx.fillStyle = MUTED; ctx.font = '800 24px Manrope, system-ui, sans-serif'; ctx.fillText(e.label || '', x + 22, cy);
+      let bx = x + 70 + BALL / 2;
+      e.numbers.forEach(n => { ball(ctx, bx, cy, n, { hit: win ? win.has(n) : false, dim: !!win && !win.has(n) }); bx += BSTEP; });
+      if(e.extra.length){ bx += 10; e.extra.forEach(n => { ball(ctx, bx, cy, n, { gold: true, hit: winX ? winX.has(n) : false, dim: !!winX && !winX.has(n) }); bx += BSTEP; }); }
+      yy += 60;
+    });
+    if(t.result && (t.result.prize != null || t.result.status)){
+      const won = t.result.status === 'won' || (t.result.prize || 0) > 0;
+      ctx.fillStyle = won ? 'rgba(77,235,142,.16)' : 'rgba(255,255,255,.06)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 22, yy + 6, w - 44, 44, 22) : ctx.rect(x + 22, yy + 6, w - 44, 44); ctx.fill();
+      ctx.fillStyle = won ? '#4DEB8E' : MUTED; ctx.font = '800 24px Manrope, system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(won ? 'Won ' + fmtMoney(t.result.prize || 0) : (t.result.status === 'pending' ? 'Draw pending' : 'No prize'), x + w / 2, yy + 29); ctx.textAlign = 'left';
+    }
+  }
+
   // Pick how many columns gives the most phone-friendly shape (close to 3:4 portrait).
   function planLayout(){
     const gs = groups(), n = gs.length; let best = null;
-    const heights = gs.map(g => g.reduce((a, t) => a + Math.round(COL_W * t.h / t.w), 0) + (g.length - 1) * PART_GAP);
+    const heights = gs.map((g, i) => g.reduce((a, t) => a + Math.round(COL_W * t.h / t.w), 0) + (g.length - 1) * PART_GAP + stripH(infoFor(i)));
     for(let c = 1; c <= Math.min(n, 4); c++){
       const colH = new Array(c).fill(0), place = [];
       heights.forEach((h, i) => { const k = colH.indexOf(Math.min(...colH)); place.push({ col: k, y: colH[k], h }); colH[k] += h + GAP; });
@@ -198,6 +285,7 @@
       let py = yy;
       g.forEach((t) => { const h = Math.round(COL_W * t.h / t.w); ctx.drawImage(t.img, x, py, COL_W, h); py += h + PART_GAP; });
       ctx.restore();
+      const it = infoFor(i); if(it) drawStrip(ctx, it, x, py, COL_W);
       if(gs.length > 1){ // small "Ticket N" tab so the groups are obvious
         ctx.font = '800 30px Manrope, system-ui, sans-serif'; ctx.textBaseline = 'middle';
         const label = `Ticket ${i + 1}`, tw = ctx.measureText(label).width + 36;
@@ -432,6 +520,7 @@
       if(!r.ok) throw new Error('HTTP ' + r.status);
       r = await authedWrite(`/lottoPigs/ledger/${id}/hasTicket.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: 'true' });
       if(!r.ok) throw new Error('HTTP ' + r.status);
+      if(info && info.tickets && info.tickets.length){ try{ await authedWrite(`/lottoPigs/ledger/${id}/ticketInfo.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(info.tickets) }); (LP.ledger[id] || (LP.ledger[id] = {})).ticketInfo = info.tickets; }catch(e){} }
       (LP.ledger[id] || (LP.ledger[id] = {})).hasTicket = true; ticketCache[id] = img;
       st2.className = 'status-msg ok'; st2.textContent = 'Saved. Group members can now view it on that draw.'; renderLedger();
     }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not save the picture. Check the new Firebase rules are published, then try again.'; }
@@ -741,6 +830,12 @@
         <div class="hint">Add all your lotto ticket screenshots. They're joined into one picture you can download or share. Nothing is uploaded; it all happens on your phone.</div>
         <input type="file" id="lcFile" accept="image/*" multiple hidden>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcPick">Add ticket screenshots</button><span class="lc-count" id="lcCount"></span><button type="button" class="small" id="lcClear" disabled>Clear all</button></div>
+        <div class="lc-read" id="lcRead" hidden>
+          <div><b>Read the ticket details</b><span>Reads the game, draw, price and every game's numbers off the screenshots, and shows them on the picture for the group.</span></div>
+          <button type="button" class="small adm-primary" id="lcReadBtn">Read tickets</button>
+        </div>
+        <div class="status-msg" id="lcReadStatus"></div>
+        <div id="lcInfo"></div>
         <label class="lc-field lc-split" id="lcSplitWrap" hidden>How many tickets are these?<select id="lcSplit" hidden></select></label>
         <div class="lc-list" id="lcList"></div>
         <div class="status-msg" id="lcStatus"></div>
@@ -750,6 +845,7 @@
           <label class="lc-field">Layout<select id="lcCols"><option value="">Auto</option><option value="1">1 column</option><option value="2">2 columns</option><option value="3">3 columns</option></select></label>
           <label class="lc-check"><input type="checkbox" id="lcShowTitle" checked> Show title and date</label>
           <label class="lc-check"><input type="checkbox" id="lcShowWho" checked> Show who's in the group</label>
+          <label class="lc-check"><input type="checkbox" id="lcShowInfo" checked> Show ticket numbers on the picture</label>
         </div>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcDownload" disabled>Download picture</button><button type="button" class="small" id="lcShare" disabled>Share…</button></div>
         <div class="lc-attach"><label class="lc-field">Keep this picture with a draw (so members can view it)<select id="lcAttachSel"></select></label><button type="button" class="small adm-primary" id="lcAttach" disabled>Save to draw</button></div>
@@ -783,7 +879,7 @@
     $('lcDate').value = todayStr();
     $('lcPick').addEventListener('click', () => $('lcFile').click());
     $('lcFile').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
-    $('lcClear').addEventListener('click', () => { tickets.forEach(t => URL.revokeObjectURL(t.url)); tickets = []; renderList(); });
+    $('lcClear').addEventListener('click', () => { tickets.forEach(t => URL.revokeObjectURL(t.url)); tickets = []; info = null; renderInfo(); renderList(); });
     $('lcList').addEventListener('click', (e) => {
       const b = e.target.closest('[data-lc-act]'); if(!b) return;
       const id = Number(b.closest('[data-lc-id]').dataset.lcId), i = tickets.findIndex(t => t.id === id);
@@ -791,10 +887,11 @@
       else if(b.dataset.lcAct === 'rm'){ URL.revokeObjectURL(tickets[i].url); tickets.splice(i, 1); }
       else { const j = b.dataset.lcAct === 'up' ? i - 1 : i + 1; if(j < 0 || j >= tickets.length) return; [tickets[i], tickets[j]] = [tickets[j], tickets[i]]; }
       if(tickets[0]) tickets[0].join = false;
-      renderList(); scheduleRender();
+      staleInfo(); renderList(); scheduleRender();
     });
-    $('lcSplit').addEventListener('change', (e) => { splitInto(parseInt(e.target.value, 10) || 1); renderList(); scheduleRender(); });
-    ['lcTitle', 'lcDate', 'lcCols', 'lcShowTitle', 'lcShowWho'].forEach(id => { $(id).addEventListener('input', scheduleRender); $(id).addEventListener('change', scheduleRender); });
+    $('lcReadBtn').addEventListener('click', () => readTickets());
+    $('lcSplit').addEventListener('change', (e) => { splitInto(parseInt(e.target.value, 10) || 1); staleInfo(); renderList(); scheduleRender(); });
+    ['lcTitle', 'lcDate', 'lcCols', 'lcShowTitle', 'lcShowWho', 'lcShowInfo'].forEach(id => { $(id).addEventListener('input', scheduleRender); $(id).addEventListener('change', scheduleRender); });
     $('lcAttach').addEventListener('click', attachTicket); $('lcAttachSel').addEventListener('change', syncAttach);
     $('lcDownload').addEventListener('click', download);
     $('lcShare').addEventListener('click', share);

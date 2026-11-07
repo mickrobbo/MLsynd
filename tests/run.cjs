@@ -232,6 +232,28 @@ test('Lotto combiner: five screenshots can be grouped into two tickets', async (
   assert.ok(dim.w > 900 && dim.h > 900, JSON.stringify(dim));
 });
 
+test('Lotto combiner: reads ticket details and fills the draw form', async ({ page, log }) => {
+  const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
+  await goAdmin(page, 'lotto');
+  const files = [];
+  for(const [i, c] of ['#c33', '#3c3', '#33c'].entries()) files.push({ name: `t${i}.png`, mimeType: 'image/png', buffer: Buffer.from(await png(600, 900, c), 'base64') });
+  await page.setInputFiles('#lcFile', files); await page.waitForTimeout(1000);
+  await page.selectOption('#lcSplit', '2'); await page.waitForTimeout(400);
+  await page.click('#lcReadBtn'); await page.waitForTimeout(1500);
+  assert.ok(log.some(l => l.fn === 'scan-lotto' && l.body.images.length === 3 && l.body.groups.join(',') === '2,1'), 'sent screenshots and grouping');
+  const card = await text(page, '#lcInfo');
+  assert.ok(card.includes('Powerball') && card.includes('Draw 1429') && card.includes('OzLotto'), card);
+  await page.click('#lcInfoFill'); await page.waitForTimeout(400);
+  assert.equal(await page.inputValue('#lcLLabel'), 'Powerball + OzLotto (2 tickets)');
+  assert.equal(await page.inputValue('#lcLDate'), '2026-11-06');
+  assert.equal(await page.inputValue('#lcLTicket'), '45');
+  assert.equal(await page.inputValue('#lcLJackpot'), '100000000');
+  const dim = await page.evaluate(() => ({ w: lcCanvas.width, h: lcCanvas.height }));
+  assert.ok(dim.h > 1200, 'details strip makes the picture taller: ' + JSON.stringify(dim));
+}, { fns: { 'scan-lotto': () => ({ tickets: [
+  { game: 'Powerball', draw_number: '1429', draw_date: '2026-11-06', draws: 1, price: 30, serial: null, jackpot: 100000000, quick_pick: true, entries: [{ label: 'A', numbers: [3, 12, 19, 27, 31, 35, 20], extra: [7], extra_label: 'Powerball' }, { label: 'B', numbers: [1, 8, 14, 22, 30, 33, 34], extra: [2], extra_label: 'Powerball' }], result: null },
+  { game: 'OzLotto', draw_number: '1620', draw_date: '2026-11-04', draws: 1, price: 15, serial: null, jackpot: null, quick_pick: false, entries: [{ label: 'A', numbers: [4, 9, 17, 25, 28, 36, 41], extra: [], extra_label: null }], result: null }], warnings: [] }) } });
+
 test('Lotto Pigs: attach the combined ticket to a draw, members view it, share value and top prize per share show', async ({ page, db }) => {
   await goAdmin(page, 'lotto');
   await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.waitForTimeout(900);
