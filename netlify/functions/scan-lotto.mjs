@@ -193,7 +193,7 @@ export default async (req) => {
   const cacheKey = crypto.createHash('sha256').update('v2|' + images.map(i => i.data).join('|') + '#' + groups.join(',')).digest('hex').slice(0, 40);
   if(!body.force){
     const hit = await cacheGet(cacheKey);
-    if(hit && hit.result && Array.isArray(hit.result.tickets)) return json(200, { ...hit.result, cached: true, cachedAt: hit.at || null });
+    if(hit && hit.result && Array.isArray(hit.result.tickets)) return json(200, { ...clean(hit.result), cached: true, cachedAt: hit.at || null }); // Firebase drops empty lists, so tidy it again
   }
 
   const content = [

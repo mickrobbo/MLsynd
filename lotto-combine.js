@@ -178,6 +178,9 @@
       const data = await res.json().catch(() => ({}));
       if(!res.ok) throw new Error(data.error || `The ticket reader failed (HTTP ${res.status}).`);
       if(!data.tickets || !data.tickets.length) throw new Error('No ticket numbers found. Try a clearer, uncropped screenshot.');
+      // saved copies lose empty lists, so fill them back in before anything reads them
+      data.tickets.forEach(t => { t.entries = (t.entries || []).map(e => ({ ...e, numbers: e.numbers || [], extra: e.extra || [] })).filter(e => e.numbers.length); if(t.result){ t.result.winning_numbers = t.result.winning_numbers || []; t.result.winning_extra = t.result.winning_extra || []; } });
+      data.warnings = data.warnings || [];
       info = data; renderInfo(); scheduleRender();
       rs.className = 'status-msg ok'; rs.textContent = `Found ${data.tickets.length} ticket${data.tickets.length === 1 ? '' : 's'}${data.cached ? ' (read before, so free)' : ''}. Check the numbers below.`;
     }catch(e){ rs.className = 'status-msg error'; rs.textContent = e.message || 'Could not read the tickets.'; }

@@ -291,6 +291,16 @@ test('Lotto combiner: draws a clean ticket card from the read details (36 games)
   assert.ok(shots.h !== clean.h, 'switching style changes the picture');
 }, { fns: { 'scan-lotto': () => ({ tickets: [{ game: 'Powerball', draw_number: '1591', draw_date: '2026-11-12', draws: 1, price: 56.6, commission: 6.2, serial: '01 212719 63909 001', entry_type: '1 Draw, 36 Game Standard entry', purchased: 'Sun, 08 Nov 2026', jackpot: null, entries: Array.from({ length: 36 }, (_, i) => ({ label: String(i + 1), numbers: [5, 7, 10, 12, 18, 27, 35], extra: [16], extra_label: 'Powerball' })), result: null }], warnings: [] }) } });
 
+test('Lotto combiner: a re-read (saved copy with empty lists dropped) still shows', async ({ page }) => {
+  const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
+  await goAdmin(page, 'lotto');
+  await page.setInputFiles('#lcFile', [{ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from(await png(600, 900, '#c33'), 'base64') }]); await page.waitForTimeout(800);
+  await page.click('#lcReadBtn'); await page.waitForTimeout(1500);
+  const msg = await text(page, '#lcReadStatus');
+  assert.ok(msg.startsWith('Found 1 ticket'), msg);
+  assert.ok((await text(page, '#lcInfo')).includes('OzLotto'));
+}, { fns: { 'scan-lotto': () => ({ tickets: [{ game: 'OzLotto', draw_number: '1620', price: 15, entries: [{ label: '1', numbers: [4, 9, 17, 25, 28, 36, 41] }], result: { status: 'pending' } }], cached: true }) } });
+
 test('Lotto Pigs: attach the combined ticket to a draw, members view it, share value and top prize per share show', async ({ page, db }) => {
   await goAdmin(page, 'lotto');
   await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.waitForTimeout(900);
