@@ -7804,3 +7804,15 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-info-row em.x{ border-color:#e8c14f; }
 .lc-info-res{ margin:6px 0 4px; padding:6px 10px; border-radius:999px; text-align:center; font-weight:800; font-size:12.5px; background:rgba(77,235,142,.16); color:#4DEB8E; }
 .lc-info-warn{ margin-top:8px; font-size:12px; color:#FFC93C; line-height:1.4; }
+
+/* v274: tickets for Lotto Pigs or MLSynd */
+.lc-seg{ display:flex; gap:4px; margin:6px 0 4px; padding:4px; border-radius:14px; background:rgba(255,255,255,.05); }
+.lc-seg button{ flex:1; min-height:40px; border:0; border-radius:10px; background:transparent; color:var(--muted); font:inherit; font-weight:800; font-size:13.5px; cursor:pointer; }
+.lc-seg button.on{ background:var(--lime, #cdf464); color:#0d100d; }
+.home-ml-lotto{ margin-top:14px; }
+.mll-row{ display:flex; align-items:center; gap:10px; padding:11px 12px; margin-top:8px; border-radius:14px; background:var(--surface, #171c17); border:1px solid rgba(255,255,255,.07); }
+.mll-t{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.mll-t b{ font-size:14px; }
+.mll-t span{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mll-go{ flex:none; min-height:36px; padding:0 14px; border:0; border-radius:999px; background:rgba(205,244,100,.16); color:var(--lime, #cdf464); font:inherit; font-weight:800; font-size:12.5px; cursor:pointer; }
+.lc-field[hidden], .lc-read[hidden]{ display:none !important; }

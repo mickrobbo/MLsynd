@@ -18,9 +18,13 @@
   const MAX_SIDE = 4096, MAX_AREA = 14e6, COL_W = 900, GAP = 24, PAD = 36, PART_GAP = 6;
 
   // brand graphics for the shared picture (loaded once; the picture still works if they can't load)
-  const art = {}; ['icon:lotto-pigs-icon.webp', 'mark:lotto-pigs-mark.webp'].forEach(x => { const [k, f] = x.split(':'); const im = new Image(); im.onload = () => { art[k] = im; try{ scheduleRender(); }catch(e){} }; im.src = f; });
+  const art = {}; ['icon:lotto-pigs-icon.webp', 'mark:lotto-pigs-mark.webp', 'logo:logo-icon.webp?v=269'].forEach(x => { const [k, f] = x.split(':'); const im = new Image(); im.onload = () => { art[k] = im; try{ scheduleRender(); }catch(e){} }; im.src = f; });
   let tickets = []; // { id, name, img, url, w, h }
   let nextId = 1;
+  // which group these tickets are for: 'pigs' (Lotto Pigs) or 'ml' (the MLSynd syndicate)
+  let tgt = 'pigs'; try{ if(localStorage.getItem('mlsynd-lotto-target') === 'ml') tgt = 'ml'; }catch(e){}
+  const ML = { meta: {}, loaded: false };
+  const DEFAULT_TITLES = ['', 'Lotto Pigs', 'MLSynd', 'MLSynd Lotto'];
   let info = null; // ticket details read from the screenshots: { tickets: [...], warnings: [] }
   let lastBlob = null, lastName = 'lotto-tickets.png';
   let renderTimer = null;
@@ -249,7 +253,7 @@
     const canvas = $('lcCanvas'); if(!canvas || !tickets.length) return null;
     const L = planLayout(), showTitle = $('lcShowTitle').checked, showWho = $('lcShowWho').checked;
     const title = ($('lcTitle').value || '').trim(), date = prettyDate($('lcDate').value);
-    const who = group().members, gName = group().name;
+    const who = tgt === 'ml' ? allNames() : group().members, gName = tgt === 'ml' ? 'MLSynd' : group().name;
     const W = L.bodyW + PAD * 2;
     const m = document.createElement('canvas').getContext('2d');
     m.font = '600 34px Manrope, system-ui, sans-serif';
@@ -264,17 +268,20 @@
     ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
     let y = PAD;
     if(headH){
-      const D = 150, tx = PAD + (art.icon ? D + 28 : 32);
-      if(art.icon){
-        ctx.save(); ctx.beginPath(); ctx.arc(PAD + D / 2, y + D / 2, D / 2, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(art.icon, PAD, y, D, D); ctx.restore();
+      const ml = tgt === 'ml', D = 150, ic = ml ? null : art.icon, mk = ml ? null : art.mark;
+      const LH = 120, logoW = ml && art.logo ? Math.min(380, Math.round(LH * art.logo.naturalWidth / art.logo.naturalHeight)) : 0;
+      const tx = PAD + (ic ? D + 28 : logoW ? logoW + 30 : 32);
+      if(ic){
+        ctx.save(); ctx.beginPath(); ctx.arc(PAD + D / 2, y + D / 2, D / 2, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(ic, PAD, y, D, D); ctx.restore();
         ctx.lineWidth = 4; ctx.strokeStyle = '#c9a24a'; ctx.beginPath(); ctx.arc(PAD + D / 2, y + D / 2, D / 2 - 2, 0, Math.PI * 2); ctx.stroke();
+      }else if(logoW){ ctx.drawImage(art.logo, PAD, y + (D - LH) / 2, logoW, LH);
       }else{ ctx.fillStyle = LIME; ctx.fillRect(PAD, y + 8, 8, 96); }
-      const badge = art.mark ? 130 : 0, textW = W - tx - PAD - (badge ? badge + 20 : 0);
+      const badge = mk ? 130 : 0, textW = W - tx - PAD - (badge ? badge + 20 : 0);
       ctx.fillStyle = CHALK; ctx.font = '800 64px Manrope, system-ui, sans-serif'; ctx.textBaseline = 'top';
-      ctx.fillText(title || 'Lotto Pigs', tx, y + 22, textW);
+      ctx.fillText(title || (ml ? 'MLSynd' : 'Lotto Pigs'), tx, y + 22, textW);
       ctx.fillStyle = MUTED; ctx.font = '600 34px Manrope, system-ui, sans-serif';
       ctx.fillText([date, `${groups().length} ticket${groups().length === 1 ? '' : 's'}`].filter(Boolean).join('  ·  '), tx, y + 98, textW);
-      if(badge){ ctx.save(); ctx.beginPath(); ctx.arc(W - PAD - badge / 2, y + D / 2, badge / 2, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(art.mark, W - PAD - badge, y + D / 2 - badge / 2, badge, badge); ctx.restore(); }
+      if(badge){ ctx.save(); ctx.beginPath(); ctx.arc(W - PAD - badge / 2, y + D / 2, badge / 2, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(mk, W - PAD - badge, y + D / 2 - badge / 2, badge, badge); ctx.restore(); }
       y += headH;
     }
     const gs = groups();
@@ -496,6 +503,10 @@
   const ticketCache = {};
   function syncAttach(){
     const sel = $('lcAttachSel'), btn = $('lcAttach'); if(!sel || !btn) return;
+    const lab = sel.closest('label'); if(lab) lab.hidden = tgt === 'ml';
+    btn.textContent = tgt === 'ml' ? 'Save to MLSynd' : 'Save to draw';
+    const mh = $('lcMlHint'); if(mh) mh.hidden = tgt !== 'ml';
+    if(tgt === 'ml'){ btn.disabled = !tickets.length; return; }
     const prev = sel.value, list = entries();
     sel.innerHTML = '<option value="">Choose a draw…</option>' + list.map(e => `<option value="${esc(e.id)}">${esc(e.label || 'Lotto draw')} · ${esc(prettyDate(e.date))}${e.hasTicket ? ' (has a ticket)' : ''}</option>`).join('');
     if(prev && list.some(e => e.id === prev)) sel.value = prev;
@@ -510,7 +521,24 @@
     while(url.length > 3.2e6 && q > 0.45){ q -= 0.1; url = out.toDataURL('image/jpeg', q); }
     return url;
   }
+  async function attachMl(){
+    const st2 = $('lcAttachStatus'), btn = $('lcAttach'); if(!tickets.length) return;
+    btn.disabled = true; st2.className = 'status-msg'; st2.textContent = 'Saving…';
+    try{
+      const img = ticketDataUrl(), id = 'm' + Date.now().toString(36);
+      const games = info && info.tickets ? [...new Set(info.tickets.map(t => t.game).filter(Boolean))].join(' + ') : '';
+      const meta = { label: ($('lcTitle').value || '').trim() || 'MLSynd lotto', date: $('lcDate').value || todayStr(), n: groups().length, games, at: Date.now() };
+      let r = await authedWrite(`/mlsyndLotto/img/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ img }) });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      r = await authedWrite(`/mlsyndLotto/meta/${id}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(meta) });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      ML.meta[id] = meta; ticketCache['ml:' + id] = img; renderMlHome();
+      st2.className = 'status-msg ok'; st2.textContent = 'Saved. MLSynd members can view it on Home → Overview.';
+    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not save the picture. Check the new Firebase rules are published, then try again.'; }
+    syncAttach();
+  }
   async function attachTicket(){
+    if(tgt === 'ml') return attachMl();
     const st2 = $('lcAttachStatus'), id = $('lcAttachSel').value, btn = $('lcAttach');
     if(!id || !tickets.length) return;
     btn.disabled = true; st2.className = 'status-msg'; st2.textContent = 'Saving…';
@@ -536,15 +564,17 @@
       renderLedger(); renderHome();
     }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not remove it. Try again.'; }
   }
-  async function getTicket(id){
-    if(ticketCache[id]) return ticketCache[id];
-    const res = await authedFetch(`/lottoPigsTickets/${id}.json`);
+  async function getTicket(id, kind){
+    const ck = kind === 'ml' ? 'ml:' + id : id;
+    if(ticketCache[ck]) return ticketCache[ck];
+    const res = await authedFetch(kind === 'ml' ? `/mlsyndLotto/img/${id}.json` : `/lottoPigsTickets/${id}.json`);
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json(); if(!d || !d.img) throw new Error('missing');
-    return (ticketCache[id] = d.img);
+    return (ticketCache[ck] = d.img);
   }
-  async function viewTicket(id){
-    const e = (LP.ledger || {})[id] || {};
+  async function viewTicket(id, kind){
+    const ck = kind === 'ml' ? 'ml:' + id : id;
+    const e = (kind === 'ml' ? ML.meta[id] : (LP.ledger || {})[id]) || {};
     let ov = $('lcViewer'); if(ov) ov.remove();
     ov = document.createElement('div'); ov.id = 'lcViewer'; ov.className = 'lc-viewer';
     ov.innerHTML = `<div class="lc-viewer-bar"><div><b>${esc(e.label || 'Lotto draw')}</b><span>${esc(prettyDate(e.date))}</span></div><button type="button" data-lc-vclose aria-label="Close">✕</button></div>
@@ -556,18 +586,19 @@
     document.addEventListener('keydown', onKey);
     ov.addEventListener('click', async (ev) => {
       if(ev.target === ov || ev.target.closest('[data-lc-vclose]')) return close();
-      const url = ticketCache[id]; if(!url) return;
+      const url = ticketCache[ck]; if(!url) return;
       const blob = await (await fetch(url)).blob(), name = `${(e.label || 'lotto').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${e.date || ''}.jpg`;
       if(ev.target.closest('[data-lc-vsave]')){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
       if(ev.target.closest('[data-lc-vshare]')){ const f = new File([blob], name, { type: blob.type }); try{ if(navigator.canShare && navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title: e.label || 'Lotto ticket' }); else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); } }catch(err){} }
     });
     try{
-      const url = await getTicket(id);
+      const url = await getTicket(id, kind);
       ov.querySelector('.lc-viewer-body').innerHTML = `<img src="${url}" alt="Ticket for ${esc(e.label || 'this draw')}">`;
       ov.querySelectorAll('[data-lc-vsave],[data-lc-vshare]').forEach(b => b.disabled = false);
     }catch(err){ const m = ov.querySelector('.lc-viewer-msg'); if(m) m.textContent = 'Could not load the ticket. Check your connection and try again.'; }
   }
   document.addEventListener('click', (e) => {
+    const mv = e.target.closest('[data-lc-mlview]'); if(mv) return viewTicket(mv.dataset.lcMlview, 'ml');
     const b = e.target.closest('[data-lc-view]'); if(b) return viewTicket(b.dataset.lcView);
     const sb = e.target.closest('[data-lc-series]');
     if(sb){ const k = sb.dataset.lcSeries; if(chartHidden.has(k)) chartHidden.delete(k); else if(visibleKeys().length > 1) chartHidden.add(k); const holder = $('lcPlChart'); if(holder){ const tmp = document.createElement('div'); tmp.innerHTML = plChart(entries()); holder.replaceWith(tmp.firstElementChild); wireChart(); } return; }
@@ -577,6 +608,19 @@
     const id = t.dataset.lcToggle, card = t.closest('.lc-draw'), on = !openDraws.has(id);
     on ? openDraws.add(id) : openDraws.delete(id); card.classList.toggle('open', on); t.setAttribute('aria-expanded', String(on));
   });
+
+  // ---------- MLSynd lotto tickets on Home → Overview ----------
+  function renderMlHome(){
+    const anchor = $('homeIndSection'); if(!anchor) return;
+    let box = $('homeMlLotto');
+    if(!box){ box = document.createElement('div'); box.id = 'homeMlLotto'; box.className = 'home-block home-ml-lotto'; box.hidden = true; anchor.parentNode.insertBefore(box, anchor); }
+    const list = Object.keys(ML.meta).map(id => ({ id, ...ML.meta[id] })).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 3);
+    box.hidden = !list.length;
+    box.innerHTML = list.length ? `<div class="home-block-title">Lotto tickets</div>` + list.map(m => `<div class="mll-row"><div class="mll-t"><b>${esc(m.label || 'MLSynd lotto')}</b><span>${[prettyDate(m.date), m.n ? m.n + ' ticket' + (m.n === 1 ? '' : 's') : '', m.games ? esc(m.games) : ''].filter(Boolean).join(' · ')}</span></div><button type="button" class="mll-go" data-lc-mlview="${esc(m.id)}">View ticket</button></div>`).join('') : '';
+  }
+  async function loadMl(){
+    try{ const r = await authedFetch('/mlsyndLotto/meta.json'); if(!r.ok) return; const d = await r.json(); ML.meta = d && typeof d === 'object' ? d : {}; ML.loaded = true; renderMlHome(); }catch(e){}
+  }
 
   // ---------- Home → Lotto: what the group's members see (read only) ----------
   // Only people in the Lotto Pigs group (and the admin) get the Lotto button on Home.
@@ -793,7 +837,8 @@
   function refreshAll(){ try{ if($('lottoRoot') && $('lottoRoot').dataset.built) refresh(); }catch(e){} }
   let hooked = false;
   function syncHome(){ // called whenever the app redraws
-    if(!hooked){ hooked = true; lpLoad(); }
+    if(!hooked){ hooked = true; lpLoad(); setTimeout(loadMl, 2500); }
+    if(ML.loaded && !$('homeMlLotto')) renderMlHome();
     syncHeader();
     const tb = $('homeLottoSubBtn'), view = $('homeSubview-lotto');
     if(tb && view && view.style.display === 'none') tb.style.display = 'none'; // the tab only shows while you're on it
@@ -827,6 +872,7 @@
       </div>
       <div class="panel">
         <h2>Lotto tickets to one picture</h2>
+        <div class="lc-seg" id="lcTgt" role="group" aria-label="Which group are these tickets for"><button type="button" data-lc-tgt="pigs">Lotto Pigs</button><button type="button" data-lc-tgt="ml">MLSynd</button></div>
         <div class="hint">Add all your lotto ticket screenshots. They're joined into one picture you can download or share. Nothing is uploaded; it all happens on your phone.</div>
         <input type="file" id="lcFile" accept="image/*" multiple hidden>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcPick">Add ticket screenshots</button><span class="lc-count" id="lcCount"></span><button type="button" class="small" id="lcClear" disabled>Clear all</button></div>
@@ -849,6 +895,7 @@
         </div>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcDownload" disabled>Download picture</button><button type="button" class="small" id="lcShare" disabled>Share…</button></div>
         <div class="lc-attach"><label class="lc-field">Keep this picture with a draw (so members can view it)<select id="lcAttachSel"></select></label><button type="button" class="small adm-primary" id="lcAttach" disabled>Save to draw</button></div>
+        <div class="hint" id="lcMlHint" hidden>MLSynd tickets are saved for every syndicate member to view on Home → Overview. The picture uses the MLSynd logo and lists all members.</div>
         <div class="status-msg" id="lcAttachStatus"></div>
         <div class="lc-preview" id="lcPreviewWrap" hidden><canvas id="lcCanvas" aria-label="Preview of the combined lotto picture"></canvas></div>
       </div>
@@ -890,6 +937,14 @@
       staleInfo(); renderList(); scheduleRender();
     });
     $('lcReadBtn').addEventListener('click', () => readTickets());
+    const setTgt = (t) => {
+      tgt = t === 'ml' ? 'ml' : 'pigs'; try{ localStorage.setItem('mlsynd-lotto-target', tgt); }catch(e){}
+      document.querySelectorAll('#lcTgt [data-lc-tgt]').forEach(b => { const on = b.dataset.lcTgt === tgt; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+      const ti = $('lcTitle'); if(ti && DEFAULT_TITLES.includes(ti.value.trim())) ti.value = tgt === 'ml' ? 'MLSynd' : 'Lotto Pigs';
+      syncAttach(); scheduleRender();
+    };
+    $('lcTgt').addEventListener('click', (e) => { const b = e.target.closest('[data-lc-tgt]'); if(b) setTgt(b.dataset.lcTgt); });
+    setTgt(tgt);
     $('lcSplit').addEventListener('change', (e) => { splitInto(parseInt(e.target.value, 10) || 1); staleInfo(); renderList(); scheduleRender(); });
     ['lcTitle', 'lcDate', 'lcCols', 'lcShowTitle', 'lcShowWho', 'lcShowInfo'].forEach(id => { $(id).addEventListener('input', scheduleRender); $(id).addEventListener('change', scheduleRender); });
     $('lcAttach').addEventListener('click', attachTicket); $('lcAttachSel').addEventListener('change', syncAttach);

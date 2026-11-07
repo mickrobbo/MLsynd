@@ -254,6 +254,28 @@ test('Lotto combiner: reads ticket details and fills the draw form', async ({ pa
   { game: 'Powerball', draw_number: '1429', draw_date: '2026-11-06', draws: 1, price: 30, serial: null, jackpot: 100000000, quick_pick: true, entries: [{ label: 'A', numbers: [3, 12, 19, 27, 31, 35, 20], extra: [7], extra_label: 'Powerball' }, { label: 'B', numbers: [1, 8, 14, 22, 30, 33, 34], extra: [2], extra_label: 'Powerball' }], result: null },
   { game: 'OzLotto', draw_number: '1620', draw_date: '2026-11-04', draws: 1, price: 15, serial: null, jackpot: null, quick_pick: false, entries: [{ label: 'A', numbers: [4, 9, 17, 25, 28, 36, 41], extra: [], extra_label: null }], result: null }], warnings: [] }) } });
 
+test('Lotto combiner: MLSynd or Lotto Pigs picks the artwork and where it saves', async ({ page, db }) => {
+  const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
+  await goAdmin(page, 'lotto');
+  assert.equal(await page.inputValue('#lcTitle'), 'Lotto Pigs');
+  await page.setInputFiles('#lcFile', [{ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from(await png(600, 900, '#c33'), 'base64') }]); await page.waitForTimeout(800);
+  await page.click('#lcTgt [data-lc-tgt="ml"]'); await page.waitForTimeout(500);
+  assert.equal(await page.inputValue('#lcTitle'), 'MLSynd', 'title follows the group');
+  assert.equal(await page.evaluate(() => document.getElementById('lcAttachSel').closest('label').hidden), true, 'draw picker hidden for MLSynd');
+  assert.equal(await text(page, '#lcAttach'), 'Save to MLSynd');
+  await page.click('#lcAttach'); await page.waitForTimeout(1500);
+  const metas = Object.values((db.mlsyndLotto && db.mlsyndLotto.meta) || {});
+  assert.equal(metas.length, 1, 'saved to /mlsyndLotto'); assert.equal(metas[0].label, 'MLSynd');
+  assert.ok(Object.values(db.mlsyndLotto.img)[0].img.startsWith('data:image/jpeg'), 'picture stored');
+  assert.ok(!db.lottoPigsTickets || !Object.keys(db.lottoPigsTickets).length, 'nothing went into Lotto Pigs');
+  await goHome(page); await page.waitForTimeout(600);
+  assert.ok((await text(page, '#homeMlLotto')).includes('MLSynd'), 'Home card for members');
+  await page.evaluate(() => setActiveTab('diag')); await goAdmin(page, 'lotto');
+  await page.click('#lcTgt [data-lc-tgt="pigs"]'); await page.waitForTimeout(400);
+  assert.equal(await page.inputValue('#lcTitle'), 'Lotto Pigs');
+  assert.equal(await text(page, '#lcAttach'), 'Save to draw');
+});
+
 test('Lotto Pigs: attach the combined ticket to a draw, members view it, share value and top prize per share show', async ({ page, db }) => {
   await goAdmin(page, 'lotto');
   await page.click('#lcMembers [data-lc-member]:nth-child(1)'); await page.waitForTimeout(900);
