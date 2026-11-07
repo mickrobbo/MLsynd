@@ -7835,3 +7835,12 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-ml-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid rgba(255,255,255,.06); }
 .lc-ml-row span{ flex:1; min-width:0; display:flex; flex-direction:column; }
 .lc-ml-row i{ font-style:normal; font-size:12px; color:var(--muted); }
+
+/* v280: slimmer "You owe" banner; digest sits lower on Home */
+.home-owe{ gap:10px; padding:7px 8px 7px 10px; border-radius:16px; }
+.home-owe .owe-ico{ width:28px; height:28px; border-radius:9px; font-size:14px; }
+.home-owe .owe-txt{ flex-direction:row; align-items:baseline; gap:8px; }
+.home-owe .owe-txt small{ font-size:10.5px; }
+.home-owe .owe-txt b{ margin-top:0; font-size:18px; }
+.home-owe .home-owe-go{ min-height:30px; padding:0 10px 0 12px; font-size:12.5px; }
+.home-digest{ margin:14px 0 0; }
