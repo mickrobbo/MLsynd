@@ -7816,3 +7816,10 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .mll-t span{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mll-go{ flex:none; min-height:36px; padding:0 14px; border:0; border-radius:999px; background:rgba(205,244,100,.16); color:var(--lime, #cdf464); font:inherit; font-weight:800; font-size:12.5px; cursor:pointer; }
 .lc-field[hidden], .lc-read[hidden]{ display:none !important; }
+
+/* v275: Enter this week — results are marked once (the list at the top); the
+   old per-row result dropdowns stay in the page for saving but are not shown. */
+#adminGroupEntryRows .adminWkResult, #adminWeeklyIndividualBetsEntry .adminWibResult{ display:none !important; }
+.adm-flow-hint{ margin:2px 0 8px; }
+.awk-r-mia.on{ background:#8a8f98; color:#fff; }
+.awk-res .awk-r-mia{ flex:0 0 auto; min-width:44px; }

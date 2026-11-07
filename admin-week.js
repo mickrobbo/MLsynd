@@ -51,7 +51,7 @@
   }
 
   // ---------- drawing ----------
-  const resBtns = (kind, id, cur, sug) => `<span class="awk-res" role="group" aria-label="Result">${RES.map(([v, t]) =>
+  const resBtns = (kind, id, cur, sug) => `<span class="awk-res" role="group" aria-label="Result">${(kind === 'leg' ? RES.concat([['MIA', 'MIA']]) : RES).map(([v, t]) =>
     `<button type="button" class="awk-r awk-r-${v.toLowerCase()}${cur === v ? ' on' : ''}${!cur && sug === v ? ' sug' : ''}" data-awk="${kind}" data-id="${esc(id)}" data-v="${v}" aria-pressed="${cur === v}">${t}</button>`).join('')}</span>`;
 
   const openLegs = new Set();

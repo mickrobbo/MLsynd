@@ -149,7 +149,7 @@
     const wrap = $('lcInfo'); if(!wrap) return;
     if(!info || !info.tickets || !info.tickets.length){ wrap.innerHTML = ''; return; }
     wrap.innerHTML = info.tickets.map((t, i) => `<div class="lc-info-card">
-        <div class="lc-info-h"><b>Ticket ${i + 1}${t.game ? ' · ' + esc(t.game) : ''}</b><span>${[t.draw_number ? 'Draw ' + esc(t.draw_number) : '', t.draw_date ? esc(fmtDay(t.draw_date)) : '', t.price != null ? fmtMoney(t.price) : ''].filter(Boolean).join(' · ')}</span></div>
+        <div class="lc-info-h"><b>Ticket ${i + 1}${t.game ? ' · ' + esc(t.game) : ''}</b><span>${[t.draw_number ? 'Draw ' + esc(t.draw_number) : '', t.draw_date ? esc(fmtDay(t.draw_date)) : '', t.entry_type ? esc(t.entry_type) : '', t.price != null ? fmtMoney(t.price) : ''].filter(Boolean).join(' · ')}</span></div>
         ${t.entries.map(e => `<div class="lc-info-row"><i>${esc(e.label || '')}</i>${e.numbers.map(n => `<em>${n}</em>`).join('')}${e.extra.map(n => `<em class="x">${n}</em>`).join('')}</div>`).join('')}
         ${t.result && t.result.prize != null ? `<div class="lc-info-res">${(t.result.prize || 0) > 0 ? 'Won ' + fmtMoney(t.result.prize) : 'No prize'}</div>` : ''}
       </div>`).join('') + (info.warnings && info.warnings.length ? `<div class="lc-info-warn">${info.warnings.map(w => '⚠ ' + esc(w)).join('<br>')}</div>` : '')
@@ -230,10 +230,77 @@
     }
   }
 
+  // ---------- clean ticket card (drawn from the read details instead of the screenshots) ----------
+  const GAME_COL = { powerball: '#3a6df0', 'oz lotto': '#f2b705', ozlotto: '#f2b705', 'tattslotto': '#e0343b', "saturday lotto": '#e0343b', 'set for life': '#7a5cf0', 'weekday windfall': '#19a974', 'monday lotto': '#e0343b', 'wednesday lotto': '#e0343b' };
+  const accentFor = (g) => { const k = String(g || '').toLowerCase().replace(/[^a-z ]/g, '').trim(); for(const n in GAME_COL) if(k.includes(n)) return GAME_COL[n]; return LIME; };
+  const cleanOn = () => { const sel = $('lcStyle'); return !sel || sel.value !== 'shots'; };
+  const CROW = 54, CBALL = 35, CSTEP = 43;
+  function cardMeta(t){
+    const m = [['Entry type', t.entry_type], ['Total cost', t.price != null ? fmtMoney(t.price) : null], ['Purchased', t.purchased], ['Ticket no.', t.serial]].filter(x => x[1]);
+    return m;
+  }
+  function cardH(t){
+    const rows = t.entries.length > 8 ? Math.ceil(t.entries.length / 2) : t.entries.length;
+    const metaRows = Math.ceil(cardMeta(t).length / 2);
+    return 120 + metaRows * 62 + 30 + rows * CROW + 30 + (t.commission ? 46 : 0) + (t.result && (t.result.prize != null || t.result.status) ? 64 : 0);
+  }
+  function drawCard(ctx, t, x, y, w, n, total){
+    const acc = accentFor(t.game), h = cardH(t);
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    // header band in the game's colour
+    ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, 20) : ctx.rect(x, y, w, h); ctx.clip();
+    ctx.fillStyle = PANEL; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = acc; ctx.fillRect(x, y, w, 96);
+    ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.fillRect(x, y + 96, w, 4);
+    const dark = acc === '#f2b705' || acc === LIME; const ink = dark ? '#0d100d' : '#ffffff';
+    if(total > 1){ ctx.fillStyle = dark ? 'rgba(13,16,13,.65)' : 'rgba(255,255,255,.78)'; ctx.font = '800 20px Manrope, system-ui, sans-serif'; ctx.fillText('TICKET ' + n, x + 28, y + 24); }
+    ctx.fillStyle = ink; ctx.font = '800 40px Manrope, system-ui, sans-serif'; ctx.fillText(t.game || 'Lotto ticket', x + 28, y + (total > 1 ? 62 : 48), w * 0.5);
+    ctx.textAlign = 'right';
+    ctx.font = '800 30px Manrope, system-ui, sans-serif'; ctx.fillText(t.draw_number ? 'Draw ' + t.draw_number : '', x + w - 28, y + 34);
+    ctx.font = '700 26px Manrope, system-ui, sans-serif'; ctx.fillStyle = dark ? 'rgba(13,16,13,.8)' : 'rgba(255,255,255,.9)'; ctx.fillText(t.draw_date ? fmtDay(t.draw_date) + ' ' + new Date(t.draw_date + 'T12:00:00').getFullYear() : '', x + w - 28, y + 70);
+    ctx.textAlign = 'left';
+    // details grid
+    let yy = y + 100 + 26; const meta = cardMeta(t), LW = Math.round((w - 56) * 0.62), cw = LW;
+    meta.forEach((m, i) => {
+      const cx = x + 28 + (i % 2) * LW, cy = yy + Math.floor(i / 2) * 62, cwi = i % 2 ? (w - 56) - LW : LW;
+      ctx.fillStyle = MUTED; ctx.font = '700 20px Manrope, system-ui, sans-serif'; ctx.fillText(m[0].toUpperCase(), cx, cy + 10);
+      ctx.fillStyle = m[0] === 'Total cost' ? LIME : CHALK; ctx.font = '800 28px Manrope, system-ui, sans-serif'; ctx.fillText(String(m[1]), cx, cy + 40, cwi - 14);
+    });
+    yy += Math.ceil(meta.length / 2) * 62 + 14;
+    ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(x + 28, yy, w - 56, 2); yy += 16;
+    // games, in two columns when there are many
+    const two = t.entries.length > 8, per = two ? Math.ceil(t.entries.length / 2) : t.entries.length, gw = two ? (w - 56) / 2 : w - 56;
+    const win = t.result && t.result.winning_numbers.length ? new Set(t.result.winning_numbers) : null, winX = t.result && t.result.winning_extra.length ? new Set(t.result.winning_extra) : null;
+    t.entries.forEach((e, i) => {
+      const col = two ? Math.floor(i / per) : 0, row = two ? i % per : i, gx = x + 28 + col * gw, cy = yy + row * CROW + CROW / 2;
+      if(row % 2 === 0){ ctx.fillStyle = 'rgba(255,255,255,.03)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(gx - 8, cy - CROW / 2 + 3, gw - 4, CROW - 6, 12) : ctx.rect(gx - 8, cy - CROW / 2 + 3, gw - 4, CROW - 6); ctx.fill(); }
+      ctx.fillStyle = MUTED; ctx.font = '800 22px Manrope, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(e.label || String(i + 1), gx + 2, cy);
+      let bx = gx + 44 + CBALL / 2;
+      e.numbers.forEach(nn => { ballS(ctx, bx, cy, nn, { hit: win ? win.has(nn) : false, dim: !!win && !win.has(nn) }, CBALL); bx += CSTEP; });
+      if(e.extra.length){ bx += 6; e.extra.forEach(nn => { ballS(ctx, bx, cy, nn, { gold: true, hit: winX ? winX.has(nn) : false, dim: !!winX && !winX.has(nn) }, CBALL); bx += CSTEP; }); }
+    });
+    yy += per * CROW + 12;
+    if(t.commission){ ctx.fillStyle = MUTED; ctx.font = '600 20px Manrope, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('Includes ' + fmtMoney(t.commission) + ' commission', x + 28, yy + 14); yy += 34; }
+    if(t.result && (t.result.prize != null || t.result.status)){
+      const won = t.result.status === 'won' || (t.result.prize || 0) > 0;
+      ctx.fillStyle = won ? 'rgba(77,235,142,.16)' : 'rgba(255,255,255,.06)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x + 28, yy + 6, w - 56, 46, 23) : ctx.rect(x + 28, yy + 6, w - 56, 46); ctx.fill();
+      ctx.fillStyle = won ? '#4DEB8E' : MUTED; ctx.font = '800 26px Manrope, system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(won ? 'Won ' + fmtMoney(t.result.prize || 0) : (t.result.status === 'pending' ? 'Draw pending' : 'No prize'), x + w / 2, yy + 30); ctx.textAlign = 'left';
+    }
+    ctx.restore();
+  }
+  function ballS(ctx, cx, cy, n, o, d){
+    ctx.beginPath(); ctx.arc(cx, cy, d / 2, 0, Math.PI * 2);
+    ctx.fillStyle = o.hit ? (o.gold ? GOLD : LIME) : (o.gold ? '#2a2412' : '#232a23'); ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = o.gold ? GOLD : LIME; ctx.globalAlpha = o.dim ? .45 : 1; ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = o.hit ? '#0d100d' : CHALK; ctx.font = '800 19px Manrope, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(n), cx, cy + 1); ctx.textAlign = 'left';
+  }
+
   // Pick how many columns gives the most phone-friendly shape (close to 3:4 portrait).
   function planLayout(){
     const gs = groups(), n = gs.length; let best = null;
-    const heights = gs.map((g, i) => g.reduce((a, t) => a + Math.round(COL_W * t.h / t.w), 0) + (g.length - 1) * PART_GAP + stripH(infoFor(i)));
+    const heights = gs.map((g, i) => (infoFor(i) && cleanOn()) ? cardH(infoFor(i)) : g.reduce((a, t) => a + Math.round(COL_W * t.h / t.w), 0) + (g.length - 1) * PART_GAP + stripH(infoFor(i)));
     for(let c = 1; c <= Math.min(n, 4); c++){
       const colH = new Array(c).fill(0), place = [];
       heights.forEach((h, i) => { const k = colH.indexOf(Math.min(...colH)); place.push({ col: k, y: colH[k], h }); colH[k] += h + GAP; });
@@ -287,6 +354,7 @@
     const gs = groups();
     gs.forEach((g, i) => {
       const p = L.place[i], x = PAD + p.col * (COL_W + GAP), yy = y + p.y;
+      if(infoFor(i) && cleanOn()){ drawCard(ctx, infoFor(i), x, yy, COL_W, i + 1, gs.length); return; }
       ctx.fillStyle = PANEL; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - 6, yy - 6, COL_W + 12, p.h + 12, 22) : ctx.rect(x - 6, yy - 6, COL_W + 12, p.h + 12); ctx.fill();
       ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, yy, COL_W, p.h, 16) : ctx.rect(x, yy, COL_W, p.h); ctx.clip();
       let py = yy;
@@ -889,6 +957,7 @@
           <label class="lc-field">Title<input type="text" id="lcTitle" value="Lotto Pigs" maxlength="50" autocomplete="off"></label>
           <label class="lc-field">Draw date<input type="date" id="lcDate"></label>
           <label class="lc-field">Layout<select id="lcCols"><option value="">Auto</option><option value="1">1 column</option><option value="2">2 columns</option><option value="3">3 columns</option></select></label>
+          <label class="lc-field">Ticket style<select id="lcStyle"><option value="clean">Clean ticket card (from the read details)</option><option value="shots">Original screenshots</option></select></label>
           <label class="lc-check"><input type="checkbox" id="lcShowTitle" checked> Show title and date</label>
           <label class="lc-check"><input type="checkbox" id="lcShowWho" checked> Show who's in the group</label>
           <label class="lc-check"><input type="checkbox" id="lcShowInfo" checked> Show ticket numbers on the picture</label>
@@ -946,7 +1015,7 @@
     $('lcTgt').addEventListener('click', (e) => { const b = e.target.closest('[data-lc-tgt]'); if(b) setTgt(b.dataset.lcTgt); });
     setTgt(tgt);
     $('lcSplit').addEventListener('change', (e) => { splitInto(parseInt(e.target.value, 10) || 1); staleInfo(); renderList(); scheduleRender(); });
-    ['lcTitle', 'lcDate', 'lcCols', 'lcShowTitle', 'lcShowWho', 'lcShowInfo'].forEach(id => { $(id).addEventListener('input', scheduleRender); $(id).addEventListener('change', scheduleRender); });
+    ['lcTitle', 'lcDate', 'lcCols', 'lcShowTitle', 'lcShowWho', 'lcShowInfo', 'lcStyle'].forEach(id => { $(id).addEventListener('input', scheduleRender); $(id).addEventListener('change', scheduleRender); });
     $('lcAttach').addEventListener('click', attachTicket); $('lcAttachSel').addEventListener('change', syncAttach);
     $('lcDownload').addEventListener('click', download);
     $('lcShare').addEventListener('click', share);

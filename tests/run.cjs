@@ -85,7 +85,7 @@ test('Stat sheet counts group multi legs only', async ({ page }) => {
 
 test('Reading a slip fills the multi, and a repeat read says it was free', async ({ page, log }) => {
   await goAdmin(page, 'entry');
-  await page.evaluate(() => document.getElementById('slipScanBtn').scrollIntoView({ block: 'center' }));
+  await page.evaluate(() => { document.getElementById('adminPanelSlips').classList.remove('admin-panel-collapsed'); document.getElementById('slipScanBtn').scrollIntoView({ block: 'center' }); }); // the slips panel starts folded
   await page.click('#slipScanBtn'); await page.waitForTimeout(600);
   await page.click('#slipScanGo'); await page.waitForTimeout(1500);
   assert.ok(log.some(l => l.fn === 'scan-slip' && l.body.images.length === 1), 'slip not sent');
@@ -97,6 +97,7 @@ test('Reading a slip fills the multi, and a repeat read says it was free', async
 test('A bonus-bet slip goes on the person\'s second row', async ({ page, db }) => {
   await goAdmin(page, 'entry');
   await page.evaluate(() => { const rows = adminReadWeeklyBetValues(); rows.push({ name: 'Zak' }); renderAdminWeeklyIndividualBetsEntry(rows); });
+  await page.evaluate(() => document.getElementById('adminPanelSlips').classList.remove('admin-panel-collapsed'));
   await page.click('#slipScanBtn'); await page.waitForTimeout(600);
   await page.click('#slipScanGo'); await page.waitForTimeout(1500);
   await page.evaluate(() => { const c = document.querySelector('.ss-bet[data-bet="0"]'); c.querySelector('.ss-seg-btn[data-kind="ind"]').click(); });
@@ -249,7 +250,7 @@ test('Lotto combiner: reads ticket details and fills the draw form', async ({ pa
   assert.equal(await page.inputValue('#lcLTicket'), '45');
   assert.equal(await page.inputValue('#lcLJackpot'), '100000000');
   const dim = await page.evaluate(() => ({ w: lcCanvas.width, h: lcCanvas.height }));
-  assert.ok(dim.h > 1200, 'details strip makes the picture taller: ' + JSON.stringify(dim));
+  assert.ok(dim.h > 600, 'clean ticket cards are drawn: ' + JSON.stringify(dim));
 }, { fns: { 'scan-lotto': () => ({ tickets: [
   { game: 'Powerball', draw_number: '1429', draw_date: '2026-11-06', draws: 1, price: 30, serial: null, jackpot: 100000000, quick_pick: true, entries: [{ label: 'A', numbers: [3, 12, 19, 27, 31, 35, 20], extra: [7], extra_label: 'Powerball' }, { label: 'B', numbers: [1, 8, 14, 22, 30, 33, 34], extra: [2], extra_label: 'Powerball' }], result: null },
   { game: 'OzLotto', draw_number: '1620', draw_date: '2026-11-04', draws: 1, price: 15, serial: null, jackpot: null, quick_pick: false, entries: [{ label: 'A', numbers: [4, 9, 17, 25, 28, 36, 41], extra: [], extra_label: null }], result: null }], warnings: [] }) } });
@@ -275,6 +276,20 @@ test('Lotto combiner: MLSynd or Lotto Pigs picks the artwork and where it saves'
   assert.equal(await page.inputValue('#lcTitle'), 'Lotto Pigs');
   assert.equal(await text(page, '#lcAttach'), 'Save to draw');
 });
+
+test('Lotto combiner: draws a clean ticket card from the read details (36 games)', async ({ page }) => {
+  const png = (w, h, c) => page.evaluate(([w, h, c]) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, w, h); return cv.toDataURL('image/png').split(',')[1]; }, [w, h, c]);
+  await goAdmin(page, 'lotto');
+  await page.setInputFiles('#lcFile', [{ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from(await png(600, 900, '#c33'), 'base64') }, { name: 'b.png', mimeType: 'image/png', buffer: Buffer.from(await png(600, 900, '#33c'), 'base64') }]);
+  await page.waitForTimeout(800); await page.selectOption('#lcSplit', '1'); await page.waitForTimeout(300);
+  await page.click('#lcReadBtn'); await page.waitForTimeout(1500);
+  assert.equal(await page.inputValue('#lcStyle'), 'clean');
+  const clean = await page.evaluate(() => ({ w: lcCanvas.width, h: lcCanvas.height }));
+  assert.ok(clean.h > 1500, 'clean card is tall enough for 36 games: ' + JSON.stringify(clean));
+  await page.selectOption('#lcStyle', 'shots'); await page.waitForTimeout(500);
+  const shots = await page.evaluate(() => ({ w: lcCanvas.width, h: lcCanvas.height }));
+  assert.ok(shots.h !== clean.h, 'switching style changes the picture');
+}, { fns: { 'scan-lotto': () => ({ tickets: [{ game: 'Powerball', draw_number: '1591', draw_date: '2026-11-12', draws: 1, price: 56.6, commission: 6.2, serial: '01 212719 63909 001', entry_type: '1 Draw, 36 Game Standard entry', purchased: 'Sun, 08 Nov 2026', jackpot: null, entries: Array.from({ length: 36 }, (_, i) => ({ label: String(i + 1), numbers: [5, 7, 10, 12, 18, 27, 35], extra: [16], extra_label: 'Powerball' })), result: null }], warnings: [] }) } });
 
 test('Lotto Pigs: attach the combined ticket to a draw, members view it, share value and top prize per share show', async ({ page, db }) => {
   await goAdmin(page, 'lotto');

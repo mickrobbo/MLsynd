@@ -55,7 +55,10 @@ Return ONLY a JSON object, no other text, in exactly this shape:
       "draw_date": string | null,       // YYYY-MM-DD of the draw (first draw if several)
       "draws": number | null,           // how many consecutive draws the ticket covers, if shown
       "price": number | null,           // total ticket price in dollars
-      "serial": string | null,          // ticket or serial number if clearly shown
+      "serial": string | null,          // ticket or serial number if clearly shown ("Ticket no.")
+      "entry_type": string | null,      // e.g. "1 Draw, 36 Game Standard entry"
+      "purchased": string | null,       // purchase date as shown, e.g. "Sun, 08 Nov 2026"
+      "commission": number | null,      // commission included in the total cost, in dollars
       "jackpot": number | null,         // advertised division 1 / jackpot prize in dollars if shown
       "quick_pick": boolean | null,
       "entries": [
@@ -80,7 +83,8 @@ Return ONLY a JSON object, no other text, in exactly this shape:
 Rules:
 - Money values are plain numbers without $. Numbers must be integers.
 - If a value isn't visible, use null rather than guessing, and add a warning.
-- Read every game on the ticket carefully; double-check each number.`;
+- Read every game on the ticket carefully (tickets can have 30+ games and the screenshots repeat the page header and status bar, ignore those); double-check each number. For Powerball the final number on each game is the Powerball: put it in extra, not in numbers.
+- price is the total cost shown for the ticket (including commission).`;
 
 // Adds this scan to the shared running-costs tally at /apiUsage/anthropic
 // (read by Admin → Running costs). Written with the service account, so
@@ -144,6 +148,9 @@ function clean(data){
     draws: num(t.draws),
     price: num(t.price),
     serial: t.serial ? String(t.serial).slice(0, 40) : null,
+    entry_type: t.entry_type ? String(t.entry_type).slice(0, 80) : null,
+    purchased: t.purchased ? String(t.purchased).slice(0, 40) : null,
+    commission: num(t.commission),
     jackpot: num(t.jackpot),
     quick_pick: typeof t.quick_pick === 'boolean' ? t.quick_pick : null,
     entries: (Array.isArray(t.entries) ? t.entries : []).slice(0, 40).map(e => ({
@@ -183,7 +190,7 @@ export default async (req) => {
   if(!images.length) return json(400, { error: 'No ticket images received.' });
 
   const groups = (Array.isArray(body.groups) ? body.groups : []).map(n => Math.max(1, parseInt(n, 10) || 1)).slice(0, 8);
-  const cacheKey = crypto.createHash('sha256').update(images.map(i => i.data).join('|') + '#' + groups.join(',')).digest('hex').slice(0, 40);
+  const cacheKey = crypto.createHash('sha256').update('v2|' + images.map(i => i.data).join('|') + '#' + groups.join(',')).digest('hex').slice(0, 40);
   if(!body.force){
     const hit = await cacheGet(cacheKey);
     if(hit && hit.result && Array.isArray(hit.result.tickets)) return json(200, { ...hit.result, cached: true, cachedAt: hit.at || null });
@@ -199,7 +206,7 @@ export default async (req) => {
     res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: 4000, messages: [{ role: 'user', content }] }),
+      body: JSON.stringify({ model, max_tokens: 6000, messages: [{ role: 'user', content }] }),
     });
   }catch(e){ return json(502, { error: 'Could not reach the ticket reader. Try again.' }); }
   const out = await res.json().catch(() => null);

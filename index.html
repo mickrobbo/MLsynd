@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=274">
+<link rel="stylesheet" href="dashboard.css?v=276">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -259,7 +259,8 @@
 
     <div class="diag-submode active" data-submode-panel="entry">
     <div class="panel weekly-checklist" id="adminWeeklyChecklist">
-      <h2>This week</h2>
+      <h2>Enter this week</h2>
+      <div class="hint adm-flow-hint">Work down the list: read the slips, mark each result, fill the return, then Save week. Tap a button to open its details.</div>
       <div class="adm-lastsaved">Last saved <b id="adminLastSavedWeekIndicator">—</b></div>
       <div id="adminWeeklyChecklistRows"></div>
     </div>
@@ -269,8 +270,8 @@
       <select id="adminWeekLabel" style="width:100%; margin-top:10px;"><option value="">Select week</option></select>
     </div>
     <div class="panel" id="adminPanelMulti">
-      <h2>Group multi</h2>
-      <div class="hint">One row per person not on an individual bet. Odds and results save as a draft as you type.</div>
+      <h2>Group multi: picks and odds</h2>
+      <div class="hint">One row per person not on an individual bet. Odds save as a draft as you type. Results are marked in Enter this week, above.</div>
       <div class="status-msg" id="adminGroupDraftSaveStatus" style="min-height:16px;"></div>
       <div id="adminGroupEntryRows" style="margin-top:10px;"><div class="empty">Loading…</div></div>
       <div class="adm-sub">
@@ -280,14 +281,14 @@
       </div>
     </div>
     <div class="panel" id="adminPanelInd">
-      <h2>Individual bets</h2>
+      <h2>Individual bets: edit</h2>
       <div class="hint">Who's on an individual bet this week, shown on Home for everyone. An amount here only counts at Save week if that person is left blank in Returns, so nothing is entered twice.</div>
       <div id="adminWeeklyIndividualBetsEntry" style="margin-top:10px;"></div>
       <button type="button" id="adminSaveWeeklyBetsBtn" class="small" style="margin-top:8px;">Save</button>
       <div class="status-msg" id="adminWeeklyBetsStatus"></div>
     </div>
     <div class="panel" id="adminPanelSlips">
-      <h2>Bet slips</h2>
+      <h2>Upload bet slips</h2>
       <div class="hint">Upload one or more screenshots, or paste a link. They show on everyone's Slips tab straight away.</div>
       <div style="display:flex; gap:8px; margin-top:10px;">
         <input type="file" id="adminSlipFileInput" accept="image/*" multiple style="display:none;">
@@ -304,7 +305,7 @@
       <div id="adminSlipsArea" style="margin-top:12px;"><div class="empty">Loading…</div></div>
     </div>
     <div class="panel" id="adminPanelFin">
-      <h2>Returns</h2>
+      <h2>Returns: lotto, SGM, bonus pot</h2>
       <div class="hint">Outlays are prefilled at your fixed rates, so just enter the returns. Saves as a draft; nothing reaches the bank until Save week.</div>
       <div class="admin-fin-header-row" style="margin-top:10px;"><span></span><span class="admin-fin-col-lbl">Outlay</span><span class="admin-fin-col-lbl">Return</span></div>
       <div class="admin-fin-row-entry">
@@ -4039,7 +4040,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-08.274"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-08.276"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -24174,7 +24175,7 @@ document.getElementById('adminRestoreFile').addEventListener('change', async (e)
 // v196: remembers which panels you've folded away on this device. A few
 // rarely used ones start folded so each tab opens on what matters.
 const ADMIN_FOLD_KEY = 'mlsynd-admin-folded';
-const ADMIN_FOLD_DEFAULT = ['Running costs', 'Syndy usage', 'Time spent', 'API calls on this device', 'Test notification', 'Guest link', 'Weeks with no multi', 'Reconcile Casino Pot', 'Reset season'];
+const ADMIN_FOLD_DEFAULT = ['Group multi: picks and odds', 'Individual bets: edit', 'Upload bet slips', 'Returns: lotto, SGM, bonus pot', 'Bettor rotation', 'Running costs', 'Syndy usage', 'Time spent', 'API calls on this device', 'Test notification', 'Guest link', 'Weeks with no multi', 'Reconcile Casino Pot', 'Reset season'];
 function adminFoldState(){
   try{ const v = JSON.parse(localStorage.getItem(ADMIN_FOLD_KEY)); if(v && typeof v === 'object') return v; }catch(e){}
   return {};
@@ -25389,11 +25390,11 @@ initAuthGate();
 <script src="app-premium.js?v=222"></script>
 <script src="app-a11y.js?v=227"></script>
 <script src="slip-scan.js?v=227"></script>
-<script src="lotto-combine.js?v=274"></script>
+<script src="lotto-combine.js?v=276"></script>
 <script src="admin-ops.js?v=222"></script>
 <script src="casino-showcase.js?v=223"></script>
 <script src="pick-stats.js?v=216"></script>
 <script src="bet-facts.js?v=216"></script>
-<script src="admin-week.js?v=271"></script>
+<script src="admin-week.js?v=275"></script>
 </body>
 </html>
