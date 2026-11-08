@@ -7848,3 +7848,8 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 /* v281: result tag on the Overview ticket row */
 .mll-res{ flex:none; padding:5px 10px; border-radius:999px; font:800 12.5px 'Manrope', sans-serif; color:var(--muted); background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.14); white-space:nowrap; }
 .mll-res.won{ color:#4DEB8E; background:rgba(77,235,142,.14); border-color:rgba(77,235,142,.45); }
+
+/* v283: saved tickets list sits at the top of the MLSynd tab */
+.lc-ml-top{ margin:10px 0 14px; padding:12px 14px; border-radius:16px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); }
+.lc-ml-top .lc-ml-h{ margin-top:0; }
+.lc-ml-row .small + .small{ margin-left:6px; }

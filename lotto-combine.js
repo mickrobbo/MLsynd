@@ -615,6 +615,7 @@
     btn.textContent = tgt === 'ml' ? 'Save to MLSynd' : 'Save to draw';
     const mh = $('lcMlHint'); if(mh) mh.hidden = tgt !== 'ml';
     const mm = $('lcMlManage'); if(mm) mm.hidden = tgt !== 'ml';
+    const mt = $('lcMlTop'); if(mt) mt.hidden = tgt !== 'ml';
     if(tgt === 'ml') renderMlAdmin();
     if(tgt === 'ml'){ btn.disabled = !tickets.length; return; }
     const prev = sel.value, list = entries();
@@ -1029,6 +1030,7 @@
       <div class="panel">
         <h2>Lotto tickets to one picture</h2>
         <div class="lc-seg" id="lcTgt" role="group" aria-label="Which group are these tickets for"><button type="button" data-lc-tgt="pigs">Lotto Pigs</button><button type="button" data-lc-tgt="ml">MLSynd</button></div>
+        <div id="lcMlTop" class="lc-ml-top" hidden><div class="lc-ml-h">Saved on Overview</div><div id="lcMlList"></div></div>
         <div class="hint">Add all your lotto ticket screenshots. They're joined into one picture you can download or share. Nothing is uploaded; it all happens on your phone.</div>
         <input type="file" id="lcFile" accept="image/*" multiple hidden>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcPick">Add ticket screenshots</button><span class="lc-count" id="lcCount"></span><button type="button" class="small" id="lcClear" disabled>Clear all</button></div>
@@ -1055,7 +1057,6 @@
         <div class="hint" id="lcMlHint" hidden>MLSynd tickets are saved for every syndicate member to view on Home → Overview. The picture uses the MLSynd logo and lists all members.</div>
         <div id="lcMlManage" hidden>
           <label class="lc-field">When saving<select id="lcMlReplace"></select></label>
-          <div class="lc-ml-h">Saved on Overview</div><div id="lcMlList"></div>
         </div>
         <div class="status-msg" id="lcAttachStatus"></div>
         <div class="lc-preview" id="lcPreviewWrap" hidden><canvas id="lcCanvas" aria-label="Preview of the combined lotto picture"></canvas></div>
