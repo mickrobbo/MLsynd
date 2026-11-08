@@ -319,6 +319,7 @@ test('MLSynd tickets: enter a result, replace a saved ticket, remove it from the
   await page.selectOption('#lcMlReplace', firstId); await page.click('#lcAttach'); await page.waitForTimeout(1500);
   assert.equal(Object.keys(db.mlsyndLotto.meta).length, 2, 'replace keeps the count');
   // reopen a saved ticket without screenshots and add a result
+  if(db.mlsyndLotto.data) delete db.mlsyndLotto.data[firstId];
   await page.click('#lcClear'); await page.waitForTimeout(300);
   await page.click(`[data-lc-mledit="${firstId}"]`); await page.waitForTimeout(1500);
   assert.equal(await page.evaluate(() => document.getElementById('lcMlReplace').value), firstId, 'replace is preselected');

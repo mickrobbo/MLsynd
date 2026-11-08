@@ -644,13 +644,21 @@
     const prev = sel.value;
     sel.innerHTML = '<option value="">Save as a new ticket</option>' + items.map(m => `<option value="${esc(m.id)}">Replace: ${esc(m.label || 'MLSynd lotto')} · ${esc(prettyDate(m.date))}</option>`).join('');
     if(prev && items.some(m => m.id === prev)) sel.value = prev;
-    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}${m.res ? ' · ' + esc(m.res) : ''}</i></span>${m.data ? `<button type="button" class="small" data-lc-mledit="${esc(m.id)}">Add result</button>` : ''}<button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
+    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}${m.res ? ' · ' + esc(m.res) : ''}</i></span><button type="button" class="small" data-lc-mledit="${esc(m.id)}">${m.res ? 'Edit result' : 'Enter result'}</button><button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
   }
   async function editMl(id){
     const st2 = $('lcAttachStatus'); st2.className = 'status-msg'; st2.textContent = 'Opening ticket…';
     try{
-      const r = await authedFetch(`/mlsyndLotto/data/${id}.json`); const d = r.ok ? await r.json() : null;
-      if(!d || !d.tickets) throw new Error('none');
+      const r = await authedFetch(`/mlsyndLotto/data/${id}.json`); let d = r.ok ? await r.json() : null;
+      if(!d || !d.tickets){
+        // saved before the numbers were kept: read the saved picture once to get them back
+        st2.textContent = 'Reading the saved ticket… about 15 seconds.';
+        const img = await getTicket(id, 'ml');
+        const auth = typeof getValidAuth === 'function' ? await getValidAuth() : null; if(!auth) throw new Error('auth');
+        const res = await fetch('/.netlify/functions/scan-lotto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: auth.idToken, images: [img], groups: [1] }) });
+        d = await res.json().catch(() => ({}));
+        if(!res.ok || !d.tickets || !d.tickets.length) throw new Error('read');
+      }
       const blank = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="#1b221b"/></svg>');
       const norm = d.tickets.map(t => ({ ...t, entries: (t.entries || []).map(e => ({ ...e, numbers: e.numbers || [], extra: e.extra || [] })), result: t.result ? { ...t.result, winning_numbers: t.result.winning_numbers || [], winning_extra: t.result.winning_extra || [] } : null }));
       tickets.forEach(t => { if(t.url && t.url.indexOf('blob:') === 0) URL.revokeObjectURL(t.url); });
@@ -661,7 +669,7 @@
       renderList(); renderInfo(); scheduleRender();
       st2.className = 'status-msg ok'; st2.textContent = 'Opened. Type the result under the ticket, then Save to MLSynd.';
       const box = $('lcInfo'); if(box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'This ticket was saved before results existed. Re-read it once, then it can be updated any time.'; }
+    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not open that ticket. Try again, or re-read the screenshots.'; }
   }
   async function removeMl(id){
     const m = ML.meta[id] || {}; if(!confirm(`Remove "${m.label || 'this ticket'}" from the Overview?`)) return;
