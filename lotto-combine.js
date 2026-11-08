@@ -644,10 +644,11 @@
     const prev = sel.value;
     sel.innerHTML = '<option value="">Save as a new ticket</option>' + items.map(m => `<option value="${esc(m.id)}">Replace: ${esc(m.label || 'MLSynd lotto')} · ${esc(prettyDate(m.date))}</option>`).join('');
     if(prev && items.some(m => m.id === prev)) sel.value = prev;
-    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}${m.res ? ' · ' + esc(m.res) : ''}</i></span><button type="button" class="small" data-lc-mledit="${esc(m.id)}">${m.res ? 'Edit result' : 'Enter result'}</button><button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
+    list.innerHTML = items.length ? items.map(m => `<div class="lc-ml-row"><span><b>${esc(m.label || 'MLSynd lotto')}</b><i>${esc(prettyDate(m.date))}${m.games ? ' · ' + esc(m.games) : ''}${m.res ? ' · ' + esc(m.res) : ''}</i></span><div class="lc-ml-btns"><button type="button" class="small" data-lc-mledit="${esc(m.id)}">${m.res ? 'Edit result' : 'Enter result'}</button><button type="button" class="small danger" data-lc-mlrm="${esc(m.id)}">Remove</button></div></div>`).join('') : '<div class="hint">Nothing saved yet. Saved tickets show on Home → Overview until you remove them.</div>';
   }
   async function editMl(id){
-    const st2 = $('lcAttachStatus'); st2.className = 'status-msg'; st2.textContent = 'Opening ticket…';
+    const st2 = $('lcMlMsg') || $('lcAttachStatus'), btn = document.querySelector(`[data-lc-mledit="${id}"]`);
+    st2.className = 'status-msg'; st2.textContent = 'Opening ticket…'; if(btn){ btn.disabled = true; btn.textContent = 'Opening…'; }
     try{
       const r = await authedFetch(`/mlsyndLotto/data/${id}.json`); let d = r.ok ? await r.json() : null;
       if(!d || !d.tickets){
@@ -657,7 +658,7 @@
         const auth = typeof getValidAuth === 'function' ? await getValidAuth() : null; if(!auth) throw new Error('auth');
         const res = await fetch('/.netlify/functions/scan-lotto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: auth.idToken, images: [img], groups: [1] }) });
         d = await res.json().catch(() => ({}));
-        if(!res.ok || !d.tickets || !d.tickets.length) throw new Error('read');
+        if(!res.ok || !d.tickets || !d.tickets.length) throw new Error(d && d.error ? d.error : 'The reader could not find the numbers on the saved picture.');
       }
       const blank = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="#1b221b"/></svg>');
       const norm = d.tickets.map(t => ({ ...t, entries: (t.entries || []).map(e => ({ ...e, numbers: e.numbers || [], extra: e.extra || [] })), result: t.result ? { ...t.result, winning_numbers: t.result.winning_numbers || [], winning_extra: t.result.winning_extra || [] } : null }));
@@ -669,11 +670,12 @@
       renderList(); renderInfo(); scheduleRender();
       st2.className = 'status-msg ok'; st2.textContent = 'Opened. Type the result under the ticket, then Save to MLSynd.';
       const box = $('lcInfo'); if(box && box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not open that ticket. Try again, or re-read the screenshots.'; }
+    }catch(e){ st2.className = 'status-msg error'; st2.textContent = 'Could not open that ticket: ' + (e && e.message ? e.message : 'try again') + ' You can also add the screenshots again and read them.'; }
+    finally{ renderMlAdmin(); }
   }
   async function removeMl(id){
     const m = ML.meta[id] || {}; if(!confirm(`Remove "${m.label || 'this ticket'}" from the Overview?`)) return;
-    const st2 = $('lcAttachStatus');
+    const st2 = $('lcMlMsg') || $('lcAttachStatus');
     try{
       await authedWrite(`/mlsyndLotto/img/${id}.json`, { method: 'DELETE' });
       await authedWrite(`/mlsyndLotto/data/${id}.json`, { method: 'DELETE' });
@@ -1038,7 +1040,7 @@
       <div class="panel">
         <h2>Lotto tickets to one picture</h2>
         <div class="lc-seg" id="lcTgt" role="group" aria-label="Which group are these tickets for"><button type="button" data-lc-tgt="pigs">Lotto Pigs</button><button type="button" data-lc-tgt="ml">MLSynd</button></div>
-        <div id="lcMlTop" class="lc-ml-top" hidden><div class="lc-ml-h">Saved on Overview</div><div id="lcMlList"></div></div>
+        <div id="lcMlTop" class="lc-ml-top" hidden><div class="lc-ml-h">Saved on Overview</div><div id="lcMlList"></div><div class="status-msg" id="lcMlMsg" aria-live="polite"></div></div>
         <div class="hint">Add all your lotto ticket screenshots. They're joined into one picture you can download or share. Nothing is uploaded; it all happens on your phone.</div>
         <input type="file" id="lcFile" accept="image/*" multiple hidden>
         <div class="lc-actions"><button type="button" class="small adm-primary" id="lcPick">Add ticket screenshots</button><span class="lc-count" id="lcCount"></span><button type="button" class="small" id="lcClear" disabled>Clear all</button></div>
