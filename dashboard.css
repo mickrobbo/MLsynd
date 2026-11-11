@@ -7861,3 +7861,8 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-ml-row .small{ flex:1; min-height:44px; margin:0 !important; }
 .lc-ml-row .lc-ml-btns{ display:flex; gap:10px; }
 .lc-ml-top .status-msg:empty{ display:none; }
+
+/* v286: comfortable tap targets (found in the phone pass) */
+.weekly-reminder-check-row{ min-height:40px; align-items:center; }
+#czAllGames, #potDetailsToggleBtn, .casino-rules-btn, .awk-legs-toggle, #clearMyErrorsBtn{ min-height:38px; }
+.slip-open{ display:inline-block; padding:10px 0; }
