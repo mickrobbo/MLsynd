@@ -307,7 +307,7 @@ test('MLSynd tickets: enter a result, replace a saved ticket, remove it from the
   await page.setInputFiles('#lcFile', [{ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from(await png(600, 900, '#c33'), 'base64') }]); await page.waitForTimeout(800);
   await page.click('#lcTgt [data-lc-tgt="ml"]'); await page.click('#lcReadBtn'); await page.waitForTimeout(1500);
   const h0 = await page.evaluate(() => lcCanvas.height);
-  await page.fill('[data-lc-win="0"]', '4 9 17 2 3 5 6'); await page.fill('[data-lc-prize="0"]', '55'); await page.waitForTimeout(500);
+  await page.fill('[data-lc-win="0"]', '4, 9,17 ,2  3,5, 6'); await page.fill('[data-lc-prize="0"]', '55'); await page.waitForTimeout(500);
   const h1 = await page.evaluate(() => lcCanvas.height);
   assert.ok(h1 > h0, 'a result adds the prize bar to the card: ' + h0 + ' -> ' + h1);
   await page.click('#lcAttach'); await page.waitForTimeout(1500);

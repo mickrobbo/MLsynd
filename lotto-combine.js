@@ -152,8 +152,8 @@
         <div class="lc-info-h"><b>Ticket ${i + 1}${t.game ? ' · ' + esc(t.game) : ''}</b><span>${[t.draw_number ? 'Draw ' + esc(t.draw_number) : '', t.draw_date ? esc(fmtDay(t.draw_date)) : '', t.entry_type ? esc(t.entry_type) : '', t.price != null ? fmtMoney(t.price) : ''].filter(Boolean).join(' · ')}</span></div>
         ${t.entries.map(e => `<div class="lc-info-row"><i>${esc(e.label || '')}</i>${e.numbers.map(n => `<em>${n}</em>`).join('')}${e.extra.map(n => `<em class="x">${n}</em>`).join('')}</div>`).join('')}
         <div class="lc-res"><div class="lc-res-h">Result (after the draw)</div>
-          <label>Winning numbers<input type="text" inputmode="numeric" data-lc-win="${i}" placeholder="e.g. 4 9 17 25 28 36 41" value="${t.result && t.result.winning_numbers ? t.result.winning_numbers.join(' ') : ''}"></label>
-          <label>Powerball / extra<input type="text" inputmode="numeric" data-lc-winx="${i}" placeholder="e.g. 7" value="${t.result && t.result.winning_extra ? t.result.winning_extra.join(' ') : ''}"></label>
+          <label>Winning numbers<input type="text" inputmode="text" autocomplete="off" autocapitalize="off" data-lc-win="${i}" placeholder="e.g. 4 9 17 25 28 36 41 or 4,9,17…" value="${t.result && t.result.winning_numbers ? t.result.winning_numbers.join(' ') : ''}"></label>
+          <label>Powerball / extra<input type="text" inputmode="text" autocomplete="off" autocapitalize="off" data-lc-winx="${i}" placeholder="e.g. 7 (or 7, 12)" value="${t.result && t.result.winning_extra ? t.result.winning_extra.join(' ') : ''}"></label>
           <label>Prize won ($)<input type="number" inputmode="decimal" min="0" step="0.01" data-lc-prize="${i}" placeholder="0 if nothing" value="${t.result && t.result.prize ? t.result.prize : ''}"></label>
         </div>
         <label class="lc-jp">Jackpot / first division prize ($)<input type="number" inputmode="decimal" min="0" step="1" data-lc-jp="${i}" value="${t.jackpot || ''}" placeholder="e.g. 50000000"></label>
