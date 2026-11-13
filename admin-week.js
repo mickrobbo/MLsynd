@@ -47,7 +47,8 @@
     const counting = legs.filter(l => l.result === 'Win' && l.odds > 0);
     const out = Number(($('adminGMultiOut') || {}).value) || (typeof groupStakeSetting === 'function' ? groupStakeSetting() : 12.5);
     if(!counting.length) return out; // every leg void: stake back
-    return Math.round(counting.reduce((m, l) => m * l.odds, 1) * out * 100) / 100;
+    const prod = (typeof groupProduct === 'function') ? groupProduct(counting.map(l => [l.name, { odds: l.odds }]), st().groupSgm) : counting.reduce((m, l) => m * l.odds, 1);
+    return Math.round(prod * out * 100) / 100;
   }
 
   // ---------- drawing ----------
@@ -63,8 +64,44 @@
       ${open ? `<div class="awk-legs">${legs.map((l, i) => `<div class="awk-leg"><span class="awk-who"><b>${esc(l.sel || 'Leg ' + (i + 1))}</b><span>${esc([l.market, l.event].filter(Boolean).join(' · '))}${Number(l.odds) > 0 ? `${l.market || l.event ? ' · ' : ''}@${Number(l.odds).toFixed(2)}` : ''}</span></span>${resBtns('ileg', b.row + ':' + i, legState(l), null)}</div>`).join('')}</div>` : ''}`;
   }
 
+  // two legs in the same game that the bookie priced together (a Same Game Multi)
+  function sgmBox(legs, kept){
+    const priced = legs.filter(l => l.odds > 0), cur = st().groupSgm || null;
+    const pick = (k) => (kept && kept[k] != null) ? kept[k] : (cur ? (k === 'price' ? cur.price : cur[k]) : '');
+    const a = pick('a'), b = pick('b'), price = pick('price');
+    const opts = (sel) => '<option value="">Pick a leg</option>' + priced.map(l => `<option value="${esc(l.name)}"${l.name === sel ? ' selected' : ''}>${esc(l.name)}${l.pick && l.pick.sel ? ' · ' + esc(l.pick.sel) : ''} @${l.odds.toFixed(2)}</option>`).join('');
+    const on = cur && priced.some(l => l.name === cur.a) && priced.some(l => l.name === cur.b);
+    return `<div class="awk-sgm"><div class="awk-sgm-h">Same game pair${on ? ' (on)' : ''}</div>
+      <div class="awk-sgm-note">If Sportsbet priced two legs together as a Same Game Multi, pick them and type its price. The multi on Home then matches the ticket.</div>
+      <div class="awk-sgm-row"><select data-awk-sgm="a" aria-label="First leg">${opts(a)}</select><select data-awk-sgm="b" aria-label="Second leg">${opts(b)}</select></div>
+      <input type="text" inputmode="decimal" data-awk-sgm="price" placeholder="Combined price, e.g. 2.75" value="${price !== '' && price != null ? esc(price) : ''}" aria-label="Combined price">
+      <div class="awk-sgm-btns"><button type="button" class="small adm-primary" data-awk-act="sgm-save">Use this price</button>${cur ? '<button type="button" class="small awk-ghost" data-awk-act="sgm-clear">Remove</button>' : ''}</div>
+      <div class="status-msg" id="awkSgmMsg" aria-live="polite"></div></div>`;
+  }
+  async function sgmSave(){
+    const root = $('adminWeeklyChecklistRows'); const v = (k) => { const el = root.querySelector(`[data-awk-sgm="${k}"]`); return el ? el.value : ''; };
+    const msg = $('awkSgmMsg'); const say = (t, ok) => { if(msg){ msg.className = 'status-msg ' + (ok ? 'ok' : 'error'); msg.textContent = t; } };
+    const a = v('a'), b = v('b'), price = parseFloat(String(v('price')).replace(',', '.'));
+    if(!a || !b || a === b) return say('Pick two different legs.', false);
+    if(!(price > 1)) return say('Type the combined price, e.g. 2.75.', false);
+    try{
+      const r = await authedWrite('/state/groupSgm.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ a, b, price }) });
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      currentState.groupSgm = { a, b, price };
+      try{ renderGroupMultiChart(currentState); }catch(e){}
+      refresh(); say('Saved. Home now uses @' + price.toFixed(2) + ' for those two.', true);
+    }catch(e){ say('Could not save: ' + (e.message || 'try again'), false); }
+  }
+  async function sgmClear(){
+    try{
+      const r = await authedWrite('/state/groupSgm.json', { method: 'DELETE' }); if(!r.ok) throw new Error('HTTP ' + r.status);
+      delete currentState.groupSgm; try{ renderGroupMultiChart(currentState); }catch(e){} refresh();
+    }catch(e){ const msg = $('awkSgmMsg'); if(msg){ msg.className = 'status-msg error'; msg.textContent = 'Could not remove it. Try again.'; } }
+  }
+
   function render(wrap, steps){
     const s = st();
+    const keptSgm = (() => { const o = {}; let any = false; wrap.querySelectorAll('[data-awk-sgm]').forEach(el => { o[el.dataset.awkSgm] = el.value; if(el.value) any = true; }); return any ? o : null; })();
     const legs = legsNow();
     const bets = betsNow();
     const weekSel = $('adminWeekLabel');
@@ -105,7 +142,7 @@
             <span class="awk-who"><b>${esc(l.name)}</b><span>${l.pick && l.pick.sel ? esc(l.pick.sel) : 'No selection'}${l.odds ? ` · @${l.odds.toFixed(2)}` : ''}</span></span>
             ${resBtns('leg', l.name, l.result, null)}
           </div>`;
-        }).join('')}</div>` : `<div class="awk-empty">Read the multi slip, or type odds in Group multi below.</div>`}
+        }).join('')}</div>${legs.filter(l => l.odds > 0).length > 1 ? sgmBox(legs, keptSgm) : ''}` : `<div class="awk-empty">Read the multi slip, or type odds in Group multi below.</div>`}
       </section>
 
       <section class="awk-step">
@@ -189,6 +226,8 @@
     if(a){
       e.stopPropagation();
       const act = a.dataset.awkAct;
+      if(act === 'sgm-save'){ sgmSave(); return; }
+      if(act === 'sgm-clear'){ sgmClear(); return; }
       if(act === 'read'){ const b = $('slipScanBtn'); if(b){ b.click(); go('adminPanelSlips'); } else go('adminPanelSlips'); }
       else if(act === 'accept-bets'){
         // one at a time: each result can re-draw the editor (a win adds a bonus row)

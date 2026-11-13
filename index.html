@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://mlsynd-default-rtdb.firebaseio.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css?v=287">
+<link rel="stylesheet" href="dashboard.css?v=288">
 <link rel="stylesheet" href="casino-showcase.css?v=224">
 <script src="error-report.js?v=211"></script>
 <!-- Firebase JS SDK — loaded ONLY for Hold'em's real-time listeners
@@ -4040,7 +4040,7 @@ if('serviceWorker' in navigator){
 // warning). Bump APP_VERSION here + version.json's value together on every
 // deploy so open tabs get a dismissible "new version available" prompt
 // instead of running stale code silently or reloading without asking.
-const APP_VERSION = "2026-11-13.287"; // v228 install banner no longer covers the login Forgot password link
+const APP_VERSION = "2026-11-13.288"; // v228 install banner no longer covers the login Forgot password link
 let updateBannerShown = false;
 function showUpdateBanner(){
   if(updateBannerShown) return;
@@ -14406,6 +14406,21 @@ function roastTierForName(name){
 // A leg also shows on Home when the slip gave a selection but no price, so nobody's leg goes missing from the multi.
 function groupLegShows(e){ return groupLegIsIn(e) || !!(e && e.pick && e.pick.sel); }
 function groupLegIsIn(e){ return !!(e && (e.result || (e.odds != null && e.odds !== '' && !isNaN(Number(e.odds)) && Number(e.odds) > 0))); }
+// v288: two legs in the same game can be priced together by the bookie (a
+// "Same Game Multi"), which is lower than the two prices multiplied. The
+// admin records the two names and the combined price; every multi price
+// below uses it in place of the two separate prices.
+function groupSgmValid(sgm, names){ return !!(sgm && sgm.a && sgm.b && sgm.a !== sgm.b && Number(sgm.price) > 0 && names.indexOf(sgm.a) >= 0 && names.indexOf(sgm.b) >= 0); }
+function groupProduct(list, sgm){
+  // list: [[name, {odds}]] of the legs to multiply (each with a price)
+  let p = 1; list.forEach(([, e]) => { p *= Number(e.odds); });
+  const names = list.map(x => x[0]);
+  if(groupSgmValid(sgm, names)){
+    const a = Number(list[names.indexOf(sgm.a)][1].odds), b = Number(list[names.indexOf(sgm.b)][1].odds);
+    p = p / (a * b) * Number(sgm.price);
+  }
+  return p;
+}
 function renderGroupMultiChart(state){
   // v181: the group multi as a bookie-style card. One small round photo per
   // leg with a status badge (tick, cross, gold ? for MIA, blue dash for
@@ -14454,8 +14469,10 @@ function renderGroupMultiChart(state){
   const pending = entries.filter(([, e]) => !e.result).length;
   const withOdds = entries.filter(([, e]) => e.odds != null && Number(e.odds) > 0);
   const counting = withOdds.filter(([, e]) => e.result !== 'Void' && e.result !== 'MIA');
-  const combined = counting.reduce((m, [, e]) => m * Number(e.odds), 1);
-  const full = withOdds.reduce((m, [, e]) => m * Number(e.odds), 1);
+  const histLast = (state.history && state.history.length > 0) ? state.history[state.history.length - 1] : null;
+  const sgm = draftHasEntries ? (state.groupSgm || null) : (histLast && histLast.groupSgm || null);
+  const combined = groupProduct(counting, sgm);
+  const full = groupProduct(withOdds, sgm);
   // Legs whose price isn't known yet: the price shown so far is only part of the multi, so say so.
   const noPrice = entries.filter(([, e]) => !(e.odds != null && Number(e.odds) > 0) && e.result !== 'Void' && e.result !== 'MIA').length;
   if(oddsEl) oddsEl.innerHTML = counting.length
@@ -14502,7 +14519,7 @@ function renderGroupMultiChart(state){
     return { name, odds: e.odds, result: e.result || null, uid: m.linkedUid || '', note, pick: e.pick || null,
       wins: m.wins || 0, losses: m.losses || 0, form: form.slice(-5), streak, streakType };
   });
-  window.__hmMulti = { editable: draftHasEntries, combined, counting: counting.length, pending, losers: losers.length, toLand: entries.filter(([, e]) => !e.result && Number(e.odds) > 0).reduce((m, [, e]) => m * Number(e.odds), 1) };
+  window.__hmMulti = { editable: draftHasEntries, combined, counting: counting.length, pending, losers: losers.length, toLand: groupProduct(entries.filter(([, e]) => !e.result && Number(e.odds) > 0), sgm), sgm, entries };
   if(!window.__hmLegs.some(l => l.name === window.__hmSel)) window.__hmSel = null;
   const BADGE = {
     Win: '<path d="M7 12.5l3.2 3.2L17 9" />',
@@ -14517,7 +14534,7 @@ function renderGroupMultiChart(state){
   const multiTrack = `<div class="hm-track" aria-hidden="true">${window.__hmLegs.map(l => `<span class="hm-seg result-${resCls(l.result)}"></span>`).join('')}</div>`;
   const landed = entries.filter(([, e]) => e.result === 'Win').length;
   const live = counting.length;
-  const toLand = entries.filter(([, e]) => !e.result && Number(e.odds) > 0).reduce((m, [, e]) => m * Number(e.odds), 1);
+  const toLand = window.__hmMulti.toLand;
   const savedWeek = !draftHasEntries && hist.length ? hist[hist.length - 1] : null;
   const paidOut = savedWeek && savedWeek.group ? Number(savedWeek.group.multiRet) || 0 : 0;
   const money = v => '$' + Math.round(v).toLocaleString('en-AU');
@@ -14598,9 +14615,10 @@ function renderHomeMultiDetail(){
   let impact = '';
   const o = Number(leg.odds);
   if(o > 0 && m.combined > 0){
-    if(leg.result === 'Loss') impact = `Without this leg the rest were @${(m.combined / o).toFixed(2)}`;
+    const rest = (pendingOnly) => groupProduct((m.entries || []).filter(([n, e]) => n !== leg.name && Number(e.odds) > 0 && (pendingOnly ? !e.result : (e.result !== 'Void' && e.result !== 'MIA'))), m.sgm);
+    if(leg.result === 'Loss') impact = `Without this leg the rest were @${rest(false).toFixed(2)}`;
     else if(!leg.result && !m.losers) impact = m.pending > 1
-      ? `If this lands, @${(m.toLand / o).toFixed(2)} still to land`
+      ? `If this lands, @${rest(true).toFixed(2)} still to land`
       : `Last leg standing, ${moneyAud(groupStakeSetting())} pays ${moneyAud(m.combined * groupStakeSetting())}`;
   }
   const pip = r => `<span class="hm-pip result-${rc(r)}" title="${escapeHtml(r)}">${r === 'Win' ? 'W' : r === 'Loss' ? 'L' : r === 'Void' ? 'V' : 'M'}</span>`;
@@ -14655,13 +14673,15 @@ function homeMultiLegsListHtml(){
   let open = false; try{ open = localStorage.getItem('mlsynd-hm-all') === '1'; }catch(e){}
   const rc = r => !r ? 'pending' : r === 'Win' ? 'win' : r === 'Loss' ? 'loss' : r === 'MIA' ? 'mia' : 'void';
   const lab = r => !r ? 'Running' : r === 'Win' ? 'Won' : r === 'Loss' ? 'Lost' : r;
+  const sg = window.__hmMulti && window.__hmMulti.sgm, sgOn = groupSgmValid(sg, legs.map(l => l.name));
+  const sgLine = sgOn ? `<div class="hm-all-sgm">Same-game pair: <b>${escapeHtml(String(sg.a).split(' ')[0])} + ${escapeHtml(String(sg.b).split(' ')[0])}</b> priced together at <b>@${Number(sg.price).toFixed(2)}</b></div>` : '';
   return `<button type="button" class="hm-all-toggle" data-hm-all aria-expanded="${open}">${open ? 'Hide legs' : `See all ${legs.length} legs`}</button>
     <div class="hm-all"${open ? '' : ' hidden'}>${legs.map(l => `<div class="hm-all-row result-${rc(l.result)}">
       <span class="hm-all-name">${escapeHtml(String(l.name).split(' ')[0])}</span>
       <span class="hm-all-sel">${l.pick && l.pick.sel ? `<b>${escapeHtml(l.pick.sel)}</b>${l.pick.market ? `<span>${escapeHtml(l.pick.market)}</span>` : ''}` : '<span>No selection yet</span>'}</span>
-      <span class="hm-all-odds">${Number(l.odds) > 0 ? '@' + Number(l.odds).toFixed(2) : ''}</span>
+      <span class="hm-all-odds">${Number(l.odds) > 0 ? '@' + Number(l.odds).toFixed(2) : ''}${sgOn && (l.name === sg.a || l.name === sg.b) ? '<small class="hm-all-sg">SGM</small>' : ''}</span>
       <span class="hm-chip-sm">${lab(l.result)}</span>
-    </div>`).join('')}</div>`;
+    </div>`).join('')}${sgLine}</div>`;
 }
 // v217: the 'tap a face' and 'tap to see the bet' hints go once someone has tapped
 try{ if(localStorage.getItem('mlsynd-hint-leg') === '1') document.documentElement.classList.add('hint-leg-seen'); if(localStorage.getItem('mlsynd-hint-ind') === '1') document.documentElement.classList.add('hint-ind-seen'); }catch(e){}
@@ -22922,7 +22942,7 @@ async function adminSaveWeekRun(){
     }
 
     const lastSnapshot = JSON.parse(JSON.stringify(workingMembers));
-    const historyRecord = { label: weekLabel, savedAt: Date.now(), group, groupEntries, individualEntries, xpAwarded, potFineAmount, potFinePeriodKey, personalFineDeductions, legLossesByUid, miaLegsByUid, lowOddsLegsByUid, individualLossesByUid };
+    const historyRecord = { label: weekLabel, savedAt: Date.now(), group, groupEntries, ...(currentState.groupSgm && currentState.groupSgm.a ? { groupSgm: { a: currentState.groupSgm.a, b: currentState.groupSgm.b, price: Number(currentState.groupSgm.price) } } : {}), individualEntries, xpAwarded, potFineAmount, potFinePeriodKey, personalFineDeductions, legLossesByUid, miaLegsByUid, lowOddsLegsByUid, individualLossesByUid };
     const workingHistory = [...(currentState.history || []), historyRecord];
 
     // Everything computed successfully — now write it all back, each to
@@ -22947,7 +22967,7 @@ async function adminSaveWeekRun(){
     // Clear this week's drafts for the next entry — same fields Clear
     // Entry Inputs resets in the Ledger.
     adminIndDraftRows = [{ name: '', outlay: String(indStakeSetting()), ret: '' }, { name: '', outlay: String(indStakeSetting()), ret: '' }];
-    currentState.groupEntryDraft = {};
+    currentState.groupEntryDraft = {}; delete currentState.groupSgm;
     adminGroupDraftDirty.clear(); groupDraftMirrorWrite();
     currentState.weekLabelDraft = null;
     await Promise.all([
@@ -22955,6 +22975,7 @@ async function adminSaveWeekRun(){
       authedFetch('/state/groupEntryDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) }),
       authedFetch('/state/groupDraftClearedAt.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Date.now()) }),
       authedFetch('/state/weekLabelDraft.json', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(null) }),
+      authedFetch('/state/groupSgm.json', { method: 'DELETE' }),
     ].map(p => p.then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); }).catch(e => { showToast('Week saved, but clearing a draft field failed (' + e.message + ') — check the Entry tab'); })));
 
     renderAdminFinIndRows();
@@ -25395,6 +25416,6 @@ initAuthGate();
 <script src="casino-showcase.js?v=223"></script>
 <script src="pick-stats.js?v=216"></script>
 <script src="bet-facts.js?v=216"></script>
-<script src="admin-week.js?v=275"></script>
+<script src="admin-week.js?v=288"></script>
 </body>
 </html>

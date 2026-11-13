@@ -482,6 +482,20 @@ test('Lotto Pigs data lives outside /state and old copies are moved out of it', 
   assert.ok(Object.keys(db.lottoPigs.group.uids || {}).length >= 1, 'platform logins of the ticked members are stored for the database rules');
 }, { db: (db) => { db.state.lottoGroup = { name: 'Lotto Pigs', members: ['Billy'] }; db.state.lottoLedger = { old1: { date: '2026-11-01', label: 'Old', price: 25, shares: { Billy: 1 }, cost: 25, won: 0, createdAt: 1 } }; } });
 
+// v288 same-game pair: the multi price matches the real ticket
+test('Same game pair: one combined price replaces two legs on Home', async ({ page, db }) => {
+  db.state.groupEntryDraft = { Dean: { odds: 2, pick: { sel: 'A', leg: 1 } }, Zak: { odds: 3, pick: { sel: 'B', leg: 2 } }, Brad: { odds: 1.5, pick: { sel: 'C', leg: 3 } } };
+  await goAdmin(page, 'entry');
+  await page.evaluate(() => { currentState.groupEntryDraft = { Dean: { odds: 2, pick: { sel: 'A', leg: 1 } }, Zak: { odds: 3, pick: { sel: 'B', leg: 2 } }, Brad: { odds: 1.5, pick: { sel: 'C', leg: 3 } } }; delete currentState.groupMultiCleared; renderAdminWeeklyIndividualBetsEntry(); updateWeeklyChecklist(); });
+  await page.selectOption('[data-awk-sgm="a"]', 'Dean'); await page.selectOption('[data-awk-sgm="b"]', 'Zak');
+  await page.fill('[data-awk-sgm="price"]', '5'); await page.click('[data-awk-act="sgm-save"]'); await page.waitForTimeout(1200);
+  assert.deepEqual(db.state.groupSgm, { a: 'Dean', b: 'Zak', price: 5 });
+  assert.match(await text(page, '#homeMultiOdds'), /Multi @ 7\.50/, 'pair price used: 5 x 1.5');
+  await page.click('[data-awk-act="sgm-clear"]'); await page.waitForTimeout(1000);
+  assert.equal(db.state.groupSgm, undefined);
+  { const h = await text(page, '#homeMultiOdds'); assert.match(h, /Multi @ 9\.00/, 'back to 2 x 3 x 1.5: ' + h + ' / ' + JSON.stringify(db.state.groupSgm)); }
+});
+
 // v225/v226 one-screen admin week
 test('Admin week on one screen: mark legs and bets, fill the return', async ({ page, db }) => {
   await goAdmin(page, 'entry');
