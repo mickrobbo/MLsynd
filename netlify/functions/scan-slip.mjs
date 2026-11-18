@@ -163,7 +163,7 @@ function clean(data){
 
 export default async (req) => {
   if(req.method !== 'POST') return json(405, { error: 'POST only' });
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = String(process.env.ANTHROPIC_API_KEY || '').trim().replace(/^["']|["']$/g, '');
   if(!apiKey) return json(500, { error: 'Slip scanning isn\'t set up yet: add ANTHROPIC_API_KEY in Netlify (Site configuration → Environment variables), then redeploy.' });
   let body;
   try{
@@ -202,6 +202,7 @@ export default async (req) => {
   const out = await res.json().catch(() => null);
   if(!res.ok){
     const msg = out && out.error && out.error.message ? out.error.message : `HTTP ${res.status}`;
+    if(res.status === 401) return json(502, { error: 'The Anthropic key saved in Netlify was rejected (invalid or revoked). Make a new key at console.anthropic.com, paste it into ANTHROPIC_API_KEY in Netlify (Site configuration, Environment variables), then Clear cache and deploy site.' });
     return json(502, { error: 'The slip reader returned an error: ' + msg });
   }
   // the call was billed whether or not the reply is usable, so count it now
