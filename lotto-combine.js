@@ -945,19 +945,19 @@
       const grpCells = cell('Outlay', money(n.cost)) + (n.pend ? (n.jackpot ? cell('Top prize', moneyShort(n.jackpot), money(n.jackpot)) : cell('Return', 'Awaiting')) : `<div><span>Return</span><b class="pos">${money(n.won)}</b></div>` + `<div><span>Net</span><b class="${n.won - n.cost >= 0 ? 'pos' : 'neg'}">${signed(n.won - n.cost)}</b></div>`);
       const grpLine = `<div class="lc-dr-you lc-dr-grp"><div class="lc-you-t">Whole group · ${n.total} share${n.total === 1 ? '' : 's'}</div><div class="lc-you-g c${(grpCells.match(/<div>/g) || []).length}">${grpCells}</div></div>`;
       const open = openDraws.has(e.id);
-      return `<div class="lc-draw${open ? ' open' : ''}">
+      return `<div class="lc-draw ${n.pend ? 'st-wait' : (n.won - n.cost >= 0 ? 'st-win' : 'st-loss')}${open ? ' open' : ''}">
         <button type="button" class="lc-dr-head" data-lc-toggle="${esc(e.id)}" aria-expanded="${open}" aria-label="${esc(e.label || 'Lotto draw')}, ${open ? 'hide' : 'show'} details"><div class="lc-dr-hl"><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))} · ${n.total} share${n.total === 1 ? '' : 's'}${into ? ' · rolled over' : ''}</div></div>
           <span class="lc-chip-st ${n.pend ? 'wait' : (n.won - n.cost >= 0 ? 'win' : 'loss')}">${n.pend ? 'Awaiting result' : signed(n.won - n.cost)}</span><svg class="lc-chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
         <div class="lc-dr-body">
-        ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg>View ticket</button>` : ''}
+        ${grpLine}
+        ${youLine}
+        ${roll}${rolledOut}
         <div class="lc-dr-grid">
           <div><span>Share value</span><b>${money(n.cost * per)}</b></div>
           <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b${n.pend && n.jackpot ? ` title="${esc(money(n.jackpot * per))}"` : ''}>${n.pend ? (n.jackpot ? moneyShort(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
         </div>
-        ${roll}${rolledOut}
-        ${grpLine}
-        ${youLine}
         <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
+        ${n.hasTicket ? `<button type="button" class="lc-dr-ticket" data-lc-view="${esc(e.id)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg>View ticket</button>` : ''}
       </div></div>`; }).join('') : '<div class="lc-empty">No draws yet. Your first one will show up here.</div>';
     root.innerHTML = `
       <div class="lc-home">

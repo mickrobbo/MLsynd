@@ -467,7 +467,7 @@ test('Lotto Pigs: winnings from one draw roll into the next ticket and members t
   assert.equal(await page.locator('#homeSubview-lotto .lc-people').first().isVisible(), false, 'each person starts folded');
   await page.click('[data-lc-fold="people"]');
   assert.equal(await page.locator('#homeSubview-lotto .lc-people').first().isVisible(), true);
-  assert.match(txt, /You pay \$9\.08/);
+  assert.match(txt, /You pay \$9\.08/i);
 }, { db: (db) => { const sh = { Brad: 1, Dean: 2, Josh: 2, Zak: 2, Murph: 2, Trasky: 2, Damon: 2 }; db.lottoPigs = { group: { name: 'Lotto Pigs', members: Object.keys(sh), uids: { u5: true } }, ledger: {
   a: { date: '2026-11-03', label: 'Oz Lotto', price: 1.35, shares: sh, cost: 17.5, won: 15.05, costMode: 'total', createdAt: 1 },
   b: { date: '2026-11-05', label: 'Powerball', price: 6.05, shares: sh, cost: 78.6, covered: 15.05, won: null, costMode: 'total', createdAt: 2 } } }; } });

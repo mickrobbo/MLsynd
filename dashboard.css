@@ -7889,3 +7889,30 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-dr-grp .lc-you-g b.pos{ color:#4DEB8E; } .lc-dr-grp .lc-you-g b.neg{ color:#FF6B5E; }
 
 .lc-dr-grp .lc-you-g b{ font-size:18px; }
+
+/* v292: Lotto Pigs draw cards, more professional (status rule, clear hierarchy, quiet secondary info) */
+.lc-draw{ position:relative; border-radius:20px; background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.012)); border:1px solid rgba(255,255,255,.08); box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 10px 26px rgba(0,0,0,.28); }
+.lc-draw::before{ content:""; position:absolute; left:0; top:14px; bottom:14px; width:3px; border-radius:0 3px 3px 0; background:rgba(255,255,255,.18); }
+.lc-draw.st-win::before{ background:#4DEB8E; } .lc-draw.st-loss::before{ background:#FF6B5E; } .lc-draw.st-wait::before{ background:#FFD25A; }
+.lc-dr-head{ padding:16px 16px 14px 20px; }
+.lc-dr-title{ font:800 17px 'Manrope', sans-serif; letter-spacing:-.01em; }
+.lc-dr-sub{ margin-top:3px; font-size:12px; letter-spacing:.01em; }
+.lc-chip-st{ padding:6px 12px; font-size:12.5px; letter-spacing:.01em; font-variant-numeric:tabular-nums; }
+.lc-dr-body{ padding:0 16px 16px 20px; }
+.lc-draw.open .lc-dr-head{ padding-bottom:10px; }
+/* the two boxes: group first, then you */
+.lc-dr-you{ margin-top:10px; padding:14px 14px 14px; border-radius:16px; }
+.lc-dr-body > .lc-dr-grp{ margin-top:2px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.1); }
+.lc-you-t{ font:800 10.5px 'Manrope', sans-serif; letter-spacing:.12em; margin-bottom:12px; }
+.lc-you-g span{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; }
+.lc-you-g b{ margin-top:6px; font:800 18px 'Manrope', sans-serif; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+/* share value / won per share become a quiet caption row */
+.lc-dr-body .lc-dr-grid{ margin-top:12px; padding:10px 0 0; border-top:1px solid rgba(255,255,255,.07); border-bottom:0; display:grid; grid-template-columns:1fr 1fr; }
+.lc-dr-body .lc-dr-grid div{ flex-direction:row; justify-content:space-between; align-items:baseline; padding:0 8px; gap:6px; }
+.lc-dr-body .lc-dr-grid div + div{ border-left:1px solid rgba(255,255,255,.07); }
+.lc-dr-body .lc-dr-grid span{ min-height:0; line-height:1.2; font-size:11.5px; letter-spacing:.02em; text-transform:none; }
+.lc-dr-body .lc-dr-grid b{ margin-top:0; font-size:14px; line-height:1.2; font-variant-numeric:tabular-nums; }
+.lc-dr-who{ margin-top:12px; gap:6px; }
+.lc-dr-who span{ padding:4px 10px; border:1px solid rgba(255,255,255,.07); }
+.lc-dr-who span.me{ border-color:rgba(255,200,70,.35); }
+.lc-dr-ticket{ margin-top:14px; min-height:46px; border-radius:14px; }
