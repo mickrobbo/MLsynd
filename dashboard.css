@@ -7878,3 +7878,6 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .awk-sgm select, .awk-sgm input{ min-height:42px; width:100%; }
 .awk-sgm-btns{ display:flex; gap:8px; }
 .awk-sgm-btns button{ flex:1; min-height:42px; }
+
+/* v290: iPhone Home Screen app. The status bar is see-through, so the header sat under the clock and Dynamic Island, where iOS swallows taps (the Lotto Pigs, Syndy and Admin buttons did nothing). Push everything below the safe area. */
+.wrap{ padding-top: env(safe-area-inset-top, 0px); }
