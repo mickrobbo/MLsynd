@@ -247,7 +247,7 @@ test('Lotto combiner: reads ticket details and fills the draw form', async ({ pa
   await page.click('#lcInfoFill'); await page.waitForTimeout(400);
   assert.equal(await page.inputValue('#lcLLabel'), 'Powerball + OzLotto (2 tickets)');
   assert.equal(await page.inputValue('#lcLDate'), '2026-11-06');
-  assert.equal(await page.inputValue('#lcLTicket'), '45');
+  assert.equal(await page.inputValue('#lcLTicket'), '');
   assert.equal(await page.inputValue('#lcLJackpot'), '100000000');
   const dim = await page.evaluate(() => ({ w: lcCanvas.width, h: lcCanvas.height }));
   assert.ok(dim.h > 600, 'clean ticket cards are drawn: ' + JSON.stringify(dim));

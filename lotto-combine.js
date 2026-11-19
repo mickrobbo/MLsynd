@@ -178,10 +178,10 @@
     const t0 = info.tickets[0], games = [...new Set(info.tickets.map(t => t.game).filter(Boolean))];
     const set = (id, v) => { const el = $(id); if(el && v != null && v !== '') el.value = v; };
     set('lcLLabel', games.join(' + ') + (info.tickets.length > 1 ? ` (${info.tickets.length} tickets)` : '')); set('lcLDate', t0.draw_date); set('lcDate', t0.draw_date); set('lcTitle', games.join(' + '));
-    const total = info.tickets.reduce((a, t) => a + (t.price || 0), 0); if(total > 0) set('lcLTicket', total);
+    const tk = $('lcLTicket'); if(tk && !tk.value) tk.placeholder = 'Total paid for all tickets (e.g. 300)';
     const jp = Math.max(...info.tickets.map(t => t.jackpot || 0)); if(jp > 0) set('lcLJackpot', jp);
     ['lcLTicket', 'lcLJackpot'].forEach(id => { const el = $(id); if(el) el.dispatchEvent(new Event('input', { bubbles: true })); });
-    scheduleRender(); const rs = $('lcReadStatus'); rs.className = 'status-msg ok'; rs.textContent = 'Draw form filled in below. Add who bought in, then save the draw.';
+    scheduleRender(); const rs = $('lcReadStatus'); rs.className = 'status-msg ok'; rs.textContent = 'Draw form filled in below. Enter the TOTAL the group paid for all tickets, add who bought in, then save the draw.';
   }
   async function readTickets(force){
     const rs = $('lcReadStatus'), btn = $('lcReadBtn'); if(!tickets.length) return;
