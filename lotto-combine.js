@@ -942,6 +942,8 @@
       const cell = (k, v, t) => `<div><span>${k}</span><b${t ? ` title="${esc(t)}"` : ''}>${v}</b></div>`;
       const youCells = yours ? (eq ? cell('You pay', n.topUp > 0 ? money(n.each) : '$0') : cell('Paid', money(n.cost * per * yours))) + (n.pend ? (n.jackpot ? cell('Top prize', moneyShort(n.jackpot * per * yours), money(n.jackpot * per * yours)) : '') : cell('Back', money(n.won * per * yours))) : '';
       const youLine = yours ? `<div class="lc-dr-you"><div class="lc-you-t">Your ${yours} share${yours === 1 ? '' : 's'}</div><div class="lc-you-g c${(youCells.match(/<div>/g) || []).length}">${youCells}</div></div>` : '';
+      const grpCells = cell('Outlay', money(n.cost)) + (n.pend ? (n.jackpot ? cell('Top prize', moneyShort(n.jackpot), money(n.jackpot)) : cell('Return', 'Awaiting')) : `<div><span>Return</span><b class="pos">${money(n.won)}</b></div>` + `<div><span>Net</span><b class="${n.won - n.cost >= 0 ? 'pos' : 'neg'}">${signed(n.won - n.cost)}</b></div>`);
+      const grpLine = `<div class="lc-dr-you lc-dr-grp"><div class="lc-you-t">Whole group · ${n.total} share${n.total === 1 ? '' : 's'}</div><div class="lc-you-g c${(grpCells.match(/<div>/g) || []).length}">${grpCells}</div></div>`;
       const open = openDraws.has(e.id);
       return `<div class="lc-draw${open ? ' open' : ''}">
         <button type="button" class="lc-dr-head" data-lc-toggle="${esc(e.id)}" aria-expanded="${open}" aria-label="${esc(e.label || 'Lotto draw')}, ${open ? 'hide' : 'show'} details"><div class="lc-dr-hl"><div class="lc-dr-title">${esc(e.label || 'Lotto draw')}</div><div class="lc-dr-sub">${esc(prettyDate(e.date))} · ${n.total} share${n.total === 1 ? '' : 's'}${into ? ' · rolled over' : ''}</div></div>
@@ -953,6 +955,7 @@
           <div><span>${n.pend ? 'Top prize / share' : 'Won / share'}</span><b${n.pend && n.jackpot ? ` title="${esc(money(n.jackpot * per))}"` : ''}>${n.pend ? (n.jackpot ? moneyShort(n.jackpot * per) : '–') : money(n.won * per)}</b></div>
         </div>
         ${roll}${rolledOut}
+        ${grpLine}
         ${youLine}
         <div class="lc-dr-who">${Object.entries(n.shares).map(([x, c]) => `<span${x === me ? ' class="me"' : ''}>${esc(x)} ×${c}</span>`).join('')}</div>
       </div></div>`; }).join('') : '<div class="lc-empty">No draws yet. Your first one will show up here.</div>';

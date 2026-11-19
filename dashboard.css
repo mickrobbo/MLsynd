@@ -7881,3 +7881,11 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 
 /* v290: iPhone Home Screen app. The status bar is see-through, so the header sat under the clock and Dynamic Island, where iOS swallows taps (the Lotto Pigs, Syndy and Admin buttons did nothing). Push everything below the safe area. */
 .wrap{ padding-top: env(safe-area-inset-top, 0px); }
+
+/* v291: whole-group outlay and return on each Lotto Pigs draw */
+.lc-dr-grp{ background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.12); }
+.lc-dr-grp .lc-you-g > div + div{ border-left-color:rgba(255,255,255,.14); }
+.lc-dr-grp .lc-you-g b{ color:var(--chalk,#f2f2ea); }
+.lc-dr-grp .lc-you-g b.pos{ color:#4DEB8E; } .lc-dr-grp .lc-you-g b.neg{ color:#FF6B5E; }
+
+.lc-dr-grp .lc-you-g b{ font-size:18px; }
