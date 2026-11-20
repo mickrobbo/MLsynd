@@ -64,6 +64,14 @@
       ${open ? `<div class="awk-legs">${legs.map((l, i) => `<div class="awk-leg"><span class="awk-who"><b>${esc(l.sel || 'Leg ' + (i + 1))}</b><span>${esc([l.market, l.event].filter(Boolean).join(' · '))}${Number(l.odds) > 0 ? `${l.market || l.event ? ' · ' : ''}@${Number(l.odds).toFixed(2)}` : ''}</span></span>${resBtns('ileg', b.row + ':' + i, legState(l), null)}</div>`).join('')}</div>` : ''}`;
   }
 
+  // a no-show has no odds and no pick, so they never get a row above; list them here
+  function miaPicker(legs){
+    const have = new Set(legs.map(l => l.name));
+    const names = [...document.querySelectorAll('#adminGroupEntryRows .adminWkResult[data-name]')].map(el => el.dataset.name).filter(n => n && !have.has(n));
+    if(!names.length) return '';
+    return `<div class="awk-mia"><label for="awkMia">No leg from someone?</label><select id="awkMia" data-awk-mia><option value="">Mark a member MIA…</option>${names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</select></div>`;
+  }
+
   // two legs in the same game that the bookie priced together (a Same Game Multi)
   function sgmBox(legs, kept){
     const priced = legs.filter(l => l.odds > 0), cur = st().groupSgm || null;
@@ -143,6 +151,7 @@
             ${resBtns('leg', l.name, l.result, null)}
           </div>`;
         }).join('')}</div>${legs.filter(l => l.odds > 0).length > 1 ? sgmBox(legs, keptSgm) : ''}` : `<div class="awk-empty">Read the multi slip, or type odds in Group multi below.</div>`}
+        ${miaPicker(legs)}
       </section>
 
       <section class="awk-step">
@@ -209,6 +218,10 @@
   }
   const refresh = () => { try{ updateWeeklyChecklist(); }catch(e){} };
 
+  document.addEventListener('change', (e) => {
+    const m = e.target.closest && e.target.closest('[data-awk-mia]');
+    if(m && m.value){ setLeg(m.value, 'MIA'); setTimeout(refresh, 60); }
+  });
   document.addEventListener('click', (e) => {
     const root = e.target.closest('#adminWeeklyChecklistRows'); if(!root) return;
     const tg = e.target.closest('[data-awk-legs]');

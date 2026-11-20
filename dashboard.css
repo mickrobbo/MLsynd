@@ -7916,3 +7916,10 @@ body.tip-free [data-tip-prize]{ display:none !important; }
 .lc-dr-who span{ padding:4px 10px; border:1px solid rgba(255,255,255,.07); }
 .lc-dr-who span.me{ border-color:rgba(255,200,70,.35); }
 .lc-dr-ticket{ margin-top:14px; min-height:46px; border-radius:14px; }
+
+/* v294: result buttons always sit on their own line, so every member's row lines up; MIA picker */
+.awk-row > .awk-who{ flex:1 0 100%; }
+.awk-row > .awk-res{ margin-left:0; }
+.awk-mia{ display:flex; align-items:center; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
+.awk-mia label{ font-size:12px; color:var(--muted); flex:0 0 auto; }
+.awk-mia select{ flex:1 1 auto; min-height:40px; border-radius:10px; font-size:13px; }
